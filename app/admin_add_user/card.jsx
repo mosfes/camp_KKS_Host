@@ -6,16 +6,23 @@ import studentService from "@/app/service/adminService";
 
 export default function App() {
   const [studentCount, setStudentCount] = useState(0);
+  const [teacherCount, setTeacherCount] = useState(0);
 
   useEffect(() => {
     const initData = async () => {
       try {
-        const students = await studentService.getStudents();
+        const [students, teachers] = await Promise.all([
+            studentService.getStudents(),
+            studentService.getTeachers()
+        ]);
         if (students) {
             setStudentCount(students.length);
         }
+        if (teachers) {
+            setTeacherCount(teachers.length);
+        }
       } catch (error) {
-        console.error("Failed to fetch students:", error);
+        console.error("Failed to fetch dashboard data:", error);
       }
     };
     
@@ -25,15 +32,18 @@ export default function App() {
   const list = [
     {
       title: "ผู้ใช้ทั้งหมด",
-      number: "15",
+      number: studentCount + teacherCount,
+      colorClass: "text-foreground",
     },
     {
       title: "นักเรียน",
       number: studentCount, 
+      colorClass: "text-blue-600",
     },
     {
       title: "ครู",
-      number: "10",
+      number: teacherCount,
+      colorClass: "text-green-600",
     },
   ];
 
@@ -53,7 +63,7 @@ export default function App() {
           </CardBody>
           <CardFooter className="text-small flex-col items-start p-0">
             <p>{item.title}</p>
-            <p className="text-2xl font-bold">{item.number}</p>
+            <p className={`text-2xl font-bold ${item.colorClass}`}>{item.number}</p>
           </CardFooter>
         </Card>
       ))}

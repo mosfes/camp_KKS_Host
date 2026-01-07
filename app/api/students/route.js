@@ -68,3 +68,70 @@ export async function POST(req) {
     return NextResponse.json({ error: 'เพิ่มนักเรียนไม่สำเร็จ' }, { status: 500 });
   }
 }
+
+export async function DELETE(req) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = parseInt(searchParams.get('id'));
+
+    if (!id){
+      return NextResponse.json({ error: 'รหัสนักเรียนไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    await prisma.$transaction(async (prisma) => {
+        await prisma.classroom_students.deleteMany({
+            where: { student_students_id: id }
+        });
+
+    await prisma.students.delete({
+        where: { students_id: id }
+    });
+    });
+
+    return NextResponse.json({ message: 'ลบนักเรียนสำเร็จ' }, { status: 200 });
+  } catch (error) {
+    console.error("Error:", error);
+    return NextResponse.json({ error: 'ลบนักเรียนไม่สำเร็จ' }, { status: 500 });
+  }
+}
+
+export async function PUT(req) {
+  try {
+    const body = await req.json();
+    const id = parseInt(body.students_id);
+
+    const result = await prisma.$transaction(async (prisma) => {
+
+      const updatedStudent = await prisma.students.update({
+        where: { students_id: id },
+        data: {
+          firstname: body.firstname,
+          lastname: body.lastname,
+          email: body.email,
+          tel: body.tel,
+        }
+      });
+
+      if (body.classroom_id) {
+        await prisma.classroom_students.deleteMany({
+            where: { student_students_id: id }
+        });
+        
+        await prisma.classroom_students.create({
+            data: {
+                student_students_id: id,
+                classroom_classroom_id: parseInt(body.classroom_id)
+            }
+        });
+      }
+
+      return updatedStudent;
+    });
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error("Update error:", error);
+    return NextResponse.json({ error: 'แก้ไขข้อมูลไม่สำเร็จ' }, { status: 500 });
+  }
+}
+    

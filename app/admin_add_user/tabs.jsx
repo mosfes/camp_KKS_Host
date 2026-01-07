@@ -325,6 +325,8 @@ const StudentManagerContent = () => {
     const [classrooms, setClassrooms] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const [isEditing, setIsEditing] = useState(false);
+
     const [formData, setFormData] = useState({
         students_id: "",
         firstname: "",
@@ -367,6 +369,42 @@ const StudentManagerContent = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const openAddModal = () => {
+        setIsEditing(false);
+        setFormData({ students_id: "", firstname: "", lastname: "", email: "", tel: "", classroom_id: "" });
+        onOpen();
+    };
+
+    const handleEdit = (student) => {
+        setIsEditing(true);
+
+        const currentClassroomId = student.classroom_students && student.classroom_students.length > 0
+            ? student.classroom_students[0].classroom_classroom_id.toString()
+            : "";
+
+        setFormData({
+            students_id: student.students_id,
+            firstname: student.firstname,
+            lastname: student.lastname,
+            email: student.email || "",
+            tel: student.tel || "",
+            classroom_id: currentClassroomId
+        });
+        onOpen();
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm("คุณต้องการลบนักเรียนรหัส " + id + " ใช่หรือไม่?")) return;
+
+        try {
+            await studentService.deleteStudent(id);
+            alert("ลบข้อมูลสำเร็จ");
+            fetchStudents();
+        } catch (error) {
+            alert("เกิดข้อผิดพลาดในการลบ: " + error.message);
+        }
+    };
+
     const handleSubmit = async (onClose) => {
         if (!formData.students_id || !formData.firstname) {
             alert("กรุณากรอกรหัสนักเรียนและชื่อ");
@@ -374,14 +412,18 @@ const StudentManagerContent = () => {
         }
 
         try {
-            await studentService.addStudent(formData);
-            alert("เพิ่มนักเรียนสำเร็จ!");
-            setFormData({ students_id: "", firstname: "", lastname: "", email: "", tel: "", classroom_id: "" });
+            if (isEditing) {
+                await studentService.updateStudent(formData);
+                alert("แก้ไขข้อมูลสำเร็จ!");
+            } else {
+                await studentService.addStudent(formData);
+                alert("เพิ่มนักเรียนสำเร็จ!");
+            }
+
             fetchStudents();
             onClose();
-
         } catch (error) {
-            console.error("Add student error:", error);
+            console.error("Operation error:", error);
             alert("เกิดข้อผิดพลาด: " + error.message);
         }
     };
@@ -393,7 +435,6 @@ const StudentManagerContent = () => {
         }
         return "-";
     };
-
     return (
         <div className="flex flex-col gap-6 w-full pt-4">
             <Card className="border border-[#EFECE5] shadow-sm rounded-lg bg-white" radius="sm">
@@ -436,7 +477,7 @@ const StudentManagerContent = () => {
                             </Button>
 
                             <Button
-                                onPress={onOpen}
+                                onPress={openAddModal}
                                 size="sm"
                                 className="bg-green-900 text-white hover:bg-green-800 shadow-sm"
                             >
@@ -446,7 +487,16 @@ const StudentManagerContent = () => {
                         </div>
                     </div>
 
-                    <Table aria-label="Student Table" shadow="none" classNames={{ th: "bg-transparent text-gray-600 font-medium border-b", td: "py-3" }}>
+                    <Table aria-label="Student Table"
+                        shadow="none"
+                        isHeaderSticky
+                        classNames={{
+                            wrapper: "border-2 border-[#EFECE5] rounded-xl p-0 overflow-hidden",
+
+                            th: "bg-white border-b border-white text-gray-800",
+
+                            td: "py-3 border-b border-[#EFECE5]",
+                        }}>
                         <TableHeader>
                             <TableColumn>รหัสนักเรียน</TableColumn>
                             <TableColumn>ชื่อ-นามสกุล</TableColumn>
@@ -457,7 +507,7 @@ const StudentManagerContent = () => {
                         </TableHeader>
                         <TableBody emptyContent={"ไม่มีข้อมูลนักเรียน"}>
                             {students.map((stu) => (
-                                <TableRow key={stu.students_id} className="border-b last:border-b-0 hover:bg-gray-50">
+                                <TableRow key={stu.students_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
                                     <TableCell>{stu.students_id}</TableCell>
                                     <TableCell>{stu.firstname} {stu.lastname}</TableCell>
                                     <TableCell>{stu.email}</TableCell>
@@ -465,9 +515,20 @@ const StudentManagerContent = () => {
                                     <TableCell>{getStudentClassroom(stu)}</TableCell>
                                     <TableCell>{stu.tel}</TableCell>
                                     <TableCell>
-                                        <span className="cursor-pointer active:opacity-50 flex items-center">
-                                            <DeleteIcon />
-                                        </span>
+                                        <div className="flex items-center gap-3">
+                                            <span
+                                                className="cursor-pointer active:opacity-50 text-blue-500 hover:text-blue-700"
+                                                onClick={() => handleEdit(stu)}
+                                            >
+                                                <SquarePen size={18} />
+                                            </span>
+                                            <span
+                                                className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
+                                                onClick={() => handleDelete(stu.students_id)}
+                                            >
+                                                <Trash2 size={18} />
+                                            </span>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -480,12 +541,12 @@ const StudentManagerContent = () => {
                 <ModalContent className="bg-white rounded-2xl shadow-medium border border-gray-100 text-gray-800 p-2">
                     {(onClose) => (
                         <>
-                            <ModalHeader>เพิ่มนักเรียนใหม่</ModalHeader>
+                            <ModalHeader>{isEditing ? "แก้ไขข้อมูลนักเรียน" : "เพิ่มนักเรียนใหม่"}</ModalHeader>
                             <ModalBody className="gap-4">
 
                                 <div className="flex flex-col gap-1">
                                     <label className="text-sm font-medium text-gray-700">รหัสนักเรียน</label>
-                                    <Input name="students_id" value={formData.students_id} onChange={handleChange} variant="bordered" radius="lg" placeholder="กรอกรหัสนักเรียน" classNames={{ inputWrapper: "bg-white" }} />
+                                    <Input name="students_id" value={formData.students_id} onChange={handleChange} isDisabled={isEditing} variant="bordered" radius="lg" placeholder="กรอกรหัสนักเรียน" classNames={{ inputWrapper: "bg-white" }} />
                                 </div>
 
                                 <div className="flex gap-4">

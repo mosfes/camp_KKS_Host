@@ -122,9 +122,41 @@ const getAcademicYears = async () => {
   }
 };
 
+const deleteStudent = async (id) => {
+  try {
+    const res = await fetch(`${API_URL}?id=${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete student');
+    return await res.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+const updateStudent = async (studentData) => {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(studentData),
+    });
+    
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update student');
+    }
+    return await res.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
 export default {
   getStudents,
   addStudent,
+  deleteStudent,
+  updateStudent,
   getTeachers,
   addTeacher,
   getClassrooms,
