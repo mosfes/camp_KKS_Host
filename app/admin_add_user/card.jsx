@@ -1,6 +1,27 @@
-import {Card, CardBody, CardFooter, Image} from "@heroui/react";
+"use client"; // จำเป็นต้องใส่บรรทัดนี้เพราะมีการใช้ useState และ useEffect
+
+import React, { useState, useEffect } from "react";
+import { Card, CardBody, CardFooter } from "@heroui/react";
+import studentService from "@/app/service/adminService";
 
 export default function App() {
+  const [studentCount, setStudentCount] = useState(0);
+
+  useEffect(() => {
+    const initData = async () => {
+      try {
+        const students = await studentService.getStudents();
+        if (students) {
+            setStudentCount(students.length);
+        }
+      } catch (error) {
+        console.error("Failed to fetch students:", error);
+      }
+    };
+    
+    initData();
+  }, []);
+
   const list = [
     {
       title: "ผู้ใช้ทั้งหมด",
@@ -8,7 +29,7 @@ export default function App() {
     },
     {
       title: "นักเรียน",
-      number: "20",
+      number: studentCount, 
     },
     {
       title: "ครู",
@@ -16,17 +37,23 @@ export default function App() {
     },
   ];
 
+
   return (
-    <div className="gap-2 grid grid-cols-1 sm:grid-cols-3 ">
+    <div className="gap-2 grid grid-cols-1 sm:grid-cols-3">
       {list.map((item, index) => (
-        /* eslint-disable no-console */
-        <Card key={index} isPressable shadow="sm" className="border-1 p-3 rounded-lg w-full" onPress={() => console.log("item pressed")}>
+        <Card 
+            key={index} 
+            isPressable 
+            shadow="sm" 
+            className="p-3 rounded-lg w-full" 
+            onPress={() => console.log("item pressed")}
+        >
           <CardBody className="overflow-visible p-0">
-           
+            
           </CardBody>
-          <CardFooter className="text-small flex-col items-start p-0 ">
-            <p>{item.title}</p> 
-            <p className="text-2xl">{item.number}</p>
+          <CardFooter className="text-small flex-col items-start p-0">
+            <p>{item.title}</p>
+            <p className="text-2xl font-bold">{item.number}</p>
           </CardFooter>
         </Card>
       ))}

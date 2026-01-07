@@ -35,7 +35,7 @@ export default function LoginLayout({
     <html suppressHydrationWarning lang="en">
       <body
         className={clsx(
-          "min-h-screen text-foreground bg-background font-sans antialiased",
+          "min-h-screen text-foreground bg-[#fff8f2] font-sans antialiased",
           fontSans.variable,
         )}
       >

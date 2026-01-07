@@ -4,6 +4,19 @@ import { prisma } from '@/lib/db';
 export async function GET() {
   try {
     const students = await prisma.students.findMany({
+      include: {
+        // ดึงข้อมูลห้องเรียนและครูที่เชื่อมโยงอยู่มาด้วย
+        classroom_students: {
+          include: {
+            classroom: {
+              include: {
+                teacher: true,
+                academic_years: true
+              }
+            }
+          }
+        }
+      },
       orderBy: { students_id: 'asc' }
     });
     return NextResponse.json(students);
@@ -25,17 +38,31 @@ export async function POST(req) {
       return NextResponse.json({ error: 'รหัสนักเรียนนี้มีอยู่แล้ว' }, { status: 400 });
     }
 
-    const newStudent = await prisma.students.create({
-      data: {
-        students_id: id,
-        firstname: body.firstname,
-        lastname: body.lastname,
-        email: body.email,
-        tel: body.tel,
-      }
+
+    const result = await prisma.$transaction(async (prisma) => {
+        const newStudent = await prisma.students.create({
+            data: {
+                students_id: id,
+                firstname: body.firstname,
+                lastname: body.lastname,
+                email: body.email,
+                tel: body.tel,
+            }
+        });
+
+        if (body.classroom_id) {
+            await prisma.classroom_students.create({
+                data: {
+                    student_students_id: id,
+                    classroom_classroom_id: parseInt(body.classroom_id)
+                }
+            });
+        }
+        
+        return newStudent;
     });
 
-    return NextResponse.json(newStudent, { status: 201 });
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
     console.error("Error:", error);
     return NextResponse.json({ error: 'เพิ่มนักเรียนไม่สำเร็จ' }, { status: 500 });

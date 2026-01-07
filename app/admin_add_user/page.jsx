@@ -4,7 +4,8 @@ import NavTest from '../../components/navbar.tsx'
 import { HeroUIProvider } from "@heroui/react";
 import Tabs from './tabs.jsx'
 import Card from './card.jsx'
-import Add from './add.jsx'
+import Add from './add.jsx' 
+import { AppNavbar } from "@/components/StudentNavbar";
 
 import {
     Button,
@@ -15,7 +16,8 @@ import {
 const page = () => {
     return (
         <HeroUIProvider>
-            {/* <NavTest /> */}
+           
+            <AppNavbar />
             <div className='m-10 mt-5'>
                 <div >
                     <Card />
