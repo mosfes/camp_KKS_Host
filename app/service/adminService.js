@@ -152,16 +152,79 @@ const updateStudent = async (studentData) => {
   }
 };
 
+const deleteTeacher = async (id) => {
+  try {
+    const res = await fetch(`${API_URL_TEACHERS}?id=${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete teacher');
+    }
+    return await res.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+const updateTeacher = async (teacherData) => {
+  try {
+    const res = await fetch(API_URL_TEACHERS, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(teacherData),
+    });
+    
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update teacher');
+    }
+    return await res.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+const deleteClassroom = async (id) => {
+  try {
+    const res = await fetch(`${API_URL_CLASSROOMS}?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete classroom');
+    }
+    return await res.json();
+  } catch (error) { throw error; }
+};
+
+const updateClassroom = async (data) => {
+  try {
+    const res = await fetch(API_URL_CLASSROOMS, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update classroom');
+    }
+    return await res.json();
+  } catch (error) { throw error; }
+};
+
 export default {
   getStudents,
   addStudent,
   deleteStudent,
   updateStudent,
+  deleteTeacher,
+  updateTeacher,
   getTeachers,
   addTeacher,
   getClassrooms,
   addClassroom,
   getAcademicYears,
-  addAcademicYear
+  addAcademicYear,
+  deleteClassroom,
+  updateClassroom,
 };
 
