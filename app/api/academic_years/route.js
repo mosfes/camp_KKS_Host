@@ -32,6 +32,37 @@ export async function POST(req) {
 
     return NextResponse.json(newYear, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: 'เพิ่มปีการศึกษาไม่สำเร็จ' }, { status: 500 });
+    console.error("Error adding academic year:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+}
+
+export async function DELETE(request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+
+        if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+
+        const yearId = parseInt(id);
+
+        const relatedClassrooms = await prisma.classrooms.count({
+            where: { academic_years_years_id: yearId }
+        });
+
+        if (relatedClassrooms > 0) {
+            return NextResponse.json({ 
+                error: `ไม่สามารถลบได้ เนื่องจากมีห้องเรียนในระบบ ${relatedClassrooms} ห้อง ที่ใช้ปีการศึกษานี้อยู่` 
+            }, { status: 400 });
+        }
+
+        await prisma.academic_years.delete({
+            where: { years_id: yearId }
+        });
+
+        return NextResponse.json({ message: "Deleted successfully" });
+    } catch (error) {
+         console.error("Error deleting academic year:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 }

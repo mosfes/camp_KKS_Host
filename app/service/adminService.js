@@ -2,10 +2,15 @@ const API_URL = '/api/students';
 const API_URL_TEACHERS = '/api/teachers';
 const API_URL_CLASSROOMS = '/api/classrooms';
 const API_URL_YEARS = '/api/academic_years';
+const API_URL_CLASSROOM_TYPES = '/api/classroom-types';
 
-const getStudents = async () => {
+const getStudents = async (yearId) => {
   try {
-    const res = await fetch(API_URL);
+    let url = API_URL;
+    if (yearId && yearId !== "all") {
+        url += `?yearId=${yearId}`;
+    }
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error('Failed to fetch students');
     }
@@ -68,9 +73,13 @@ const addTeacher = async (teacherData) => {
   }
 };
 
-const getClassrooms = async () => {
+const getClassrooms = async (yearId) => {
   try {
-    const res = await fetch(API_URL_CLASSROOMS);
+    let url = API_URL_CLASSROOMS;
+    if (yearId && yearId !== "all") {
+        url += `?yearId=${yearId}`;
+    }
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch classrooms');
     return await res.json();
   } catch (error) {
@@ -224,7 +233,42 @@ export default {
   addClassroom,
   getAcademicYears,
   addAcademicYear,
+  deleteAcademicYear: async (id) => {
+    try {
+        const res = await fetch(`${API_URL_YEARS}?id=${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || 'Failed to delete academic year');
+        }
+        return await res.json();
+    } catch (e) { throw e; }
+  },
   deleteClassroom,
   updateClassroom,
+  getClassroomTypes : async () => {
+    try {
+        const res = await fetch(API_URL_CLASSROOM_TYPES);
+        if (!res.ok) throw new Error('Failed to fetch classroom types');
+        return await res.json();
+    } catch (e) { console.error(e); return []; }
+  },
+  addClassroomType : async (data) => {
+    try {
+        const res = await fetch(API_URL_CLASSROOM_TYPES, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Failed to add classroom type');
+        return await res.json();
+    } catch (e) { throw e; }
+  },
+  deleteClassroomType : async (id) => {
+    try {
+        const res = await fetch(`${API_URL_CLASSROOM_TYPES}?id=${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete classroom type');
+        return await res.json();
+    } catch (e) { throw e; }
+  },
 };
 

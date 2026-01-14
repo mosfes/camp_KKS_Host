@@ -1,26 +1,53 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-export async function GET() {
+export async function GET(req) {
   try {
-    const students = await prisma.students.findMany({
+    const { searchParams } = new URL(req.url);
+    const yearId = searchParams.get('yearId');
+
+    const whereClause = {};
+    const classroomIncludeClause = {
+      orderBy: {
+        classroom_students_id: 'desc'
+      },
       include: {
-        // ดึงข้อมูลห้องเรียนและครูที่เชื่อมโยงอยู่มาด้วย
-        classroom_students: {
+        classroom: {
           include: {
-            classroom: {
-              include: {
-                teacher: true,
-                academic_years: true
-              }
-            }
+            teacher: true,
+            academic_years: true
           }
         }
+      }
+    };
+
+    if (yearId && yearId !== 'all') {
+
+      whereClause.classroom_students = {
+        some: {
+          classroom: {
+            academic_years_years_id: parseInt(yearId)
+          }
+        }
+      };
+
+      classroomIncludeClause.where = {
+        classroom: {
+            academic_years_years_id: parseInt(yearId)
+        }
+      };
+    }
+
+    const students = await prisma.students.findMany({
+      where: whereClause,
+      include: {
+        classroom_students: classroomIncludeClause
       },
       orderBy: { students_id: 'asc' }
     });
     return NextResponse.json(students);
   } catch (error) {
+    console.error("Error fetching students:", error);
     return NextResponse.json({ error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 });
   }
 }

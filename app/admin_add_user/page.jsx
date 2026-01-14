@@ -20,10 +20,10 @@ const page = () => {
             <AppNavbar />
             <div className='m-10 mt-5'>
                 <div >
-                    <Card />
+                    {/* <Card /> */}
                     {/* <Add /> */}
-                    {/* <h1 className="text-2xl ">แดชบอร์ดผู้ดูแลระบบ</h1>
-                    <p>จัดการนักเรียนและครู</p> */}
+                    <h1 className="text-2xl ">แดชบอร์ดผู้ดูแลระบบ</h1>
+                    <p>จัดการผู้ใช้และห้องเรียน</p>
                 </div>
                 <div className='mt-5'>
                     <Tabs />    

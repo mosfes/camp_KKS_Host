@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-export async function GET() {
+export async function GET(req) {
   try {
+    const { searchParams } = new URL(req.url);
+    const yearId = searchParams.get('yearId');
+
+    const whereClause = {};
+
+    if (yearId && yearId !== 'all') {
+      whereClause.academic_years_years_id = parseInt(yearId);
+    }
+
     const classrooms = await prisma.classrooms.findMany({
+      where: whereClause,
       include: {
         academic_years: true,
         teacher: true
@@ -12,6 +22,7 @@ export async function GET() {
     });
     return NextResponse.json(classrooms);
   } catch (error) {
+    console.error("Error fetching classrooms:", error);
     return NextResponse.json({ error: 'ดึงข้อมูลห้องเรียนไม่สำเร็จ' }, { status: 500 });
   }
 }
