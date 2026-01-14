@@ -5,9 +5,10 @@ import { NextResponse } from "next/server";
 import { prisma } from '@/lib/db';
 
 // GET - ดึงข้อมูลค่ายเดียว
-export async function GET(request, { params }) {
+export async function GET(request, context) {
     try {
-        const campId = parseInt(params.id);
+        const params = await context.params;   // ต้อง await
+        const campId = Number(params.id);
 
         const camp = await prisma.camp.findUnique({
             where: {
@@ -81,13 +82,18 @@ export async function GET(request, { params }) {
         );
     }
 }
-
 // PUT - อัพเดทข้อมูลค่าย
-export async function PUT(request, { params }) {
+// ... imports
+
+export async function PUT(request, context) {
+    const params = await context.params;
+    const campId = Number(params.id);
     try {
-        const campId = parseInt(params.id);
+        // const { id } = await params;
+        // const campId = parseInt(id);
         const body = await request.json();
 
+        // อัพเดทข้อมูลค่าย
         const updatedCamp = await prisma.camp.update({
             where: {
                 camp_id: campId,
@@ -97,15 +103,87 @@ export async function PUT(request, { params }) {
                 location: body.location,
                 start_date: body.start_date ? new Date(body.start_date) : undefined,
                 end_date: body.end_date ? new Date(body.end_date) : undefined,
-                start_regis_date: body.start_regis_date ? new Date(body.start_regis_date) : undefined,
-                end_regis_date: body.end_regis_date ? new Date(body.end_regis_date) : undefined,
-                start_shirt_date: body.start_shirt_date ? new Date(body.start_shirt_date) : undefined,
-                end_shirt_date: body.end_shirt_date ? new Date(body.end_shirt_date) : undefined,
+                start_regis_date: body.start_regis_date
+                    ? new Date(body.start_regis_date)
+                    : undefined,
+                end_regis_date: body.end_regis_date
+                    ? new Date(body.end_regis_date)
+                    : undefined,
+                start_shirt_date: body.start_shirt_date
+                    ? new Date(body.start_shirt_date)
+                    : undefined,
+                end_shirt_date: body.end_shirt_date
+                    ? new Date(body.end_shirt_date)
+                    : undefined,
                 description: body.description,
-                status: body.status,
+                status: body.status || "OPEN",
                 has_shirt: body.has_shirt,
             },
         });
+
+        // Delete existing time slots first (foreign key constraint)
+        // Find schedules for this camp first
+        const schedules = await prisma.camp_daily_schedule.findMany({
+            where: { camp_camp_id: campId },
+            select: { daily_schedule_id: true }
+        });
+
+        const scheduleIds = schedules.map(s => s.daily_schedule_id);
+
+        if (scheduleIds.length > 0) {
+            await prisma.camp_time_slot.deleteMany({
+                where: { daily_schedule_id: { in: scheduleIds } }
+            });
+        }
+
+        // Now delete daily schedules
+        await prisma.camp_daily_schedule.deleteMany({
+            where: { camp_camp_id: campId }
+        });
+
+        // เพิ่ม daily schedule ใหม่
+        if (body.dailySchedule && body.dailySchedule.length > 0) {
+            for (const daySchedule of body.dailySchedule) {
+                const createdSchedule = await prisma.camp_daily_schedule.create({
+                    data: {
+                        camp_camp_id: campId,
+                        day: daySchedule.day,
+                    }
+                });
+
+                // เพิ่ม time slots
+                if (daySchedule.timeSlots && daySchedule.timeSlots.length > 0) {
+                    for (const timeSlot of daySchedule.timeSlots) {
+                        await prisma.camp_time_slot.create({
+                            data: {
+                                daily_schedule_id: createdSchedule.daily_schedule_id,
+                                startTime: timeSlot.startTime,
+                                endTime: timeSlot.endTime,
+                                activity: timeSlot.activity,
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        // อัพเดทห้องเรียน
+        if (body.classroom_ids && body.classroom_ids.length > 0) {
+            // ลบความสัมพันธ์เก่า
+            await prisma.camp_classroom.deleteMany({
+                where: { camp_camp_id: campId }
+            });
+
+            // เพิ่มความสัมพันธ์ใหม่
+            for (const classroomId of body.classroom_ids) {
+                await prisma.camp_classroom.create({
+                    data: {
+                        camp_camp_id: campId,
+                        classroom_classroom_id: classroomId,
+                    }
+                });
+            }
+        }
 
         return NextResponse.json(updatedCamp, { status: 200 });
     } catch (error) {
@@ -116,6 +194,7 @@ export async function PUT(request, { params }) {
         );
     }
 }
+
 
 
 export async function DELETE(req, context) {

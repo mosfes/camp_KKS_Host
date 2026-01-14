@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
+import { useStatusModal } from "@/components/StatusModalProvider";
+import EditCampModal from "./EditCampModal";
 
 interface TimeSlot {
     startTime: string;
@@ -33,20 +35,21 @@ interface CampDetail {
     location: string;
     start_date: string;
     end_date: string;
-    start_regis_date: string;      // ✅ แก้ไข
-    end_regis_date: string;        // ✅ แก้ไข
+    start_regis_date: string;
+    end_regis_date: string;
     description: string;
     grade_level: string;
     has_shirt: boolean;
-    end_shirt_date?: string;       // ✅ แก้ไข
+    end_shirt_date?: string;
     shirt_image_url?: string;
-    daily_schedule: any;           // ✅ เปลี่ยนเป็น any ก่อน
+    daily_schedule: any;
     status: string;
     plan_type?: any;
     camp_classroom?: any[];
     _count?: {
         student_enrollment: number;
     };
+    plan_type_name?: string;
 }
 
 export default function CampDetailPage() {
@@ -55,7 +58,10 @@ export default function CampDetailPage() {
     const campId = params?.id;
 
     const [camp, setCamp] = useState<CampDetail | null>(null);
+    const { showError, showSuccess } = useStatusModal();
     const [loading, setLoading] = useState(true);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         if (campId) {
@@ -64,13 +70,13 @@ export default function CampDetailPage() {
     }, [campId]);
 
     const fetchCampDetail = async () => {
+        // ... existing fetch logic
         try {
             setLoading(true);
             const response = await fetch(`/api/camps/${campId}`);
             const data = await response.json();
 
-            console.log("=== Raw API Response ===");
-            console.log(data);
+            // ... (keep existing data processing logic) ...
 
             // ดึง grade_level และ plan_type จาก camp_classroom
             let gradeLevel = null;
@@ -81,46 +87,32 @@ export default function CampDetailPage() {
                 if (classroom) {
                     gradeLevel = classroom.grade;
                     planTypeName = classroom.type_classroom || "MSEC";
-                    console.log("Found grade from classroom:", gradeLevel);
-                    console.log("Found type_classroom:", planTypeName);
                 }
             }
 
             // ถ้าไม่มีจาก classroom ให้ลองดูจาก plan_type
             if (!planTypeName && data.plan_type) {
                 planTypeName = data.plan_type.name || "MSEC";
-                console.log("Found plan_type name:", planTypeName);
             }
 
             // ดึง daily_schedule จาก camp_daily_schedule
             let dailySchedule = [];
             if (data.camp_daily_schedule && data.camp_daily_schedule.length > 0) {
                 dailySchedule = data.camp_daily_schedule
-                    .sort((a, b) => a.day - b.day)
-                    .map(schedule => ({
+                    .sort((a: any, b: any) => a.day - b.day)
+                    .map((schedule: any) => ({
                         day: schedule.day,
-                        timeSlots: schedule.time_slots.map(slot => ({
-                            startTime: slot.startTime,
-                            endTime: slot.endTime,
+                        timeSlots: schedule.time_slots.map((slot: any) => ({
+                            startTime: slot.startTime || slot.start_time,
+                            endTime: slot.endTime || slot.end_time,
                             activity: slot.activity
                         }))
                     }));
-                console.log("Found daily schedule:", dailySchedule);
             }
 
             data.grade_level = gradeLevel;
             data.plan_type_name = planTypeName;
             data.daily_schedule = dailySchedule;
-
-            console.log("=== Processed Data ===");
-            console.log("grade_level:", data.grade_level);
-            console.log("daily_schedule:", data.daily_schedule);
-            console.log("has_shirt:", data.has_shirt);
-            console.log("start_regis_date:", data.start_regis_date, typeof data.start_regis_date);
-            console.log("end_regis_date:", data.end_regis_date, typeof data.end_regis_date);
-            console.log("end_shirt_date:", data.end_shirt_date, typeof data.end_shirt_date);
-            console.log("start_date:", data.start_date, typeof data.start_date);
-            console.log("end_date:", data.end_date, typeof data.end_date);
 
             setCamp(data);
         } catch (error) {
@@ -130,48 +122,78 @@ export default function CampDetailPage() {
         }
     };
 
+    const handleEditSubmit = async (formData: any) => {
+        try {
+            setIsEditing(true);
+            const response = await fetch(`/api/camps/${campId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to update camp");
+            }
+
+            await fetchCampDetail();
+            setIsEditModalOpen(false);
+            showSuccess("Success", "Camp updated successfully");
+        } catch (error) {
+            console.error("Error updating camp:", error);
+            showError("Error", "Failed to update camp");
+        } finally {
+            setIsEditing(false);
+        }
+    };
+
     const formatDate = (dateString: string) => {
+        if (!dateString) return "";
         const date = new Date(dateString);
-        return date.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
+        return date.toLocaleDateString('th-TH', {
+            day: 'numeric',
+            month: 'short',
+            year: '2-digit'
         });
     };
 
     const formatTime = (time: string) => {
+        // ... existing formatTime
         if (!time) return "";
         return time.slice(0, 5); // แสดงแค่ HH:MM
     };
 
     if (loading) {
+        // ... existing loading state
         return (
             <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center">
                 <div className="text-center">
                     <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-500">Loading camp details...</p>
+                    <p className="text-gray-500">กำลังโหลดข้อมูลค่าย...</p>
                 </div>
             </div>
         );
     }
 
     if (!camp) {
+        // ... existing not found state
         return (
             <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center">
                 <div className="text-center">
-                    <p className="text-gray-500 text-lg">Camp not found</p>
+                    <p className="text-gray-500 text-lg">ไม่พบข้อมูลค่าย</p>
                     <Button
                         className="mt-4 bg-[#6b857a] text-white"
                         onPress={() => router.push('/headteacher/dashboard')}
                     >
-                        Back to Dashboard
+                        กลับไปยังหน้าหลัก
                     </Button>
                 </div>
             </div>
         );
     }
 
-    const totalActivities = camp.daily_schedule?.reduce((sum, day) => sum + day.timeSlots.length, 0) || 0;
+    // const totalActivities = ...
 
     return (
         <div className="min-h-screen bg-[#F5F1E8]">
@@ -183,7 +205,7 @@ export default function CampDetailPage() {
                         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-3"
                     >
                         <ChevronLeft size={20} />
-                        <span className="font-medium">Back to Dashboard</span>
+                        <span className="font-medium">กลับไปยังหน้าหลัก</span>
                     </button>
 
                     <div className="flex justify-between items-start">
@@ -204,8 +226,9 @@ export default function CampDetailPage() {
                         <Button
                             className="bg-[#6b857a] text-white"
                             startContent={<FileText size={18} />}
+                            onPress={() => setIsEditModalOpen(true)}
                         >
-                            Edit Camp
+                            แก้ไขข้อมูลค่าย
                         </Button>
                     </div>
                 </div>
@@ -213,34 +236,35 @@ export default function CampDetailPage() {
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 py-8">
+                {/* ... existing detailed content ... */}
                 {/* Info Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {/* Camp Information */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
                         <div className="flex items-center gap-2 mb-4">
                             <MapPin size={20} className="text-[#6b857a]" />
-                            <h3 className="font-semibold text-gray-900">Camp Information</h3>
+                            <h3 className="font-semibold text-gray-900">ข้อมูลค่าย</h3>
                         </div>
 
                         <div className="space-y-3 text-sm">
                             <div>
-                                <p className="text-gray-500">Grade Level</p>
+                                <p className="text-gray-500">ระดับชั้น</p>
                                 <p className="font-medium text-gray-900">
                                     {camp.grade_level?.replace("Level_", "ม.")}
                                 </p>
                             </div>
 
                             <div>
-                                <p className="text-gray-500">Class/Learning Plan</p>
+                                <p className="text-gray-500">ประเภทห้องเรียน/แผนการเรียน</p>
                                 <p className="font-medium text-gray-900">
-                                    {camp.plan_type_name }
+                                    {camp.plan_type_name}
                                 </p>
                             </div>
 
                             <div>
-                                <p className="text-gray-500">Registration Period</p>
+                                <p className="text-gray-500">ช่วงเวลาเปิดรับสมัคร</p>
                                 <p className="font-medium text-gray-900">
-                                    {camp.start_regis_date ? formatDate(camp.start_regis_date) : "N/A"} - 
+                                    {camp.start_regis_date ? formatDate(camp.start_regis_date) : "N/A"} -
                                     {camp.end_regis_date ? formatDate(camp.end_regis_date) : "N/A"}
                                 </p>
                             </div>
@@ -251,31 +275,31 @@ export default function CampDetailPage() {
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
                         <div className="flex items-center gap-2 mb-4">
                             <Shirt size={20} className="text-[#6b857a]" />
-                            <h3 className="font-semibold text-gray-900">Shirt Reservations</h3>
+                            <h3 className="font-semibold text-gray-900">การจองเสื้อ</h3>
                         </div>
 
                         <div className="space-y-3">
                             <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-500">Status</span>
+                                <span className="text-sm text-gray-500">สถานะ</span>
                                 <Chip
                                     size="sm"
                                     className="bg-green-100 text-green-700"
                                 >
-                                    {camp.has_shirt ? "Enabled" : "Disabled"}
+                                    {camp.has_shirt ? "เปิดใช้งาน" : "ปิดใช้งาน"}
                                 </Chip>
                             </div>
 
                             {camp.has_shirt && (
                                 <>
                                     <div>
-                                        <p className="text-gray-500 text-sm">Deadline</p>
+                                        <p className="text-gray-500 text-sm">วันปิดจอง</p>
                                         <p className="font-medium text-gray-900">
-                                            {camp.end_shirt_date ? formatDate(camp.end_shirt_date) : "N/A"}
+                                            {camp.end_shirt_date ? formatDate(camp.end_shirt_date) : "ไม่มีข้อมูล"}
                                         </p>
                                     </div>
 
                                     <div>
-                                        <p className="text-gray-500 text-sm mb-2">Sample</p>
+                                        <p className="text-gray-500 text-sm mb-2">ตัวอย่างเสื้อ</p>
                                         {camp.shirt_image_url ? (
                                             <img
                                                 src={camp.shirt_image_url}
@@ -299,22 +323,22 @@ export default function CampDetailPage() {
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
                         <div className="flex items-center gap-2 mb-4">
                             <Calendar size={20} className="text-[#6b857a]" />
-                            <h3 className="font-semibold text-gray-900">Camp Schedule</h3>
+                            <h3 className="font-semibold text-gray-900">กำหนดการค่าย</h3>
                         </div>
 
                         <div className="space-y-3">
-                            {camp.daily_schedule?.slice(0, 3).map((day, index) => (
+                            {camp.daily_schedule?.slice(0, 3).map((day: any, index: number) => (
                                 <div key={index}>
-                                    <p className="text-sm font-medium text-gray-900">Day {day.day}</p>
+                                    <p className="text-sm font-medium text-gray-900">วันที่ {day.day}</p>
                                     <p className="text-xs text-gray-500">
-                                        {day.timeSlots.length} activities scheduled
+                                        มี {day.timeSlots.length} กิจกรรม
                                     </p>
                                 </div>
                             ))}
 
                             {camp.daily_schedule?.length > 3 && (
                                 <p className="text-xs text-gray-400 italic">
-                                    +{camp.daily_schedule.length - 3} more days
+                                    + อีก {camp.daily_schedule.length - 3} วัน
                                 </p>
                             )}
                         </div>
@@ -322,35 +346,35 @@ export default function CampDetailPage() {
 
                     {/* Quick Actions */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
-                        <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                        <h3 className="font-semibold text-gray-900 mb-4">เมนูด่วน</h3>
 
                         <div className="space-y-2">
                             <Button
                                 className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
                                 startContent={<Plus size={18} />}
                             >
-                                Create Base
+                                สร้างฐานกิจกรรม
                             </Button>
 
                             <Button
                                 className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
                                 startContent={<FileText size={18} />}
                             >
-                                View Evaluation
+                                ดูผลการประเมิน
                             </Button>
 
                             <Button
                                 className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
                                 startContent={<Award size={18} />}
                             >
-                                View Certificate
+                                ดูประกาศนียบัตร
                             </Button>
 
                             <Button
                                 className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
                                 startContent={<BarChart3 size={18} />}
                             >
-                                View Statistics
+                                ดูสถิติ
                             </Button>
                         </div>
                     </div>
@@ -361,23 +385,23 @@ export default function CampDetailPage() {
                     <div className="flex items-center gap-2 mb-4">
                         <Clock size={20} className="text-[#6b857a]" />
                         <div>
-                            <h3 className="font-semibold text-gray-900">Complete Schedule</h3>
-                            <p className="text-sm text-gray-500">Daily timeline and activities</p>
+                            <h3 className="font-semibold text-gray-900">ตารางเวลากิจกรรมทั้งหมด</h3>
+                            <p className="text-sm text-gray-500">ลำดับกิจกรรมรายวัน</p>
                         </div>
                     </div>
 
                     <div className="space-y-6">
-                        {camp.daily_schedule?.map((day, dayIndex) => (
+                        {camp.daily_schedule?.map((day: any, dayIndex: number) => (
                             <div key={dayIndex}>
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-semibold text-gray-700">
                                         {day.day}
                                     </div>
-                                    <h4 className="font-semibold text-gray-900">Day {day.day}</h4>
+                                    <h4 className="font-semibold text-gray-900">วันที่ {day.day}</h4>
                                 </div>
 
                                 <div className="space-y-3 ml-13">
-                                    {day.timeSlots.map((slot, slotIndex) => (
+                                    {day.timeSlots.map((slot: any, slotIndex: number) => (
                                         <div
                                             key={slotIndex}
                                             className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -403,15 +427,15 @@ export default function CampDetailPage() {
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h3 className="font-semibold text-gray-900 text-lg">Bases</h3>
-                            <p className="text-sm text-gray-500">Manage camp bases and missions</p>
+                            <h3 className="font-semibold text-gray-900 text-lg">ฐานกิจกรรม</h3>
+                            <p className="text-sm text-gray-500">จัดการฐานกิจกรรมและภารกิจ</p>
                         </div>
 
                         <Button
                             className="bg-[#6b857a] text-white"
                             startContent={<Plus size={18} />}
                         >
-                            Create Base
+                            สร้างฐานกิจกรรม
                         </Button>
                     </div>
 
@@ -420,18 +444,26 @@ export default function CampDetailPage() {
                             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Plus size={32} className="text-gray-400" />
                             </div>
-                            <p className="text-gray-500 mb-4">No bases created yet</p>
+                            <p className="text-gray-500 mb-4">ยังไม่ได้สร้างฐานกิจกรรม</p>
                             <Button
                                 className="bg-[#6b857a] text-white"
                                 size="lg"
                                 startContent={<Plus size={18} />}
                             >
-                                Create First Base
+                                เริ่มสร้างฐานกิจกรรม
                             </Button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <EditCampModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                onSubmit={handleEditSubmit}
+                campData={camp}
+                isLoading={isEditing}
+            />
         </div>
     );
 }

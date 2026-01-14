@@ -26,131 +26,135 @@ function DefaultCampImage() {
     return (
         <div className="w-full h-full flex flex-col items-center justify-center bg-[#f1ede6] text-[#9c9488]">
             <ImageOff size={48} />
-            <span className="mt-2 text-sm">No Image</span>
+            <span className="mt-2 text-sm">ไม่มีรูปภาพ</span>
         </div>
     );
 }
 
+// ... imports
+import { useStatusModal } from "@/components/StatusModalProvider";
+
 export default function StudentDashboard() {
-    const [selectedTab, setSelectedTab] = useState("overview");
-    const [camps, setCamps] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { showSuccess, showError, showConfirm } = useStatusModal();
+    const router = useRouter();
+    const [camps, setCamps] = useState<any[]>([]);
     const [stats, setStats] = useState({
         totalCamps: 0,
         activeCamps: 0,
         totalStudents: 0,
         totalEnrollments: 0,
         totalTeachers: 0,
-        avgEnrollment: 0
+        avgEnrollment: 0,
     });
-
-    const router = useRouter();
-
+    const [loading, setLoading] = useState(true);
+    const [selectedTab, setSelectedTab] = useState("overview");
     const [isSelectTypeOpen, setIsSelectTypeOpen] = useState(false);
     const [isCreateCampOpen, setIsCreateCampOpen] = useState(false);
     const [selectedProjectType, setSelectedProjectType] = useState<string | null>(null);
     const [selectedTemplateData, setSelectedTemplateData] = useState<any>(null);
 
-
-    // Fetch camps from database
-    useEffect(() => {
-        fetchCamps();
-        fetchStats();
-    }, []);
-
     const fetchCamps = async () => {
         try {
-            setLoading(true);
-            const response = await fetch('/api/camps'); // API endpoint ที่จะสร้าง
+            const response = await fetch("/api/camps");
             const data = await response.json();
 
-            // Transform data to match UI format
-            const transformedCamps = data.map((camp: any) => ({
-                id: camp.camp_id,
-                title: camp.name,
-                description: camp.description,
-                image: null, // หรือจะเพิ่ม field สำหรับ image ใน schema
-                location: camp.location,
-                startDate: new Date(camp.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                endDate: new Date(camp.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                enrolled: camp._count?.student_enrollment || 0,
-                capacity: camp.capacity || 0, // ถ้ามี field capacity ใน schema
-                status: getCampStatus(camp.status, new Date(camp.start_date), new Date(camp.end_date))
-            }));
+            // Map API data to UI structure
+            const formattedCamps = data.map((camp: any) => {
+                // Determine status label
+                let statusLabel = "ยังไม่เริ่ม";
+                const now = new Date();
+                const start = new Date(camp.start_date);
+                const end = new Date(camp.end_date);
 
-            setCamps(transformedCamps);
+                if (now > end) {
+                    statusLabel = "เสร็จสิ้น";
+                } else if (now >= start && now <= end) {
+                    statusLabel = "กำลังจัด";
+                }
+
+                return {
+                    id: camp.camp_id,
+                    title: camp.name,
+                    description: camp.description,
+                    status: statusLabel,
+                    location: camp.location,
+                    startDate: start.toLocaleDateString('en-GB'),
+                    endDate: end.toLocaleDateString('en-GB'),
+                    enrolled: camp._count?.student_enrollment || 0,
+                    capacity: 0, // Capacity not in current API response, defaulting to 0 or hidden
+                    image: camp.camp_img_url || null,
+                };
+            });
+
+            setCamps(formattedCamps);
         } catch (error) {
-            console.error('Error fetching camps:', error);
-        } finally {
-            setLoading(false);
+            console.error("Failed to fetch camps:", error);
+            showError("Error", "Failed to load camps");
         }
     };
 
     const fetchStats = async () => {
         try {
-            const response = await fetch('/api/camps/stats'); // API endpoint สำหรับ stats
+            const response = await fetch("/api/camps/stats");
             const data = await response.json();
             setStats(data);
         } catch (error) {
-            console.error('Error fetching stats:', error);
+            console.error("Failed to fetch stats:", error);
         }
     };
 
-    const getCampStatus = (dbStatus: string, startDate: Date, endDate: Date) => {
-        const now = new Date();
-
-        if (dbStatus === 'CLOSED') {
-            return 'เสร็จสิ้น';
-        }
-
-        if (now < startDate) {
-            return 'ยังไม่เริ่ม';
-        }
-
-        if (now >= startDate && now <= endDate) {
-            return 'กำลังจัด';
-        }
-
-        return 'เสร็จสิ้น';
-    };
-
-    const handleDeleteCamp = async (campId: number, campName: string) => {
-        const confirmed = window.confirm(`คุณต้องการลบค่าย "${campName}" ใช่หรือไม่?\n\nการกระทำนี้ไม่สามารถย้อนกลับได้`);
-
-        if (!confirmed) return;
-
-        try {
+    useEffect(() => {
+        const initData = async () => {
             setLoading(true);
-            const response = await fetch(`/api/camps/${campId}`, {
-                method: 'DELETE',
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                alert('ลบค่ายสำเร็จ!');
-                await fetchCamps();
-                await fetchStats();
-            } else {
-                alert(`ลบค่ายไม่สำเร็จ: ${result.error}`);
-            }
-        } catch (error) {
-            console.error('Error deleting camp:', error);
-            alert('เกิดข้อผิดพลาดในการลบค่าย');
-        } finally {
+            await Promise.all([fetchCamps(), fetchStats()]);
             setLoading(false);
-        }
+        };
+        initData();
+    }, []);
+
+    const openCreateCampFlow = () => {
+        setIsSelectTypeOpen(true);
     };
 
-    const openCreateCampFlow = () => setIsSelectTypeOpen(true);
-
-    const handleProjectTypeSelect = (type: string, templateData: any = null) => {
-        console.log("handleProjectTypeSelect called with:", { type, templateData });
+    const handleProjectTypeSelect = (type: string, templateData: any) => {
         setSelectedProjectType(type);
-        setSelectedTemplateData(templateData); // เก็บ templateData
+        setSelectedTemplateData(templateData);
         setIsSelectTypeOpen(false);
         setIsCreateCampOpen(true);
     };
+
+    const handleDeleteCamp = (campId: number, campName: string) => {
+        showConfirm(
+            "ลบค่าย",
+            `คุณต้องการลบค่าย "${campName}" ใช่หรือไม่?\n\nการกระทำนี้ไม่สามารถย้อนกลับได้`,
+            async () => {
+                try {
+                    setLoading(true);
+                    const response = await fetch(`/api/camps/${campId}`, {
+                        method: 'DELETE',
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        showSuccess('สำเร็จ', 'ลบค่ายสำเร็จ!');
+                        await fetchCamps();
+                        await fetchStats();
+                    } else {
+                        showError('ผลการดำเนินงาน', `ลบค่ายไม่สำเร็จ: ${result.error}`);
+                    }
+                } catch (error) {
+                    console.error('Error deleting camp:', error);
+                    showError('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการลบค่าย');
+                } finally {
+                    setLoading(false);
+                }
+            },
+            "ลบ"
+        );
+    };
+
+    // ...
 
     const handleCreateCampSubmit = async (data: any) => {
         try {
@@ -188,16 +192,17 @@ export default function StudentDashboard() {
 
             if (response.ok) {
                 console.log("Camp created successfully");
+                showSuccess('สำเร็จ', 'สร้างค่ายสำเร็จ!');
                 // Refresh camps list
                 await fetchCamps();
                 await fetchStats();
             } else {
                 console.error("Failed to create camp:", result.error);
-                alert(`สร้างค่ายไม่สำเร็จ: ${result.error}`);
+                showError('ล้มเหลว', `สร้างค่ายไม่สำเร็จ: ${result.error}`);
             }
         } catch (error) {
             console.error("Error creating camp:", error);
-            alert("เกิดข้อผิดพลาดในการสร้างค่าย");
+            showError('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการสร้างค่าย');
         } finally {
             setIsCreateCampOpen(false);
             setSelectedProjectType(null);
@@ -231,10 +236,10 @@ export default function StudentDashboard() {
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold mb-2 text-[#2d3748]">
-                        Welcome, ครูหัวหน้าค่าย!
+                        ยินดีต้อนรับ, ครูหัวหน้าค่าย!
                     </h1>
                     <p className="text-lg text-gray-500">
-                        Explore camps and continue your learning journey
+                        จัดการค่ายและติดตามการเรียนรู้ของนักเรียน
                     </p>
                 </div>
 
@@ -267,37 +272,37 @@ export default function StudentDashboard() {
                             <div className="flex items-center justify-center py-20">
                                 <div className="text-center">
                                     <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                    <p className="text-gray-500">Loading statistics...</p>
+                                    <p className="text-gray-500">กำลังโหลดข้อมูลสถิติ...</p>
                                 </div>
                             </div>
                         ) : (
                             <div className="w-full h-full">
                                 <div className="grid grid-cols-2 grid-rows-2 lg:gap-6 md:gap-4 gap-3">
                                     <StatsCard
-                                        title="Total Camps"
+                                        title="ค่ายทั้งหมด"
                                         value={stats.totalCamps}
-                                        subtitle={`${stats.activeCamps} active`}
+                                        subtitle={`${stats.activeCamps} กำลังจัด`}
                                         icon={Tent}
                                     />
 
                                     <StatsCard
-                                        title="Total Students"
+                                        title="นักเรียนทั้งหมด"
                                         value={stats.totalStudents}
-                                        subtitle={`${stats.totalEnrollments} enrollments`}
+                                        subtitle={`${stats.totalEnrollments} การลงทะเบียน`}
                                         icon={GraduationCap}
                                     />
 
                                     <StatsCard
-                                        title="Total Teachers"
+                                        title="ครูทั้งหมด"
                                         value={stats.totalTeachers}
-                                        subtitle="1 head teacher"
+                                        subtitle="1 หัวหน้าค่าย"
                                         icon={Users}
                                     />
 
                                     <StatsCard
-                                        title="Avg Enrollment"
+                                        title="เฉลี่ยการลงทะเบียน"
                                         value={stats.avgEnrollment}
-                                        subtitle="per camp"
+                                        subtitle="คนต่อค่าย"
                                         icon={TrendingUp}
                                     />
                                 </div>
@@ -311,9 +316,9 @@ export default function StudentDashboard() {
                         {/* ===== Header Bar ===== */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#f6f2ea] rounded-2xl px-6 py-4">
                             <div>
-                                <h2 className="text-xl font-bold text-[#2d3748]">My Camps</h2>
+                                <h2 className="text-xl font-bold text-[#2d3748]">ค่ายของฉัน</h2>
                                 <p className="text-sm text-gray-500">
-                                    Manage and organize your educational camps
+                                    จัดการและดูแลค่ายกิจกรรมการเรียนรู้ของคุณ
                                 </p>
                             </div>
 
@@ -322,7 +327,7 @@ export default function StudentDashboard() {
                                 startContent={<span className="text-xl">+</span>}
                                 onPress={openCreateCampFlow}
                             >
-                                Create New Camp
+                                สร้างค่ายใหม่
                             </Button>
                         </div>
 
@@ -351,7 +356,7 @@ export default function StudentDashboard() {
                             <div className="flex items-center justify-center py-20">
                                 <div className="text-center">
                                     <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                    <p className="text-gray-500">Loading camps...</p>
+                                    <p className="text-gray-500">กำลังโหลดข้อมูลค่าย...</p>
                                 </div>
                             </div>
                         ) : filteredMyCamps.length === 0 ? (
@@ -430,7 +435,7 @@ export default function StudentDashboard() {
                                             {/* Footer */}
                                             <div className="flex justify-between items-center pt-4 border-t border-[#e2e8f0]">
                                                 <span className="text-[#718096]">
-                                                    {camp.enrolled}/{camp.capacity} enrolled
+                                                    ลงทะเบียนแล้ว {camp.enrolled}/{camp.capacity}
                                                 </span>
                                                 <Button
                                                     endContent={<ChevronRight size={20} />}

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ChevronRight, ImageOff, X, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, ImageOff, X, Plus, Trash2, FileText } from "lucide-react";
+import { useStatusModal } from "@/components/StatusModalProvider";
 import { Select, SelectItem } from "@heroui/react";
 import { DateRangePicker } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
@@ -31,8 +32,6 @@ interface FormData {
     hasShirt: boolean;
     shirtStartDate: string;
     shirtEndDate: string;
-    templateName: string;
-    saveAsTemplate: boolean;
     dailySchedule: DaySchedule[];
 }
 
@@ -40,10 +39,10 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: any) => void;
-    projectType: string | null;
-    templateData?: any;
+    campData: any;
     isLoading?: boolean;
 }
+
 function dateValueToString(date: DateValue) {
     return `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
 }
@@ -59,15 +58,11 @@ function formatDateWithOffset(startDateStr: string, dayOffset: number) {
     });
 }
 
-import { useStatusModal } from "@/components/StatusModalProvider";
-
-// ... inside component
-export default function CreateCampModal({
+export default function EditCampModal({
     isOpen,
     onClose,
     onSubmit,
-    projectType,
-    templateData,
+    campData,
     isLoading
 }: Props) {
     const { showWarning } = useStatusModal();
@@ -77,7 +72,6 @@ export default function CreateCampModal({
     const [selectedClassroomIds, setSelectedClassroomIds] = useState<number[]>([]);
     const [shirtImage, setShirtImage] = useState<string | null>(null);
     const [shirtImageFile, setShirtImageFile] = useState<File | null>(null);
-
     const [formData, setFormData] = useState<FormData>({
         name: "",
         location: "",
@@ -91,8 +85,6 @@ export default function CreateCampModal({
         hasShirt: false,
         shirtStartDate: "",
         shirtEndDate: "",
-        templateName: "",
-        saveAsTemplate: false,
         dailySchedule: [
             {
                 day: 1,
@@ -158,12 +150,12 @@ export default function CreateCampModal({
         validateDates(formData);
     }, [formData.registrationStartDate, formData.registrationEndDate, formData.shirtStartDate, formData.shirtEndDate, formData.campStartDate, formData.campEndDate, formData.hasShirt]);
 
+    // Fetch classrooms
     useEffect(() => {
         async function fetchClassrooms() {
             try {
                 const res = await fetch("/api/classrooms");
                 const data = await res.json();
-                console.log("Fetched classrooms:", data);
                 setClassrooms(data);
             } catch (err) {
                 console.error("Failed to fetch classrooms:", err);
@@ -174,115 +166,87 @@ export default function CreateCampModal({
         }
     }, [isOpen]);
 
+    // โหลดข้อมูลค่ายที่จะแก้ไข
     useEffect(() => {
-        if (selectedGrade) {
-            const filtered = classrooms.filter(c => c.grade === selectedGrade);
-            console.log("Filtered classrooms for grade", selectedGrade, ":", filtered);
-            setFilteredClassrooms(filtered);
-        } else {
-            setFilteredClassrooms([]);
-        }
-        setSelectedClassroomIds([]);
-    }, [selectedGrade, classrooms]);
+        if (isOpen && campData) {
+            console.log("=== Loading Camp Data for Edit ===");
+            console.log("campData:", campData);
 
-    // โหลดข้อมูลจาก template เมื่อเปิด modal
-    useEffect(() => {
-        if (isOpen && projectType === "continuing" && templateData) {
-            console.log("Loading template data:", templateData);
+            // แปลง date จาก ISO string เป็น YYYY-MM-DD
+            const formatDateForInput = (dateString: string) => {
+                if (!dateString) return "";
+                const date = new Date(dateString);
+                return date.toISOString().split('T')[0];
+            };
 
-            // Pull data from the nested 'camp' object within templateData
-            const campSource = templateData.camp || {};
-
-            // แปลง dailySchedule จาก template (ถ้ามี) - currently API might not return this, need to check if added to select in route.js
-            // If the template API doesn't return daily_schedule, we default to empty.
-            // Note: The GET /api/templates/[id] route viewed earlier only selects basic fields. 
-            // It needs to be updated to select 'camp_daily_schedule' too if we want that.
-            // For now, let's map what we have being careful with optionals.
-            const dailySchedule = campSource.camp_daily_schedule && Array.isArray(campSource.camp_daily_schedule)
-                ? campSource.camp_daily_schedule.map((day: any) => ({
-                    day: day.day,
-                    timeSlots: day.time_slots || []
-                }))
-                : [{ day: 1, timeSlots: [{ startTime: "", endTime: "", activity: "" }] }];
-
-            setFormData({
-                name: campSource.name || "",
-                location: campSource.location || "",
-                gradeLevel: "", // Will be set below from classrooms
-                classroomType: "", // Not directly on camp, usually inferred
-                registrationStartDate: "",
-                registrationEndDate: "",
-                campStartDate: "",
-                campEndDate: "",
-                description: campSource.description || "",
-                hasShirt: campSource.has_shirt || false,
-                shirtStartDate: "",
-                shirtEndDate: "",
-                templateName: "",
-                saveAsTemplate: false,
-                dailySchedule: dailySchedule,
-            });
-
-            // ถ้ามี grade level ให้ตั้งค่าจาก camp_classroom
-            if (campSource.camp_classroom && campSource.camp_classroom.length > 0) {
-                // Assuming all classrooms in a camp are same grade
-                const grade = campSource.camp_classroom[0].classroom?.grade;
-                if (grade) {
-                    setSelectedGrade(grade);
-                }
+            // ดึง grade_level
+            let gradeLevel = "";
+            if (campData.camp_classroom && campData.camp_classroom.length > 0) {
+                gradeLevel = campData.camp_classroom[0].classroom.grade;
+                setSelectedGrade(gradeLevel);
             }
 
-            // ถ้ามีรูปเสื้อ (Note: API doesn't seem to select shirt_image_url yet, but if it did)
-            if (campSource.shirt_image_url) {
-                setShirtImage(campSource.shirt_image_url);
+            // ดึง classroom IDs
+            if (campData.camp_classroom && campData.camp_classroom.length > 0) {
+                const classroomIds = campData.camp_classroom.map((cc: any) => cc.classroom.classroom_id);
+                setSelectedClassroomIds(classroomIds);
             }
-        } else if (isOpen && projectType === "new") {
-            // Reset form เมื่อเป็น new project
+
+            // ดึง daily_schedule
+            let dailySchedule: DaySchedule[] = [];
+            if (campData.camp_daily_schedule && campData.camp_daily_schedule.length > 0) {
+                dailySchedule = campData.camp_daily_schedule
+                    .sort((a: any, b: any) => a.day - b.day)
+                    .map((schedule: any) => ({
+                        day: schedule.day,
+                        timeSlots: schedule.time_slots && schedule.time_slots.length > 0
+                            ? schedule.time_slots.map((slot: any) => ({
+                                startTime: slot.startTime || slot.start_time || "",
+                                endTime: slot.endTime || slot.end_time || "",
+                                activity: slot.activity || ""
+                            }))
+                            : [{ startTime: "", endTime: "", activity: "" }]
+                    }));
+            }
+
+            // ตั้งค่า formData
             setFormData({
-                name: "",
-                location: "",
-                gradeLevel: "",
-                classroomType: "",
-                registrationStartDate: "",
-                registrationEndDate: "",
-                campStartDate: "",
-                campEndDate: "",
-                description: "",
-                hasShirt: false,
-                shirtStartDate: "",
-                shirtEndDate: "",
-                templateName: "",
-                saveAsTemplate: false,
-                dailySchedule: [
+                name: campData.name || "",
+                location: campData.location || "",
+                gradeLevel: gradeLevel,
+                classroomType: campData.plan_type?.name || "",
+                registrationStartDate: formatDateForInput(campData.start_regis_date),
+                registrationEndDate: formatDateForInput(campData.end_regis_date),
+                campStartDate: formatDateForInput(campData.start_date),
+                campEndDate: formatDateForInput(campData.end_date),
+                description: campData.description || "",
+                hasShirt: campData.has_shirt || false,
+                shirtStartDate: formatDateForInput(campData.start_shirt_date),
+                shirtEndDate: formatDateForInput(campData.end_shirt_date),
+                dailySchedule: dailySchedule.length > 0 ? dailySchedule : [
                     {
                         day: 1,
                         timeSlots: [{ startTime: "", endTime: "", activity: "" }],
                     },
                 ],
             });
-            setSelectedGrade("");
-            setShirtImage(null);
-            setShirtImageFile(null);
-            setSelectedClassroomIds([]);
-        }
-    }, [isOpen, projectType, templateData]);
 
-    // โหลด classroom IDs จาก template หลังจาก classrooms ถูก fetch แล้ว
-    useEffect(() => {
-        if (isOpen && projectType === "continuing" && templateData && classrooms.length > 0) {
-            console.log("Loading classroom IDs from template:", templateData);
-            const campSource = templateData.camp || {};
-
-            // ถ้า template มี camp.camp_classrooms ให้ดึง classroom_id จากนั้น
-            if (campSource.camp_classroom && Array.isArray(campSource.camp_classroom)) {
-                const classroomIds = campSource.camp_classroom
-                    .map((cc: any) => cc.classroom_classroom_id || cc.classroom_id || (cc.classroom && cc.classroom.classroom_id)) // Handle various structures
-                    .filter((id: number) => classrooms.some(c => c.classroom_id === id));
-                console.log("Setting classroom IDs from camp_classrooms:", classroomIds);
-                setSelectedClassroomIds(classroomIds);
+            // ตั้งค่ารูปเสื้อ
+            if (campData.shirt_image_url) {
+                setShirtImage(campData.shirt_image_url);
             }
         }
-    }, [isOpen, projectType, templateData, classrooms]);
+    }, [isOpen, campData]);
+
+    // Filter classrooms by grade
+    useEffect(() => {
+        if (selectedGrade) {
+            const filtered = classrooms.filter(c => c.grade === selectedGrade);
+            setFilteredClassrooms(filtered);
+        } else {
+            setFilteredClassrooms([]);
+        }
+    }, [selectedGrade, classrooms]);
 
     // Auto-generate schedule days based on Camp Period
     useEffect(() => {
@@ -319,20 +283,7 @@ export default function CreateCampModal({
 
     const grades = Array.from(new Set(classrooms.map(c => c.grade))).sort();
 
-    // Debug logs
-    console.log("CreateCampModal render:");
-    console.log("isOpen:", isOpen);
-    console.log("projectType:", projectType);
-
-    if (!isOpen) {
-        console.log("Modal not shown: isOpen is false");
-        return null;
-    }
-
-    if (projectType !== "new" && projectType !== "continuing") {
-        console.log("Modal not shown: projectType is invalid:", projectType);
-        return null;
-    }
+    if (!isOpen) return null;
 
     const handleChange = (field: keyof FormData, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -373,8 +324,10 @@ export default function CreateCampModal({
 
     const removeTimeSlot = (dayIndex: number, slotIndex: number) => {
         const newSchedule = [...formData.dailySchedule];
-        newSchedule[dayIndex].timeSlots = newSchedule[dayIndex].timeSlots.filter((_, i) => i !== slotIndex);
-        setFormData({ ...formData, dailySchedule: newSchedule });
+        if (newSchedule[dayIndex].timeSlots.length > 1) {
+            newSchedule[dayIndex].timeSlots = newSchedule[dayIndex].timeSlots.filter((_, i) => i !== slotIndex);
+            setFormData({ ...formData, dailySchedule: newSchedule });
+        }
     };
 
     const handleShirtImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -389,7 +342,9 @@ export default function CreateCampModal({
                 showWarning('ขนาดไฟล์เกิน', 'ขนาดไฟล์ต้องไม่เกิน 10MB');
                 return;
             }
+
             setShirtImageFile(file);
+
             const reader = new FileReader();
             reader.onloadend = () => {
                 setShirtImage(reader.result as string);
@@ -421,23 +376,24 @@ export default function CreateCampModal({
                 return;
             }
         }
-        // ...
-
 
         const payload = {
-            ...formData,
-            dailySchedule: formData.dailySchedule.map(day => ({
-                ...day,
-                timeSlots: day.timeSlots.map(slot => ({
-                    ...slot,
-                    startTime: slot.startTime.replace(':', '.'),
-                    endTime: slot.endTime.replace(':', '.')
-                }))
-            })),
+            name: formData.name,
+            location: formData.location,
+            start_date: formData.campStartDate,
+            end_date: formData.campEndDate,
+            start_regis_date: formData.registrationStartDate,
+            end_regis_date: formData.registrationEndDate,
+            start_shirt_date: formData.shirtStartDate,
+            end_shirt_date: formData.shirtEndDate,
+            description: formData.description,
+            has_shirt: formData.hasShirt,
+            status: "OPEN",
             classroom_ids: selectedClassroomIds,
-            gradeLevel: selectedGrade,
+            dailySchedule: formData.dailySchedule,
             shirtImage: shirtImage,
             shirtImageFile: shirtImageFile,
+            camp_id: campData.camp_id,
         };
 
         onSubmit(payload);
@@ -452,16 +408,10 @@ export default function CreateCampModal({
                     <div>
                         <button onClick={onClose} className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors mb-1">
                             <ChevronRight className="rotate-180" size={18} />
-                            <span className="text-sm font-medium">กลับไปยังหน้าหลัก</span>
+                            <span className="text-sm font-medium">กลับ</span>
                         </button>
-                        <h2 className="text-2xl font-bold text-gray-900">
-                            {projectType === "continuing" ? "สร้างค่ายจาก Template" : "รายละเอียดค่าย"}
-                        </h2>
-                        <p className="text-sm text-gray-500">
-                            {projectType === "continuing"
-                                ? "ตรวจสอบและแก้ไขข้อมูลจาก Template ตามต้องการ"
-                                : "กรอกข้อมูลค่ายเพื่อเริ่มต้น"}
-                        </p>
+                        <h2 className="text-2xl font-bold text-gray-900">แก้ไขข้อมูลค่าย</h2>
+                        <p className="text-sm text-gray-500">อัปเดตรายละเอียดของค่าย</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                         <X size={24} className="text-gray-400" />
@@ -516,7 +466,7 @@ export default function CreateCampModal({
                                 </label>
                             </div>
 
-                            {/* Classroom Selection (Multiple) */}
+                            {/* Classroom Selection */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     เลือกห้องเรียน
@@ -572,13 +522,15 @@ export default function CreateCampModal({
                                     placeholder="อาคารวิทยวิภาส คณะวิทยาศาสตร์ มข."
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none"
                                 />
-                                <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">รายละเอียด</label>
-                                <input
-                                    required
-                                    type="text"
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด</label>
+                                <textarea
                                     value={formData.description}
                                     onChange={(e) => handleChange("description", e.target.value)}
-                                    placeholder="ค่ายเกี่ยวกับการประยุกต์ใช้ STEM ในชีวิตประจำวัน"
+                                    placeholder="รายละเอียดของค่าย..."
+                                    rows={3}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none"
                                 />
                             </div>
@@ -591,9 +543,7 @@ export default function CreateCampModal({
                             <span className="w-1.5 h-6 bg-[#6b857a] rounded-full"></span>
                             ช่วงเวลาและกำหนดการ
                         </h3>
-                        {/* Date Ranges */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                             {/* Registration Period */}
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
@@ -645,10 +595,7 @@ export default function CreateCampModal({
                                     }}
                                 />
                             </div>
-
                         </div>
-
-
 
                         {/* Daily Schedule Section */}
                         <div className="border-t pt-6">
@@ -686,15 +633,7 @@ export default function CreateCampModal({
                                                     <span className="text-base">+</span>
                                                     เพิ่มช่วงเวลา
                                                 </button>
-                                                {/* Remove manual delete day button since it's auto-generated now, or keep it but it might conflict with auto-gen logic? 
-                                                User requirement: "Auto". Usually implies manual add/remove is disabled or overridden.
-                                                However, user might want to add extra days manually? 
-                                                "ถ้าวันมันไม่ถูกต้องอยากให้แจ้งทันทีไม่ต้องกดซับมิทก่อน" -> This was previous req.
-                                                "ตรง Daily Schedule อยากให้จำนวนวันขึ้นมาตามวันที่ที่เลือก" -> This implies strict sync.
-                                                Let's keep the manual controls for flexibility but primarily rely on sync. 
-                                                Actually, strict sync implies we should probably remove "Add Day" and "Delete Day" buttons to avoid confusion?
-                                                Let's hide them for cleaner UI if we enforce sync.
-                                            */}
+                                                {/* Hide delete day button for auto-managed schedule */}
                                             </div>
                                         </div>
 
@@ -759,7 +698,7 @@ export default function CreateCampModal({
                         </div>
                     </section>
 
-                    {/* Shirt & Template Section */}
+                    {/* Shirt Section */}
                     <section className="pt-6 border-t space-y-6">
                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                             <div className="flex gap-3">
@@ -805,14 +744,13 @@ export default function CreateCampModal({
                                     />
                                 </div>
 
-
                                 {/* Shirt Image Upload */}
                                 <div>
                                     <label className="block text-xs font-medium text-gray-500 mb-2">
-                                        Shirt Sample Image
+                                        ตัวอย่างเสื้อ
                                     </label>
                                     <p className="text-xs text-gray-400 mb-3">
-                                        Upload an image showing the camp shirt design for student reference
+                                        อัปโหลดรูปภาพตัวอย่างเสื้อค่ายสำหรับให้นักเรียนดู
                                     </p>
 
                                     {!shirtImage ? (
@@ -825,8 +763,8 @@ export default function CreateCampModal({
                                             />
                                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all">
                                                 <ImageOff size={32} className="mx-auto text-gray-400 mb-2" />
-                                                <p className="text-sm text-gray-500 font-medium">Click to upload or drag and drop</p>
-                                                <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG up to 10MB</p>
+                                                <p className="text-sm text-gray-500 font-medium">คลิกเพื่ออัปโหลด หรือลากไฟล์มาวาง</p>
+                                                <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG ขนาดไม่เกิน 10MB</p>
                                             </div>
                                         </label>
                                     ) : (
@@ -843,46 +781,29 @@ export default function CreateCampModal({
                                             >
                                                 <X size={20} />
                                             </button>
-                                            <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2 text-xs">
-                                                {shirtImageFile?.name || "Template Image"}
-                                            </div>
                                         </div>
                                     )}
                                 </div>
                             </div>
                         )}
-
-                        <div className="space-y-3">
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.saveAsTemplate}
-                                    onChange={(e) => handleChange("saveAsTemplate", e.target.checked)}
-                                    className="w-4 h-4 rounded border-gray-300 text-[#6b857a] focus:ring-[#6b857a]"
-                                />
-                                <span className="text-sm font-medium text-gray-700 group-hover:text-black">Save this configuration as a template</span>
-                            </label>
-                            {formData.saveAsTemplate && (
-                                <input
-                                    type="text"
-                                    placeholder="Template Name (e.g., Annual Science Camp)"
-                                    value={formData.templateName}
-                                    onChange={(e) => handleChange("templateName", e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none text-sm"
-                                />
-                            )}
-                        </div>
                     </section>
                 </div>
 
-                {/* Sticky Footer */}
+                {/* Footer */}
                 <div className="p-6 border-t bg-gray-50">
                     <button
                         onClick={handleSubmit}
-                        className="w-full py-4 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-bold shadow-lg flex items-center justify-center gap-2"
+                        disabled={isLoading}
+                        className="w-full py-4 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-bold shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Create Camp & Continue
-                        <ChevronRight size={18} />
+                        {isLoading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <FileText size={20} />
+                                <span>บันทึกการแก้ไข</span>
+                            </div>
+                        )}
                     </button>
                 </div>
             </div>
