@@ -187,7 +187,7 @@ export async function POST(req) {
 export async function GET() {
     try {
         const camps = await prisma.camp.findMany({
-            where: { deleted_at: null },
+            where: { deletedAt: null },
             include: {
                 plan_type: true,
                 created_by: {

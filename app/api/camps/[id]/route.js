@@ -65,7 +65,7 @@ export async function GET(request, context) {
                     },
                 },
                 station: {
-                    where: { deleted_at: null }
+                    where: { deletedAt: null }
                 },
             },
         });
@@ -209,7 +209,7 @@ export async function DELETE(req, context) {
         // Soft delete the camp
         await prisma.camp.update({
             where: { camp_id: campId },
-            data: { deleted_at: new Date() }
+            data: { deletedAt: new Date() }
         });
 
         return NextResponse.json({ message: "Deleted successfully" });

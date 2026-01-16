@@ -139,7 +139,7 @@ model camp {
   station             station[]
   evaluation          evaluation[]
   camp_daily_schedule camp_daily_schedule[]
-  deleted_at DateTime?
+
 }
 
 enum camp_status {
@@ -267,7 +267,7 @@ model station {
   camp         camp @relation(fields: [camp_camp_id], references: [camp_id])
 
   mission mission[]
-  deleted_at DateTime?
+  deletedAt DateTime?
 }
 
 enum MissionType {
@@ -289,7 +289,7 @@ model mission {
 
   mission_result   mission_result[]
   mission_question mission_question[]
-  deleted_at DateTime?
+  deletedAt DateTime?
 }
 
 model mission_result {
