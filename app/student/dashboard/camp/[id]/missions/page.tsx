@@ -127,7 +127,7 @@ export default function StudentMissionsPage() {
                                                 {station.name}
                                             </h4>
                                             <span className="bg-[#EBE7DD] text-[#5a4a3a] text-xs font-bold px-2 py-1 rounded-full">
-                                                {completed}/{mCount}
+                                                {completed}/{stationMissions.length}
                                             </span>
                                         </div>
                                         <p className="text-sm text-gray-500 mb-4 line-clamp-1">{station.description || "ทำภารกิจในฐานนี้ให้สำเร็จ"}</p>

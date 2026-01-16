@@ -74,6 +74,9 @@ export async function GET(req) {
                 // รายชื่อนักเรียนที่จะย้าย
                 students: room.classroom_students.map(rs => ({
                     id: rs.student.students_id,
+                    code: rs.student.students_id.toString(), 
+                    firstname: rs.student.firstname,
+                    lastname: rs.student.lastname,
                     name: `${rs.student.firstname} ${rs.student.lastname}`,
                     selected: true // ค่าเริ่มต้นคือเลือกทุกคน
                 }))

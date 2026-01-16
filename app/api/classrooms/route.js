@@ -16,7 +16,12 @@ export async function GET(req) {
       where: whereClause,
       include: {
         academic_years: true,
-        teacher: true
+        teacher: true,
+        classroom_teacher: {
+          include: {
+            teacher: true
+          }
+        }
       },
       orderBy: { grade: 'asc' }
     });
