@@ -139,6 +139,7 @@ model camp {
   station             station[]
   evaluation          evaluation[]
   camp_daily_schedule camp_daily_schedule[]
+
 }
 
 enum camp_status {
@@ -266,17 +267,29 @@ model station {
   camp         camp @relation(fields: [camp_camp_id], references: [camp_id])
 
   mission mission[]
+  deletedAt DateTime?
+}
+
+enum MissionType {
+  QUESTION_ANSWERING
+  PHOTO_SUBMISSION
+  QR_CODE_SCANNING
+  MULTIPLE_CHOICE_QUIZ
 }
 
 model mission {
-  mission_id  Int    @id @default(autoincrement())
-  description String @db.VarChar(255)
+  mission_id Int    @id @default(autoincrement())
+  title       String? @db.VarChar(255)
+  description String? @db.Text
+  type        MissionType @default(QUESTION_ANSWERING)
+  instructions String? @db.Text
 
   station_station_id Int
   station            station @relation(fields: [station_station_id], references: [station_id])
 
   mission_result   mission_result[]
   mission_question mission_question[]
+  deletedAt DateTime?
 }
 
 model mission_result {
@@ -313,8 +326,9 @@ model mission_question {
   question_type mission_question_type
 
   mission_mission_id Int
-  mission            mission          @relation(fields: [mission_mission_id], references: [mission_id])
-  mission_answer     mission_answer[]
+  mission mission @relation(fields: [mission_mission_id], references: [mission_id])
+  mission_answer mission_answer[]
+  choices mission_question_choice[]
 }
 
 enum mission_question_type {
@@ -322,31 +336,38 @@ enum mission_question_type {
   TEXT
 }
 
-model question_mcq_detail {
-  question_mcq_detail_id Int    @id @default(autoincrement())
-  choice_a               String @db.VarChar(255)
-  choice_b               String @db.VarChar(255)
-  choice_c               String @db.VarChar(255)
-  choice_d               String @db.VarChar(255)
-  correct_choice         String @db.VarChar(1)
+model mission_question_choice {
+  choice_id Int    @id @default(autoincrement()) 
+  choice_text String @db.VarChar(255)
+  is_correct Boolean @default(false)
+
+  mission_question_question_id Int
+  mission_question mission_question @relation(fields: [mission_question_question_id], references: [question_id], onDelete: Cascade)
 }
 
 model mission_answer {
   answer_id                        Int              @id @default(autoincrement())
   mission_result_mission_result_id Int
-  mission_result                   mission_result   @relation(fields: [mission_result_mission_result_id], references: [mission_result_id])
-  mission_question_question_id     Int
-  mission_question                 mission_question @relation(fields: [mission_question_question_id], references: [question_id])
+  mission_result mission_result @relation(fields: [mission_result_mission_result_id], references: [mission_result_id])
+  mission_question_question_id Int 
+  mission_question mission_question @relation(fields: [mission_question_question_id], references: [question_id])
+  
+  answer_mcq mission_answer_mcq[]
+  answer_text mission_answer_text[]
 }
 
-model answer_mcq {
-  mission_answer_id Int    @id @default(autoincrement())
-  question_text     String @db.VarChar(1)
+model mission_answer_mcq{
+  id Int @id @default(autoincrement())
+  mission_answer_id Int
+  mission_answer mission_answer @relation(fields: [mission_answer_id], references: [answer_id])
+  question_text String @db.VarChar(1)
 }
 
-model answer_text {
-  mission_answer_id Int    @id @default(autoincrement())
-  answer_text       String @db.Text
+model mission_answer_text{
+  id Int @id @default(autoincrement())
+  mission_answer_id Int
+  mission_answer mission_answer @relation(fields: [mission_answer_id], references: [answer_id])
+  answer_text String @db.Text
 }
 
 model evaluation {

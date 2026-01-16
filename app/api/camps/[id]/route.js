@@ -1,13 +1,11 @@
-// ==========================================
-// app/api/camps/[id]/route.js
-// ==========================================
+
 import { NextResponse } from "next/server";
 import { prisma } from '@/lib/db';
 
 // GET - ดึงข้อมูลค่ายเดียว
 export async function GET(request, context) {
     try {
-        const params = await context.params;   // ต้อง await
+        const params = await context.params;
         const campId = Number(params.id);
 
         const camp = await prisma.camp.findUnique({
@@ -66,6 +64,9 @@ export async function GET(request, context) {
                         day: 'asc',
                     },
                 },
+                station: {
+                    where: { deletedAt: null }
+                },
             },
         });
 
@@ -82,8 +83,7 @@ export async function GET(request, context) {
         );
     }
 }
-// PUT - อัพเดทข้อมูลค่าย
-// ... imports
+
 
 export async function PUT(request, context) {
     const params = await context.params;
@@ -206,61 +206,10 @@ export async function DELETE(req, context) {
             return NextResponse.json({ error: "Invalid camp id" }, { status: 400 });
         }
 
-        await prisma.$transaction(async (tx) => {
-
-            // 1. time slots (อิง daily_schedule)
-            await tx.camp_time_slot.deleteMany({
-                where: {
-                    daily_schedule: {
-                        camp_camp_id: campId
-                    }
-                }
-            });
-
-            // 2. daily schedules
-            await tx.camp_daily_schedule.deleteMany({
-                where: { camp_camp_id: campId }
-            });
-
-            // 3. templates
-            await tx.camp_template.deleteMany({
-                where: { camp_camp_id: campId }
-            });
-
-            // 4. student enrollments
-            await tx.student_enrollment.deleteMany({
-                where: { camp_camp_id: campId }
-            });
-
-            // 5. teacher enrollments
-            await tx.teacher_enrollment.deleteMany({
-                where: { camp_camp_id: campId }
-            });
-
-            // 6. classroom mapping
-            await tx.camp_classroom.deleteMany({
-                where: { camp_camp_id: campId }
-            });
-
-            // 7. attendance teachers
-            await tx.attendance_teachers.deleteMany({
-                where: { camp_camp_id: campId }
-            });
-
-            // 8. stations
-            await tx.station.deleteMany({
-                where: { camp_camp_id: campId }
-            });
-
-            // 9. evaluations
-            await tx.evaluation.deleteMany({
-                where: { camp_camp_id: campId }
-            });
-
-            // 10. finally delete camp
-            await tx.camp.delete({
-                where: { camp_id: campId }
-            });
+        // Soft delete the camp
+        await prisma.camp.update({
+            where: { camp_id: campId },
+            data: { deletedAt: new Date() }
         });
 
         return NextResponse.json({ message: "Deleted successfully" });
@@ -273,67 +222,3 @@ export async function DELETE(req, context) {
         );
     }
 }
-
-
-// export async function DELETE(req, { params }) {
-//     try {
-//         const campId = parseInt(params.id);
-
-//         await prisma.$transaction([
-//             // time slots
-//             prisma.camp_time_slot.deleteMany({
-//                 where: { daily_schedule: { camp_camp_id: campId } }
-//             }),
-
-//             prisma.camp_template.deleteMany({
-//                 where: { camp_camp_id: campId }
-//             }),
-
-//             // daily schedules
-//             prisma.camp_daily_schedule.deleteMany({
-//                 where: { camp_camp_id: campId }
-//             }),
-
-//             // student enrollments
-//             prisma.student_enrollment.deleteMany({
-//                 where: { camp_camp_id: campId }
-//             }),
-
-//             // teacher enrollments
-//             prisma.teacher_enrollment.deleteMany({
-//                 where: { camp_camp_id: campId }
-//             }),
-
-//             // classroom mapping
-//             prisma.camp_classroom.deleteMany({
-//                 where: { camp_camp_id: campId }
-//             }),
-
-//             // attendance
-//             prisma.attendance_teachers.deleteMany({
-//                 where: { camp_camp_id: campId }
-//             }),
-
-//             // stations
-//             prisma.station.deleteMany({
-//                 where: { camp_camp_id: campId }
-//             }),
-
-//             // evaluations
-//             prisma.evaluation.deleteMany({
-//                 where: { camp_camp_id: campId }
-//             }),
-
-//             // finally delete camp
-//             prisma.camp.delete({
-//                 where: { camp_id: campId }
-//             })
-//         ]);
-
-//         return NextResponse.json({ success: true });
-
-//     } catch (error) {
-//         console.error("DELETE CAMP ERROR:", error);
-//         return NextResponse.json({ error: "ไม่สามารถลบค่ายได้" }, { status: 500 });
-//     }
-// }
