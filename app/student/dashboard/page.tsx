@@ -1,207 +1,171 @@
+
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardBody } from "@heroui/card";
-import { Chip } from "@heroui/chip";
 import { Button } from "@heroui/button";
 import { Tabs, Tab } from "@heroui/tabs";
-import { MapPin, Calendar, ChevronRight, ImageOff } from "lucide-react";
+import { Chip } from "@heroui/chip";
+import { MapPin, Calendar, ArrowRight, Flag, Tent, Shirt, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-/* ---------- Default SVG Component ---------- */
-function DefaultCampImage() {
-    return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-[#f1ede6] text-[#9c9488]">
-            <ImageOff size={48} />
-            <span className="mt-2 text-sm">No Image</span>
-        </div>
-    );
-}
+// Utility to format date
+const formatDate = (dateString: string) => {
+    if (!dateString) return "";
+    return new Date(dateString).toLocaleDateString("th-TH", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
+};
 
 export default function StudentDashboard() {
-    const [selectedTab, setSelectedTab] = useState("my-camps");
-
-    const TAB_STATUS_MAP: Record<string, string> = {
-        available: "กำลังจัด",
-        "my-camps": "ยังไม่เริ่ม",
-        completed: "เสร็จสิ้น",
-    };
     const router = useRouter();
-    const STATUS_STYLES: Record<
-        string,
-        { bg: string; text: string }
-    > = {
-        "กำลังจัด": {
-            bg: "bg-[#5d7c6f]",
-            text: "text-white",
-        },
-        "ยังไม่เริ่ม": {
-            bg: "bg-[#d4c5b0]",
-            text: "text-[#5a4a3a]",
-        },
-        "เสร็จสิ้น": {
-            bg: "bg-gray-200",
-            text: "text-gray-600",
-        },
-    };
+    const [camps, setCamps] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const camps = [
-        {
-            id: 1,
-            title: "Fall Nature Adventure",
-            description: "Explore forests, identify wildlife, and learn outdoor survival skills.",
-            image: "",
-            location: "Pinewood Nature Reserve",
-            startDate: "Nov 5",
-            endDate: "Nov 9",
-            enrolled: 8,
-            capacity: 25,
-            status: "กำลังจัด",
-        },
-        {
-            id: 2,
-            title: "Summer Camp",
-            description: "Fun activities and teamwork.",
-            image: null, // ❗ ไม่มีรูป → SVG
-            location: "Green Hill",
-            startDate: "Dec 1",
-            endDate: "Dec 5",
-            enrolled: 12,
-            capacity: 20,
-            status: "เสร็จสิ้น",
-        },
-        {
-            id: 3,
-            title: "Nature Adventure",
-            description: "Explore forests, identify wildlife.",
-            image: "",
-            location: "Pinewood Nature Reserve",
-            startDate: "Nov 5",
-            endDate: "Nov 9",
-            enrolled: 8,
-            capacity: 25,
-            status: "กำลังจัด",
-        },
-    ];
+    useEffect(() => {
+        async function fetchStudentCamps() {
+            try {
+                const res = await fetch("/api/student/camps");
+                if (res.ok) {
+                    const data = await res.json();
+                    setCamps(data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch camps", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchStudentCamps();
+    }, []);
 
-    const filteredCamps = camps.filter(
-        (camp) => camp.status === TAB_STATUS_MAP[selectedTab]
-    );
+    const availableCamps = camps.filter((c: any) => !c.isRegistered);
+    const myCamps = camps.filter((c: any) => c.isRegistered);
+
+    if (loading) return <div className="p-8 text-center text-gray-500">กำลังโหลดข้อมูล...</div>;
 
     return (
         <div className="min-h-screen bg-[#F5F1E8]">
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold mb-2 text-[#2d3748]">
-                        Welcome, Student!
-                    </h1>
-                    <p className="text-lg text-gray-500">
-                        Explore camps and continue your learning journey
-                    </p>
+
+
+            <div className="p-6 max-w-4xl mx-auto space-y-6">
+
+                {/* Greeting Card */}
+                <div className="bg-[#5d7c6f] rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
+                    <div className="relative z-10">
+                        <h1 className="text-2xl font-bold mb-2">สวัสดี, น้องริว! 👋</h1>
+                        <p className="opacity-90">พร้อมสำหรับการผจญภัยครั้งใหม่หรือยัง?</p>
+                    </div>
+                    <div className="absolute right-0 bottom-0 opacity-10">
+                        <Flag size={120} />
+                    </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="mb-6 w-full">
-                    <Tabs
-                        selectedKey={selectedTab}
-                        onSelectionChange={setSelectedTab}
-                        size="lg"
-                        classNames={{
-                            base: "w-full",
-                            tabList:
-                                "w-full bg-[#EBE7DD] rounded-full p-1 flex overflow-x-auto md:overflow-visible scrollbar-hide",
-                            tab:
-                                "flex-1 px-6 py-3 whitespace-nowrap flex-shrink-0 md:flex-1 justify-center",
-                            cursor: "rounded-full",
-                            tabContent: "font-semibold text-center",
-                        }}
-                    >
-                        <Tab key="available" title="กำลังจัด" />
-                        <Tab key="my-camps" title="ยังไม่เริ่ม" />
-                        <Tab key="completed" title="เสร็จสิ้น" />
-                    </Tabs>
-                </div>
-
-                {/* Cards */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-2 gap-6">
-                    {filteredCamps.length === 0 && (
-                        <div className="col-span-full text-center text-gray-400 py-16">
-                            ยังไม่มีค่ายในขณะนี้
+                <Tabs
+                    aria-label="Camp Options"
+                    color="primary"
+                    variant="underlined"
+                    classNames={{
+                        tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
+                        cursor: "w-full bg-[#5d7c6f]",
+                        tab: "max-w-fit px-0 h-12",
+                        tabContent: "group-data-[selected=true]:text-[#5d7c6f] font-bold"
+                    }}
+                >
+                    <Tab key="available" title="ค่ายที่เปิดรับสมัคร">
+                        <div className="py-4 grid gap-4">
+                            {availableCamps.length === 0 ? (
+                                <div className="text-center text-gray-400 py-10">
+                                    <p>ไม่มีค่ายที่เปิดรับสมัครในขณะนี้</p>
+                                </div>
+                            ) : (
+                                availableCamps.map((camp: any) => (
+                                    <Card
+                                        key={camp.id}
+                                        isPressable
+                                        onPress={() => router.push(`/student/dashboard/camp/${camp.id}`)}
+                                        className="border-none shadow-sm hover:shadow-md transition-shadow bg-white"
+                                    >
+                                        <CardBody className="p-0 flex flex-row">
+                                            <div className="w-1/3 bg-gray-100 flex items-center justify-center relative">
+                                                {/* Placeholder Image */}
+                                                <Flag className="text-[#5d7c6f]/20" size={48} />
+                                            </div>
+                                            <div className="w-2/3 p-4">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <h3 className="font-bold text-lg text-gray-800 line-clamp-1">{camp.title}</h3>
+                                                </div>
+                                                <div className="space-y-1 text-sm text-gray-500 mb-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar size={14} />
+                                                        <span>{formatDate(camp.rawStartDate)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin size={14} />
+                                                        <span>{camp.location}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <Chip size="sm" variant="flat" className="bg-green-50 text-green-700">เปิดรับสมัคร</Chip>
+                                                    <div className="bg-[#5d7c6f] text-white font-medium text-xs px-4 py-2 rounded-full cursor-pointer hover:opacity-90 transition-opacity">
+                                                        ดูรายละเอียด
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </CardBody>
+                                    </Card>
+                                ))
+                            )}
                         </div>
-                    )}
-
-                    {filteredCamps.map((camp) => (
-                        <Card
-                            key={camp.id}
-                            isPressable
-                            onPress={() => router.push(`/app/student/camp/${camp.id}`)}
-                            className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow bg-white"
-                        >
-                            {/* Image / SVG (hidden on mobile) */}
-                            <div className="relative h-48 overflow-hidden hidden sm:block">
-                                {camp.image ? (
-                                    <img
-                                        src={camp.image}
-                                        alt={camp.title}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <DefaultCampImage />
-                                )}
-                            </div>
-
-                            <CardBody className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex-1">
-                                        <h3 className="text-2xl font-bold mb-2 text-[#2d3748]">
-                                            {camp.title}
-                                        </h3>
-                                        <p className="mb-4 text-[#718096]">
-                                            {camp.description}
-                                        </p>
-                                    </div>
-                                    <Chip
-                                        variant="shadow"
-                                        className={`
-    ${STATUS_STYLES[camp.status]?.bg ?? "bg-gray-100"}
-    ${STATUS_STYLES[camp.status]?.text ?? "text-gray-600"}
-  `}
+                    </Tab>
+                    <Tab key="mycamps" title="ค่ายของฉัน">
+                        <div className="py-4 grid gap-4">
+                            {myCamps.length === 0 ? (
+                                <div className="text-center text-gray-400 py-10">
+                                    <p>คุณยังไม่ได้ลงทะเบียนค่ายใดๆ</p>
+                                </div>
+                            ) : (
+                                myCamps.map((camp: any) => (
+                                    <Card
+                                        key={camp.id}
+                                        isPressable
+                                        onPress={() => router.push(`/student/dashboard/camp/${camp.id}`)}
+                                        className="border-none shadow-sm hover:shadow-md transition-shadow bg-white"
                                     >
-                                        {camp.status}
-                                    </Chip>
-                                </div>
+                                        <CardBody className="p-4">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <h3 className="font-bold text-lg text-gray-800">{camp.title}</h3>
+                                                    <p className="text-sm text-gray-500">{camp.location}</p>
+                                                </div>
+                                                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700">
+                                                    <CheckCircle2 size={20} />
+                                                </div>
+                                            </div>
 
-                                {/* Location */}
-                                <div className="flex items-center gap-2 mb-2 text-[#718096]">
-                                    <MapPin size={20} />
-                                    <span>{camp.location}</span>
-                                </div>
+                                            <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                                                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                                                    <Calendar size={14} />
+                                                    {formatDate(camp.rawStartDate)}
+                                                </div>
+                                                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                                                    <Shirt size={14} />
+                                                    {camp.shirtSize || "ยังไม่ระบุไซส์"}
+                                                </div>
+                                            </div>
 
-                                {/* Date */}
-                                <div className="flex items-center gap-2 mb-4 text-[#718096]">
-                                    <Calendar size={20} />
-                                    <span>
-                                        {camp.startDate} - {camp.endDate}
-                                    </span>
-                                </div>
-
-                                {/* Footer */}
-                                <div className="flex justify-between items-center pt-4 border-t border-[#e2e8f0]">
-                                    <span className="text-[#718096]">
-                                        {camp.enrolled}/{camp.capacity} enrolled
-                                    </span>
-                                    <Button
-                                        endContent={<ChevronRight size={20} />}
-                                        className="bg-transparent text-[#718096] font-semibold hover:opacity-70"
-                                    >
-                                            ดูรายละเอียด
-                                    </Button>
-                                </div>
-                            </CardBody>
-                        </Card>
-                    ))}
-                </div>
+                                            <div className="w-full bg-[#5d7c6f] text-white font-medium py-3 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity">
+                                                เข้าสู่แดชบอร์ดค่าย
+                                            </div>
+                                        </CardBody>
+                                    </Card>
+                                ))
+                            )}
+                        </div>
+                    </Tab>
+                </Tabs>
             </div>
         </div>
     );
