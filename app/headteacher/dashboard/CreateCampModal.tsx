@@ -508,7 +508,7 @@ export default function CreateCampModal({
                                         }}
                                     >
                                         {grades.map((grade) => (
-                                            <SelectItem key={grade} value={grade}>
+                                            <SelectItem key={grade}>
                                                 {grade.replace("Level_", "ม.")}
                                             </SelectItem>
                                         ))}
