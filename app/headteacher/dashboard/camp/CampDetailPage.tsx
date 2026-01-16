@@ -11,12 +11,17 @@ import {
     FileText,
     Award,
     BarChart3,
-    Plus
+    Plus,
+    Target,
+    Pencil,
+    Trash2
 } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { useStatusModal } from "@/components/StatusModalProvider";
 import EditCampModal from "./EditCampModal";
+import CreateBaseModal from "./CreateBaseModal";
+import EditBaseModal from "./EditBaseModal";
 
 interface TimeSlot {
     startTime: string;
@@ -50,6 +55,7 @@ interface CampDetail {
         student_enrollment: number;
     };
     plan_type_name?: string;
+    station?: any[];
 }
 
 export default function CampDetailPage() {
@@ -61,6 +67,9 @@ export default function CampDetailPage() {
     const { showError, showSuccess } = useStatusModal();
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
+    const [isEditBaseModalOpen, setIsEditBaseModalOpen] = useState(false);
+    const [selectedBase, setSelectedBase] = useState<any>(null);
     const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
@@ -119,6 +128,33 @@ export default function CampDetailPage() {
             console.error('Error fetching camp detail:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleEditBase = (base: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setSelectedBase(base);
+        setIsEditBaseModalOpen(true);
+    };
+
+    const handleDeleteBase = async (baseId: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm("Are you sure you want to delete this base?")) return;
+
+        try {
+            const response = await fetch(`/api/stations/${baseId}`, {
+                method: "DELETE",
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to delete base");
+            }
+
+            showSuccess("Success", "Base deleted successfully");
+            fetchCampDetail();
+        } catch (error) {
+            console.error("Error deleting base:", error);
+            showError("Error", "Failed to delete base");
         }
     };
 
@@ -434,26 +470,70 @@ export default function CampDetailPage() {
                         <Button
                             className="bg-[#6b857a] text-white"
                             startContent={<Plus size={18} />}
+                            onPress={() => setIsCreateBaseModalOpen(true)}
                         >
                             สร้างฐานกิจกรรม
                         </Button>
                     </div>
 
-                    <div className="flex flex-col items-center justify-center py-12">
-                        <div className="text-center">
-                            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Plus size={32} className="text-gray-400" />
-                            </div>
-                            <p className="text-gray-500 mb-4">ยังไม่ได้สร้างฐานกิจกรรม</p>
-                            <Button
-                                className="bg-[#6b857a] text-white"
-                                size="lg"
-                                startContent={<Plus size={18} />}
-                            >
-                                เริ่มสร้างฐานกิจกรรม
-                            </Button>
+                    {camp.station && camp.station.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {camp.station.map((station: any) => (
+                                <div
+                                    key={station.station_id}
+                                    onClick={() => router.push(`/headteacher/dashboard/camp/${campId}/base/${station.station_id}`)}
+                                    className="p-4 rounded-xl border-2 border-gray-100 hover:border-[#6b857a] hover:bg-[#6b857a]/5 transition-all cursor-pointer group"
+                                >
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="p-2 bg-white rounded-lg border border-gray-100 group-hover:border-[#6b857a]/20">
+                                            <Target size={24} className="text-[#6b857a]" />
+                                        </div>
+                                        <div className="flex gap-1">
+                                            <Button
+                                                isIconOnly
+                                                size="sm"
+                                                variant="light"
+                                                className="text-gray-400 hover:text-blue-500"
+                                                onClick={(e) => handleEditBase(station, e)}
+                                            >
+                                                <Pencil size={18} />
+                                            </Button>
+                                            <Button
+                                                isIconOnly
+                                                size="sm"
+                                                variant="light"
+                                                className="text-gray-400 hover:text-red-500"
+                                                onClick={(e) => handleDeleteBase(station.station_id, e)}
+                                            >
+                                                <Trash2 size={18} />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <h4 className="font-semibold text-gray-900 mb-1">{station.name}</h4>
+                                    <p className="text-sm text-gray-500 line-clamp-2">
+                                        {station.description || "ไม่มีคำอธิบาย"}
+                                    </p>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <div className="text-center">
+                                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Plus size={32} className="text-gray-400" />
+                                </div>
+                                <p className="text-gray-500 mb-4">ยังไม่ได้สร้างฐานกิจกรรม</p>
+                                <Button
+                                    className="bg-[#6b857a] text-white"
+                                    size="lg"
+                                    startContent={<Plus size={18} />}
+                                    onPress={() => setIsCreateBaseModalOpen(true)}
+                                >
+                                    เริ่มสร้างฐานกิจกรรม
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -463,6 +543,19 @@ export default function CampDetailPage() {
                 onSubmit={handleEditSubmit}
                 campData={camp}
                 isLoading={isEditing}
+            />
+
+            <CreateBaseModal
+                isOpen={isCreateBaseModalOpen}
+                onClose={() => setIsCreateBaseModalOpen(false)}
+                campId={Number(campId)}
+            />
+
+            <EditBaseModal
+                isOpen={isEditBaseModalOpen}
+                onClose={() => setIsEditBaseModalOpen(false)}
+                baseData={selectedBase}
+                onSuccess={fetchCampDetail}
             />
         </div>
     );
