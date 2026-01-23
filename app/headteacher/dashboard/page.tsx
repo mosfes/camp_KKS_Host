@@ -52,6 +52,7 @@ export default function StudentDashboard() {
     const [isCreateCampOpen, setIsCreateCampOpen] = useState(false);
     const [selectedProjectType, setSelectedProjectType] = useState<string | null>(null);
     const [selectedTemplateData, setSelectedTemplateData] = useState<any>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fetchCamps = async () => {
         try {
@@ -158,6 +159,7 @@ export default function StudentDashboard() {
 
     const handleCreateCampSubmit = async (data: any) => {
         try {
+            setIsSubmitting(true);
             console.log("Data being sent:", data); // Debug: ดูข้อมูลที่ส่งไป
 
             // ส่งข้อมูลไปยัง API เพื่อสร้างค่ายใหม่
@@ -196,6 +198,8 @@ export default function StudentDashboard() {
                 // Refresh camps list
                 await fetchCamps();
                 await fetchStats();
+                setIsCreateCampOpen(false); // Close modal on success
+                setSelectedProjectType(null);
             } else {
                 console.error("Failed to create camp:", result.error);
                 showError('ล้มเหลว', `สร้างค่ายไม่สำเร็จ: ${result.error}`);
@@ -204,8 +208,7 @@ export default function StudentDashboard() {
             console.error("Error creating camp:", error);
             showError('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการสร้างค่าย');
         } finally {
-            setIsCreateCampOpen(false);
-            setSelectedProjectType(null);
+            setIsSubmitting(false);
         }
     };
 
@@ -313,7 +316,6 @@ export default function StudentDashboard() {
 
                 {selectedTab === "camp" && (
                     <div className="space-y-6">
-                        {/* ===== Header Bar ===== */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#f6f2ea] rounded-2xl px-6 py-4">
                             <div>
                                 <h2 className="text-xl font-bold text-[#2d3748]">ค่ายของฉัน</h2>
@@ -471,7 +473,7 @@ export default function StudentDashboard() {
                 onSubmit={handleCreateCampSubmit}
                 projectType={selectedProjectType}
                 templateData={selectedTemplateData}
-                isLoading={loading}
+                isLoading={isSubmitting}
             />
         </div>
     );

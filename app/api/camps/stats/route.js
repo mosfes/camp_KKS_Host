@@ -13,6 +13,7 @@ export async function GET(request) {
         const totalCamps = await prisma.camp.count({
             where: {
                 created_by_teacher_id: teacherId,
+                deletedAt: null
             },
         });
 
@@ -21,6 +22,7 @@ export async function GET(request) {
             where: {
                 created_by_teacher_id: teacherId,
                 status: "OPEN",
+                deletedAt: null
             },
         });
 
@@ -29,6 +31,7 @@ export async function GET(request) {
             where: {
                 camp: {
                     created_by_teacher_id: teacherId,
+                    deletedAt: null
                 },
             },
         });
@@ -38,6 +41,7 @@ export async function GET(request) {
             where: {
                 camp: {
                     created_by_teacher_id: teacherId,
+                    deletedAt: null
                 },
             },
             select: {
@@ -50,6 +54,7 @@ export async function GET(request) {
             where: {
                 camp: {
                     created_by_teacher_id: teacherId,
+                    deletedAt: null
                 },
             },
             select: {

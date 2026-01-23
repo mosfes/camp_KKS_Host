@@ -201,8 +201,8 @@ export default function EditCampModal({
                         day: schedule.day,
                         timeSlots: schedule.time_slots && schedule.time_slots.length > 0
                             ? schedule.time_slots.map((slot: any) => ({
-                                startTime: slot.startTime || slot.start_time || "",
-                                endTime: slot.endTime || slot.end_time || "",
+                                startTime: (slot.startTime || slot.start_time || "").replace('.', ':'),
+                                endTime: (slot.endTime || slot.end_time || "").replace('.', ':'),
                                 activity: slot.activity || ""
                             }))
                             : [{ startTime: "", endTime: "", activity: "" }]
@@ -318,6 +318,24 @@ export default function EditCampModal({
 
     const updateTimeSlot = (dayIndex: number, slotIndex: number, field: keyof TimeSlot, value: string) => {
         const newSchedule = [...formData.dailySchedule];
+        const currentSlot = newSchedule[dayIndex].timeSlots[slotIndex];
+
+        // Validation: End time cannot be before Start time
+        if (field === "endTime" && value) {
+            if (currentSlot.startTime && value < currentSlot.startTime) {
+                showWarning("เวลาไม่ถูกต้อง", "เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่ม");
+                return;
+            }
+        }
+
+        // Validation: Start time cannot be after End time
+        if (field === "startTime" && value) {
+            if (currentSlot.endTime && value > currentSlot.endTime) {
+                showWarning("เวลาไม่ถูกต้อง", "เวลาเริ่มต้องมาก่อนเวลาสิ้นสุด");
+                return;
+            }
+        }
+
         newSchedule[dayIndex].timeSlots[slotIndex][field] = value;
         setFormData({ ...formData, dailySchedule: newSchedule });
     };

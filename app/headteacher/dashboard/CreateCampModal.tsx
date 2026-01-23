@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { ChevronRight, ImageOff, X, Plus, Trash2 } from "lucide-react";
 import { Select, SelectItem } from "@heroui/react";
 import { DateRangePicker } from "@heroui/react";
-import { parseDate } from "@internationalized/date";
+import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
 import type { DateValue } from "@internationalized/date";
 
 interface TimeSlot {
@@ -201,7 +201,11 @@ export default function CreateCampModal({
             const dailySchedule = campSource.camp_daily_schedule && Array.isArray(campSource.camp_daily_schedule)
                 ? campSource.camp_daily_schedule.map((day: any) => ({
                     day: day.day,
-                    timeSlots: day.time_slots || []
+                    timeSlots: day.time_slots ? day.time_slots.map((slot: any) => ({
+                        startTime: (slot.startTime || "").replace('.', ':'),
+                        endTime: (slot.endTime || "").replace('.', ':'),
+                        activity: slot.activity || ""
+                    })) : []
                 }))
                 : [{ day: 1, timeSlots: [{ startTime: "", endTime: "", activity: "" }] }];
 
@@ -367,6 +371,24 @@ export default function CreateCampModal({
 
     const updateTimeSlot = (dayIndex: number, slotIndex: number, field: keyof TimeSlot, value: string) => {
         const newSchedule = [...formData.dailySchedule];
+        const currentSlot = newSchedule[dayIndex].timeSlots[slotIndex];
+
+        // Validation: End time cannot be before Start time
+        if (field === "endTime" && value) {
+            if (currentSlot.startTime && value < currentSlot.startTime) {
+                showWarning("เวลาไม่ถูกต้อง", "เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่ม");
+                return;
+            }
+        }
+
+        // Validation: Start time cannot be after End time
+        if (field === "startTime" && value) {
+            if (currentSlot.endTime && value > currentSlot.endTime) {
+                showWarning("เวลาไม่ถูกต้อง", "เวลาเริ่มต้องมาก่อนเวลาสิ้นสุด");
+                return;
+            }
+        }
+
         newSchedule[dayIndex].timeSlots[slotIndex][field] = value;
         setFormData({ ...formData, dailySchedule: newSchedule });
     };
@@ -612,6 +634,7 @@ export default function CreateCampModal({
                                     }
                                     isInvalid={!!dateErrors.registration}
                                     errorMessage={dateErrors.registration}
+                                    minValue={today(getLocalTimeZone())}
                                     onChange={(range) => {
                                         if (!range) return;
                                         handleChange("registrationStartDate", dateValueToString(range.start));
@@ -638,6 +661,7 @@ export default function CreateCampModal({
                                     }
                                     isInvalid={!!dateErrors.camp}
                                     errorMessage={dateErrors.camp}
+                                    minValue={today(getLocalTimeZone())}
                                     onChange={(range) => {
                                         if (!range) return;
                                         handleChange("campStartDate", dateValueToString(range.start));
@@ -797,6 +821,7 @@ export default function CreateCampModal({
                                         }
                                         isInvalid={!!dateErrors.shirt}
                                         errorMessage={dateErrors.shirt}
+                                        minValue={today(getLocalTimeZone())}
                                         onChange={(range) => {
                                             if (!range) return;
                                             handleChange("shirtStartDate", dateValueToString(range.start));
@@ -879,10 +904,20 @@ export default function CreateCampModal({
                 <div className="p-6 border-t bg-gray-50">
                     <button
                         onClick={handleSubmit}
-                        className="w-full py-4 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-bold shadow-lg flex items-center justify-center gap-2"
+                        disabled={isLoading}
+                        className="w-full py-4 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-bold shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Create Camp & Continue
-                        <ChevronRight size={18} />
+                        {isLoading ? (
+                            <>
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                กำลังสร้างค่าย...
+                            </>
+                        ) : (
+                            <>
+                                Create Camp & Continue
+                                <ChevronRight size={18} />
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

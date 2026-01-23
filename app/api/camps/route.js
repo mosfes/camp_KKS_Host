@@ -184,10 +184,25 @@ export async function POST(req) {
 /**
  * GET - ดึงรายการค่ายทั้งหมด พร้อมจำนวน student_enrollment
  */
-export async function GET() {
+export async function GET(request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const year = searchParams.get('year');
+
+        let whereClause = { deletedAt: null };
+
+        if (year) {
+            const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
+            const endOfYear = new Date(`${year}-12-31T23:59:59.999Z`);
+
+            whereClause.start_date = {
+                gte: startOfYear,
+                lte: endOfYear
+            };
+        }
+
         const camps = await prisma.camp.findMany({
-            where: { deletedAt: null },
+            where: whereClause,
             include: {
                 plan_type: true,
                 created_by: {

@@ -8,9 +8,10 @@ export async function GET(request, context) {
         const params = await context.params;
         const campId = Number(params.id);
 
-        const camp = await prisma.camp.findUnique({
+        const camp = await prisma.camp.findFirst({
             where: {
                 camp_id: campId,
+                deletedAt: null
             },
             include: {
                 plan_type: true,
@@ -97,6 +98,7 @@ export async function PUT(request, context) {
         const updatedCamp = await prisma.camp.update({
             where: {
                 camp_id: campId,
+                deletedAt: null
             },
             data: {
                 name: body.name,
