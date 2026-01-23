@@ -32,7 +32,10 @@ export async function GET(req) {
                 classroom_students: {
                     include: { student: true }
                 },
-                teacher: true
+                teacher: true,
+                classroom_teacher: {
+                    include: { teacher: true }
+                }
             },
             orderBy: { grade: 'asc' }
         });
@@ -43,43 +46,119 @@ export async function GET(req) {
             include: { teacher: true }
         });
 
-        const previewData = [];
+        const groupedData = new Map();
 
         for (const room of sourceClassrooms) {
             const nextGrade = getNextGrade(room.grade);
             
-            // ข้าม ม.6 (จบการศึกษา)
-            if (nextGrade === 'Graduated' || !nextGrade) continue;
+            // ข้ามถ้าไม่มีระดับชั้นถัดไป (เช่น End of list ที่ไม่ได้ระบุ)
+            if (!nextGrade) continue;
 
-            // หาห้องปลายทาง (Grade ถัดไป + Type เดิม)
-            const targetRoom = targetClassrooms.find(
-                tr => tr.grade === nextGrade && tr.type_classroom === room.type_classroom
-            );
+            const key = `${room.grade}_${room.type_classroom}`;
+            
+            if (!groupedData.has(key)) {
+                // หาห้องปลายทาง (Grade ถัดไป + Type เดิม)
+                const targetRoom = targetClassrooms.find(
+                    tr => tr.grade === nextGrade && tr.type_classroom === room.type_classroom
+                );
 
+                // ครูปลายทาง
+                // ถ้าห้องมีอยู่แล้วดึงมาโชว์ 
+                // ถ้าห้องใหม่: ให้ดึงครูที่สอนระดับชั้นนั้นในปีปัจจุบันมาเป็น Default
+                let defaultTeacherIds = new Set();
+                
+                if (targetRoom) {
+                    defaultTeacherIds.add(targetRoom.teachers_teachers_id.toString());
+
+                } else {
+                    // ค้นหาห้องในปีปัจจุบัน ที่เป็นระดับชั้นถัดไป (Next Grade) + ประเภทเดิม
+                    const matchingNextGradeRooms = sourceClassrooms.filter(
+                        r => r.grade === nextGrade && r.type_classroom === room.type_classroom
+                    );
+                    
+                    if (matchingNextGradeRooms.length > 0) {
+                        for (const nextRoom of matchingNextGradeRooms) {
+                             // Primary Teacher
+                            if (nextRoom.teacher) {
+                                defaultTeacherIds.add(nextRoom.teacher.teachers_id.toString());
+                            }
+                            // Secondary Teachers
+                            if (nextRoom.classroom_teacher && nextRoom.classroom_teacher.length > 0) {
+                                nextRoom.classroom_teacher.forEach(ct => {
+                                    if (ct.teacher) {
+                                        defaultTeacherIds.add(ct.teacher.teachers_id.toString());
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+
+                groupedData.set(key, {
+                    sourceRoomId: room.classroom_id, 
+                    sourceGrade: room.grade,
+                    sourceType: room.type_classroom,
+                    sourceTeacher: [], 
+                    
+                    // ข้อมูลปลายทาง (Target)
+                    targetGrade: nextGrade,
+                    targetType: room.type_classroom,
+                    targetRoomId: targetRoom ? targetRoom.classroom_id : null,
+                    isNewRoom: !targetRoom,
+                    
+                    targetTeacherIds: Array.from(defaultTeacherIds), // ส่งกลับเป็น Array
+                    
+                    // รายชื่อนักเรียน (ใช้ Map เพื่อกันซ้ำ Based on ID)
+                    students: new Map()
+                });
+            }
+
+            const group = groupedData.get(key);
+
+            // Merge Teachers (Primary)
+            if (room.teacher) {
+                const name = `${room.teacher.firstname} ${room.teacher.lastname}`;
+                if (!group.sourceTeacher.includes(name)) {
+                    group.sourceTeacher.push(name);
+                }
+            }
+
+            // Merge Teachers (Secondary from classroom_teacher)
+            if (room.classroom_teacher && room.classroom_teacher.length > 0) {
+                for (const ct of room.classroom_teacher) {
+                    if (ct.teacher) {
+                         const name = `${ct.teacher.firstname} ${ct.teacher.lastname}`;
+                         if (!group.sourceTeacher.includes(name)) {
+                            group.sourceTeacher.push(name);
+                        }
+                    }
+                }
+            }
+
+            // Merge Students
+            if (room.classroom_students) {
+                for (const rs of room.classroom_students) {
+                     if (rs.student) {
+                        group.students.set(rs.student.students_id, {
+                            id: rs.student.students_id,
+                            code: rs.student.students_id.toString(), 
+                            firstname: rs.student.firstname,
+                            lastname: rs.student.lastname,
+                            name: `${rs.student.firstname} ${rs.student.lastname}`,
+                            selected: true
+                        });
+                     }
+                }
+            }
+        }
+
+        // Convert Map back to Array
+        const previewData = [];
+        for (const group of groupedData.values()) {
             previewData.push({
-                sourceRoomId: room.classroom_id,
-                sourceGrade: room.grade,
-                sourceType: room.type_classroom,
-                sourceTeacher: `${room.teacher?.firstname} ${room.teacher?.lastname}`,
-                
-                // ข้อมูลปลายทาง (Target)
-                targetGrade: nextGrade,
-                targetType: room.type_classroom, // ห้องโครงการเดิม
-                targetRoomId: targetRoom ? targetRoom.classroom_id : null, // ถ้ามี ID แปลว่าห้องมีอยู่แล้ว
-                isNewRoom: !targetRoom, // ถ้าไม่มี ต้องสร้างใหม่
-                
-                // ครูปลายทาง (ถ้าห้องมีอยู่แล้วดึงมาโชว์ ถ้าห้องใหม่ = null ให้ User เลือก)
-                targetTeacherId: targetRoom ? targetRoom.teachers_teachers_id.toString() : "", 
-                
-                // รายชื่อนักเรียนที่จะย้าย
-                students: room.classroom_students.map(rs => ({
-                    id: rs.student.students_id,
-                    code: rs.student.students_id.toString(), 
-                    firstname: rs.student.firstname,
-                    lastname: rs.student.lastname,
-                    name: `${rs.student.firstname} ${rs.student.lastname}`,
-                    selected: true // ค่าเริ่มต้นคือเลือกทุกคน
-                }))
+                ...group,
+                sourceTeacher: group.sourceTeacher.join(", "), // แปลง Array ชื่อครูเป็น String คั่นด้วย comma
+                students: Array.from(group.students.values()) // แปลง Map นักเรียนกลับเป็น Array
             });
         }
 
@@ -110,35 +189,66 @@ export async function POST(req) {
                 const selectedStudents = item.students.filter(s => s.selected);
                 if (selectedStudents.length === 0) continue;
 
+                // กรณีจบการศึกษา (Graduated) -> ไม่ต้องสร้างห้องใหม่ ไม่ต้องย้ายเด็ก (แค่ไม่ลงทะเบียนในปีการศึกษาหน้า)
+                if (item.targetGrade === 'Graduated') {
+                    movedStudents += selectedStudents.length;
+                    continue;
+                }
+
                 let targetRoomId = item.targetRoomId;
+                const teacherIds = item.targetTeacherIds || [];
+                
+                if (item.isNewRoom && teacherIds.length === 0) {
+                     throw new Error(`กรุณาเลือกครูประจำชั้นสำหรับห้อง ${item.targetGrade} (${item.targetType})`);
+                }
+
+                const primaryTeacherId = teacherIds.length > 0 ? parseInt(teacherIds[0]) : null;
+                const secondaryTeacherIds = teacherIds.slice(1).map(id => parseInt(id));
 
                 // 1. ถ้าห้องปลายทางยังไม่มี (isNewRoom) หรือ User สั่งสร้าง ให้สร้างห้องใหม่
                 if (!targetRoomId) {
-                    // ถ้า User ไม่เลือกครู ให้ใส่ครู Default (เช่น Admin หรือ Dummy) หรือข้ามไปก่อน
-                    // ในที่นี้บังคับว่าต้องมี teacher_id ตาม Schema, ถ้าว่างอาจต้อง Handle Error หรือใส่ครูเดิม
-                    // สมมติ: ถ้า User ไม่เลือกครู ยอมให้พัง หรือต้อง Validate จาก Frontend มาแล้ว
-                    
-                    if (!item.targetTeacherId) {
-                         throw new Error(`กรุณาเลือกครูประจำชั้นสำหรับห้อง ${item.targetGrade} (${item.targetType})`);
-                    }
-
                     const newRoom = await tx.classrooms.create({
                         data: {
                             grade: item.targetGrade,
                             type_classroom: item.targetType,
                             academic_years_years_id: parseInt(toYearId),
-                            teachers_teachers_id: parseInt(item.targetTeacherId)
+                            teachers_teachers_id: primaryTeacherId
                         }
                     });
                     targetRoomId = newRoom.classroom_id;
                     createdRooms++;
+
+                    // Add Secondary Teachers
+                    if (secondaryTeacherIds.length > 0) {
+                        await tx.classroom_teacher.createMany({
+                            data: secondaryTeacherIds.map(tid => ({
+                                classroom_classroom_id: targetRoomId,
+                                teachers_teachers_id: tid
+                            }))
+                        });
+                    }
+
                 } else {
                     // ถ้าห้องมีอยู่แล้ว แต่อยากอัปเดตครู (Option)
-                    if (item.targetTeacherId) {
+                    if (primaryTeacherId) {
                         await tx.classrooms.update({
                             where: { classroom_id: targetRoomId },
-                            data: { teachers_teachers_id: parseInt(item.targetTeacherId) }
+                            data: { teachers_teachers_id: primaryTeacherId }
                         });
+
+                        // Update Secondary Teachers (Reset & Re-add)
+                        await tx.classroom_teacher.deleteMany({
+                            where: { classroom_classroom_id: targetRoomId }
+                        });
+
+                        if (secondaryTeacherIds.length > 0) {
+                            await tx.classroom_teacher.createMany({
+                                data: secondaryTeacherIds.map(tid => ({
+                                    classroom_classroom_id: targetRoomId,
+                                    teachers_teachers_id: tid
+                                }))
+                            });
+                        }
                     }
                 }
 

@@ -9,7 +9,8 @@ import {
     Accordion,
     AccordionItem,
     Checkbox,
-    Spinner
+    Spinner,
+    Chip
 } from "@heroui/react";
 import { ArrowLeft, ArrowRight, Save } from 'lucide-react';
 import studentService from "@/app/service/adminService";
@@ -109,9 +110,9 @@ const PromoteStudentsContent = () => {
         setPreviewPlan(newPlan);
     };
 
-    const handlePlanChangeTeacher = (index, teacherId) => {
+    const handlePlanChangeTeacher = (index, teacherIds) => {
         const newPlan = [...previewPlan];
-        newPlan[index].targetTeacherId = teacherId;
+        newPlan[index].targetTeacherIds = teacherIds;
         setPreviewPlan(newPlan);
     };
 
@@ -130,8 +131,10 @@ const PromoteStudentsContent = () => {
 
         for (const item of selectedClassrooms) {
             // ถ้าเป็นห้องใหม่ (หรือห้องเดิมที่ไม่มีครู) และมีนักเรียนถูกเลือก แต่ไม่ได้เลือกครู
-            if ((item.isNewRoom || !item.targetRoomId) && !item.targetTeacherId && item.students.some(s => s.selected)) {
-                showError("ข้อมูลไม่ครบถ้วน", `กรุณาเลือกครูประจำชั้นสำหรับห้อง ${getGradeLabel(item.targetGrade)} (${item.targetType})`);
+            const hasTeachers = item.targetTeacherIds && item.targetTeacherIds.length > 0;
+            // Skip validation if Graduated
+            if (item.targetGrade !== 'Graduated' && (item.isNewRoom || !item.targetRoomId) && !hasTeachers && item.students.some(s => s.selected)) {
+                showError("ข้อมูลไม่ครบถ้วน", `กรุณาเลือกครูประจำชั้นอย่างน้อย 1 ท่าน สำหรับห้อง ${getGradeLabel(item.targetGrade)} (${item.targetType})`);
                 return;
             }
         }
@@ -171,6 +174,7 @@ const PromoteStudentsContent = () => {
                 <Button
                     isIconOnly
                     variant="light"
+                    className="rounded-full"
                     onPress={() => router.back()}
                 >
                     <ArrowLeft size={20} />
@@ -185,17 +189,17 @@ const PromoteStudentsContent = () => {
                 <CardBody className="p-6">
                     <div className="flex justify-center mb-8">
                         <div className="flex items-center gap-4">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${promoteStep === 1 ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-600"}`}>1</div>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${promoteStep === 1 ? "bg-sage text-white" : "bg-green-50 text-sage"}`}>1</div>
                             <span className={promoteStep === 1 ? "font-semibold text-gray-800" : "text-gray-500"}>เลือกปีการศึกษา</span>
                             <div className="w-12 h-1 bg-gray-200"></div>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${promoteStep === 2 ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-400"}`}>2</div>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${promoteStep === 2 ? "bg-sage text-white" : "bg-gray-100 text-gray-400"}`}>2</div>
                             <span className={promoteStep === 2 ? "font-semibold text-gray-800" : "text-gray-500"}>ตรวจสอบและยืนยัน</span>
                         </div>
                     </div>
 
                     {promoteStep === 1 && (
                         <div className="max-w-xl mx-auto flex flex-col gap-6 py-4">
-                            <div className="p-4 bg-blue-50 text-blue-800 rounded-lg text-sm border border-blue-100">
+                            <div className="p-4 bg-green-50 text-sage-dark rounded-lg text-sm border border-green-100">
                                 ระบบจะค้นหานักเรียนในปีการศึกษาต้นทาง และจับคู่กับห้องเรียนในปีการศึกษาปลายทางโดยอัตโนมัติ (อิงตามระดับชั้นและประเภทห้องเรียนเดิม)
                             </div>
 
@@ -260,7 +264,7 @@ const PromoteStudentsContent = () => {
 
                             <div className="flex justify-end mt-4">
                                 <Button
-                                    color="primary"
+                                    className="bg-sage text-white hover:bg-sage-dark shadow-sm rounded-full"
                                     onPress={handleGoToReview}
                                     isLoading={isLoadingPromote}
                                     endContent={!isLoadingPromote && <ArrowRight size={16} />}
@@ -281,7 +285,7 @@ const PromoteStudentsContent = () => {
                                 <Button
                                     size="sm"
                                     variant="flat"
-                                    className="text-gray-500"
+                                    className="text-gray-500 rounded-full"
                                     onPress={() => setPromoteStep(1)}
                                 >
                                     กลับไปแก้ไขปีการศึกษา
@@ -305,6 +309,7 @@ const PromoteStudentsContent = () => {
                                                 <div className="flex items-center gap-3">
                                                     <div onClick={(e) => e.stopPropagation()}>
                                                         <Checkbox
+                                                            color="success"
                                                             isSelected={item.selected}
                                                             onValueChange={() => handleToggleClassroom(idx)}
                                                         />
@@ -316,45 +321,99 @@ const PromoteStudentsContent = () => {
                                                         ห้อง {item.targetType}
                                                     </span>
                                                     {item.isNewRoom && (
-                                                        <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full border border-green-200 font-medium">
+                                                        <span className="bg-sage/10 text-sage-dark text-xs px-2 py-0.5 rounded-full border border-sage/20 font-medium">
                                                             สร้างห้องใหม่
                                                         </span>
                                                     )}
                                                 </div>
                                             }
                                             subtitle={
-                                                <span className="text-xs text-gray-500 mt-1 block">
-                                                    เลือกนักเรียน {item.students.filter(s => s.selected).length} จาก {item.students.length} คน
-                                                </span>
+                                                <div className="flex flex-col gap-1 mt-1">
+                                                    {item.sourceTeacher && (
+                                                        <span className="text-xs text-gray-500">
+                                                            ครูเดิม: {item.sourceTeacher}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-xs text-gray-400">
+                                                        เลือกนักเรียน {item.students.filter(s => s.selected).length} จาก {item.students.length} คน
+                                                    </span>
+                                                </div>
                                             }
                                         >
                                             <div className="p-4 bg-white border-t border-gray-100 space-y-4">
-                                                {/* เลือกครู */}
-                                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                                    <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                                        ครูประจำชั้นปีใหม่ ({getGradeLabel(item.targetGrade)}) <span className="text-red-500">*</span>
-                                                    </label>
-                                                    <Select
-                                                        size="sm"
-                                                        placeholder="เลือกครูประจำชั้น"
-                                                        variant="bordered"
-                                                        className="max-w-md bg-white"
-                                                        selectedKeys={item.targetTeacherId ? [item.targetTeacherId.toString()] : []}
-                                                        onSelectionChange={(keys) => handlePlanChangeTeacher(idx, Array.from(keys)[0])}
-                                                        classNames={{ trigger: "bg-white" }}
-                                                    >
-                                                        {allTeachers.map((t) => (
-                                                            <SelectItem key={t.teachers_id.toString()} textValue={`${t.firstname} ${t.lastname}`}>
-                                                                {t.firstname} {t.lastname}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </Select>
-                                                    {item.isNewRoom && !item.targetTeacherId && (
-                                                        <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                                                            ⚠️ จำเป็นต้องเลือกครูเพื่อสร้างห้องใหม่
-                                                        </p>
-                                                    )}
-                                                </div>
+
+                                                {item.targetGrade !== 'Graduated' ? (
+                                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 grid grid-cols-2 gap-4">
+
+                                                        <div>
+                                                            <label className="text-sm font-medium text-gray-700 mb-1 block">
+                                                                ครูประจำชั้นคนที่ 1 <span className="text-red-500">*</span>
+                                                            </label>
+                                                            <Select
+                                                                size="sm"
+                                                                placeholder="เลือกครูประจำชั้นคนที่ 1"
+                                                                variant="bordered"
+                                                                className="w-full bg-white"
+                                                                selectedKeys={item.targetTeacherIds && item.targetTeacherIds[0] ? new Set([item.targetTeacherIds[0].toString()]) : new Set()}
+                                                                onSelectionChange={(keys) => {
+                                                                    const primaryId = Array.from(keys)[0];
+                                                                    const currentIds = item.targetTeacherIds || [];
+                                                                    // Update index 0, keep index 1 if exists
+                                                                    const newIds = [primaryId, currentIds[1]].filter(Boolean);
+                                                                    handlePlanChangeTeacher(idx, newIds);
+                                                                }}
+                                                                classNames={{ trigger: "bg-white" }}
+                                                            >
+                                                                {allTeachers.map((t) => (
+                                                                    <SelectItem key={t.teachers_id.toString()} textValue={`${t.firstname} ${t.lastname}`}>
+                                                                        {t.firstname} {t.lastname}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </Select>
+                                                        </div>
+
+                                                        {/* เลือกครูคนที่ 2 */}
+                                                        <div>
+                                                            <label className="text-sm font-medium text-gray-700 mb-1 block">
+                                                                ครูประจำชั้นคนที่ 2 (ถ้ามี)
+                                                            </label>
+                                                            <Select
+                                                                size="sm"
+                                                                placeholder="เลือกครูประจำชั้นคนที่ 2"
+                                                                variant="bordered"
+                                                                className="w-full bg-white"
+                                                                selectedKeys={item.targetTeacherIds && item.targetTeacherIds[1] ? new Set([item.targetTeacherIds[1].toString()]) : new Set()}
+                                                                onSelectionChange={(keys) => {
+                                                                    const secondaryId = Array.from(keys)[0];
+                                                                    const currentIds = item.targetTeacherIds || [];
+                                                                    // Keep index 0, update index 1
+                                                                    // If clearing secondary, we need to handle that. `keys` will be empty set -> secondaryId undefined.
+                                                                    const primary = currentIds[0];
+                                                                    const newIds = [primary, secondaryId].filter(id => id); // filter undefined/null
+                                                                    handlePlanChangeTeacher(idx, newIds);
+                                                                }}
+                                                                classNames={{ trigger: "bg-white" }}
+                                                            >
+                                                                {allTeachers.map((t) => (
+                                                                    <SelectItem key={t.teachers_id.toString()} textValue={`${t.firstname} ${t.lastname}`}>
+                                                                        {t.firstname} {t.lastname}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </Select>
+                                                        </div>
+                                                        {item.isNewRoom && (!item.targetTeacherIds || item.targetTeacherIds.length === 0) && (
+                                                            <p className="text-xs text-red-500 mt-2 flex items-center gap-1 col-span-2">
+                                                                ⚠️ จำเป็นต้องเลือกครูเพื่อสร้างห้องใหม่
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-green-50 p-4 rounded-lg border border-green-200 flex items-center justify-center">
+                                                        <span className="text-green-700 font-semibold flex items-center gap-2">
+                                                            🎓 จบการศึกษา (Graduated)
+                                                        </span>
+                                                    </div>
+                                                )}
 
                                                 {/* รายชื่อนักเรียน */}
                                                 <div className="border rounded-lg overflow-hidden">
@@ -367,6 +426,7 @@ const PromoteStudentsContent = () => {
                                                             {item.students.map((stu, sIdx) => (
                                                                 <Checkbox
                                                                     key={stu.id}
+                                                                    color="success"
                                                                     isSelected={stu.selected}
                                                                     onValueChange={() => handleToggleStudent(idx, sIdx)}
                                                                     classNames={{
@@ -393,13 +453,13 @@ const PromoteStudentsContent = () => {
                                 <Button
                                     variant="light"
                                     color="danger"
+                                    className="rounded-full"
                                     onPress={() => router.back()}
                                 >
                                     ยกเลิก
                                 </Button>
                                 <Button
-                                    color="success"
-                                    className="text-white"
+                                    className="bg-sage text-white hover:bg-sage-dark shadow-sm rounded-full"
                                     onPress={handleConfirmPromote}
                                     isLoading={isLoadingPromote}
                                     startContent={!isLoadingPromote && <Save size={18} />}

@@ -9,6 +9,12 @@ const config = {
   ],
   theme: {
     extend: {
+      colors: {
+        sage: {
+          DEFAULT: "#6b857a",
+          dark: "#5a7168",
+        },
+      },
       fontFamily: {
         sans: ["var(--font-sans)"],
         mono: ["var(--font-mono)"],

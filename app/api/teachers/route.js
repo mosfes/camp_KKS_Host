@@ -50,17 +50,62 @@ export async function DELETE(req) {
       return NextResponse.json({ error: 'ID ไม่ถูกต้อง' }, { status: 400 });
     }
 
-    await prisma.teachers.delete({
-      where: { teachers_id: id }
+    await prisma.$transaction(async (prisma) => {
+        const owningClassroom = await prisma.classrooms.findFirst({
+            where: { teachers_teachers_id: id }
+        });
+        if (owningClassroom) {
+            throw new Error('ไม่สามารถลบได้: ครูท่านนี้เป็นครูประจำชั้น (ต้องเปลี่ยนครูประจำชั้นก่อน)');
+        }
+
+        const owningCamp = await prisma.camp.findFirst({
+            where: { created_by_teacher_id: id }
+        });
+        if (owningCamp) {
+             throw new Error('ไม่สามารถลบได้: ครูท่านนี้เป็นผู้สร้างค่าย (ต้องลบค่ายหรือโอนสิทธิ์ก่อน)');
+        }
+
+        await prisma.classroom_teacher.deleteMany({
+            where: { teacher_teachers_id: id }
+        });
+
+        const enrollments = await prisma.teacher_enrollment.findMany({
+            where: { teacher_teachers_id: id },
+            select: { teacher_enrollment_id: true }
+        });
+
+        if (enrollments.length > 0) {
+            const enrollmentIds = enrollments.map(e => e.teacher_enrollment_id);
+            
+            const attendanceSessions = await prisma.attendance_teachers.findMany({
+                where: { teacher_enrollment_teacher_enrollment_id: { in: enrollmentIds } },
+                select: { session_id: true }
+            });
+
+            if (attendanceSessions.length > 0) {
+                const sessionIds = attendanceSessions.map(s => s.session_id);
+                await prisma.attendance_record_student.deleteMany({
+                    where: { attendance_teacher_session_id: { in: sessionIds } }
+                });
+                await prisma.attendance_teachers.deleteMany({
+                     where: { session_id: { in: sessionIds } }
+                });
+            }
+
+            await prisma.teacher_enrollment.deleteMany({
+                where: { teacher_enrollment_id: { in: enrollmentIds } }
+            });
+        }
+
+        await prisma.teachers.delete({
+            where: { teachers_id: id }
+        });
     });
 
     return NextResponse.json({ message: 'ลบข้อมูลครูสำเร็จ' });
   } catch (error) {
     console.error("Delete error:", error);
-    if (error.code === 'P2003') {
-        return NextResponse.json({ error: 'ไม่สามารถลบได้เนื่องจากครูท่านนี้มีข้อมูลเชื่อมโยงกับระบบอื่น (เช่น เป็นครูประจำชั้น)' }, { status: 400 });
-    }
-    return NextResponse.json({ error: 'ลบข้อมูลครูไม่สำเร็จ' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'ลบข้อมูลครูไม่สำเร็จ' }, { status: 400 });
   }
 }
 
