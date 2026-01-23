@@ -98,12 +98,21 @@ const ClassroomManager = () => {
         );
     };
 
-    const handleToggleGrade = (grade) => {
+    const handleToggleLevel = (level) => {
+        const middle = ['1', '2', '3'];
+        const high = ['4', '5', '6'];
+        const targetGrades = level === 'middle' ? middle : high;
+
         setNewTypeData(prev => {
-            const grades = prev.valid_grades.includes(grade)
-                ? prev.valid_grades.filter(g => g !== grade)
-                : [...prev.valid_grades, grade].sort();
-            return { ...prev, valid_grades: grades };
+            const allSelected = targetGrades.every(g => prev.valid_grades.includes(g));
+            let newGrades;
+            if (allSelected) {
+  
+                newGrades = prev.valid_grades.filter(g => !targetGrades.includes(g));
+            } else {
+                newGrades = [...new Set([...prev.valid_grades, ...targetGrades])].sort();
+            }
+            return { ...prev, valid_grades: newGrades };
         });
     };
 
@@ -323,11 +332,11 @@ const ClassroomManager = () => {
                                 size="sm"
                                 isIconOnly
                                 variant="light"
-                                className="text-gray-500"
+                                className="text-gray-500 rounded-full"
                             >
                                 <Settings size={20} />
                             </Button>
-                            <Button onPress={handleOpenAdd} variant="light" size="sm" className="text-gray-500 hover:text-gray-700">
+                            <Button onPress={handleOpenAdd} size="sm" className="bg-sage text-white hover:bg-sage-dark shadow-sm rounded-full">
                                 <PlusIcon />
                                 <span className="ml-1">เพิ่มห้องเรียน</span>
                             </Button>
@@ -361,7 +370,7 @@ const ClassroomManager = () => {
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <span
-                                                className="cursor-pointer active:opacity-50 text-blue-500 hover:text-blue-700"
+                                                className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
                                                 onClick={() => handleEditClassroom(room)}
                                             >
                                                 <SquarePen size={18} />
@@ -395,7 +404,7 @@ const ClassroomManager = () => {
                                                 value={newYearInput}
                                                 onChange={(e) => setNewYearInput(e.target.value)}
                                             />
-                                            <Button onClick={handleAddAcademicYear} color="primary">เพิ่ม</Button>
+                                            <Button onClick={handleAddAcademicYear} className="bg-sage text-white shadow-sm rounded-full">เพิ่ม</Button>
                                         </div>
                                         <div className="grid grid-cols-4 gap-2">
                                             {years.map(y => (
@@ -420,20 +429,23 @@ const ClassroomManager = () => {
                                                     value={newTypeData.name}
                                                     onChange={(e) => setNewTypeData({ ...newTypeData, name: e.target.value })}
                                                 />
-                                                <Button onClick={handleAddClassroomType} color="primary">บันทึก</Button>
+                                                <Button onClick={handleAddClassroomType} className="bg-sage text-white shadow-sm rounded-full">บันทึก</Button>
                                             </div>
                                             <div className="flex gap-4">
                                                 <span className="text-sm pt-1">ใช้กับระดับชั้น:</span>
-                                                <div className="flex gap-2 flex-wrap">
-                                                    {['1', '2', '3', '4', '5', '6'].map(g => (
-                                                        <Checkbox
-                                                            key={g}
-                                                            isSelected={newTypeData.valid_grades.includes(g)}
-                                                            onValueChange={() => handleToggleGrade(g)}
-                                                        >
-                                                            ม.{g}
-                                                        </Checkbox>
-                                                    ))}
+                                                <div className="flex gap-4">
+                                                    <Checkbox
+                                                        isSelected={['1', '2', '3'].every(g => newTypeData.valid_grades.includes(g))}
+                                                        onValueChange={() => handleToggleLevel('middle')}
+                                                    >
+                                                        ม.ต้น
+                                                    </Checkbox>
+                                                    <Checkbox
+                                                        isSelected={['4', '5', '6'].every(g => newTypeData.valid_grades.includes(g))}
+                                                        onValueChange={() => handleToggleLevel('high')}
+                                                    >
+                                                        ม.ปลาย
+                                                    </Checkbox>
                                                 </div>
                                             </div>
                                         </div>
@@ -467,7 +479,7 @@ const ClassroomManager = () => {
                                 </Tabs>
                             </ModalBody>
                             <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose}>ปิด</Button>
+                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ปิด</Button>
                             </ModalFooter>
                         </>
                     )}
@@ -544,8 +556,8 @@ const ClassroomManager = () => {
 
                             </ModalBody>
                             <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose}>ยกเลิก</Button>
-                                <Button color="primary" onPress={() => handleSubmit(onClose)}>บันทึก</Button>
+                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
+                                <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmit(onClose)}>บันทึก</Button>
                             </ModalFooter>
                         </>
                     )}

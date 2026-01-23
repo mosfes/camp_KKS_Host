@@ -78,17 +78,28 @@ export async function DELETE(req) {
 
     if (!id) return NextResponse.json({ error: 'ID ไม่ถูกต้อง' }, { status: 400 });
 
-    await prisma.classrooms.delete({
-      where: { classroom_id: id }
+    await prisma.$transaction(async (prisma) => {
+        await prisma.classroom_teacher.deleteMany({
+            where: { classroom_classroom_id: id }
+        });
+
+        await prisma.classroom_students.deleteMany({
+            where: { classroom_classroom_id: id }
+        });
+
+        await prisma.camp_classroom.deleteMany({
+            where: { classroom_classroom_id: id }
+        });
+
+        await prisma.classrooms.delete({
+            where: { classroom_id: id }
+        });
     });
 
     return NextResponse.json({ message: 'ลบห้องเรียนสำเร็จ' });
   } catch (error) {
     console.error("Delete error:", error);
-    if (error.code === 'P2003') {
-        return NextResponse.json({ error: 'ไม่สามารถลบได้เนื่องจากมีการใช้งานห้องเรียนนี้อยู่ (เช่น มีนักเรียนในห้อง)' }, { status: 400 });
-    }
-    return NextResponse.json({ error: 'ลบไม่สำเร็จ' }, { status: 500 });
+    return NextResponse.json({ error: 'ลบไม่สำเร็จ: ' + error.message }, { status: 500 });
   }
 }
 

@@ -157,23 +157,38 @@ const TeacherManager = () => {
             const ws = wb.Sheets[wsname];
             const data = XLSX.utils.sheet_to_json(ws);
 
+            const seenEmails = new Set();
+
             const validData = data.filter(item => (item.firstname && item.email) || (item["ชื่อ"] && item["อีเมล"])).map((item, index) => {
                 const firstname = item.firstname || item["ชื่อ"];
                 const lastname = item.lastname || item["นามสกุล"] || "";
-                const isDuplicate = teachers.some(t =>
-                    t.firstname.trim() === firstname.trim() &&
-                    t.lastname.trim() === lastname.trim()
+                const email = (item.email || item["อีเมล"] || "").trim();
+
+                // 1. Check against DB
+                const isDbDuplicate = teachers.some(t =>
+                    (t.firstname.trim() === firstname.trim() && t.lastname.trim() === lastname.trim()) ||
+                    (t.email && t.email.trim() === email)
                 );
 
+                // 2. Check against internal file duplicates
+                let isInternalDuplicate = false;
+                if (email) {
+                    if (seenEmails.has(email)) {
+                        isInternalDuplicate = true;
+                    } else {
+                        seenEmails.add(email);
+                    }
+                }
 
-                
+                const isDuplicate = isDbDuplicate || isInternalDuplicate;
+
                 let role = "TEACHER";
 
                 return {
                     id: index,
                     firstname: firstname,
                     lastname: lastname,
-                    email: item.email || item["อีเมล"],
+                    email: email,
                     tel: (item.tel || item["เบอร์โทร"]) ? String(item.tel || item["เบอร์โทร"]).replace(/\D/g, '').slice(0, 10) : "",
                     role: role,
                     isDuplicate: isDuplicate
@@ -259,7 +274,7 @@ const TeacherManager = () => {
                             <Button
                                 size="sm"
                                 variant="bordered"
-                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm"
+                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
                                 onPress={downloadTemplate}
                             >
                                 <FileDown size={16} />
@@ -269,7 +284,7 @@ const TeacherManager = () => {
                             <Button
                                 size="sm"
                                 variant="bordered"
-                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm"
+                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
                                 onPress={() => fileInputRef.current.click()}
                             >
                                 <Upload size={16} />
@@ -279,7 +294,7 @@ const TeacherManager = () => {
                             <Button
                                 onPress={openAddModal}
                                 size="sm"
-                                className="bg-green-900 text-white hover:bg-green-800 shadow-sm"
+                                className="bg-sage text-white hover:bg-sage-dark shadow-sm rounded-full"
                             >
                                 <PlusIcon />
                                 <span className="ml-1">เพิ่มครูใหม่</span>
@@ -321,14 +336,14 @@ const TeacherManager = () => {
                                     <TableCell>{t.email}</TableCell>
                                     <TableCell>{t.tel || "-"}</TableCell>
                                     <TableCell>
-                                        <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+                                        <span className="px-2 py-1 rounded-full bg-green-100 text-sage text-xs font-medium">
                                             {t.role || "Teacher"}
                                         </span>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <span
-                                                className="cursor-pointer active:opacity-50 text-blue-500 hover:text-blue-700"
+                                                className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
                                                 onClick={() => handleEdit(t)}
                                             >
                                                 <SquarePen size={18} />
@@ -434,8 +449,8 @@ const TeacherManager = () => {
                                 </div>
                             </ModalBody>
                             <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose}>ยกเลิก</Button>
-                                <Button color="primary" onPress={() => handleSubmit(onClose)}>บันทึก</Button>
+                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
+                                <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmit(onClose)}>บันทึก</Button>
                             </ModalFooter>
                         </>
                     )}
@@ -471,11 +486,11 @@ const TeacherManager = () => {
                                                 <TableCell>{teacher.tel}</TableCell>
                                                 <TableCell>
                                                     {teacher.isDuplicate ? (
-                                                        <span className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded-md font-medium">
+                                                        <span className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
                                                             มีข้อมูลแล้ว
                                                         </span>
                                                     ) : (
-                                                        <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-md font-medium">
+                                                        <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
                                                             พร้อมนำเข้า
                                                         </span>
                                                     )}
@@ -486,9 +501,9 @@ const TeacherManager = () => {
                                 </Table>
                             </ModalBody>
                             <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose}>ยกเลิก</Button>
+                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
                                 <Button
-                                    color="primary"
+                                    className="bg-sage text-white shadow-sm rounded-full"
                                     onPress={confirmImport}
                                     isLoading={isLoadingImport}
                                 >

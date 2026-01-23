@@ -331,12 +331,27 @@ const StudentManager = () => {
             const ws = wb.Sheets[wsname];
             const data = XLSX.utils.sheet_to_json(ws);
 
+            const seenIds = new Set();
+
             const validData = data.filter(item => (item.students_id || item["รหัสนักเรียน"]) && (item.firstname || item["ชื่อ"])).map((item, index) => {
                 const studentId = String(item.students_id || item["รหัสนักเรียน"]).trim();
                 const firstname = item.firstname || item["ชื่อ"];
                 const lastname = item.lastname || item["นามสกุล"] || "";
 
-                const isDuplicate = students.some(s => String(s.students_id) === studentId);
+                // 1. Check DB Duplicate
+                const isDbDuplicate = students.some(s => String(s.students_id) === studentId);
+
+                // 2. Check File Duplicate
+                let isInternalDuplicate = false;
+                if (studentId) {
+                    if (seenIds.has(studentId)) {
+                        isInternalDuplicate = true;
+                    } else {
+                        seenIds.add(studentId);
+                    }
+                }
+
+                const isDuplicate = isDbDuplicate || isInternalDuplicate;
 
                 // Map Grade and Room to Classroom ID
                 const gradeInput = item.grade || item["ระดับชั้น"];
@@ -531,7 +546,7 @@ const StudentManager = () => {
                             <Button
                                 size="sm"
                                 variant="bordered"
-                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm"
+                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
                                 onPress={handlePromoteClick}
                             >
                                 <ArrowUp size={16} />
@@ -549,7 +564,7 @@ const StudentManager = () => {
                             <Button
                                 size="sm"
                                 variant="bordered"
-                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm"
+                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
                                 onPress={downloadTemplate}
                             >
                                 <FileDown size={16} />
@@ -559,7 +574,7 @@ const StudentManager = () => {
                             <Button
                                 size="sm"
                                 variant="bordered"
-                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm"
+                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
                                 onPress={() => fileInputRef.current.click()}
                             >
                                 <Upload size={16} />
@@ -569,7 +584,7 @@ const StudentManager = () => {
                             <Button
                                 onPress={openAddModal}
                                 size="sm"
-                                className="bg-green-900 text-white hover:bg-green-800 shadow-sm"
+                                className="bg-sage text-white hover:bg-sage-dark shadow-sm rounded-full"
                             >
                                 <PlusIcon />
                                 <span className="ml-1">เพิ่มนักเรียนใหม่</span>
@@ -615,7 +630,7 @@ const StudentManager = () => {
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <span
-                                                className="cursor-pointer active:opacity-50 text-blue-500 hover:text-blue-700"
+                                                className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
                                                 onClick={() => handleEdit(stu)}
                                             >
                                                 <SquarePen size={18} />
@@ -636,7 +651,7 @@ const StudentManager = () => {
             </Card>
 
 
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" backdrop="blur" size="lg">
+            <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" backdrop="blur" size="lg" scrollBehavior="inside">
                 <ModalContent className="bg-white rounded-2xl shadow-medium border border-gray-100 text-gray-800 p-2">
                     {(onClose) => (
                         <>
@@ -767,10 +782,10 @@ const StudentManager = () => {
 
 
                                     return (
-                                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                            <span className="text-xs text-blue-500 font-medium block mb-1">ครูที่ปรึกษา</span>
+                                        <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                                            <span className="text-xs text-sage font-medium block mb-1">ครูที่ปรึกษา</span>
                                             {uniqueAdvisors.length > 0 ? (
-                                                <ul className="list-disc list-inside text-sm text-blue-900 grid grid-cols-2 gap-x-4">
+                                                <ul className="list-disc list-inside text-sm text-green-900 grid grid-cols-2 gap-x-4">
                                                     {uniqueAdvisors.map(t => (
                                                         <li key={t.teachers_id}>{t.firstname} {t.lastname}</li>
                                                     ))}
@@ -802,8 +817,8 @@ const StudentManager = () => {
 
                             </ModalBody>
                             <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose}>ยกเลิก</Button>
-                                <Button color="primary" onPress={() => handleSubmit(onClose)}>บันทึก</Button>
+                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
+                                <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmit(onClose)}>บันทึก</Button>
                             </ModalFooter>
                         </>
                     )}
@@ -838,19 +853,19 @@ const StudentManager = () => {
                                                 <TableCell>{stu.students_id}</TableCell>
                                                 <TableCell>{stu.firstname} {stu.lastname}</TableCell>
                                                 <TableCell>
-                                                    <span className={`px-2 py-1 rounded-full text-xs ${stu.is_valid_class ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                    <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${stu.is_valid_class ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                                                         {stu.classroom_status}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>{stu.email}</TableCell>
                                                 <TableCell>
                                                     {stu.isDuplicate ? (
-                                                        <span className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded-md font-medium">
+                                                        <span className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
                                                             มีรหัสนักเรียนนี้แล้ว
                                                         </span>
                                                     ) : !stu.is_valid_class ? (
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-orange-600 text-xs bg-orange-50 px-2 py-1 rounded-md font-medium">
+                                                            <span className="text-orange-600 text-xs bg-orange-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
                                                                 ตรวจสอบห้องเรียน
                                                             </span>
                                                             {stu.suggestion && (
@@ -862,7 +877,7 @@ const StudentManager = () => {
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-md font-medium">
+                                                        <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
                                                             พร้อมนำเข้า
                                                         </span>
                                                     )}
@@ -873,9 +888,9 @@ const StudentManager = () => {
                                 </Table>
                             </ModalBody>
                             <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose}>ยกเลิก</Button>
+                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
                                 <Button
-                                    color="primary"
+                                    className="bg-sage text-white shadow-sm rounded-full"
                                     onPress={confirmImport}
                                     isLoading={isLoadingImport}
                                 >

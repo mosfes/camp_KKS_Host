@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/db';
 
 export async function GET() {
   try {
@@ -45,6 +43,10 @@ export async function DELETE(request) {
 
         return NextResponse.json({ message: "Deleted successfully" });
     } catch (error) {
+        console.error("Delete type error:", error);
+        if (error.code === 'P2003') {
+            return NextResponse.json({ error: 'ไม่สามารถลบได้เนื่องจากมีการใช้งานประเภทห้องเรียนนี้อยู่' }, { status: 400 });
+        }
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
