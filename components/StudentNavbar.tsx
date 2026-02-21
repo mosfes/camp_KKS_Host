@@ -1,11 +1,5 @@
-
-"use client"; 
-import {
-  Navbar,
-  NavbarBrand,
-  NavbarContent,
-  NavbarItem,
-} from "@heroui/navbar";
+"use client";
+import { Navbar, NavbarBrand, NavbarContent, NavbarItem } from "@heroui/navbar";
 import {
   Dropdown,
   DropdownTrigger,
@@ -13,9 +7,9 @@ import {
   DropdownItem,
 } from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
-import { Button } from "@heroui/button";
-import { GraduationCap, Home, LogOut, Settings } from "lucide-react";
+import { GraduationCap, LogOut, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { SignOutButton } from "@clerk/nextjs";
 
 export function AppNavbar() {
   const router = useRouter();
@@ -29,9 +23,9 @@ export function AppNavbar() {
 
   return (
     <Navbar
-      maxWidth="full"
-      height="64px"
       className="bg-white border-b border-gray-200"
+      height="64px"
+      maxWidth="full"
     >
       {/* LEFT */}
       <NavbarBrand className="gap-3">
@@ -46,8 +40,7 @@ export function AppNavbar() {
       </NavbarBrand>
 
       {/* RIGHT */}
-      <NavbarContent justify="end" className="gap-3">
-
+      <NavbarContent className="gap-3" justify="end">
         {/* 
         <NavbarItem>
           <Button isIconOnly variant="light" aria-label="Home">
@@ -62,10 +55,10 @@ export function AppNavbar() {
             <DropdownTrigger>
               <Avatar
                 as="button"
-                src={studentData.avatarUrl || undefined}
+                className="bg-[#5d7c6f] text-white transition-transform"
                 name={studentData.name}
                 size="sm"
-                className="bg-[#5d7c6f] text-white transition-transform"
+                src={studentData.avatarUrl || undefined}
               />
             </DropdownTrigger>
 
@@ -89,12 +82,8 @@ export function AppNavbar() {
                 key="logout"
                 color="danger"
                 startContent={<LogOut size={16} />}
-                onClick={() => {
-                  // authService.logout();
-                  router.push("/login");
-                }}
               >
-                ออกจากระบบ
+                <SignOutButton> ออกจากระบบ</SignOutButton>
               </DropdownItem>
             </DropdownMenu>
           </Dropdown>

@@ -1,5 +1,5 @@
-import CampDetailPage from '../CampDetailPage';
+import CampDetailPage from "../CampDetailPage";
 
 export default function Page() {
-    return <CampDetailPage />;
+  return <CampDetailPage />;
 }

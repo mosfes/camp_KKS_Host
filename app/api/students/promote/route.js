@@ -223,7 +223,7 @@ export async function POST(req) {
                         await tx.classroom_teacher.createMany({
                             data: secondaryTeacherIds.map(tid => ({
                                 classroom_classroom_id: targetRoomId,
-                                teachers_teachers_id: tid
+                                teacher_teachers_id: tid
                             }))
                         });
                     }
@@ -245,7 +245,7 @@ export async function POST(req) {
                             await tx.classroom_teacher.createMany({
                                 data: secondaryTeacherIds.map(tid => ({
                                     classroom_classroom_id: targetRoomId,
-                                    teachers_teachers_id: tid
+                                    teacher_teachers_id: tid
                                 }))
                             });
                         }
