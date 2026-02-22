@@ -55,32 +55,47 @@ model parents {
   firstname  String @db.VarChar(255)
   lastname   String @db.VarChar(255)
   tel        String @db.VarChar(10)
+  password  String @db.VarChar(255)
 
-  Student_student_id Int
-  student            students @relation(fields: [Student_student_id], references: [students_id])
+  username_student_id Int
+  student            students @relation(fields: [username_student_id], references: [students_id])
 }
 
 model academic_years {
-  years_id   Int          @id @default(autoincrement())
-  deletedAt  DateTime?
-  year       Int          @db.Year
+  // years_id   Int          @id @default(autoincrement())
+  status   String       @db.VarChar(255) // ลบ จัดเก็บ แอคทีฟ
+  year       Int          @id 
   classrooms classrooms[]
 }
+
 
 model classrooms {
   classroom_id            Int            @id @default(autoincrement())
   deletedAt               DateTime?
-  type_classroom          String         @db.VarChar(255)
+  // type_classroom          String         @db.VarChar(255)
   grade                   GradeLevel
   academic_years_years_id Int
-  academic_years          academic_years @relation(fields: [academic_years_years_id], references: [years_id])
+  academic_years          academic_years @relation(fields: [academic_years_years_id], references: [year])
 
   teachers_teachers_id Int
   teacher              teachers @relation(fields: [teachers_teachers_id], references: [teachers_id])
 
+  type_classroom Int
+  classroom_types classroom_types @relation(fields: [type_classroom], references: [classroom_type_id])
+
+
   classroom_teacher  classroom_teacher[]
   classroom_students classroom_students[]
   camp_classroom     camp_classroom[]
+  
+}
+
+model classroom_types {
+  classroom_type_id Int    @id @default(autoincrement())
+  name              String @unique @db.VarChar(255)
+  valid_grades      String @db.VarChar(255)
+
+  classrooms        classrooms[]
 }
 
 enum GradeLevel {
@@ -124,12 +139,16 @@ model camp {
   description      String      @db.Text
   status           camp_status @default(OPEN)
   has_shirt        Boolean     @default(false)
+  img_camp_url            String      @db.VarChar(500)
+  img_shirt_url       String      @db.VarChar(500)
 
-  plan_type_plane_id Int
-  plan_type          plan_type @relation(fields: [plan_type_plane_id], references: [plane_id])
+  // plan_type_plane_id Int
+  // plan_type          plan_type @relation(fields: [plan_type_plane_id], references: [plane_id])
 
   created_by_teacher_id Int
   created_by            teachers @relation(fields: [created_by_teacher_id], references: [teachers_id])
+
+  
 
   camp_template       camp_template[]
   camp_classroom      camp_classroom[]
@@ -147,16 +166,16 @@ enum camp_status {
   CLOSED
 }
 
-model plan_type {
-  plane_id Int        @id @default(autoincrement())
-  name     plan_type_
-  camp     camp[]
-}
+// model plan_type {
+//   plane_id Int        @id @default(autoincrement())
+//   name     plan_type_
+//   // camp     camp[]
+// }
 
-enum plan_type_ {
-  new
-  continue
-}
+// enum plan_type_ {
+//   new
+//   continue
+// }
 
 model camp_daily_schedule {
   daily_schedule_id Int @id @default(autoincrement())
@@ -209,8 +228,9 @@ model teacher_enrollment {
 
 model student_enrollment {
   student_enrollment_id Int      @id @default(autoincrement())
-  enrolled_at           DateTime @default(now())
+  enrolled_at           DateTime  // นักเรียนลงทะเบียน
   shirt_size            String   @db.VarChar(10)
+  // jorn DateTime @default(now()) // นักเรียนลงทะเบียน
 
   student_students_id Int
   student             students         @relation(fields: [student_students_id], references: [students_id])
@@ -225,6 +245,7 @@ model attendance_record_student {
   record_id                     Int      @id @default(autoincrement())
   checkin_time                  DateTime
   attendance_teacher_session_id Int
+  image_url                     String?  @db.Text
 
   attendance_teachers_session_id attendance_teachers @relation(fields: [attendance_teacher_session_id], references: [session_id])
 }
@@ -245,13 +266,14 @@ model attendance_teachers {
 enum attendance_teachers_methed {
   QR
   NFC
+  Image
   default
 }
 
 model certificate {
   certificate_id        Int                @id @default(autoincrement())
   issue_date            DateTime           @default(now())
-  file_url              String             @db.VarChar(255)
+  file_url              String             @db.VarChar(500)
   certificate_no        Int
   certificate_no_star   Int
   student_enrollment_id Int
@@ -282,7 +304,7 @@ model mission {
   title       String? @db.VarChar(255)
   description String? @db.Text
   type        MissionType @default(QUESTION_ANSWERING)
-  instructions String? @db.Text
+  // instructions String? @db.Text
 
   station_station_id Int
   station            station @relation(fields: [station_station_id], references: [station_id])
@@ -294,7 +316,7 @@ model mission {
 
 model mission_result {
   mission_result_id Int                   @id @default(autoincrement())
-  mothod            mission_result_method
+  method            mission_result_method
   status            mission_result_status
   submitted_at      DateTime              @default(now())
 
@@ -348,12 +370,24 @@ model mission_question_choice {
 model mission_answer {
   answer_id                        Int              @id @default(autoincrement())
   mission_result_mission_result_id Int
+  
   mission_result mission_result @relation(fields: [mission_result_mission_result_id], references: [mission_result_id])
   mission_question_question_id Int 
   mission_question mission_question @relation(fields: [mission_question_question_id], references: [question_id])
   
   answer_mcq mission_answer_mcq[]
   answer_text mission_answer_text[]
+  answer_photo mission_answer_photo[]
+  
+}
+
+model mission_answer_photo {
+  id Int @id @default(autoincrement())
+
+  mission_answer_id Int
+  mission_answer mission_answer @relation(fields: [mission_answer_id], references: [answer_id])
+
+  img_url String @db.Text
 }
 
 model mission_answer_mcq{
@@ -426,8 +460,4 @@ model suggestion_analysis_summary {
   evaluation_answer               evaluation_answer @relation(fields: [evaluation_answer_evaluation_id], references: [answer_id])
 }
 
-model classroom_types {
-  classroom_type_id Int    @id @default(autoincrement())
-  name              String @unique @db.VarChar(255)
-  valid_grades      String @db.VarChar(255)
-}
+
