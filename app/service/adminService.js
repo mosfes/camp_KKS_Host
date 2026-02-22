@@ -95,7 +95,10 @@ const addClassroom = async (data) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to add classroom');
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to add classroom');
+    }
     return await res.json();
   } catch (error) {
     throw error;

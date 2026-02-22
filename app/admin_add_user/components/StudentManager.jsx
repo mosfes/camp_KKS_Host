@@ -279,14 +279,21 @@ const StudentManager = () => {
     };
 
     const getStudentClassroom = (stu) => {
-        const cls = getLatestClassroomObj(stu);
-        if (cls) {
-            const gradeLabel = gradeOptions.find(g => g.key === cls.grade)?.label || cls.grade;
-            return `${gradeLabel} (${cls.type_classroom})`;
-        }
-        return "-";
-    };
+    const cls = getLatestClassroomObj(stu);
+    if (cls) {
+        const gradeLabel = gradeOptions.find(g => g.key === cls.grade)?.label || cls.grade;
 
+        const foundType = classroomTypes.find(t => t.classroom_type_id.toString() === cls.type_classroom?.toString());
+        const roomName = foundType ? foundType.name : cls.type_classroom;
+
+        if (roomName) {
+            return `${gradeLabel} (${roomName})`;
+        }
+        
+        return `${gradeLabel}`;
+    }
+    return "-";
+};
     const filteredStudents = students.filter(stu => {
         const classroom = getLatestClassroomObj(stu);
 

@@ -44,13 +44,42 @@ export async function POST(req) {
         where: {
             grade: body.grade,
             type_classroom: parseInt(body.type_classroom),
-            academic_years_years_id: parseInt(body.academic_year_id),
-            teachers_teachers_id: parseInt(body.teacher_id)
+            academic_years_years_id: parseInt(body.academic_year_id)
         }
     });
 
     if (existing) {
-        return NextResponse.json({ error: 'ครูท่านนี้มีรายชื่อในห้องเรียนนี้และปีการศึกษานี้แล้ว' }, { status: 400 });
+        return NextResponse.json({ error: 'มีห้องเรียนนี้ในปีการศึกษานี้แล้ว' }, { status: 400 });
+    }
+
+    if (body.teacher_id_2 && body.teacher_id_2 === body.teacher_id) {
+       return NextResponse.json({ error: 'ไม่สามารถเลือกครูประจำชั้นคนที่ 2 ซ้ำกับคนที่ 1 ได้' }, { status: 400 });
+    }
+
+    const teacherIdsToCheck = [parseInt(body.teacher_id)];
+    if (body.teacher_id_2) {
+        teacherIdsToCheck.push(parseInt(body.teacher_id_2));
+    }
+
+    const teacherAlreadyAssigned = await prisma.classrooms.findFirst({
+        where: {
+            academic_years_years_id: parseInt(body.academic_year_id),
+            OR: [
+                { teachers_teachers_id: { in: teacherIdsToCheck } },
+                {
+                    classroom_teacher: {
+                        some: {
+                            teacher_teachers_id: { in: teacherIdsToCheck }
+                        }
+                    }
+                }
+            ]
+        },
+        include: { teacher: true, classroom_teacher: { include: { teacher: true } } }
+    });
+
+    if (teacherAlreadyAssigned) {
+        return NextResponse.json({ error: 'ครูท่านนี้เป็นที่ปรึกษาในห้องอื่นของปีการศึกษานี้แล้ว ไม่สามารถเลือกซ้ำได้' }, { status: 400 });
     }
 
     const newClassroom = await prisma.classrooms.create({
@@ -61,6 +90,15 @@ export async function POST(req) {
         teachers_teachers_id: parseInt(body.teacher_id)
       }
     });
+
+    if (body.teacher_id_2) {
+       await prisma.classroom_teacher.create({
+         data: {
+           classroom_classroom_id: newClassroom.classroom_id,
+           teacher_teachers_id: parseInt(body.teacher_id_2)
+         }
+       });
+    }
 
     return NextResponse.json(newClassroom, { status: 201 });
   } catch (error) {
@@ -110,13 +148,12 @@ export async function PUT(req) {
 
     if (!id) return NextResponse.json({ error: 'ID ไม่ถูกต้อง' }, { status: 400 });
 
-    // ตรวจสอบข้อมูลซ้ำตอนแก้ไข (กรณีเปลี่ยนครูเป็นคนที่ซ้ำกับที่มีอยู่แล้วในห้องเดิม)
+    // ตรวจสอบข้อมูลซ้ำตอนแก้ไข (กรณีแก้ไขเป็นห้องเรียนที่ซ้ำกับที่มีอยู่แล้วในปีการศึกษานั้น)
     const existing = await prisma.classrooms.findFirst({
         where: {
             grade: body.grade,
             type_classroom: parseInt(body.type_classroom),
             academic_years_years_id: parseInt(body.academic_year_id),
-            teachers_teachers_id: parseInt(body.teacher_id),
             NOT: {
                 classroom_id: id 
             }
@@ -124,17 +161,65 @@ export async function PUT(req) {
     });
 
     if (existing) {
-        return NextResponse.json({ error: 'ข้อมูลซ้ำ: ครูท่านนี้มีรายชื่อในห้องนี้แล้ว' }, { status: 400 });
+        return NextResponse.json({ error: 'ข้อมูลซ้ำ: มีห้องเรียนนี้ในปีการศึกษานี้แล้ว' }, { status: 400 });
     }
 
-    const updatedClassroom = await prisma.classrooms.update({
-      where: { classroom_id: id },
-      data: {
-        grade: body.grade,
-        type_classroom: parseInt(body.type_classroom),
-        academic_years_years_id: parseInt(body.academic_year_id),
-        teachers_teachers_id: parseInt(body.teacher_id)
-      }
+    if (body.teacher_id_2 && body.teacher_id_2 === body.teacher_id) {
+       return NextResponse.json({ error: 'ไม่สามารถเลือกครูประจำชั้นคนที่ 2 ซ้ำกับคนที่ 1 ได้' }, { status: 400 });
+    }
+
+    const teacherIdsToCheck = [parseInt(body.teacher_id)];
+    if (body.teacher_id_2) {
+        teacherIdsToCheck.push(parseInt(body.teacher_id_2));
+    }
+
+    const teacherAlreadyAssigned = await prisma.classrooms.findFirst({
+        where: {
+            academic_years_years_id: parseInt(body.academic_year_id),
+            NOT: {
+                classroom_id: id 
+            },
+            OR: [
+                { teachers_teachers_id: { in: teacherIdsToCheck } },
+                {
+                    classroom_teacher: {
+                        some: {
+                            teacher_teachers_id: { in: teacherIdsToCheck }
+                        }
+                    }
+                }
+            ]
+        }
+    });
+
+    if (teacherAlreadyAssigned) {
+        return NextResponse.json({ error: 'ครูท่านนี้เป็นที่ปรึกษาในห้องอื่นของปีการศึกษานี้แล้ว ไม่สามารถเลือกซ้ำได้' }, { status: 400 });
+    }
+
+    const updatedClassroom = await prisma.$transaction(async (prisma) => {
+        const classroom = await prisma.classrooms.update({
+          where: { classroom_id: id },
+          data: {
+            grade: body.grade,
+            type_classroom: parseInt(body.type_classroom),
+            academic_years_years_id: parseInt(body.academic_year_id),
+            teachers_teachers_id: parseInt(body.teacher_id)
+          }
+        });
+
+        await prisma.classroom_teacher.deleteMany({
+            where: { classroom_classroom_id: id }
+        });
+
+        if (body.teacher_id_2) {
+            await prisma.classroom_teacher.create({
+              data: {
+                classroom_classroom_id: id,
+                teacher_teachers_id: parseInt(body.teacher_id_2)
+              }
+            });
+        }
+        return classroom;
     });
 
     return NextResponse.json(updatedClassroom);

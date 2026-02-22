@@ -160,6 +160,7 @@ const ClassroomManager = () => {
         grade: "",
         type_classroom: "",
         teacher_id: "",
+        teacher_id_2: "",
         academic_year_id: ""
     });
 
@@ -175,10 +176,14 @@ const ClassroomManager = () => {
     const handleEditClassroom = (room) => {
         setIsEditing(true);
         setEditId(room.classroom_id);
+        const secondTeacherId = room.classroom_teacher && room.classroom_teacher.length > 0
+            ? room.classroom_teacher[0].teacher_teachers_id.toString()
+            : "";
         setFormData({
             grade: room.grade,
             type_classroom: room.type_classroom ? room.type_classroom.toString() : "",
             teacher_id: room.teachers_teachers_id ? room.teachers_teachers_id.toString() : "",
+            teacher_id_2: secondTeacherId,
             academic_year_id: room.academic_years_years_id ? room.academic_years_years_id.toString() : ""
         });
         onOpen();
@@ -255,8 +260,10 @@ const ClassroomManager = () => {
         });
     };
 
-
-
+    const displayRoomName = (typeKey) => {
+        const found = classroomTypes.find(t => t.classroom_type_id.toString() === typeKey?.toString());
+        return found ? found.name : typeKey;
+    };
 
     const handleSubmit = async (onClose) => {
         if (!formData.grade || !formData.teacher_id || !formData.type_classroom) {
@@ -264,9 +271,15 @@ const ClassroomManager = () => {
             return;
         }
 
+        if (formData.teacher_id === formData.teacher_id_2) {
+            showError("ข้อมูลไม่ถูกต้อง", "ไม่สามารถเลือกครูประจำชั้นคนที่ 2 ซ้ำกับคนที่ 1 ได้");
+            return;
+        }
+
         const payload = {
             ...formData,
-            type_classroom: parseInt(formData.type_classroom)
+            type_classroom: parseInt(formData.type_classroom),
+            teacher_id_2: formData.teacher_id_2 === "none" ? "" : formData.teacher_id_2
         };
 
         try {
@@ -290,14 +303,12 @@ const ClassroomManager = () => {
             grade: "",
             type_classroom: "",
             teacher_id: "",
+            teacher_id_2: "",
             academic_year_id: (years && years.length > 0 && years[0]?.year) ? years[0].year.toString() : ""
         });
         onOpen();
     };
-    const displayRoomName = (typeKey) => {
-        const found = classroomTypes.find(t => t.classroom_type_id.toString() === typeKey?.toString());
-        return found ? found.name : typeKey;
-    };
+
 
 
 
@@ -371,7 +382,16 @@ const ClassroomManager = () => {
                                 <TableRow key={room.classroom_id}>
                                     <TableCell>{gradeOptions.find(g => g.key === room.grade)?.label || room.grade}</TableCell>
                                     <TableCell>{displayRoomName(room.type_classroom)}</TableCell>
-                                    <TableCell>{room.teacher?.firstname} {room.teacher?.lastname}</TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col">
+                                            <span>{room.teacher?.firstname} {room.teacher?.lastname}</span>
+                                            {room.classroom_teacher && room.classroom_teacher.length > 0 && (
+                                                <span className="text-sm text-gray-500">
+                                                    {room.classroom_teacher[0].teacher?.firstname} {room.classroom_teacher[0].teacher?.lastname}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </TableCell>
                                     <TableCell>{room.academic_years?.year + 543}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
@@ -523,23 +543,52 @@ const ClassroomManager = () => {
                                     </Select>
                                 </div>
 
-                                <Select
-                                    label="ครูประจำชั้น"
-                                    placeholder="เลือกครู"
-                                    selectedKeys={formData.teacher_id ? [formData.teacher_id] : []}
-                                    onChange={(e) => handleSelectChange("teacher_id", e.target.value)}
-                                >
-                                    {teachers.map((t) => (
-                                        <SelectItem
-                                            key={t.teachers_id}
-                                            value={t.teachers_id}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Select
+                                        label="ครูประจำชั้น (คนที่ 1)"
+                                        placeholder="เลือกครู"
+                                        selectedKeys={formData.teacher_id ? [formData.teacher_id.toString()] : []}
+                                        onChange={(e) => handleSelectChange("teacher_id", e.target.value)}
+                                        classNames={{ listbox: "max-h-[300px] overflow-y-auto" }}
+                                    >
+                                        {teachers.map((t) => {
+                                            const idStr = t.teachers_id.toString();
+                                            return (
+                                                <SelectItem
+                                                    key={idStr}
+                                                    value={idStr}
+                                                    textValue={`${t.firstname} ${t.lastname}`}
+                                                >
+                                                    {t.firstname} {t.lastname}
+                                                </SelectItem>
+                                            );
+                                        })}
+                                    </Select>
 
-                                            textValue={`${t.firstname} ${t.lastname}`}
-                                        >
-                                            {t.firstname} {t.lastname}
+                                    <Select
+                                        label="ครูประจำชั้น (คนที่ 2)"
+                                        placeholder="ไม่มี"
+                                        selectedKeys={formData.teacher_id_2 ? [formData.teacher_id_2.toString()] : ["none"]}
+                                        onChange={(e) => handleSelectChange("teacher_id_2", e.target.value)}
+                                        classNames={{ listbox: "max-h-[300px] overflow-y-auto" }}
+                                    >
+                                        <SelectItem key="none" value="" textValue="ไม่มี">
+                                            ไม่มี
                                         </SelectItem>
-                                    ))}
-                                </Select>
+                                        {teachers.map((t) => {
+                                            const idStr = t.teachers_id.toString();
+                                            return (
+                                                <SelectItem
+                                                    key={idStr}
+                                                    value={idStr}
+                                                    textValue={`${t.firstname} ${t.lastname}`}
+                                                >
+                                                    {t.firstname} {t.lastname}
+                                                </SelectItem>
+                                            );
+                                        })}
+                                    </Select>
+                                </div>
 
                                 {/* ส่วนจัดการปีการศึกษา */}
                                 <Select
@@ -569,7 +618,7 @@ const ClassroomManager = () => {
                     )}
                 </ModalContent>
             </Modal>
-        </div >
+        </div>
     );
 };
 
