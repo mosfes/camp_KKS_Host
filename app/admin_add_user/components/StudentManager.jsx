@@ -62,11 +62,13 @@ const StudentManager = () => {
         { key: "Level_6", label: "ม.6", value: 6 },
     ];
 
+    const [classroomTypes, setClassroomTypes] = useState([]);
     const uniqueRoomTypes = Array.from(new Set(classrooms.map(c => c.type_classroom).filter(Boolean)));
-
     uniqueRoomTypes.sort();
-
-    const roomTypeOptions = uniqueRoomTypes.map(type => ({ key: type, label: type }));
+    const roomTypeOptions = uniqueRoomTypes.map(type => {
+        const found = classroomTypes.find(t => t.classroom_type_id.toString() === type.toString());
+        return { key: type.toString(), label: found ? found.name : type.toString() };
+    });
 
     const [allTeachers, setAllTeachers] = useState([]);
 
@@ -97,13 +99,14 @@ const StudentManager = () => {
             await Promise.all([
                 fetchClassrooms(),
                 fetchYears(),
-                fetchTeachers()
-            ]).then(([clsData, yearsData, tchData]) => {
+                fetchTeachers(),
+                fetchClassroomTypes()
+            ]).then(([clsData, yearsData, tchData, typeData]) => {
                 if (yearsData && yearsData.length > 0) {
                     const sortedYears = [...yearsData].sort((a, b) => b.year - a.year);
                     if (sortedYears.length > 0) {
-                        setSelectedYear(sortedYears[0].years_id.toString());
-                        setAddStudentYear(sortedYears[0].years_id.toString());
+                        setSelectedYear(sortedYears[0].year.toString());
+                        setAddStudentYear(sortedYears[0].year.toString());
                     }
                 }
             });
@@ -140,6 +143,15 @@ const StudentManager = () => {
         return data;
     };
 
+    const fetchClassroomTypes = async () => {
+        try {
+            const types = await studentService.getClassroomTypes();
+            setClassroomTypes(types);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     const fetchTeachers = async () => {
         const data = await studentService.getTeachers();
         setAllTeachers(data);
@@ -174,7 +186,7 @@ const StudentManager = () => {
         if (years.length > 0) {
 
             const sortedYears = [...years].sort((a, b) => b.year - a.year);
-            setAddStudentYear(sortedYears[0].years_id.toString());
+            setAddStudentYear(sortedYears[0].year.toString());
         }
         setAddStudentGrade("");
 
@@ -204,7 +216,7 @@ const StudentManager = () => {
         } else {
             if (years.length > 0) {
                 const sortedYears = [...years].sort((a, b) => b.year - a.year);
-                setAddStudentYear(sortedYears[0].years_id.toString());
+                setAddStudentYear(sortedYears[0].year.toString());
             }
             setAddStudentGrade("");
         }
@@ -367,10 +379,11 @@ const StudentManager = () => {
                     const roomName = String(roomInput).trim();
 
                     if (gradeEnum) {
+                        const foundType = classroomTypes.find(t => t.name.toLowerCase() === roomName.toLowerCase());
                         const foundClass = classrooms.find(c =>
                             c.academic_years_years_id.toString() === selectedYear.toString() &&
                             c.grade === gradeEnum &&
-                            c.type_classroom === roomName
+                            (foundType ? c.type_classroom === foundType.classroom_type_id : c.type_classroom.toString() === roomName)
                         );
 
                         if (foundClass) {
@@ -503,7 +516,7 @@ const StudentManager = () => {
                                     onChange={(e) => setSelectedYear(e.target.value)}
                                 >
                                     {years.map((y) => (
-                                        <SelectItem key={y.years_id.toString()} textValue={`ปีการศึกษา: ${(parseInt(y.year) + 543).toString()}`}>
+                                        <SelectItem key={y.year.toString()} textValue={`ปีการศึกษา: ${(parseInt(y.year) + 543).toString()}`}>
                                             {parseInt(y.year) + 543}
                                         </SelectItem>
                                     ))}
@@ -696,7 +709,7 @@ const StudentManager = () => {
                                             isDisabled={isEditing}
                                         >
                                             {years.map((y) => (
-                                                <SelectItem key={y.years_id.toString()} value={y.years_id.toString()} textValue={`${parseInt(y.year) + 543}`}>
+                                                <SelectItem key={y.year.toString()} value={y.year.toString()} textValue={`${parseInt(y.year) + 543}`}>
                                                     {parseInt(y.year) + 543}
                                                 </SelectItem>
                                             ))}
@@ -737,23 +750,18 @@ const StudentManager = () => {
                                                 c.academic_years_years_id.toString() === addStudentYear &&
                                                 c.grade === addStudentGrade
                                             )
-                                            .reduce((acc, current) => {
-                                                const x = acc.find(item => item.type_classroom === current.type_classroom);
-                                                if (!x) {
-                                                    return acc.concat([current]);
-                                                } else {
-                                                    return acc;
-                                                }
-                                            }, [])
-                                            .map((room) => (
-                                                <SelectItem
-                                                    key={room.classroom_id}
-                                                    value={room.classroom_id}
-                                                    textValue={`${room.type_classroom}`}
-                                                >
-                                                    {room.type_classroom}
-                                                </SelectItem>
-                                            ))}
+                                            .map((room) => {
+                                                const roomName = classroomTypes.find(t => t.classroom_type_id === room.type_classroom)?.name || room.type_classroom;
+                                                return (
+                                                    <SelectItem
+                                                        key={room.classroom_id}
+                                                        value={room.classroom_id}
+                                                        textValue={`${roomName}`}
+                                                    >
+                                                        {roomName}
+                                                    </SelectItem>
+                                                )
+                                            })}
                                     </Select>
                                 </div>
                                 {formData.classroom_id && (() => {
