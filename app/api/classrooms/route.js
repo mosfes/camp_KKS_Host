@@ -43,7 +43,7 @@ export async function POST(req) {
     const existing = await prisma.classrooms.findFirst({
         where: {
             grade: body.grade,
-            type_classroom: body.type_classroom,
+            type_classroom: parseInt(body.type_classroom),
             academic_years_years_id: parseInt(body.academic_year_id),
             teachers_teachers_id: parseInt(body.teacher_id)
         }
@@ -56,7 +56,7 @@ export async function POST(req) {
     const newClassroom = await prisma.classrooms.create({
       data: {
         grade: body.grade,
-        type_classroom: body.type_classroom,
+        type_classroom: parseInt(body.type_classroom),
         academic_years_years_id: parseInt(body.academic_year_id),
         teachers_teachers_id: parseInt(body.teacher_id)
       }
@@ -114,7 +114,7 @@ export async function PUT(req) {
     const existing = await prisma.classrooms.findFirst({
         where: {
             grade: body.grade,
-            type_classroom: body.type_classroom,
+            type_classroom: parseInt(body.type_classroom),
             academic_years_years_id: parseInt(body.academic_year_id),
             teachers_teachers_id: parseInt(body.teacher_id),
             NOT: {
@@ -131,7 +131,7 @@ export async function PUT(req) {
       where: { classroom_id: id },
       data: {
         grade: body.grade,
-        type_classroom: body.type_classroom,
+        type_classroom: parseInt(body.type_classroom),
         academic_years_years_id: parseInt(body.academic_year_id),
         teachers_teachers_id: parseInt(body.teacher_id)
       }

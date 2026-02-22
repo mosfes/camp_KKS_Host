@@ -107,7 +107,7 @@ const ClassroomManager = () => {
             const allSelected = targetGrades.every(g => prev.valid_grades.includes(g));
             let newGrades;
             if (allSelected) {
-  
+
                 newGrades = prev.valid_grades.filter(g => !targetGrades.includes(g));
             } else {
                 newGrades = [...new Set([...prev.valid_grades, ...targetGrades])].sort();
@@ -177,9 +177,9 @@ const ClassroomManager = () => {
         setEditId(room.classroom_id);
         setFormData({
             grade: room.grade,
-            type_classroom: room.type_classroom,
-            teacher_id: room.teachers_teachers_id.toString(),
-            academic_year_id: room.academic_years_years_id.toString()
+            type_classroom: room.type_classroom ? room.type_classroom.toString() : "",
+            teacher_id: room.teachers_teachers_id ? room.teachers_teachers_id.toString() : "",
+            academic_year_id: room.academic_years_years_id ? room.academic_years_years_id.toString() : ""
         });
         onOpen();
     };
@@ -212,10 +212,11 @@ const ClassroomManager = () => {
 
         return classroomTypes
             .filter(type => {
+                if (!type.valid_grades) return false;
                 const validGrades = type.valid_grades.split(',').map(Number);
                 return validGrades.includes(gradeLevel);
             })
-            .map(type => ({ key: type.name, label: type.name }));
+            .map(type => ({ key: type.classroom_type_id.toString(), label: type.name }));
     };
 
     const fetchData = async () => {
@@ -232,8 +233,8 @@ const ClassroomManager = () => {
             setYears(yearData);
             setClassroomTypes(typeData);
 
-            if (yearData.length > 0 && !formData.academic_year_id) {
-                setFormData(prev => ({ ...prev, academic_year_id: yearData[0].years_id.toString() }));
+            if (yearData && yearData.length > 0 && yearData[0]?.year && !formData.academic_year_id) {
+                setFormData(prev => ({ ...prev, academic_year_id: yearData[0].year.toString() }));
             }
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -262,12 +263,18 @@ const ClassroomManager = () => {
             showError("ข้อมูลไม่ครบ", "กรุณากรอกข้อมูลให้ครบ");
             return;
         }
+
+        const payload = {
+            ...formData,
+            type_classroom: parseInt(formData.type_classroom)
+        };
+
         try {
             if (isEditing) {
-                await studentService.updateClassroom({ ...formData, classroom_id: editId });
+                await studentService.updateClassroom({ ...payload, classroom_id: editId });
                 showSuccess("สำเร็จ", "แก้ไขข้อมูลห้องเรียนสำเร็จ!");
             } else {
-                await studentService.addClassroom(formData);
+                await studentService.addClassroom(payload);
                 showSuccess("สำเร็จ", "เพิ่มข้อมูลห้องเรียนสำเร็จ!");
             }
             fetchData();
@@ -283,14 +290,13 @@ const ClassroomManager = () => {
             grade: "",
             type_classroom: "",
             teacher_id: "",
-            academic_year_id: years.length > 0 ? years[0].years_id.toString() : ""
+            academic_year_id: (years && years.length > 0 && years[0]?.year) ? years[0].year.toString() : ""
         });
         onOpen();
     };
     const displayRoomName = (typeKey) => {
-        if (typeKey === "Gifted") return "ห้อง Gifted";
-        if (typeKey === "Morkrajay") return "ห้องมอกระจาย";
-        return typeKey;
+        const found = classroomTypes.find(t => t.classroom_type_id.toString() === typeKey?.toString());
+        return found ? found.name : typeKey;
     };
 
 
@@ -321,7 +327,7 @@ const ClassroomManager = () => {
                                 >
                                     <SelectItem key="all" textValue="ปีการศึกษา: ทั้งหมด">ทั้งหมด</SelectItem>
                                     {years.map((y) => (
-                                        <SelectItem key={y.years_id.toString()} textValue={`ปีการศึกษา: ${(parseInt(y.year) + 543).toString()}`}>
+                                        <SelectItem key={y.year.toString()} textValue={`ปีการศึกษา: ${(parseInt(y.year) + 543).toString()}`}>
                                             {parseInt(y.year) + 543}
                                         </SelectItem>
                                     ))}
@@ -408,11 +414,11 @@ const ClassroomManager = () => {
                                         </div>
                                         <div className="grid grid-cols-4 gap-2">
                                             {years.map(y => (
-                                                <div key={y.years_id} className="p-2 border rounded-xl flex justify-between items-center text-sm">
+                                                <div key={y.year} className="p-2 border rounded-xl flex justify-between items-center text-sm">
                                                     <span>{(parseInt(y.year) + 543)}</span>
                                                     <span
                                                         className="text-red-500 cursor-pointer hover:bg-red-50 p-1 rounded"
-                                                        onClick={() => handleDeleteAcademicYear(y.years_id)}
+                                                        onClick={() => handleDeleteAcademicYear(y.year)}
                                                     >
                                                         <Trash2 size={14} />
                                                     </span>
@@ -545,8 +551,8 @@ const ClassroomManager = () => {
                                 >
                                     {years.map((y) => (
                                         <SelectItem
-                                            key={y.years_id}
-                                            value={y.years_id}
+                                            key={y.year}
+                                            value={y.year}
                                             textValue={`${parseInt(y.year) + 543}`}
                                         >
                                             {parseInt(y.year) + 543}
