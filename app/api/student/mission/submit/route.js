@@ -1,14 +1,16 @@
-
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-
-const STUDENT_ID = 1;
+import { requireStudent } from "@/lib/auth";
 
 export async function POST(req) {
+    const { student, error: authError } = await requireStudent();
+    if (authError) return authError;
+
+    const studentId = student.students_id;
+
     try {
         const body = await req.json();
         const { campId, missionId, answers } = body;
-        // answers array: [{ questionId, type: "TEXT"|"MCQ", value: "some text" | "A" }]
 
         if (!campId || !missionId || !answers) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -17,7 +19,7 @@ export async function POST(req) {
         // 1. Find Student Enrollment
         const enrollment = await prisma.student_enrollment.findFirst({
             where: {
-                student_students_id: STUDENT_ID,
+                student_students_id: studentId,
                 camp_camp_id: campId
             }
         });
@@ -37,9 +39,9 @@ export async function POST(req) {
         if (!result) {
             result = await prisma.mission_result.create({
                 data: {
-                    mothod: "Code",
+                    method: "Code",
                     status: "completed",
-                    submitted_at: new Date(),
+                    submitted_at: new Date(Date.now() + 7 * 60 * 60 * 1000), // Thai UTC+7
                     student_enrollment_id: enrollment.student_enrollment_id,
                     mission_mission_id: missionId
                 }
@@ -47,13 +49,15 @@ export async function POST(req) {
         } else {
             result = await prisma.mission_result.update({
                 where: { mission_result_id: result.mission_result_id },
-                data: { status: "completed", submitted_at: new Date() }
+                data: {
+                    status: "completed",
+                    submitted_at: new Date(Date.now() + 7 * 60 * 60 * 1000),
+                }
             });
         }
 
         // 3. Save Answers
         for (const ans of answers) {
-            // Create mission_answer link
             const missionAnswer = await prisma.mission_answer.create({
                 data: {
                     mission_result_mission_result_id: result.mission_result_id,
@@ -61,7 +65,6 @@ export async function POST(req) {
                 }
             });
 
-            // Save specific type based on new schema models
             if (ans.type === "TEXT") {
                 await prisma.mission_answer_text.create({
                     data: {

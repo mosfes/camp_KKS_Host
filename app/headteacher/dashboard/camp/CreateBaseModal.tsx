@@ -7,8 +7,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Input,
-  Textarea,
 } from "@heroui/react";
 import { useState } from "react";
 import { Save } from "lucide-react";
@@ -35,8 +33,7 @@ export default function CreateBaseModal({
 
   const handleSubmit = async () => {
     if (!name.trim()) {
-      showError("Error", "Base Name is required");
-
+      showError("ข้อผิดพลาด", "กรุณากรอกชื่อฐานกิจกรรม");
       return;
     }
 
@@ -44,31 +41,19 @@ export default function CreateBaseModal({
       setLoading(true);
       const response = await fetch("/api/stations", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          description,
-          campId,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description, campId }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to create base");
-      }
+      if (!response.ok) throw new Error("Failed to create base");
 
       const newBase = await response.json();
-
-      showSuccess("Success", "Base created successfully");
+      showSuccess("สำเร็จ", "สร้างฐานกิจกรรมสำเร็จ");
       onClose();
-      // Redirect to the new base page
-      router.push(
-        `/headteacher/dashboard/camp/${campId}/base/${newBase.station_id}`,
-      );
+      router.push(`/headteacher/dashboard/camp/${campId}/base/${newBase.station_id}`);
     } catch (error) {
       console.error("Error creating base:", error);
-      showError("Error", "Failed to create base");
+      showError("ข้อผิดพลาด", "สร้างฐานกิจกรรมไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
@@ -82,70 +67,63 @@ export default function CreateBaseModal({
         backdrop: "bg-black/60 backdrop-blur-sm",
       }}
       isOpen={isOpen}
-      size="2xl"
+      size="lg"
       onOpenChange={onClose}
     >
       <ModalContent>
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
-              <h2 className="text-2xl font-bold text-gray-900">Create Base</h2>
-              <p className="text-sm text-gray-500 font-normal">
-                Fill in the base information
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900">สร้างฐานกิจกรรม</h2>
+              <p className="text-sm text-gray-500 font-normal">กรอกข้อมูลฐานกิจกรรม</p>
             </ModalHeader>
 
-            <ModalBody className="py-6 space-y-4">
+            <ModalBody className="py-6 space-y-4 px-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Base Name
+                  ชื่อฐานกิจกรรม <span className="text-red-500">*</span>
                 </label>
-                <Input
-                  classNames={{
-                    inputWrapper:
-                      "bg-gray-50 border-gray-200 hover:border-gray-300 transition-colors",
-                  }}
-                  placeholder="e.g., Nature Exploration Base"
+                <input
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors"
+                  placeholder="เช่น ฐานสำรวจธรรมชาติ"
                   value={name}
-                  variant="bordered"
-                  onValueChange={setName}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Base Description
+                  รายละเอียด
                 </label>
-                <Textarea
-                  classNames={{
-                    inputWrapper:
-                      "bg-gray-50 border-gray-200 hover:border-gray-300 transition-colors",
-                  }}
-                  minRows={3}
-                  placeholder="Describe the activities and goals of this base"
+                <textarea
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors resize-none"
+                  placeholder="อธิบายกิจกรรมและเป้าหมายของฐานนี้"
+                  rows={3}
                   value={description}
-                  variant="bordered"
-                  onValueChange={setDescription}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
             </ModalBody>
 
-            <ModalFooter className="p-6 pt-2">
+            <ModalFooter className="p-6 pt-2 flex-col gap-2">
               <Button
+                fullWidth
+                className="bg-[#6b857a] text-white rounded-xl font-bold shadow-lg hover:bg-[#5a7268]"
                 isLoading={loading}
+                size="lg"
+                startContent={!loading && <Save size={18} />}
                 onPress={handleSubmit}
-                className="bg-[#6b857a] text-white font-medium"
-                // Note: The design image shows a grey button like this
-                startContent={<Save size={18} />}
               >
-                Create Base
+                สร้างฐานกิจกรรม
               </Button>
               <Button
-                className="text-gray-700 font-medium bg-[#f5f1e8]"
+                fullWidth
+                className="font-medium text-gray-600"
+                size="lg"
                 variant="light"
                 onPress={onClose}
               >
-                Cancel
+                ยกเลิก
               </Button>
             </ModalFooter>
           </>

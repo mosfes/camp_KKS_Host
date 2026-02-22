@@ -22,24 +22,29 @@ export default function StudentDashboard() {
   const router = useRouter();
   const [camps, setCamps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [student, setStudent] = useState<any>(null);
 
   useEffect(() => {
-    async function fetchStudentCamps() {
+    async function fetchData() {
       try {
-        const res = await fetch("/api/student/camps");
+        const [campsRes, studentRes] = await Promise.all([
+          fetch("/api/student/camps"),
+          fetch("/api/auth/student/me")
+        ]);
 
-        if (res.ok) {
-          const data = await res.json();
-
-          setCamps(data);
+        if (campsRes.ok) {
+          setCamps(await campsRes.json());
+        }
+        if (studentRes.ok) {
+          setStudent(await studentRes.json());
         }
       } catch (error) {
-        console.error("Failed to fetch camps", error);
+        console.error("Failed to fetch data", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchStudentCamps();
+    fetchData();
   }, []);
 
   const availableCamps = camps.filter((c: any) => !c.isRegistered);
@@ -56,7 +61,9 @@ export default function StudentDashboard() {
         {/* Greeting Card */}
         <div className="bg-[#5d7c6f] rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
           <div className="relative z-10">
-            <h1 className="text-2xl font-bold mb-2">สวัสดี, น้องริว! 👋</h1>
+            <h1 className="text-2xl font-bold mb-2">
+              สวัสดี, น้อง{student?.firstname || "ๆ"}! 👋
+            </h1>
             <p className="opacity-90">พร้อมสำหรับการผจญภัยครั้งใหม่หรือยัง?</p>
           </div>
           <div className="absolute right-0 bottom-0 opacity-10">

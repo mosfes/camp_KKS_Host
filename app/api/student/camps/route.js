@@ -1,36 +1,43 @@
-
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-
-// HARDCODED STUDENT ID for Demo
-const STUDENT_ID = 1;
+import { requireStudent } from "@/lib/auth";
 
 export async function GET() {
+    const { student, error: authError } = await requireStudent();
+    if (authError) return authError;
+
+    const studentId = student.students_id;
+
     try {
-        // 1. Find classrooms for Gifted Grade 4
-        // In a real app, we would find the student's classroom first.
-        // For this requirement: "Assume student is Gifted Grade 4"
+        // 1. Find classrooms for the student
+        // ในระบบจริง นักเรียนควรถูก link กับห้องเรียนผ่าน classroom_students
         const classrooms = await prisma.classrooms.findMany({
             where: {
-                grade: "Level_4",
-                type_classroom: "Gifted" // Assuming this string matches. If not, we might need to check available types.
+                classroom_students: {
+                    some: {
+                        student_students_id: studentId
+                    }
+                }
             },
             select: { classroom_id: true }
         });
 
-        const classroomIds = classrooms.map(c => c.classroom_id);
+        let classroomIds = classrooms.map(c => c.classroom_id);
 
+        // Fallback: หากยังไม่ได้ link ห้องเรียนใน DB (สำหรับ Demo) ให้หาตาม Grade 4 (Level_4) เหมือนเดิม
         if (classroomIds.length === 0) {
-            // Fallback: If no specific "Gifted" classroom, maybe just fetch by Grade 4 for demo purposes? 
-            // Or return empty if strict. Let's try to be a bit flexible for the demo.
-            console.log("No Gifted Level_4 classrooms found.");
+            const demoClassrooms = await prisma.classrooms.findMany({
+                where: { grade: "Level_4" },
+                select: { classroom_id: true }
+            });
+            classroomIds = demoClassrooms.map(c => c.classroom_id);
         }
 
         // 2. Find Camps linked to these classrooms
         const camps = await prisma.camp.findMany({
             where: {
                 deletedAt: null,
-                status: "OPEN", // Only show OPEN camps? Or all? User said "Available" and "My Camps" tabs.
+                status: "OPEN",
                 camp_classroom: {
                     some: {
                         classroom_classroom_id: { in: classroomIds }
@@ -40,7 +47,7 @@ export async function GET() {
             include: {
                 student_enrollment: {
                     where: {
-                        student_students_id: STUDENT_ID
+                        student_students_id: studentId
                     },
                     include: {
                         mission_result: {
@@ -72,8 +79,8 @@ export async function GET() {
 
         // 3. Transform data for frontend
         const studentCamps = camps.map(camp => {
-            const isRegistered = camp.student_enrollment.length > 0;
-            const enrollment = isRegistered ? camp.student_enrollment[0] : null;
+            const enrollment = camp.student_enrollment.length > 0 ? camp.student_enrollment[0] : null;
+            const isRegistered = !!enrollment?.enrolled_at;
 
             return {
                 id: camp.camp_id,
@@ -82,7 +89,7 @@ export async function GET() {
                 location: camp.location,
                 startDate: camp.start_date.toISOString().split('T')[0],
                 endDate: camp.end_date.toISOString().split('T')[0],
-                status: isRegistered ? "Registered" : "Available", // Or derived from camp status
+                status: isRegistered ? "Registered" : "Available",
                 isRegistered: isRegistered,
                 shirtSize: enrollment?.shirt_size || null,
                 hasShirt: camp.has_shirt,
@@ -90,8 +97,8 @@ export async function GET() {
                 endShirtDate: camp.end_shirt_date,
                 rawStartDate: camp.start_date,
                 rawEndDate: camp.end_date,
-                missionResults: enrollment?.mission_result || [], // Pass results to frontend
-                station: camp.station // Pass station/mission data
+                missionResults: enrollment?.mission_result || [],
+                station: camp.station
             };
         });
 

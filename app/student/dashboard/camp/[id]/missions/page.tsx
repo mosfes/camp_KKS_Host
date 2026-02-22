@@ -38,6 +38,11 @@ export default function StudentMissionsPage() {
         const found = data.find((c: any) => c.id === Number(id));
 
         if (found) {
+          if (!found.isRegistered) {
+            toast.error("กรุณาลงทะเบียนเข้าร่วมค่ายก่อนเข้าถึงหน้าภารกิจ");
+            router.replace(`/student/dashboard/camp/${id}`);
+            return;
+          }
           setCamp(found);
         } else {
           toast.error("ไม่พบค่าย");
@@ -135,8 +140,8 @@ export default function StudentMissionsPage() {
             const progress =
               stationMissions.length > 0
                 ? Math.round(
-                    (completedInStation / stationMissions.length) * 100,
-                  )
+                  (completedInStation / stationMissions.length) * 100,
+                )
                 : 0;
             const completed = completedInStation;
 

@@ -2,72 +2,48 @@
 // app/api/camps/stats/route.js
 // ==========================================
 import { NextResponse } from "next/server";
-import { prisma } from '@/lib/db';
+import { prisma } from "@/lib/db";
+import { requireTeacher } from "@/lib/auth";
 
 export async function GET(request) {
-    try {
-        // TODO: ดึง teacher_id จาก session/auth
-        const teacherId = 1;
+    // ตรวจสอบ session
+    const { teacher, error: authError } = await requireTeacher();
+    if (authError) return authError;
 
+    const teacherId = teacher.teachers_id;
+
+    try {
         // นับจำนวนค่ายทั้งหมดที่สร้าง
         const totalCamps = await prisma.camp.count({
-            where: {
-                created_by_teacher_id: teacherId,
-                deletedAt: null
-            },
+            where: { created_by_teacher_id: teacherId, deletedAt: null },
         });
 
         // นับจำนวนค่ายที่ active (OPEN)
         const activeCamps = await prisma.camp.count({
-            where: {
-                created_by_teacher_id: teacherId,
-                status: "OPEN",
-                deletedAt: null
-            },
+            where: { created_by_teacher_id: teacherId, status: "OPEN", deletedAt: null },
         });
 
         // นับจำนวนนักเรียนทั้งหมดที่ลงทะเบียน
         const totalEnrollments = await prisma.student_enrollment.count({
-            where: {
-                camp: {
-                    created_by_teacher_id: teacherId,
-                    deletedAt: null
-                },
-            },
+            where: { camp: { created_by_teacher_id: teacherId, deletedAt: null } },
         });
 
-        // นับจำนวนนักเรียนที่ไม่ซ้ำกัน
+        // นักเรียนที่ไม่ซ้ำกัน
         const uniqueStudents = await prisma.student_enrollment.findMany({
-            where: {
-                camp: {
-                    created_by_teacher_id: teacherId,
-                    deletedAt: null
-                },
-            },
-            select: {
-                student_students_id: true,
-            },
+            where: { camp: { created_by_teacher_id: teacherId, deletedAt: null } },
+            select: { student_students_id: true },
             distinct: ["student_students_id"],
         });
 
+        // ครูที่ไม่ซ้ำกัน
         const uniqueTeachers = await prisma.teacher_enrollment.findMany({
-            where: {
-                camp: {
-                    created_by_teacher_id: teacherId,
-                    deletedAt: null
-                },
-            },
-            select: {
-                teacher_teachers_id: true,
-            },
+            where: { camp: { created_by_teacher_id: teacherId, deletedAt: null } },
+            select: { teacher_teachers_id: true },
             distinct: ["teacher_teachers_id"],
         });
 
-        const totalTeachers = uniqueTeachers.length;
-
-        // คำนวณค่าเฉลี่ยการลงทะเบียนต่อค่าย
-        const avgEnrollment =
-            totalCamps > 0 ? Math.round(totalEnrollments / totalCamps) : 0;
+        // ค่าเฉลี่ย
+        const avgEnrollment = totalCamps > 0 ? Math.round(totalEnrollments / totalCamps) : 0;
 
         return NextResponse.json(
             {
@@ -82,9 +58,6 @@ export async function GET(request) {
         );
     } catch (error) {
         console.error("Error fetching stats:", error);
-        return NextResponse.json(
-            { error: "Failed to fetch stats" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
     }
 }

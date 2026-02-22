@@ -25,11 +25,11 @@ export default async function Home() {
     });
 
     if (teacher) {
-      // เช็ค Role ว่าเป็น Admin หรือ ครูทั่วไป
+      // set cookie ก่อน redirect โดยผ่าน sync-session
       if (teacher.role === "ADMIN") {
-        redirect("/admin_add_user");
+        redirect("/api/auth/sync-session?to=/admin_add_user");
       } else {
-        redirect("/headteacher/dashboard");
+        redirect("/api/auth/sync-session?to=/headteacher/dashboard");
       }
     }
 
@@ -38,10 +38,11 @@ export default async function Home() {
     });
 
     if (student) {
-      redirect("/student/dashboard");
+      redirect("/api/auth/sync-session?to=/student/dashboard");
     }
 
     return <AutoLogout email={email} />;
+
   }
 
   return (

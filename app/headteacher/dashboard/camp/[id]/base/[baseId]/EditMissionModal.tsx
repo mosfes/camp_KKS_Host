@@ -7,10 +7,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Input,
-  Textarea,
-  Select,
-  SelectItem,
 } from "@heroui/react";
 import { useState, useEffect } from "react";
 import { Save, CheckCircle2, Plus, Trash2 } from "lucide-react";
@@ -24,12 +20,15 @@ interface EditMissionModalProps {
   onSuccess: () => void;
 }
 
+// ประเภทภารกิจ (ตรงกับ MissionType enum ใน schema)
 const MISSION_TYPES = [
-  { key: "QUESTION_ANSWERING", label: "Question Answering" },
-  { key: "PHOTO_SUBMISSION", label: "Photo Submission" },
-  { key: "QR_CODE_SCANNING", label: "QR Code Scanning" },
-  { key: "MULTIPLE_CHOICE_QUIZ", label: "Multiple Choice Quiz" },
+  { key: "QUESTION_ANSWERING", label: "ตอบคำถาม" },
+  { key: "PHOTO_SUBMISSION", label: "ส่งรูปภาพ" },
+  { key: "QR_CODE_SCANNING", label: "สแกน QR Code" },
+  { key: "MULTIPLE_CHOICE_QUIZ", label: "แบบทดสอบหลายตัวเลือก" },
 ];
+
+const inputCls = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors text-sm";
 
 export default function EditMissionModal({
   isOpen,
@@ -39,221 +38,108 @@ export default function EditMissionModal({
 }: EditMissionModalProps) {
   const { showError, showSuccess } = useStatusModal();
 
-  // Form States
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<string>("QUESTION_ANSWERING");
+  const [type, setType] = useState("QUESTION_ANSWERING");
   const [description, setDescription] = useState("");
-  const [instructions, setInstructions] = useState("");
-
-  // QA State
   const [question, setQuestion] = useState("");
-
-  // MCQ State
   const [mcqQuestions, setMcqQuestions] = useState<any[]>([
-    {
-      text: "",
-      choices: [
-        { text: "", isCorrect: false },
-        { text: "", isCorrect: false },
-      ],
-    },
+    { text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] },
   ]);
-
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (missionData) {
       setTitle(missionData.title || "");
-      const currentType = missionData.type || "QUESTION_ANSWERING";
-
-      setType(currentType);
+      const t = missionData.type || "QUESTION_ANSWERING";
+      setType(t);
       setDescription(missionData.description || "");
-      setInstructions(missionData.instructions || "");
 
-      // Handle Mission Questions
-      if (
-        missionData.mission_question &&
-        missionData.mission_question.length > 0
-      ) {
-        if (currentType === "QUESTION_ANSWERING") {
-          setQuestion(missionData.mission_question[0].question_text);
-        } else if (currentType === "MULTIPLE_CHOICE_QUIZ") {
-          // Filter for MCQ type questions just in case
-          const mcqs = missionData.mission_question.filter(
-            (q: any) => q.question_type === "MCQ",
-          );
-
-          if (mcqs.length > 0) {
-            setMcqQuestions(
-              mcqs.map((q: any) => ({
+      if (missionData.mission_question?.length > 0) {
+        if (t === "QUESTION_ANSWERING") {
+          setQuestion(missionData.mission_question[0].question_text || "");
+        } else if (t === "MULTIPLE_CHOICE_QUIZ") {
+          const mcqs = missionData.mission_question.filter((q: any) => q.question_type === "MCQ");
+          setMcqQuestions(
+            mcqs.length > 0
+              ? mcqs.map((q: any) => ({
                 text: q.question_text,
-                choices: q.choices
-                  ? q.choices.map((c: any) => ({
-                      text: c.choice_text,
-                      isCorrect: c.is_correct,
-                    }))
-                  : [
-                      { text: "", isCorrect: false },
-                      { text: "", isCorrect: false },
-                    ],
-              })),
-            );
-          } else {
-            // Fallback if data exists but no questions of type MCQ found (maybe old data)
-            setMcqQuestions([
-              {
-                text: "",
-                choices: [
-                  { text: "", isCorrect: false },
-                  { text: "", isCorrect: false },
-                ],
-              },
-            ]);
-          }
+                choices: q.choices?.map((c: any) => ({ text: c.choice_text, isCorrect: c.is_correct }))
+                  ?? [{ text: "", isCorrect: false }, { text: "", isCorrect: false }],
+              }))
+              : [{ text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] }]
+          );
         }
       } else {
         setQuestion("");
-        if (currentType === "MULTIPLE_CHOICE_QUIZ") {
-          setMcqQuestions([
-            {
-              text: "",
-              choices: [
-                { text: "", isCorrect: false },
-                { text: "", isCorrect: false },
-              ],
-            },
-          ]);
-        }
+        setMcqQuestions([{ text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] }]);
       }
     }
   }, [missionData]);
 
   // MCQ Handlers
-  const addMcqQuestion = () => {
-    setMcqQuestions([
-      ...mcqQuestions,
-      {
-        text: "",
-        choices: [
-          { text: "", isCorrect: false },
-          { text: "", isCorrect: false },
-        ],
-      },
-    ]);
-  };
+  const addMcqQuestion = () =>
+    setMcqQuestions([...mcqQuestions, { text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] }]);
 
-  const removeMcqQuestion = (qIndex: number) => {
+  const removeMcqQuestion = (i: number) => {
     if (mcqQuestions.length <= 1) return;
-    setMcqQuestions(mcqQuestions.filter((_, i) => i !== qIndex));
+    setMcqQuestions(mcqQuestions.filter((_, idx) => idx !== i));
   };
 
-  const updateMcqQuestionText = (qIndex: number, text: string) => {
-    const newQuestions = [...mcqQuestions];
-
-    newQuestions[qIndex].text = text;
-    setMcqQuestions(newQuestions);
+  const updateQText = (qi: number, text: string) => {
+    const q = [...mcqQuestions]; q[qi].text = text; setMcqQuestions(q);
   };
 
-  const addChoice = (qIndex: number) => {
-    const newQuestions = [...mcqQuestions];
-
-    newQuestions[qIndex].choices.push({ text: "", isCorrect: false });
-    setMcqQuestions(newQuestions);
+  const addChoice = (qi: number) => {
+    const q = [...mcqQuestions]; q[qi].choices.push({ text: "", isCorrect: false }); setMcqQuestions(q);
   };
 
-  const removeChoice = (qIndex: number, cIndex: number) => {
-    const newQuestions = [...mcqQuestions];
-
-    if (newQuestions[qIndex].choices.length <= 2) return;
-    newQuestions[qIndex].choices = newQuestions[qIndex].choices.filter(
-      (_: any, i: number) => i !== cIndex,
-    );
-    setMcqQuestions(newQuestions);
+  const removeChoice = (qi: number, ci: number) => {
+    const q = [...mcqQuestions];
+    if (q[qi].choices.length <= 2) return;
+    q[qi].choices = q[qi].choices.filter((_: any, i: number) => i !== ci);
+    setMcqQuestions(q);
   };
 
-  const updateChoiceText = (qIndex: number, cIndex: number, text: string) => {
-    const newQuestions = [...mcqQuestions];
-
-    newQuestions[qIndex].choices[cIndex].text = text;
-    setMcqQuestions(newQuestions);
+  const updateChoiceText = (qi: number, ci: number, text: string) => {
+    const q = [...mcqQuestions]; q[qi].choices[ci].text = text; setMcqQuestions(q);
   };
 
-  const setCorrectChoice = (qIndex: number, cIndex: number) => {
-    const newQuestions = [...mcqQuestions];
-
-    newQuestions[qIndex].choices = newQuestions[qIndex].choices.map((c: any, i: number) => ({
-      ...c,
-      isCorrect: i === cIndex,
-    }));
-    setMcqQuestions(newQuestions);
+  const setCorrect = (qi: number, ci: number) => {
+    const q = [...mcqQuestions];
+    q[qi].choices = q[qi].choices.map((c: any, i: number) => ({ ...c, isCorrect: i === ci }));
+    setMcqQuestions(q);
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      showError("Error", "Mission Name is required");
+    if (!title.trim()) { showError("ข้อผิดพลาด", "กรุณากรอกชื่อภารกิจ"); return; }
 
-      return;
-    }
-
-    // Validate
     if (type === "MULTIPLE_CHOICE_QUIZ") {
       for (let i = 0; i < mcqQuestions.length; i++) {
         const q = mcqQuestions[i];
-
-        if (!q.text.trim()) {
-          showError("Error", `Question ${i + 1} is empty`);
-
-          return;
-        }
-        if (q.choices.some((c: any) => !c.text.trim())) {
-          showError("Error", `All choices in Question ${i + 1} must be filled`);
-
-          return;
-        }
-        if (!q.choices.some((c: any) => c.isCorrect)) {
-          showError(
-            "Error",
-            `Please select a correct answer for Question ${i + 1}`,
-          );
-
-          return;
-        }
+        if (!q.text.trim()) { showError("ข้อผิดพลาด", `คำถามที่ ${i + 1} ยังว่างอยู่`); return; }
+        if (q.choices.some((c: any) => !c.text.trim())) { showError("ข้อผิดพลาด", `กรุณากรอกตัวเลือกในคำถามที่ ${i + 1} ให้ครบ`); return; }
+        if (!q.choices.some((c: any) => c.isCorrect)) { showError("ข้อผิดพลาด", `กรุณาเลือกคำตอบที่ถูกต้องสำหรับคำถามที่ ${i + 1}`); return; }
       }
     } else if (type === "QUESTION_ANSWERING") {
-      if (!question.trim()) {
-        showError("Error", "Question is required");
-
-        return;
-      }
+      if (!question.trim()) { showError("ข้อผิดพลาด", "กรุณากรอกคำถาม"); return; }
     }
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/missions/${missionData?.mission_id}`, {
+      const res = await fetch(`/api/missions/${missionData?.mission_id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title,
-          type,
-          description,
-          instructions,
+          title, type, description,
           question: type === "QUESTION_ANSWERING" ? question : undefined,
           questions: type === "MULTIPLE_CHOICE_QUIZ" ? mcqQuestions : undefined,
         }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update mission");
-      }
-
-      showSuccess("Success", "Mission updated successfully");
-      onSuccess();
-      onClose();
-    } catch (error) {
-      console.error("Error updating mission:", error);
-      showError("Error", "Failed to update mission");
+      if (!res.ok) throw new Error();
+      showSuccess("สำเร็จ", "แก้ไขภารกิจสำเร็จ");
+      onSuccess(); onClose();
+    } catch {
+      showError("ข้อผิดพลาด", "แก้ไขภารกิจไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
@@ -268,238 +154,131 @@ export default function EditMissionModal({
       }}
       isOpen={isOpen}
       scrollBehavior="inside"
-      size="3xl"
+      size="2xl"
       onOpenChange={onClose}
     >
       <ModalContent>
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
-              <h2 className="text-2xl font-bold text-gray-900">Edit Mission</h2>
-              <p className="text-sm text-gray-500 font-normal">
-                Update the mission details
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900">แก้ไขภารกิจ</h2>
+              <p className="text-sm text-gray-500 font-normal">แก้ไขรายละเอียดภารกิจ</p>
             </ModalHeader>
 
-            <ModalBody className="py-6 space-y-4">
-              {/* Mission Name */}
+            <ModalBody className="py-6 space-y-5 px-6">
+              {/* ชื่อภารกิจ */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mission Name
+                  ชื่อภารกิจ <span className="text-red-500">*</span>
                 </label>
-                <Input
-                  classNames={{
-                    inputWrapper:
-                      "bg-gray-50 border-gray-200 hover:border-gray-300 transition-colors",
-                  }}
-                  placeholder="e.g., Capture Wildlife Photos"
-                  value={title}
-                  variant="bordered"
-                  onValueChange={setTitle}
-                />
+                <input className={inputCls} placeholder="เช่น ถ่ายรูปสัตว์ป่า" value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
 
-              {/* Mission Type */}
+              {/* ประเภทภารกิจ */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mission Type
-                </label>
-                <Select
-                  classNames={{
-                    trigger:
-                      "bg-gray-50 border-gray-200 hover:border-gray-300 transition-colors",
-                  }}
-                  placeholder="Select a mission type"
-                  selectedKeys={[type]}
-                  variant="bordered"
-                  onChange={(e) => setType(e.target.value)}
-                >
-                  {MISSION_TYPES.map((t) => (
-                    <SelectItem key={t.key}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </Select>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ประเภทภารกิจ</label>
+                <select className={inputCls} value={type} onChange={(e) => setType(e.target.value)}>
+                  {MISSION_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                </select>
               </div>
 
-              {/* Description */}
+              {/* รายละเอียด */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <Textarea
-                  classNames={{
-                    inputWrapper:
-                      "bg-gray-50 border-gray-200 hover:border-gray-300 transition-colors",
-                  }}
-                  minRows={2}
-                  placeholder="Briefly describe this mission"
-                  value={description}
-                  variant="bordered"
-                  onValueChange={setDescription}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด</label>
+                <textarea className={`${inputCls} resize-none`} placeholder="อธิบายภารกิจนี้โดยย่อ" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
 
-              {/* Instructions */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Instructions for Students
-                </label>
-                <Textarea
-                  classNames={{
-                    inputWrapper:
-                      "bg-gray-50 border-gray-200 hover:border-gray-300 transition-colors",
-                  }}
-                  minRows={3}
-                  placeholder="Provide detailed instructions"
-                  value={instructions}
-                  variant="bordered"
-                  onValueChange={setInstructions}
-                />
-              </div>
-
-              {/* Question Answering Field */}
+              {/* ตอบคำถาม */}
               {type === "QUESTION_ANSWERING" && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Question
-                  </label>
-                  <Input
-                    classNames={{
-                      inputWrapper:
-                        "bg-gray-50 border-gray-200 hover:border-gray-300 transition-colors",
-                    }}
-                    placeholder="Enter the question"
-                    value={question}
-                    variant="bordered"
-                    onValueChange={setQuestion}
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">คำถาม <span className="text-red-500">*</span></label>
+                  <input className={inputCls} placeholder="กรอกคำถาม" value={question} onChange={(e) => setQuestion(e.target.value)} />
                 </div>
               )}
 
-              {/* Multiple Questions for Quiz */}
+              {/* แบบทดสอบหลายตัวเลือก */}
               {type === "MULTIPLE_CHOICE_QUIZ" && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-gray-700">
-                      Quiz Questions
-                    </label>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-5 bg-[#6b857a] rounded-full" />
+                    <label className="text-sm font-semibold text-gray-700">คำถามแบบทดสอบ</label>
                   </div>
 
-                  {mcqQuestions.map((q, qIndex) => (
-                    <div
-                      key={qIndex}
-                      className="p-4 bg-gray-50 rounded-xl border border-gray-200 relative group"
-                    >
-                      {/* Remove Question Button */}
+                  {mcqQuestions.map((q, qi) => (
+                    <div key={qi} className="p-4 bg-gray-50 rounded-xl border border-gray-200 relative">
                       {mcqQuestions.length > 1 && (
                         <button
-                          className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
-                          onClick={() => removeMcqQuestion(qIndex)}
+                          className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors"
+                          onClick={() => removeMcqQuestion(qi)}
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={16} />
                         </button>
                       )}
 
-                      <div className="mb-4 pr-8">
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                          Question {qIndex + 1}
-                        </label>
-                        <Input
-                          classNames={{
-                            input: "font-medium text-gray-900",
-                            inputWrapper: "bg-white border hover:bg-white",
-                          }}
-                          placeholder="Enter question text"
-                          value={q.text}
-                          variant="flat"
-                          onValueChange={(val) =>
-                            updateMcqQuestionText(qIndex, val)
-                          }
-                        />
-                      </div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">คำถามที่ {qi + 1}</p>
+                      <input
+                        className={`${inputCls} mb-3 bg-white`}
+                        placeholder="กรอกข้อความคำถาม"
+                        value={q.text}
+                        onChange={(e) => updateQText(qi, e.target.value)}
+                      />
 
-                      <div className="space-y-2 pl-2 border-l-2 border-gray-200 ml-1">
-                        {q.choices.map((choice: any, cIndex: number) => (
-                          <div key={cIndex} className="flex items-center gap-2">
-                            <div
-                              className={`cursor-pointer p-1 rounded-full ${choice.isCorrect ? "text-green-600 bg-green-50" : "text-gray-300 hover:text-gray-400"}`}
-                              title="Mark as correct answer"
-                              onClick={() => setCorrectChoice(qIndex, cIndex)}
+                      <div className="space-y-2 pl-2 border-l-2 border-[#6b857a]/20 ml-1">
+                        {q.choices.map((c: any, ci: number) => (
+                          <div key={ci} className="flex items-center gap-2">
+                            <button
+                              className={`p-1 rounded-full transition-colors flex-shrink-0 ${c.isCorrect ? "text-[#6b857a]" : "text-gray-300 hover:text-gray-400"}`}
+                              title="เลือกเป็นคำตอบที่ถูกต้อง"
+                              onClick={() => setCorrect(qi, ci)}
                             >
-                              <CheckCircle2
-                                fill={
-                                  choice.isCorrect ? "currentColor" : "none"
-                                }
-                                size={20}
-                              />
-                            </div>
-                            <Input
-                              classNames={{
-                                inputWrapper: `bg-white h-9 ${choice.isCorrect ? "border-green-500 ring-1 ring-green-500" : ""}`,
-                              }}
-                              placeholder={`Option ${cIndex + 1}`}
-                              size="sm"
-                              value={choice.text}
-                              variant="bordered"
-                              onValueChange={(val) =>
-                                updateChoiceText(qIndex, cIndex, val)
-                              }
+                              <CheckCircle2 fill={c.isCorrect ? "currentColor" : "none"} size={20} />
+                            </button>
+                            <input
+                              className={`flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none transition-colors ${c.isCorrect ? "border-[#6b857a] ring-1 ring-[#6b857a] bg-[#6b857a]/5" : "border-gray-300 focus:border-[#6b857a] focus:ring-1 focus:ring-[#6b857a]"}`}
+                              placeholder={`ตัวเลือกที่ ${ci + 1}`}
+                              value={c.text}
+                              onChange={(e) => updateChoiceText(qi, ci, e.target.value)}
                             />
                             {q.choices.length > 2 && (
-                              <Button
-                                isIconOnly
-                                className="text-gray-400 hover:text-red-500 min-w-8 w-8 h-8"
-                                size="sm"
-                                variant="light"
-                                onPress={() => removeChoice(qIndex, cIndex)}
-                              >
-                                <Trash2 size={16} />
-                              </Button>
+                              <button className="text-gray-400 hover:text-red-500 transition-colors" onClick={() => removeChoice(qi, ci)}>
+                                <Trash2 size={14} />
+                              </button>
                             )}
                           </div>
                         ))}
-                        <Button
-                          className="text-gray-600 h-8 gap-1 ml-7"
-                          size="sm"
-                          startContent={<Plus size={14} />}
-                          variant="light"
-                          onPress={() => addChoice(qIndex)}
+                        <button
+                          className="flex items-center gap-1 text-xs text-[#6b857a] hover:text-[#5a7268] font-medium ml-7 mt-1"
+                          onClick={() => addChoice(qi)}
                         >
-                          Add Option
-                        </Button>
+                          <Plus size={14} /> เพิ่มตัวเลือก
+                        </button>
                       </div>
                     </div>
                   ))}
 
-                  <Button
-                    fullWidth
-                    className="border-2 border-dashed border-gray-300 text-gray-600 font-medium h-12"
-                    startContent={<Plus size={18} />}
-                    variant="light"
-                    onPress={addMcqQuestion}
+                  <button
+                    className="w-full py-3 border-2 border-dashed border-gray-300 hover:border-[#6b857a] rounded-xl text-sm text-gray-500 hover:text-[#6b857a] font-medium transition-colors flex items-center justify-center gap-2"
+                    onClick={addMcqQuestion}
                   >
-                    Add Another Question
-                  </Button>
+                    <Plus size={16} /> เพิ่มคำถามอีก
+                  </button>
                 </div>
               )}
             </ModalBody>
 
-            <ModalFooter className="p-6 pt-2">
+            <ModalFooter className="p-6 pt-2 flex-col gap-2">
               <Button
-                className="bg-[#6b857a] text-white font-medium"
+                fullWidth
+                className="bg-[#6b857a] text-white rounded-xl font-bold shadow-lg hover:bg-[#5a7268]"
                 isLoading={loading}
-                startContent={<Save size={18} />}
+                size="lg"
+                startContent={!loading && <Save size={18} />}
                 onPress={handleSubmit}
               >
-                Save Changes
+                บันทึกการแก้ไข
               </Button>
-              <Button
-                className="text-gray-700 font-medium bg-[#f5f1e8]"
-                variant="light"
-                onPress={onClose}
-              >
-                Cancel
+              <Button fullWidth className="font-medium text-gray-600" size="lg" variant="light" onPress={onClose}>
+                ยกเลิก
               </Button>
             </ModalFooter>
           </>

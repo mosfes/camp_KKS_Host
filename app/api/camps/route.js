@@ -1,10 +1,29 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireTeacher } from "@/lib/auth";
+
+/** แปลง Date (UTC จาก DB) → ISO string +07:00 สำหรับแสดงผล */
+const toThaiISOString = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    const offset = 7 * 60; // +07:00 in minutes
+    const localMs = d.getTime() + offset * 60 * 1000;
+    const local = new Date(localMs);
+    return local.toISOString().replace('Z', '+07:00');
+};
+
+/** คืนค่า Date ปัจจุบันในโซนเวลาไทย (+07:00) */
+const thaiNow = () => new Date(Date.now() + 7 * 60 * 60 * 1000);
+
 
 /**
  * POST - สร้างค่ายใหม่ พร้อม enroll students และ teachers จาก classrooms (รองรับหลายห้อง)
  */
 export async function POST(req) {
+    // ตรวจสอบ session
+    const { teacher, error: authError } = await requireTeacher();
+    if (authError) return authError;
+
     try {
         const body = await req.json();
 
@@ -16,32 +35,6 @@ export async function POST(req) {
         if (!body.classroom_ids || !Array.isArray(body.classroom_ids) || body.classroom_ids.length === 0) {
             return NextResponse.json({ error: "กรุณาเลือกห้องเรียนอย่างน้อย 1 ห้อง" }, { status: 400 });
         }
-
-        // ตรวจสอบและสร้าง plan_type ถ้ายังไม่มี
-        let planTypeNew = await prisma.plan_type.findFirst({
-            where: { name: "new" }
-        });
-
-        if (!planTypeNew) {
-            planTypeNew = await prisma.plan_type.create({
-                data: { name: "new" }
-            });
-        }
-
-        let planTypeContinue = await prisma.plan_type.findFirst({
-            where: { name: "continue" }
-        });
-
-        if (!planTypeContinue) {
-            planTypeContinue = await prisma.plan_type.create({
-                data: { name: "continue" }
-            });
-        }
-
-        // เลือก plan_type_id ตาม projectType
-        const planTypeId = body.projectType === "continue"
-            ? planTypeContinue.plane_id
-            : planTypeNew.plane_id;
 
         // สร้าง camp
         const newCamp = await prisma.camp.create({
@@ -56,13 +49,14 @@ export async function POST(req) {
                 has_shirt: body.hasShirt || false,
                 start_shirt_date: body.hasShirt && body.shirtStartDate
                     ? new Date(body.shirtStartDate)
-                    : new Date(),
+                    : thaiNow(),
                 end_shirt_date: body.hasShirt && body.shirtEndDate
                     ? new Date(body.shirtEndDate)
-                    : new Date(),
+                    : thaiNow(),
                 status: "OPEN",
-                plan_type_plane_id: planTypeId,
-                created_by_teacher_id: 1, // TODO: ใช้จาก session เดี๋ยวทำล้อคอินละมาแก้
+                img_camp_url: body.img_camp_url || "",
+                img_shirt_url: body.img_shirt_url || "",
+                created_by_teacher_id: teacher.teachers_id,
                 camp_daily_schedule: {
                     create: body.dailySchedule.map(day => ({
                         day: day.day,
@@ -78,7 +72,7 @@ export async function POST(req) {
             },
         });
 
-        // เชื่อมค่ายกับห้องเรียนทั้งหมด
+        // เชื่อมค่ายกับห้องเรียนทั้งหมด + สร้าง enrollment record ให้นักเรียน (ยังไม่เข้าร่วม = null)
         for (const classroomId of body.classroom_ids) {
             await prisma.camp_classroom.create({
                 data: {
@@ -87,7 +81,7 @@ export async function POST(req) {
                 },
             });
 
-            // Enroll students จากห้องนี้
+            // สร้าง enrollment record ให้นักเรียนทุกคนในห้อง (enrolled_at = null จนกว่าจะกดเข้าร่วม)
             const classroomStudents = await prisma.classroom_students.findMany({
                 where: { classroom_classroom_id: classroomId },
             });
@@ -103,9 +97,10 @@ export async function POST(req) {
                 if (!existingEnrollment) {
                     await prisma.student_enrollment.create({
                         data: {
-                            student_students_id: cs.student_students_id,
-                            camp_camp_id: newCamp.camp_id,
-                            shirt_size: "M",
+                            student: { connect: { students_id: cs.student_students_id } },
+                            camp: { connect: { camp_id: newCamp.camp_id } },
+                            enrolled_at: null,
+                            shirt_size: null,
                         },
                     });
                 }
@@ -204,7 +199,6 @@ export async function GET(request) {
         const camps = await prisma.camp.findMany({
             where: whereClause,
             include: {
-                plan_type: true,
                 created_by: {
                     select: {
                         firstname: true,
@@ -237,7 +231,21 @@ export async function GET(request) {
             },
         });
 
-        return NextResponse.json(camps);
+        // แปลง dates เป็น Thai timezone (+07:00) ก่อน return
+        const dateFields = [
+            'start_date', 'end_date',
+            'start_regis_date', 'end_regis_date',
+            'start_shirt_date', 'end_shirt_date',
+        ];
+        const campsWithThaiTime = camps.map(camp => {
+            const updated = { ...camp };
+            for (const f of dateFields) {
+                if (updated[f]) updated[f] = toThaiISOString(updated[f]);
+            }
+            return updated;
+        });
+
+        return NextResponse.json(campsWithThaiTime);
     } catch (error) {
         console.error("API_GET_CAMPS_ERROR:", error);
         return NextResponse.json(

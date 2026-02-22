@@ -5,20 +5,51 @@ import { Card, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Link } from "@heroui/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function SignInSide() {
-  // const router = useRouter();
-  // const [account, setAccount] = useState({ username: "", password: "" });
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // useEffect(() => {
-  //   if (authService.isLoggedIn()) router.push("/home");
-  // }, [router]);
+  const handleLogin = async () => {
+    if (!email.trim()) {
+      setError("กรุณากรอก Email");
+      return;
+    }
 
-  // const handelLogin = () => {
-  //   authService.doLogIn(account.username);
-  //   router.push("/home");
-  // };
-  const sizes: ("sm" | "md" | "lg")[] = ["sm"];
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "เข้าสู่ระบบไม่สำเร็จ");
+        return;
+      }
+
+      // Login สำเร็จ → ไปหน้า dashboard ตามบทบาท
+      const role = data.teacher?.role;
+      if (role === "HEAD_TEACHER") {
+        router.push("/headteacher/dashboard");
+      } else {
+        router.push("/headteacher/dashboard");
+      }
+    } catch {
+      setError("เกิดข้อผิดพลาด กรุณาลองใหม่");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen w-full bg-[#f5f0e7] flex flex-col items-center justify-center px-4">
@@ -38,75 +69,44 @@ export default function SignInSide() {
 
       {/* Card */}
       <Card
-        className="
-          w-full max-w-md
-          rounded-2xl
-          bg-white
-          border
-          border-gray-200
-          shadow-lg
-        "
+        className="w-full max-w-md rounded-2xl bg-white border border-gray-200 shadow-lg"
       >
         <CardBody className="p-8 space-y-5">
           <div>
-            <h2 className="text-xl text-gray-600 font-semibold">
-              Welcome Back
-            </h2>
-            <p className="text-gray-500 text-sm">
-              Sign in to create and manage camps
-            </p>
+            <h2 className="text-xl text-gray-600 font-semibold">ยินดีต้อนรับ</h2>
+            <p className="text-gray-500 text-sm">เข้าสู่ระบบเพื่อจัดการค่าย</p>
           </div>
 
-          <div>
-            <p className="text-gray-500 text-sm">Email</p>
-            <div className="w-full flex flex-col gap-4 mt-2 mb-3">
-              {sizes.map((size) => (
-                <div
-                  key={size}
-                  className="flex w-full flex-wrap md:flex-nowrap mb-6 md:mb-0 gap-4"
-                >
-                  <Input label="Email" size={size} type="email" />
-                </div>
-              ))}
-            </div>
-
-            <p className="text-gray-500 text-sm">Password</p>
-            <div className="w-full flex flex-col gap-4 mt-2">
-              {sizes.map((size) => (
-                <div
-                  key={size}
-                  className="flex w-full flex-wrap md:flex-nowrap mb-6 md:mb-0 gap-4"
-                >
-                  <Input label="Password" size={size} type="password" />
-                </div>
-              ))}
+          <div className="space-y-4">
+            <div>
+              <p className="text-gray-500 text-sm mb-2">Email</p>
+              <Input
+                label="Email"
+                size="sm"
+                type="email"
+                value={email}
+                onValueChange={(v) => { setEmail(v); setError(""); }}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              />
             </div>
           </div>
+
+          {error && (
+            <p className="text-sm text-red-500 text-center">{error}</p>
+          )}
 
           <Button
-            className="
-    w-full
-    rounded-full
-    bg-[#5d7c6f]
-    text-white
-    border
-    border-[#5d7c6f]
-    transition-colors
-    hover:bg-white
-    hover:text-[#5d7c6f]
-    hover:border-[#5d7c6f]
-  "
+            className="w-full rounded-full bg-[#5d7c6f] text-white border border-[#5d7c6f] transition-colors hover:bg-white hover:text-[#5d7c6f] hover:border-[#5d7c6f]"
             color="primary"
+            isLoading={loading}
+            onPress={handleLogin}
           >
-            Sign in
+            เข้าสู่ระบบ
           </Button>
 
           <p className="text-center text-sm text-gray-500">
-            Don&apos;t have an account?{" "}
-            <Link
-              className="font-medium text-[#5d7c6f] hover:text-primary"
-              href="#"
-            >
+            ยังไม่มีบัญชี?{" "}
+            <Link className="font-medium text-[#5d7c6f] hover:text-primary" href="#">
               ติดต่อแอดมิน
             </Link>
           </p>

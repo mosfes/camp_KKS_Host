@@ -8,7 +8,7 @@ export async function PUT(request, { params }) {
     try {
         const { id } = await params;
         const body = await request.json();
-        const { title, description, type, instructions, question, questions } = body;
+        const { title, description, type, question, questions } = body;
 
         const updatedMission = await prisma.mission.update({
             where: { mission_id: parseInt(id) },
@@ -16,7 +16,6 @@ export async function PUT(request, { params }) {
                 title,
                 description,
                 type,
-                instructions
             },
         });
 

@@ -7,8 +7,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Input,
-  Textarea,
 } from "@heroui/react";
 import { useState, useEffect } from "react";
 import { Save } from "lucide-react";
@@ -46,8 +44,7 @@ export default function EditBaseModal({
 
   const handleSubmit = async () => {
     if (!name.trim()) {
-      showError("Error", "Base Name is required");
-
+      showError("ข้อผิดพลาด", "กรุณากรอกชื่อฐานกิจกรรม");
       return;
     }
 
@@ -55,25 +52,18 @@ export default function EditBaseModal({
       setLoading(true);
       const response = await fetch(`/api/stations/${baseData?.station_id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          description,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to update base");
-      }
+      if (!response.ok) throw new Error("Failed to update base");
 
-      showSuccess("Success", "Base updated successfully");
+      showSuccess("สำเร็จ", "แก้ไขฐานกิจกรรมสำเร็จ");
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Error updating base:", error);
-      showError("Error", "Failed to update base");
+      showError("ข้อผิดพลาด", "แก้ไขฐานกิจกรรมไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
@@ -87,69 +77,63 @@ export default function EditBaseModal({
         backdrop: "bg-black/60 backdrop-blur-sm",
       }}
       isOpen={isOpen}
-      size="2xl"
+      size="lg"
       onOpenChange={onClose}
     >
       <ModalContent>
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
-              <h2 className="text-2xl font-bold text-gray-900">Edit Base</h2>
-              <p className="text-sm text-gray-500 font-normal">
-                Update the base information
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900">แก้ไขฐานกิจกรรม</h2>
+              <p className="text-sm text-gray-500 font-normal">แก้ไขข้อมูลฐานกิจกรรม</p>
             </ModalHeader>
 
-            <ModalBody className="py-6 space-y-4">
+            <ModalBody className="py-6 space-y-4 px-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Base Name
+                  ชื่อฐานกิจกรรม <span className="text-red-500">*</span>
                 </label>
-                <Input
-                  classNames={{
-                    inputWrapper:
-                      "bg-gray-50 border-gray-200 hover:border-gray-300 transition-colors",
-                  }}
-                  placeholder="e.g., Nature Exploration Base"
+                <input
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors"
+                  placeholder="เช่น ฐานสำรวจธรรมชาติ"
                   value={name}
-                  variant="bordered"
-                  onValueChange={setName}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Base Description
+                  รายละเอียด
                 </label>
-                <Textarea
-                  classNames={{
-                    inputWrapper:
-                      "bg-gray-50 border-gray-200 hover:border-gray-300 transition-colors",
-                  }}
-                  minRows={3}
-                  placeholder="Describe the activities and goals of this base"
+                <textarea
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors resize-none"
+                  placeholder="อธิบายกิจกรรมและเป้าหมายของฐานนี้"
+                  rows={3}
                   value={description}
-                  variant="bordered"
-                  onValueChange={setDescription}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
             </ModalBody>
 
-            <ModalFooter className="p-6 pt-2">
+            <ModalFooter className="p-6 pt-2 flex-col gap-2">
               <Button
-                className="bg-[#6b857a] text-white font-medium"
+                fullWidth
+                className="bg-[#6b857a] text-white rounded-xl font-bold shadow-lg hover:bg-[#5a7268]"
                 isLoading={loading}
-                startContent={<Save size={18} />}
+                size="lg"
+                startContent={!loading && <Save size={18} />}
                 onPress={handleSubmit}
               >
-                Save Changes
+                บันทึกการแก้ไข
               </Button>
               <Button
-                className="text-gray-700 font-medium bg-[#f5f1e8]"
+                fullWidth
+                className="font-medium text-gray-600"
+                size="lg"
                 variant="light"
                 onPress={onClose}
               >
-                Cancel
+                ยกเลิก
               </Button>
             </ModalFooter>
           </>

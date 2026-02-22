@@ -39,6 +39,11 @@ export default function StudentStationDetailPage() {
         const foundCamp = data.find((c: any) => c.id === Number(id));
 
         if (foundCamp) {
+          if (!foundCamp.isRegistered) {
+            toast.error("กรุณาลงทะเบียนเข้าร่วมค่ายก่อนเข้าถึงหน้าภารกิจ");
+            router.replace(`/student/dashboard/camp/${id}`);
+            return;
+          }
           setCamp(foundCamp);
           // Find Station
           // Note: Original endpoint structure puts 'stations' under camp with full nested data
@@ -270,15 +275,14 @@ export default function StudentStationDetailPage() {
                                 key={c.choice_id}
                                 className={`
                                                                 p-3 rounded-lg border cursor-pointer flex items-center gap-3 transition-colors
-                                                                ${
-                                                                  answers[
-                                                                    q
-                                                                      .question_id
-                                                                  ] ===
-                                                                  c.choice_text
-                                                                    ? "bg-[#5d7c6f] text-white border-[#5d7c6f]"
-                                                                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                                                                }
+                                                                ${answers[
+                                    q
+                                      .question_id
+                                  ] ===
+                                    c.choice_text
+                                    ? "bg-[#5d7c6f] text-white border-[#5d7c6f]"
+                                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                  }
                                                             `}
                                 onClick={() =>
                                   handleAnswerChange(

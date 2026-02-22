@@ -100,13 +100,21 @@ export default function StudentDashboard() {
   const fetchStats = async () => {
     try {
       const response = await fetch("/api/camps/stats");
-      const data = await response.json();
 
+      if (response.status === 401) {
+        router.push("/");   // Clerk login อยู่ที่ /
+        return;
+      }
+
+      if (!response.ok) return;
+
+      const data = await response.json();
       setStats(data);
     } catch (error) {
       console.error("Failed to fetch stats:", error);
     }
   };
+
 
   useEffect(() => {
     const initData = async () => {

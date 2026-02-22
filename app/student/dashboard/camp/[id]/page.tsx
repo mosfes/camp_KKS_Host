@@ -240,8 +240,21 @@ export default function StudentCampDetailPage() {
           </div>
         )}
 
-        {/* Progress Section */}
-        <div className="bg-white rounded-3xl shadow-sm p-6 mb-6">
+        {/* Progress Section - Only shown if registered */}
+        <div className="bg-white rounded-3xl shadow-sm p-6 mb-6 relative overflow-hidden">
+          {!camp.isRegistered && (
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-3">
+                <Flag size={24} />
+              </div>
+              <h3 className="font-bold text-[#2d3748] mb-1">
+                ลงทะเบียนเพื่อดูความคืบหน้า
+              </h3>
+              <p className="text-xs text-gray-500">
+                คุณจะสามารถสะสมคะแนนและทำภารกิจได้หลังจากเข้าร่วมค่ายแล้ว
+              </p>
+            </div>
+          )}
           <h2 className="text-lg font-bold text-[#2d3748] mb-4">ความคืบหน้า</h2>
           <div className="space-y-4">
             <div className="flex justify-between text-sm text-gray-600">
@@ -307,11 +320,10 @@ export default function StudentCampDetailPage() {
                     key={size}
                     className={`
                                             py-2 px-4 rounded-lg border text-sm font-medium transition-all
-                                            ${
-                                              shirtSize === size
-                                                ? "bg-gray-800 text-white border-gray-800 ring-2 ring-gray-300"
-                                                : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
-                                            }
+                                            ${shirtSize === size
+                        ? "bg-gray-800 text-white border-gray-800 ring-2 ring-gray-300"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                      }
                                          `}
                     disabled={savingShirt}
                     onClick={() => handleShirtUpdate(size)}
@@ -367,7 +379,7 @@ export default function StudentCampDetailPage() {
               isLoading={registering}
               onPress={handleRegister}
             >
-              ลงทะเบียนทันที
+              เข้าร่วมค่าย
             </Button>
           ) : (
             <>

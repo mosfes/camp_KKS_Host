@@ -14,7 +14,6 @@ export async function GET(request, context) {
                 deletedAt: null
             },
             include: {
-                plan_type: true,
                 created_by: {
                     select: {
                         firstname: true,
@@ -51,6 +50,7 @@ export async function GET(request, context) {
                         classroom: {
                             include: {
                                 academic_years: true,
+                                classroom_types: true,
                             },
                         },
                     },

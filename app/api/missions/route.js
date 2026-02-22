@@ -18,9 +18,8 @@ export async function POST(request) {
         const newMission = await prisma.mission.create({
             data: {
                 title,
-                description, // keeping description as it maps to "Description" field in UI
+                description,
                 type,
-                instructions,
                 station_station_id: parseInt(stationId),
             },
         });

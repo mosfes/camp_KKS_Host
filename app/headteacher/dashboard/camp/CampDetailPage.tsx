@@ -98,7 +98,7 @@ export default function CampDetailPage() {
 
         if (classroom) {
           gradeLevel = classroom.grade;
-          planTypeName = classroom.type_classroom || "MSEC";
+          planTypeName = classroom.classroom_types?.name || "MSEC";
         }
       }
 

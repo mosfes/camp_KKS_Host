@@ -227,9 +227,9 @@ model teacher_enrollment {
 }
 
 model student_enrollment {
-  student_enrollment_id Int      @id @default(autoincrement())
-  enrolled_at           DateTime  // นักเรียนลงทะเบียน
-  shirt_size            String   @db.VarChar(10)
+  student_enrollment_id Int       @id @default(autoincrement())
+  enrolled_at           DateTime? // null = ยังไม่ได้กดเข้าร่วม
+  shirt_size            String?   @db.VarChar(10) // null = ยังไม่ได้ระบุ
   // jorn DateTime @default(now()) // นักเรียนลงทะเบียน
 
   student_students_id Int
