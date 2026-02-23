@@ -279,21 +279,21 @@ const StudentManager = () => {
     };
 
     const getStudentClassroom = (stu) => {
-    const cls = getLatestClassroomObj(stu);
-    if (cls) {
-        const gradeLabel = gradeOptions.find(g => g.key === cls.grade)?.label || cls.grade;
+        const cls = getLatestClassroomObj(stu);
+        if (cls) {
+            const gradeLabel = gradeOptions.find(g => g.key === cls.grade)?.label || cls.grade;
 
-        const foundType = classroomTypes.find(t => t.classroom_type_id.toString() === cls.type_classroom?.toString());
-        const roomName = foundType ? foundType.name : cls.type_classroom;
+            const foundType = classroomTypes.find(t => t.classroom_type_id.toString() === cls.type_classroom?.toString());
+            const roomName = foundType ? foundType.name : cls.type_classroom;
 
-        if (roomName) {
-            return `${gradeLabel} (${roomName})`;
+            if (roomName) {
+                return `${gradeLabel} (${roomName})`;
+            }
+
+            return `${gradeLabel}`;
         }
-        
-        return `${gradeLabel}`;
-    }
-    return "-";
-};
+        return "-";
+    };
     const filteredStudents = students.filter(stu => {
         const classroom = getLatestClassroomObj(stu);
 
@@ -812,22 +812,25 @@ const StudentManager = () => {
                                     );
                                 })()}
 
-                                {selectedClassroomInfo && (
-                                    <div className="p-3 bg-green-50 rounded-lg border border-green-100 flex gap-4">
-                                        <div>
-                                            <span className="text-xs text-gray-500 block">ระดับชั้น</span>
-                                            <span className="font-semibold text-green-800">{getGradeLabel(selectedClassroomInfo.grade)}</span>
+                                {selectedClassroomInfo && (() => {
+                                    const roomName = classroomTypes.find(t => t.classroom_type_id === selectedClassroomInfo.type_classroom)?.name || selectedClassroomInfo.type_classroom;
+                                    return (
+                                        <div className="p-3 bg-green-50 rounded-lg border border-green-100 flex gap-4 mt-2">
+                                            <div>
+                                                <span className="text-xs text-gray-500 block">ระดับชั้น</span>
+                                                <span className="font-semibold text-green-800">{getGradeLabel(selectedClassroomInfo.grade)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-gray-500 block">ห้อง</span>
+                                                <span className="font-semibold text-green-800">{roomName}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-gray-500 block">ปีการศึกษา</span>
+                                                <span className="font-semibold text-green-800">{selectedClassroomInfo.academic_years ? parseInt(selectedClassroomInfo.academic_years.year) + 543 : '-'}</span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <span className="text-xs text-gray-500 block">ห้อง</span>
-                                            <span className="font-semibold text-green-800">{selectedClassroomInfo.type_classroom}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-xs text-gray-500 block">ปีการศึกษา</span>
-                                            <span className="font-semibold text-green-800">{selectedClassroomInfo.academic_years ? parseInt(selectedClassroomInfo.academic_years.year) + 543 : '-'}</span>
-                                        </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
 
 
                             </ModalBody>

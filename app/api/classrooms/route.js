@@ -21,6 +21,9 @@ export async function GET(req) {
           include: {
             teacher: true
           }
+        },
+        _count: {
+          select: { classroom_students: true }
         }
       },
       orderBy: { grade: 'asc' }

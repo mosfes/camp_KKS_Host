@@ -366,6 +366,7 @@ const ClassroomManager = () => {
                             <TableColumn>ประเภทห้อง</TableColumn>
                             <TableColumn>ครูประจำชั้น</TableColumn>
                             <TableColumn>ปีการศึกษา</TableColumn>
+                            <TableColumn>จำนวนนักเรียน</TableColumn>
                             <TableColumn>ดำเนินการ</TableColumn>
                         </TableHeader>
                         <TableBody
@@ -393,6 +394,7 @@ const ClassroomManager = () => {
                                         </div>
                                     </TableCell>
                                     <TableCell>{room.academic_years?.year + 543}</TableCell>
+                                    <TableCell>{room._count?.classroom_students || 0} คน</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <span
