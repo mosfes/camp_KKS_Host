@@ -95,7 +95,7 @@ export default function BaseDetailPage() {
           onClick={() => router.back()}
         >
           <ChevronLeft size={20} />
-          <span>Back to Camp</span>
+          <span>กลับไปหน้ารายละเอียดค่าย</span>
         </button>
 
         <div className="flex justify-between items-start mb-8">
@@ -104,7 +104,7 @@ export default function BaseDetailPage() {
               {base.name}
             </h1>
             <p className="text-gray-600">
-              {base.description || "No description provided."}
+              {base.description || "ไม่มีคำอธิบาย"}
             </p>
           </div>
         </div>
@@ -114,14 +114,14 @@ export default function BaseDetailPage() {
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2">
               <Target className="text-[#6b857a]" size={24} />
-              <h2 className="text-xl font-semibold text-gray-900">Missions</h2>
+              <h2 className="text-xl font-semibold text-gray-900">ภารกิจ</h2>
             </div>
             <Button
               className="bg-[#6b857a] text-white"
               startContent={<Plus size={18} />}
               onPress={() => setIsCreateMissionModalOpen(true)}
             >
-              Create Mission
+              สร้างภารกิจ
             </Button>
           </div>
 
@@ -135,7 +135,7 @@ export default function BaseDetailPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-semibold text-gray-900">
-                        {mission.title || "Untitled Mission"}
+                        {mission.title || "ภารกิจไม่มีชื่อ"}
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">
                         {mission.type?.replace(/_/g, " ")}
@@ -148,7 +148,7 @@ export default function BaseDetailPage() {
                       mission.mission_question?.[0] && (
                         <div className="mt-2 bg-[#6b857a]/5 p-2 rounded-lg border border-[#6b857a]/10">
                           <p className="text-sm text-[#6b857a] font-medium">
-                            <span className="mr-2">Q:</span>
+                            <span className="mr-2">คำถาม:</span>
                             {mission.mission_question[0].question_text}
                           </p>
                         </div>
@@ -205,13 +205,13 @@ export default function BaseDetailPage() {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Target className="text-gray-400" size={24} />
               </div>
-              <p className="text-gray-500 mb-4">No missions created yet</p>
+              <p className="text-gray-500 mb-4">ยังไม่ได้สร้างภารกิจในฐานนี้</p>
               <Button
                 className="bg-[#6b857a] text-white"
                 startContent={<Plus size={18} />}
                 onPress={() => setIsCreateMissionModalOpen(true)}
               >
-                Create First Mission
+                เริ่มสร้างภารกิจแรก
               </Button>
             </div>
           )}

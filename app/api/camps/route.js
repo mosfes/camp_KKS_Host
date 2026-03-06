@@ -177,75 +177,81 @@ export async function POST(req) {
 }
 
 /**
- * GET - ดึงรายการค่ายทั้งหมด พร้อมจำนวน student_enrollment
+ * GET - ดึงรายการค่ายที่ครูมีส่วนเกี่ยวข้อง
+ *   - ผู้สร้าง (created_by_teacher_id) → isOwner: true
+ *   - ครูที่เกี่ยวข้อง (teacher_enrollment) → isOwner: false
  */
 export async function GET(request) {
+    const { teacher, error: authError } = await requireTeacher();
+    if (authError) return authError;
+
     try {
         const { searchParams } = new URL(request.url);
         const year = searchParams.get('year');
 
-        let whereClause = { deletedAt: null };
-
+        let dateFilter = {};
         if (year) {
-            const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
-            const endOfYear = new Date(`${year}-12-31T23:59:59.999Z`);
-
-            whereClause.start_date = {
-                gte: startOfYear,
-                lte: endOfYear
+            dateFilter.start_date = {
+                gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                lte: new Date(`${year}-12-31T23:59:59.999Z`),
             };
         }
 
         const camps = await prisma.camp.findMany({
-            where: whereClause,
+            where: {
+                deletedAt: null,
+                ...dateFilter,
+                OR: [
+                    // ผู้สร้างค่าย
+                    { created_by_teacher_id: teacher.teachers_id },
+                    // ครูที่เกี่ยวข้อง (teacher_enrollment)
+                    {
+                        teacher_enrollment: {
+                            some: { teacher_teachers_id: teacher.teachers_id },
+                        },
+                    },
+                ],
+            },
             include: {
                 created_by: {
-                    select: {
-                        firstname: true,
-                        lastname: true,
-                    },
+                    select: { firstname: true, lastname: true },
                 },
                 _count: {
                     select: {
                         student_enrollment: true,
                         teacher_enrollment: true,
-                    }
+                    },
                 },
                 camp_classroom: {
                     include: {
                         classroom: {
                             include: {
                                 teacher: {
-                                    select: {
-                                        firstname: true,
-                                        lastname: true,
-                                    },
+                                    select: { firstname: true, lastname: true },
                                 },
                             },
                         },
                     },
                 },
             },
-            orderBy: {
-                camp_id: "desc",
-            },
+            orderBy: { camp_id: "desc" },
         });
 
-        // แปลง dates เป็น Thai timezone (+07:00) ก่อน return
         const dateFields = [
             'start_date', 'end_date',
             'start_regis_date', 'end_regis_date',
             'start_shirt_date', 'end_shirt_date',
         ];
-        const campsWithThaiTime = camps.map(camp => {
+        const campsWithMeta = camps.map(camp => {
             const updated = { ...camp };
             for (const f of dateFields) {
                 if (updated[f]) updated[f] = toThaiISOString(updated[f]);
             }
+            updated.isOwner = camp.created_by_teacher_id === teacher.teachers_id;
             return updated;
         });
 
-        return NextResponse.json(campsWithThaiTime);
+        return NextResponse.json(campsWithMeta);
     } catch (error) {
         console.error("API_GET_CAMPS_ERROR:", error);
         return NextResponse.json(

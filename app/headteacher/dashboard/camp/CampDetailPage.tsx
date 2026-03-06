@@ -15,6 +15,7 @@ import {
   Target,
   Pencil,
   Trash2,
+  Settings,
 } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -268,14 +269,18 @@ export default function CampDetailPage() {
                 </div>
               </div>
             </div>
-
-            <Button
-              className="bg-[#6b857a] text-white"
-              startContent={<FileText size={18} />}
-              onPress={() => setIsEditModalOpen(true)}
-            >
-              แก้ไขข้อมูลค่าย
-            </Button>
+            <div className="flex items-center gap-3">
+              {/* ซ่อนปุ่มแก้ไขถ้าไม่ใช่เจ้าของค่าย */}
+              {camp.isOwner && (
+                <Button
+                  className="bg-[#6b857a] text-white hidden sm:flex"
+                  startContent={<Settings size={18} />}
+                  onPress={() => setIsEditModalOpen(true)}
+                >
+                  แก้ไขข้อมูลค่าย
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -403,12 +408,15 @@ export default function CampDetailPage() {
             <h3 className="font-semibold text-gray-900 mb-4">เมนูด่วน</h3>
 
             <div className="space-y-2">
-              <Button
-                className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
-                startContent={<Plus size={18} />}
-              >
-                สร้างฐานกิจกรรม
-              </Button>
+              {camp.isOwner && (
+                <Button
+                  className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
+                  startContent={<Plus size={18} />}
+                  onPress={() => setIsCreateBaseModalOpen(true)}
+                >
+                  สร้างฐานกิจกรรม
+                </Button>
+              )}
 
               <Button
                 className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
@@ -494,13 +502,15 @@ export default function CampDetailPage() {
               <p className="text-sm text-gray-500">จัดการฐานกิจกรรมและภารกิจ</p>
             </div>
 
-            <Button
-              className="bg-[#6b857a] text-white"
-              startContent={<Plus size={18} />}
-              onPress={() => setIsCreateBaseModalOpen(true)}
-            >
-              สร้างฐานกิจกรรม
-            </Button>
+            {camp.isOwner && (
+              <Button
+                className="bg-[#6b857a] text-white"
+                startContent={<Plus size={18} />}
+                onPress={() => setIsCreateBaseModalOpen(true)}
+              >
+                สร้างฐานกิจกรรม
+              </Button>
+            )}
           </div>
 
           {camp.station && camp.station.length > 0 ? (
@@ -519,26 +529,29 @@ export default function CampDetailPage() {
                     <div className="p-2 bg-white rounded-lg border border-gray-100 group-hover:border-[#6b857a]/20">
                       <Target className="text-[#6b857a]" size={24} />
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        isIconOnly
-                        className="text-gray-400 hover:text-blue-500"
-                        size="sm"
-                        variant="light"
-                        onClick={(e) => handleEditBase(station, e)}
-                      >
-                        <Pencil size={18} />
-                      </Button>
-                      <Button
-                        isIconOnly
-                        className="text-gray-400 hover:text-red-500"
-                        size="sm"
-                        variant="light"
-                        onClick={(e) => handleDeleteBase(station.station_id, e)}
-                      >
-                        <Trash2 size={18} />
-                      </Button>
-                    </div>
+                    {/* ซ่อนปุ่มแก้ไข/ลบฐาน ถ้าไม่ใช่เจ้าของ */}
+                    {camp.isOwner && (
+                      <div className="flex gap-1">
+                        <Button
+                          isIconOnly
+                          className="text-gray-400 hover:text-blue-500"
+                          size="sm"
+                          variant="light"
+                          onClick={(e) => handleEditBase(station, e)}
+                        >
+                          <Pencil size={18} />
+                        </Button>
+                        <Button
+                          isIconOnly
+                          className="text-gray-400 hover:text-red-500"
+                          size="sm"
+                          variant="light"
+                          onClick={(e) => handleDeleteBase(station.station_id, e)}
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <h4 className="font-semibold text-gray-900 mb-1">
                     {station.name}
@@ -553,17 +566,19 @@ export default function CampDetailPage() {
             <div className="flex flex-col items-center justify-center py-12">
               <div className="text-center">
                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Plus className="text-gray-400" size={32} />
+                  <Target className="text-gray-400" size={32} />
                 </div>
                 <p className="text-gray-500 mb-4">ยังไม่ได้สร้างฐานกิจกรรม</p>
-                <Button
-                  className="bg-[#6b857a] text-white"
-                  size="lg"
-                  startContent={<Plus size={18} />}
-                  onPress={() => setIsCreateBaseModalOpen(true)}
-                >
-                  เริ่มสร้างฐานกิจกรรม
-                </Button>
+                {camp.isOwner && (
+                  <Button
+                    className="bg-[#6b857a] text-white"
+                    size="lg"
+                    startContent={<Plus size={18} />}
+                    onPress={() => setIsCreateBaseModalOpen(true)}
+                  >
+                    เริ่มสร้างฐานกิจกรรม
+                  </Button>
+                )}
               </div>
             </div>
           )}

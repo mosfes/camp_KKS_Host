@@ -52,10 +52,10 @@ export default function StudentProfile() {
                   className="text-xl font-semibold"
                   style={{ color: "#2d3748" }}
                 >
-                  Student Profile
+                  โปรไฟล์นักเรียน
                 </h1>
                 <p className="text-sm" style={{ color: "#718096" }}>
-                  Manage your information
+                  จัดการข้อมูลส่วนตัวของคุณ
                 </p>
               </div>
             </div>
@@ -134,8 +134,8 @@ export default function StudentProfile() {
             size="lg"
             onSelectionChange={(key) => setSelectedTab(String(key))}
           >
-            <Tab key="info" title="Info" />
-            <Tab key="certificates" title="Certificates (0)" />
+            <Tab key="info" title="ข้อมูลทั่วไป" />
+            <Tab key="certificates" title="ประกาศนียบัตร (0)" />
           </Tabs>
         </div>
 
@@ -149,7 +149,7 @@ export default function StudentProfile() {
                   className="text-lg font-semibold mb-4"
                   style={{ color: "#2d3748" }}
                 >
-                  Personal Information
+                  ข้อมูลส่วนตัว
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -157,7 +157,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Name
+                      ชื่อ-นามสกุล
                     </label>
                     <p style={{ color: "#2d3748" }}>{studentData.name}</p>
                   </div>
@@ -166,7 +166,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Email
+                      อีเมล
                     </label>
                     <p style={{ color: "#2d3748" }}>{studentData.email}</p>
                   </div>
@@ -175,7 +175,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Grade
+                      ระดับชั้น
                     </label>
                     <p style={{ color: "#2d3748" }}>{studentData.grade}</p>
                   </div>
@@ -184,7 +184,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Classroom
+                      ห้องเรียน
                     </label>
                     <p style={{ color: "#2d3748" }}>{studentData.classroom}</p>
                   </div>
@@ -199,7 +199,7 @@ export default function StudentProfile() {
                   className="text-lg font-semibold mb-4"
                   style={{ color: "#2d3748" }}
                 >
-                  Contact Information
+                  ข้อมูลติดต่อ
                 </h3>
                 <div className="space-y-4">
                   <div>
@@ -207,7 +207,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Student Phone
+                      เบอร์โทรศัพท์นักเรียน
                     </label>
                     <p style={{ color: "#2d3748" }}>
                       {studentData.studentPhone}
@@ -218,7 +218,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Parent Phone
+                      เบอร์โทรศัพท์ผู้ปกครอง
                     </label>
                     <p style={{ color: "#2d3748" }}>
                       {studentData.parentPhone}
@@ -235,7 +235,7 @@ export default function StudentProfile() {
                   className="text-lg font-semibold mb-4"
                   style={{ color: "#2d3748" }}
                 >
-                  School Contact
+                  ข้อมูลติดต่อโรงเรียน
                 </h3>
                 <div className="space-y-4">
                   <div>
@@ -243,7 +243,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Homeroom Teacher
+                      ครูประจำชั้น
                     </label>
                     <p style={{ color: "#2d3748" }}>
                       {studentData.homeroomTeacher}
@@ -254,7 +254,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Teacher Phone
+                      เบอร์โทรศัพท์ครูประจำชั้น
                     </label>
                     <p style={{ color: "#2d3748" }}>
                       {studentData.teacherPhone}
@@ -271,7 +271,7 @@ export default function StudentProfile() {
                   className="text-lg font-semibold mb-4"
                   style={{ color: "#2d3748" }}
                 >
-                  Medical Information
+                  ข้อมูลทางการแพทย์
                 </h3>
                 <div className="space-y-4">
                   <div>
@@ -279,7 +279,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Allergies
+                      ประวัติการแพ้
                     </label>
                     <p style={{ color: "#718096" }}>
                       {displayValue(studentData.allergies)}
@@ -290,7 +290,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Medical Conditions
+                      โรคประจำตัว
                     </label>
                     <p style={{ color: "#718096" }}>
                       {displayValue(studentData.medicalConditions)}
@@ -301,7 +301,7 @@ export default function StudentProfile() {
                       className="text-sm font-medium block mb-1"
                       style={{ color: "#718096" }}
                     >
-                      Additional Notes
+                      หมายเหตุเพิ่มเติม
                     </label>
                     <p style={{ color: "#718096" }}>
                       {displayValue(studentData.additionalNotes)}
@@ -317,7 +317,7 @@ export default function StudentProfile() {
         {selectedTab === "certificates" && (
           <Card className="shadow-sm" style={{ backgroundColor: "white" }}>
             <CardBody className="p-12 text-center">
-              <p style={{ color: "#718096" }}>No certificates available</p>
+              <p style={{ color: "#718096" }}>ไม่มีข้อมูลประกาศนียบัตร</p>
             </CardBody>
           </Card>
         )}

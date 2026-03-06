@@ -475,9 +475,12 @@ const PromoteStudentsContent = () => {
     );
 }
 
+import { HeadteacherNavbar } from "@/components/Headteacher";
+
 export default function PromoteStudentsPage() {
     return (
         <StatusModalProvider>
+            <HeadteacherNavbar />
             <PromoteStudentsContent />
         </StatusModalProvider>
     );

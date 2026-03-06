@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/db";
 
 /**
  * GET /api/auth/student/me
- * ดึงข้อมูลนักเรียนที่กำลัง login อยู่จาก cookie
+ * ดึงข้อมูลนักเรียนที่กำลัง login อยู่จาก cookie + ข้อมูลห้องเรียนจาก DB
  */
 export async function GET() {
     try {
@@ -13,8 +14,54 @@ export async function GET() {
             return NextResponse.json({ error: "ไม่ได้เข้าสู่ระบบ" }, { status: 401 });
         }
         const student = JSON.parse(session.value);
-        return NextResponse.json(student);
+
+        // ดึงข้อมูลห้องเรียนเพิ่มเติม
+        const classroomInfo = await prisma.classroom_students.findFirst({
+            where: { student_students_id: student.students_id },
+            include: {
+                classroom: {
+                    include: {
+                        classroom_types: true,
+                        teacher: true,
+                        classroom_teacher: {
+                            include: { teacher: true },
+                        },
+                    },
+                },
+            },
+        });
+
+        const classroom = classroomInfo?.classroom ?? null;
+
+        // รวมชื่อครูทุกคน: ครูหลัก + ครูใน classroom_teacher (กรองซ้ำ)
+        let homeroomTeachers = null;
+        if (classroom) {
+            const teacherMap = new Map();
+            if (classroom.teacher) {
+                teacherMap.set(classroom.teacher.teachers_id,
+                    `${classroom.teacher.firstname} ${classroom.teacher.lastname}`);
+            }
+            for (const ct of classroom.classroom_teacher ?? []) {
+                if (ct.teacher) {
+                    teacherMap.set(ct.teacher.teachers_id,
+                        `${ct.teacher.firstname} ${ct.teacher.lastname}`);
+                }
+            }
+            homeroomTeachers = teacherMap.size > 0 ? [...teacherMap.values()].join(", ") : null;
+        }
+
+        return NextResponse.json({
+            ...student,
+            classroom: classroom ? {
+                classroom_id: classroom.classroom_id,
+                grade: classroom.grade,
+                grade_label: classroom.grade?.replace("Level_", "ม.") ?? null,
+                class_name: classroom.classroom_types?.name ?? null,
+                homeroom_teacher: homeroomTeachers,
+            } : null,
+        });
     } catch {
         return NextResponse.json({ error: "ไม่ได้เข้าสู่ระบบ" }, { status: 401 });
     }
 }
+

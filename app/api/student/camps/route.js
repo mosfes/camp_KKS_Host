@@ -33,11 +33,10 @@ export async function GET() {
             classroomIds = demoClassrooms.map(c => c.classroom_id);
         }
 
-        // 2. Find Camps linked to these classrooms
+        // 2. Find Camps linked to these classrooms (รวมทั้งที่จบแล้วด้วย)
         const camps = await prisma.camp.findMany({
             where: {
                 deletedAt: null,
-                status: "OPEN",
                 camp_classroom: {
                     some: {
                         classroom_classroom_id: { in: classroomIds }
@@ -78,9 +77,11 @@ export async function GET() {
         });
 
         // 3. Transform data for frontend
+        const now = new Date();
         const studentCamps = camps.map(camp => {
             const enrollment = camp.student_enrollment.length > 0 ? camp.student_enrollment[0] : null;
             const isRegistered = !!enrollment?.enrolled_at;
+            const isEnded = camp.end_date < now;
 
             return {
                 id: camp.camp_id,
@@ -91,6 +92,7 @@ export async function GET() {
                 endDate: camp.end_date.toISOString().split('T')[0],
                 status: isRegistered ? "Registered" : "Available",
                 isRegistered: isRegistered,
+                isEnded: isEnded,
                 shirtSize: enrollment?.shirt_size || null,
                 hasShirt: camp.has_shirt,
                 startShirtDate: camp.start_shirt_date,

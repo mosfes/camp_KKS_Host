@@ -21,6 +21,7 @@ export function HeadteacherNavbar() {
     lastname: string;
     email: string;
     role: string;
+    roles?: string[];
   } | null>(null);
 
   // ดึงข้อมูลครูจาก session cookie
@@ -67,12 +68,22 @@ export function HeadteacherNavbar() {
         <NavbarItem>
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
-              <Avatar
-                as="button"
-                className="bg-[#5d7c6f] text-white transition-transform"
-                name={initials}
-                size="sm"
-              />
+              <div className="flex items-center gap-2 cursor-pointer">
+                {(teacher?.roles ?? (teacher?.role ? [teacher.role] : [])).map((r) => (
+                  <span
+                    key={r}
+                    className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
+                  >
+                    {r === "HEADTEACHER" ? "หัวหน้าค่าย" : r === "TEACHER" ? "ครู" : r === "ADMIN" ? "ผู้ดูแลระบบ" : r}
+                  </span>
+                ))}
+                <Avatar
+                  as="button"
+                  className="bg-[#5d7c6f] text-white transition-transform"
+                  name={initials}
+                  size="sm"
+                />
+              </div>
             </DropdownTrigger>
 
             <DropdownMenu aria-label="Profile Actions" variant="flat">
@@ -83,13 +94,32 @@ export function HeadteacherNavbar() {
                 </div>
               </DropdownItem>
 
-              <DropdownItem
-                key="settings"
-                startContent={<Settings size={16} />}
-                onClick={() => router.push("/headteacher/dashboard")}
-              >
-                หน้าหลัก
-              </DropdownItem>
+              {(teacher?.roles?.includes("ADMIN") || teacher?.role === "ADMIN") ? (
+                <>
+                  <DropdownItem
+                    key="admin_dashboard"
+                    startContent={<Settings size={16} />}
+                    onClick={() => router.push("/admin_add_user")}
+                  >
+                    หน้าหลักผู้ดูแลระบบ
+                  </DropdownItem>
+                  <DropdownItem
+                    key="headteacher_dashboard"
+                    startContent={<GraduationCap size={16} />}
+                    onClick={() => router.push("/headteacher/dashboard")}
+                  >
+                    เข้าสู่โหมดหัวหน้าค่าย
+                  </DropdownItem>
+                </>
+              ) : (
+                <DropdownItem
+                  key="settings"
+                  startContent={<Settings size={16} />}
+                  onClick={() => router.push("/headteacher/dashboard")}
+                >
+                  หน้าหลัก
+                </DropdownItem>
+              )}
 
               <DropdownItem
                 key="logout"

@@ -87,6 +87,8 @@ export default function StudentDashboard() {
           enrolled: camp._count?.student_enrollment || 0,
           capacity: 0, // Capacity not in current API response, defaulting to 0 or hidden
           image: camp.camp_img_url || null,
+          isOwner: camp.isOwner,
+          ownerName: camp.created_by ? `${camp.created_by.firstname} ${camp.created_by.lastname}`.trim() : "",
         };
       });
 
@@ -385,18 +387,6 @@ export default function StudentDashboard() {
                     key={camp.id}
                     className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow bg-white relative group"
                   >
-                    {/* Delete Button */}
-                    <button
-                      className="absolute top-2 right-2 z-10 p-2  bg-[#5d7c6f] text-white rounded-full opacity-60 group-hover:opacity-100 transition-opacity hover:bg-[#5d7c6f] shadow-lg hover:text-red-500"
-                      title="ลบค่าย"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteCamp(camp.id, camp.title);
-                      }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-
                     {/* Image / SVG (hidden on mobile) */}
                     <div
                       className="relative h-48 overflow-hidden hidden sm:block cursor-pointer"
@@ -404,6 +394,19 @@ export default function StudentDashboard() {
                         router.push(`/headteacher/dashboard/camp/${camp.id}`)
                       }
                     >
+                      {/* Delete Button - เฉพาะเจ้าของค่าย */}
+                      {camp.isOwner && (
+                        <button
+                          className="absolute top-2 right-2 z-10 p-2 bg-[#5d7c6f] text-white rounded-full opacity-60 group-hover:opacity-100 transition-opacity hover:bg-[#5d7c6f] shadow-lg hover:text-red-500"
+                          title="ลบค่าย"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCamp(camp.id, camp.title);
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                       {camp.image ? (
                         <img
                           alt={camp.title}
@@ -425,15 +428,34 @@ export default function StudentDashboard() {
                             {camp.description}
                           </p>
                         </div>
-                        <Chip
-                          className={`
-                                                        ${STATUS_STYLES[camp.status]?.bg ?? "bg-gray-100"}
-                                                        ${STATUS_STYLES[camp.status]?.text ?? "text-gray-600"}
-                                                    `}
-                          variant="shadow"
-                        >
-                          {camp.status}
-                        </Chip>
+                        <div className="flex flex-col items-end gap-2">
+                          <Chip
+                            className={`
+                                                          ${STATUS_STYLES[camp.status]?.bg ?? "bg-gray-100"}
+                                                          ${STATUS_STYLES[camp.status]?.text ?? "text-gray-600"}
+                                                      `}
+                            variant="shadow"
+                          >
+                            {camp.status}
+                          </Chip>
+                          {camp.isOwner ? (
+                            <Chip
+                              className="bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
+                              size="sm"
+                              variant="flat"
+                            >
+                              เจ้าของค่าย: {camp.ownerName}
+                            </Chip>
+                          ) : camp.ownerName ? (
+                            <Chip
+                              className="bg-gray-100 text-gray-600 border border-gray-200"
+                              size="sm"
+                              variant="flat"
+                            >
+                              ผู้สร้าง: {camp.ownerName}
+                            </Chip>
+                          ) : null}
+                        </div>
                       </div>
 
                       {/* Location */}
@@ -455,15 +477,19 @@ export default function StudentDashboard() {
                         <span className="text-[#718096]">
                           ลงทะเบียนแล้ว {camp.enrolled}/{camp.capacity}
                         </span>
-                        <Button
-                          className="bg-transparent text-[#718096] font-semibold hover:opacity-70"
-                          endContent={<ChevronRight size={20} />}
-                          onPress={() =>
-                            router.push(`headteacher/dashboard/camp/${camp.id}`)
-                          }
-                        >
-                          ดูรายละเอียด
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            className="bg-transparent text-[#718096] font-semibold hover:opacity-70"
+                            endContent={<ChevronRight size={20} />}
+                            onPress={() =>
+                              router.push(
+                                `/headteacher/dashboard/camp/${camp.id}`,
+                              )
+                            }
+                          >
+                            ดูรายละเอียด
+                          </Button>
+                        </div>
                       </div>
                     </CardBody>
                   </Card>

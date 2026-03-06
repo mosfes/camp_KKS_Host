@@ -57,7 +57,7 @@ export function AppNavbar() {
         </div>
         <div className="flex flex-col leading-tight">
           <span className="font-semibold text-sm">EduCamp</span>
-          <span className="text-xs text-gray-500">My Camps</span>
+          <span className="text-xs text-gray-500">ค่ายของฉัน</span>
         </div>
       </NavbarBrand>
 
@@ -66,12 +66,19 @@ export function AppNavbar() {
         <NavbarItem>
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
-              <Avatar
-                as="button"
-                className="bg-[#5d7c6f] text-white transition-transform"
-                name={initials}
-                size="sm"
-              />
+              <div className="flex items-center gap-2 cursor-pointer">
+                {student && (
+                  <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]">
+                    นักเรียน
+                  </span>
+                )}
+                <Avatar
+                  as="button"
+                  className="bg-[#5d7c6f] text-white transition-transform"
+                  name={initials}
+                  size="sm"
+                />
+              </div>
             </DropdownTrigger>
 
             <DropdownMenu aria-label="Profile Actions" variant="flat">

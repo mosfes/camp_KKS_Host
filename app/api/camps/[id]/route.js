@@ -1,25 +1,22 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from '@/lib/db';
+import { requireTeacher } from '@/lib/auth';
 
-// GET - ดึงข้อมูลค่ายเดียว
+// GET - ดึงข้อมูลค่ายเดียว + บอกว่า teacher ที่ login เป็น owner หรือไม่
 export async function GET(request, context) {
+    const { teacher, error: authError } = await requireTeacher();
+    if (authError) return authError;
+
     try {
         const params = await context.params;
         const campId = Number(params.id);
 
         const camp = await prisma.camp.findFirst({
-            where: {
-                camp_id: campId,
-                deletedAt: null
-            },
+            where: { camp_id: campId, deletedAt: null },
             include: {
                 created_by: {
-                    select: {
-                        firstname: true,
-                        lastname: true,
-                        email: true,
-                    },
+                    select: { firstname: true, lastname: true, email: true },
                 },
                 student_enrollment: {
                     include: {
@@ -56,18 +53,11 @@ export async function GET(request, context) {
                     },
                 },
                 camp_template: true,
-                // ⭐ เพิ่ม camp_daily_schedule พร้อม time_slots
                 camp_daily_schedule: {
-                    include: {
-                        time_slots: true,
-                    },
-                    orderBy: {
-                        day: 'asc',
-                    },
+                    include: { time_slots: true },
+                    orderBy: { day: 'asc' },
                 },
-                station: {
-                    where: { deletedAt: null }
-                },
+                station: { where: { deletedAt: null } },
             },
         });
 
@@ -75,23 +65,36 @@ export async function GET(request, context) {
             return NextResponse.json({ error: "Camp not found" }, { status: 404 });
         }
 
-        return NextResponse.json(camp, { status: 200 });
+        return NextResponse.json({
+            ...camp,
+            isOwner: camp.created_by_teacher_id === teacher.teachers_id,
+        }, { status: 200 });
     } catch (error) {
         console.error("Error fetching camp:", error);
-        return NextResponse.json(
-            { error: "Failed to fetch camp" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: "Failed to fetch camp" }, { status: 500 });
     }
 }
 
 
 export async function PUT(request, context) {
+    // ตรวจสอบ session + ownership
+    const { teacher, error: authError } = await requireTeacher();
+    if (authError) return authError;
+
     const params = await context.params;
     const campId = Number(params.id);
+
+    // เช็ค ownership
+    const existing = await prisma.camp.findFirst({
+        where: { camp_id: campId, deletedAt: null },
+        select: { created_by_teacher_id: true },
+    });
+    if (!existing) return NextResponse.json({ error: "ไม่พบค่าย" }, { status: 404 });
+    if (existing.created_by_teacher_id !== teacher.teachers_id) {
+        return NextResponse.json({ error: "ไม่มีสิทธิ์แก้ไขค่ายนี้" }, { status: 403 });
+    }
+
     try {
-        // const { id } = await params;
-        // const campId = parseInt(id);
         const body = await request.json();
 
         // อัพเดทข้อมูลค่าย
@@ -200,6 +203,10 @@ export async function PUT(request, context) {
 
 
 export async function DELETE(req, context) {
+    // ตรวจสอบ session + ownership
+    const { teacher, error: authError } = await requireTeacher();
+    if (authError) return authError;
+
     try {
         const params = await context.params;
         const campId = Number(params.id);
@@ -208,7 +215,17 @@ export async function DELETE(req, context) {
             return NextResponse.json({ error: "Invalid camp id" }, { status: 400 });
         }
 
-        // Soft delete the camp
+        // เช็ค ownership
+        const existing = await prisma.camp.findFirst({
+            where: { camp_id: campId, deletedAt: null },
+            select: { created_by_teacher_id: true },
+        });
+        if (!existing) return NextResponse.json({ error: "ไม่พบค่าย" }, { status: 404 });
+        if (existing.created_by_teacher_id !== teacher.teachers_id) {
+            return NextResponse.json({ error: "ไม่มีสิทธิ์ลบค่ายนี้" }, { status: 403 });
+        }
+
+        // Soft delete
         await prisma.camp.update({
             where: { camp_id: campId },
             data: { deletedAt: new Date() }

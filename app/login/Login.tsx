@@ -79,9 +79,9 @@ export default function SignInSide() {
 
           <div className="space-y-4">
             <div>
-              <p className="text-gray-500 text-sm mb-2">Email</p>
+              <p className="text-gray-500 text-sm mb-2">อีเมล</p>
               <Input
-                label="Email"
+                label="อีเมล"
                 size="sm"
                 type="email"
                 value={email}
