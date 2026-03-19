@@ -186,6 +186,33 @@ export default function StudentDashboard() {
       setIsSubmitting(true);
       console.log("Data being sent:", data); // Debug: ดูข้อมูลที่ส่งไป
 
+      let img_shirt_url = "";
+
+      // Upload shirt image to Cloudinary if it exists
+      if (data.shirtImageFile) {
+        try {
+          const formData = new FormData();
+          formData.append("file", data.shirtImageFile);
+
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            img_shirt_url = uploadData.url;
+            console.log("Uploaded shirt image:", img_shirt_url);
+          } else {
+            console.error("Failed to upload shirt image");
+            showError("อัปโหลดรูปล้มเหลว", "ไม่สามารถอัปโหลดรูปภาพเสื้อได้ แต่จะดำเนินการสร้างค่ายต่อ");
+          }
+        } catch (uploadErr) {
+          console.error("Error during upload:", uploadErr);
+          showError("อัปโหลดรูปล้มเหลว", "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพเสื้อ");
+        }
+      }
+
       // ส่งข้อมูลไปยัง API เพื่อสร้างค่ายใหม่
       const response = await fetch("/api/camps", {
         method: "POST",
@@ -210,6 +237,7 @@ export default function StudentDashboard() {
           dailySchedule: data.dailySchedule,
           saveAsTemplate: data.saveAsTemplate,
           templateName: data.templateName,
+          img_shirt_url: img_shirt_url,
         }),
       });
 
