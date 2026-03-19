@@ -63,8 +63,8 @@ const PromoteStudentsContent = () => {
 
         // Validate year order (only if not creating new)
         if (promoteData.toYear !== "create_next") {
-            const fromYearObj = years.find(y => y.years_id.toString() === promoteData.fromYear);
-            const toYearObj = years.find(y => y.years_id.toString() === promoteData.toYear);
+            const fromYearObj = years.find(y => y.year.toString() === promoteData.fromYear);
+            const toYearObj = years.find(y => y.year.toString() === promoteData.toYear);
 
             if (fromYearObj && toYearObj && fromYearObj.year >= toYearObj.year) {
                 return showError("ข้อผิดพลาด", "ปีการศึกษาปลายทางต้องมากกว่าปีการศึกษาต้นทาง");
@@ -77,14 +77,14 @@ const PromoteStudentsContent = () => {
 
             // Handle Create New Year
             if (promoteData.toYear === "create_next") {
-                const fromYearObj = years.find(y => y.years_id.toString() === promoteData.fromYear);
+                const fromYearObj = years.find(y => y.year.toString() === promoteData.fromYear);
                 const nextYearAD = parseInt(fromYearObj.year) + 1;
 
                 const newYear = await studentService.addAcademicYear(nextYearAD);
 
                 // Refresh years and update target ID
                 await fetchYears();
-                targetYearId = newYear.years_id.toString();
+                targetYearId = newYear.year.toString();
 
                 // Update state silently so UI reflects the new year after re-render (optional but good)
                 setPromoteData(prev => ({ ...prev, toYear: targetYearId }));
@@ -215,7 +215,7 @@ const PromoteStudentsContent = () => {
                                     classNames={{ trigger: "bg-white" }}
                                 >
                                     {years.map((y) => (
-                                        <SelectItem key={y.years_id.toString()} value={y.years_id.toString()} textValue={`${parseInt(y.year) + 543}`}>
+                                        <SelectItem key={y.year.toString()} value={y.year.toString()} textValue={`${parseInt(y.year) + 543}`}>
                                             {parseInt(y.year) + 543}
                                         </SelectItem>
                                     ))}
@@ -233,7 +233,7 @@ const PromoteStudentsContent = () => {
                                     {(() => {
                                         if (!promoteData.fromYear) return [];
 
-                                        const fromYearObj = years.find(fy => fy.years_id.toString() === promoteData.fromYear);
+                                        const fromYearObj = years.find(fy => fy.year.toString() === promoteData.fromYear);
                                         if (!fromYearObj) return [];
 
                                         const nextYearAD = parseInt(fromYearObj.year) + 1;
@@ -243,7 +243,7 @@ const PromoteStudentsContent = () => {
                                         const validYears = years.filter(y => y.year > fromYearObj.year);
 
                                         const items = validYears.map((y) => (
-                                            <SelectItem key={y.years_id.toString()} value={y.years_id.toString()} textValue={`${parseInt(y.year) + 543}`}>
+                                            <SelectItem key={y.year.toString()} value={y.year.toString()} textValue={`${parseInt(y.year) + 543}`}>
                                                 {parseInt(y.year) + 543}
                                             </SelectItem>
                                         ));

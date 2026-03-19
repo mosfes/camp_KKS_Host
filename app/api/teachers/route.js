@@ -1,14 +1,55 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-export async function GET() {
+export async function GET(req) {
   try {
+    const { searchParams } = new URL(req.url);
+    const page = searchParams.get('page');
+    const limitParams = searchParams.get('limit');
+    const search = searchParams.get('search');
+
+    const whereClause = { deletedAt: null };
+    if (search) {
+        whereClause.OR = [
+            { firstname: { contains: search } },
+            { lastname: { contains: search } },
+            { email: { contains: search } }
+        ];
+    }
+
+    if (page) {
+      const pageNum = parseInt(page) || 1;
+      const limit = parseInt(limitParams) || 20;
+      const skip = (pageNum - 1) * limit;
+
+      const [teachers, totalCount] = await Promise.all([
+        prisma.teachers.findMany({
+          where: whereClause,
+          orderBy: { teachers_id: 'asc' },
+          skip: skip,
+          take: limit
+        }),
+        prisma.teachers.count({ where: whereClause })
+      ]);
+
+      return NextResponse.json({
+        data: teachers,
+        pagination: {
+            total: totalCount,
+            page: pageNum,
+            limit,
+            totalPages: Math.ceil(totalCount / limit)
+        }
+      });
+    }
+
     const teachers = await prisma.teachers.findMany({
+      where: whereClause,
       orderBy: { teachers_id: 'asc' }
     });
     return NextResponse.json(teachers);
   } catch (error) {
-    return NextResponse.json({ error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch teachers' }, { status: 500 });
   }
 }
 
@@ -21,6 +62,20 @@ export async function POST(req) {
     });
 
     if (existing) {
+      // ถ้าครูถูก soft-delete อยู่ในถังขยะ ให้กู้คืนและอัปเดตข้อมูลใหม่
+      if (existing.deletedAt) {
+        const restored = await prisma.teachers.update({
+          where: { teachers_id: existing.teachers_id },
+          data: {
+            firstname: body.firstname,
+            lastname: body.lastname,
+            tel: body.tel,
+            role: body.role || 'TEACHER',
+            deletedAt: null, // กู้คืนออกจากถังขยะ
+          }
+        });
+        return NextResponse.json(restored, { status: 201 });
+      }
       return NextResponse.json({ error: 'อีเมลนี้มีผู้ใช้งานแล้ว' }, { status: 400 });
     }
 
@@ -50,56 +105,23 @@ export async function DELETE(req) {
       return NextResponse.json({ error: 'ID ไม่ถูกต้อง' }, { status: 400 });
     }
 
-    await prisma.$transaction(async (prisma) => {
-        const owningClassroom = await prisma.classrooms.findFirst({
-            where: { teachers_teachers_id: id }
-        });
-        if (owningClassroom) {
-            throw new Error('ไม่สามารถลบได้: ครูท่านนี้เป็นครูประจำชั้น (ต้องเปลี่ยนครูประจำชั้นก่อน)');
-        }
+    const owningClassroom = await prisma.classrooms.findFirst({
+        where: { teachers_teachers_id: id, deletedAt: null }
+    });
+    if (owningClassroom) {
+        return NextResponse.json({ error: 'ไม่สามารถลบได้: ครูท่านนี้เป็นครูประจำชั้น (ต้องเปลี่ยนครูประจำชั้นก่อน)' }, { status: 400 });
+    }
 
-        const owningCamp = await prisma.camp.findFirst({
-            where: { created_by_teacher_id: id }
-        });
-        if (owningCamp) {
-             throw new Error('ไม่สามารถลบได้: ครูท่านนี้เป็นผู้สร้างค่าย (ต้องลบค่ายหรือโอนสิทธิ์ก่อน)');
-        }
+    const owningCamp = await prisma.camp.findFirst({
+        where: { created_by_teacher_id: id, deletedAt: null }
+    });
+    if (owningCamp) {
+        return NextResponse.json({ error: 'ไม่สามารถลบได้: ครูท่านนี้เป็นผู้สร้างค่าย (ต้องลบค่ายหรือโอนสิทธิ์ก่อน)' }, { status: 400 });
+    }
 
-        await prisma.classroom_teacher.deleteMany({
-            where: { teacher_teachers_id: id }
-        });
-
-        const enrollments = await prisma.teacher_enrollment.findMany({
-            where: { teacher_teachers_id: id },
-            select: { teacher_enrollment_id: true }
-        });
-
-        if (enrollments.length > 0) {
-            const enrollmentIds = enrollments.map(e => e.teacher_enrollment_id);
-            
-            const attendanceSessions = await prisma.attendance_teachers.findMany({
-                where: { teacher_enrollment_teacher_enrollment_id: { in: enrollmentIds } },
-                select: { session_id: true }
-            });
-
-            if (attendanceSessions.length > 0) {
-                const sessionIds = attendanceSessions.map(s => s.session_id);
-                await prisma.attendance_record_student.deleteMany({
-                    where: { attendance_teacher_session_id: { in: sessionIds } }
-                });
-                await prisma.attendance_teachers.deleteMany({
-                     where: { session_id: { in: sessionIds } }
-                });
-            }
-
-            await prisma.teacher_enrollment.deleteMany({
-                where: { teacher_enrollment_id: { in: enrollmentIds } }
-            });
-        }
-
-        await prisma.teachers.delete({
-            where: { teachers_id: id }
-        });
+    await prisma.teachers.update({
+        where: { teachers_id: id },
+        data: { deletedAt: new Date() }
     });
 
     return NextResponse.json({ message: 'ลบข้อมูลครูสำเร็จ' });

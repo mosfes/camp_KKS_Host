@@ -5,11 +5,54 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const yearId = searchParams.get('yearId');
+    const page = searchParams.get('page');
+    const limitParams = searchParams.get('limit');
 
-    const whereClause = {};
+    const whereClause = { deletedAt: null };
 
     if (yearId && yearId !== 'all') {
       whereClause.academic_years_years_id = parseInt(yearId);
+    }
+
+    if (page) {
+      const pageNum = parseInt(page) || 1;
+      const limit = parseInt(limitParams) || 20;
+      const skip = (pageNum - 1) * limit;
+
+      const [classrooms, totalCount] = await Promise.all([
+        prisma.classrooms.findMany({
+          where: whereClause,
+          include: {
+            academic_years: true,
+            teacher: true,
+            classroom_types: true,
+            classroom_teacher: {
+              include: {
+                teacher: true
+              }
+            },
+            _count: {
+              select: { classroom_students: true }
+            }
+          },
+          orderBy: { grade: 'asc' },
+          skip: skip,
+          take: limit
+        }),
+        prisma.classrooms.count({
+          where: whereClause
+        })
+      ]);
+
+      return NextResponse.json({
+        data: classrooms,
+        pagination: {
+            total: totalCount,
+            page: pageNum,
+            limit,
+            totalPages: Math.ceil(totalCount / limit)
+        }
+      });
     }
 
     const classrooms = await prisma.classrooms.findMany({
@@ -17,6 +60,7 @@ export async function GET(req) {
       include: {
         academic_years: true,
         teacher: true,
+        classroom_types: true,
         classroom_teacher: {
           include: {
             teacher: true
@@ -52,6 +96,33 @@ export async function POST(req) {
     });
 
     if (existing) {
+        // ถ้าห้องเรียนถูก soft-delete อยู่ในถังขยะ ให้กู้คืนและอัปเดตข้อมูลใหม่
+        if (existing.deletedAt) {
+            const restored = await prisma.$transaction(async (tx) => {
+                const classroom = await tx.classrooms.update({
+                    where: { classroom_id: existing.classroom_id },
+                    data: {
+                        teachers_teachers_id: parseInt(body.teacher_id),
+                        deletedAt: null, // กู้คืนออกจากถังขยะ
+                    }
+                });
+
+                // รีเซ็ตครูประจำชั้นคนที่ 2
+                await tx.classroom_teacher.deleteMany({
+                    where: { classroom_classroom_id: existing.classroom_id }
+                });
+                if (body.teacher_id_2) {
+                    await tx.classroom_teacher.create({
+                        data: {
+                            classroom_classroom_id: existing.classroom_id,
+                            teacher_teachers_id: parseInt(body.teacher_id_2)
+                        }
+                    });
+                }
+                return classroom;
+            });
+            return NextResponse.json(restored, { status: 201 });
+        }
         return NextResponse.json({ error: 'มีห้องเรียนนี้ในปีการศึกษานี้แล้ว' }, { status: 400 });
     }
 
@@ -119,22 +190,9 @@ export async function DELETE(req) {
 
     if (!id) return NextResponse.json({ error: 'ID ไม่ถูกต้อง' }, { status: 400 });
 
-    await prisma.$transaction(async (prisma) => {
-        await prisma.classroom_teacher.deleteMany({
-            where: { classroom_classroom_id: id }
-        });
-
-        await prisma.classroom_students.deleteMany({
-            where: { classroom_classroom_id: id }
-        });
-
-        await prisma.camp_classroom.deleteMany({
-            where: { classroom_classroom_id: id }
-        });
-
-        await prisma.classrooms.delete({
-            where: { classroom_id: id }
-        });
+    await prisma.classrooms.update({
+        where: { classroom_id: id },
+        data: { deletedAt: new Date() }
     });
 
     return NextResponse.json({ message: 'ลบห้องเรียนสำเร็จ' });

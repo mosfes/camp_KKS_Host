@@ -21,12 +21,13 @@ enum role {
 
 model teachers {
   teachers_id Int       @id @default(autoincrement())
-  deletedAt   DateTime?
+  prefix_name      String?   @db.VarChar(255)
   role        role      @default(TEACHER)
   firstname   String    @db.VarChar(255)
   lastname    String    @db.VarChar(255)
   tel         String    @db.VarChar(10)
   email       String    @db.VarChar(255)
+  deletedAt   DateTime?
 
   classrooms         classrooms[]
   classroom_teacher  classroom_teacher[]
@@ -36,14 +37,16 @@ model teachers {
 
 model students {
   students_id     Int       @id
-  deletedAt       DateTime?
+  prefix_name          String?   @db.VarChar(255)
   firstname       String    @db.VarChar(255)
   lastname        String    @db.VarChar(255)
+  birthday        DateTime?
   food_allergy    String?   @db.VarChar(255)
   chronic_disease String?   @db.VarChar(255)
   remark          String?   @db.VarChar(255)
   tel             String?   @db.VarChar(10)
   email           String    @db.VarChar(255)
+  deletedAt       DateTime?
 
   parents            parents[]
   classroom_students classroom_students[]
@@ -460,4 +463,10 @@ model suggestion_analysis_summary {
   evaluation_answer               evaluation_answer @relation(fields: [evaluation_answer_evaluation_id], references: [answer_id])
 }
 
-
+model vulgar_words {
+  vulgar_word_id Int      @id @default(autoincrement())
+  word           String   @db.VarChar(255)
+  is_ai          Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

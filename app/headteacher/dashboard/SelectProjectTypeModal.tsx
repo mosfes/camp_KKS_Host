@@ -39,7 +39,8 @@ export default function SelectProjectTypeModal({
   onClose,
   onSelect,
 }: SelectProjectTypeModalProps) {
-  const { showError, showInfo, showConfirm } = useStatusModal();
+  const { showError, showInfo, showConfirm, setIsLoading, close } =
+    useStatusModal();
   const [selectedType, setSelectedType] = useState<"new" | "continuing" | null>(
     null,
   );
@@ -77,6 +78,7 @@ export default function SelectProjectTypeModal({
 
   const handleDeleteTemplate = async (templateId: number) => {
     try {
+      setIsLoading(true);
       const response = await fetch(`/api/templates/${templateId}`, {
         method: "DELETE",
       });
@@ -89,12 +91,15 @@ export default function SelectProjectTypeModal({
         if (selectedTemplate?.camp_template_id === templateId) {
           setSelectedTemplate(null);
         }
+        close(); // Close the confirmation modal
       } else {
         showError("ล้มเหลว", "Failed to delete template");
       }
     } catch (error) {
       console.error("Error deleting template:", error);
       showError("ข้อผิดพลาด", "Error deleting template");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -144,6 +149,7 @@ export default function SelectProjectTypeModal({
   };
 
   const handleContinue = async () => {
+    if (loading) return;
     console.log("handleContinue called");
     console.log("selectedType:", selectedType);
     console.log("selectedTemplate:", selectedTemplate);
@@ -153,6 +159,7 @@ export default function SelectProjectTypeModal({
       onSelect("new", null);
     } else if (selectedType === "continuing" && selectedTemplate) {
       try {
+        setLoading(true);
         console.log(
           "Fetching template data for ID:",
           selectedTemplate.camp_template_id,
@@ -167,6 +174,8 @@ export default function SelectProjectTypeModal({
       } catch (error) {
         console.error("Error loading template:", error);
         showError("ข้อผิดพลาด", "ไม่สามารถโหลดข้อมูล Template ได้");
+      } finally {
+        setLoading(false);
       }
     } else {
       console.log("Cannot continue - missing selection");
@@ -368,7 +377,8 @@ export default function SelectProjectTypeModal({
               <Button
                 fullWidth
                 className="bg-[#6b857a] text-white rounded-xl font-bold shadow-lg hover:bg-[#5a7268]"
-                isDisabled={!canContinue}
+                isDisabled={!canContinue || loading}
+                isLoading={loading}
                 size="lg"
                 onPress={handleContinue}
               >

@@ -1,13 +1,11 @@
 import { SignedIn, SignedOut, SignIn, UserButton } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import Link from "next/link";
+import { Users } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import AutoLogout from "@/components/AutoLogout";
-
-// export default function LoginPage() {
-//   return <Login />;
-// }
 
 export default async function Home() {
   const { userId } = await auth();
@@ -25,7 +23,6 @@ export default async function Home() {
     });
 
     if (teacher) {
-      // set cookie ก่อน redirect โดยผ่าน sync-session
       if (teacher.role === "ADMIN") {
         redirect("/api/auth/sync-session?to=/admin_add_user");
       } else {
@@ -42,31 +39,37 @@ export default async function Home() {
     }
 
     return <AutoLogout email={email} />;
-
   }
 
   return (
     <main className="">
       <SignedOut>
-        <div className="flex min-h-screen items-center justify-center">
-          <SignIn
-            appearance={{
-              elements: {
-                logoImage: {
-                  width: "100px",
-                  height: "auto",
+        <div className="flex min-h-screen items-center justify-center bg-[#f5f0e7]">
+          <div className="flex flex-col items-center gap-4">
+            <SignIn
+              appearance={{
+                elements: {
+                  logoImage: {
+                    width: "100px",
+                    height: "auto",
+                  },
+                  socialButtonsBlockButton: "h-[40px] text-base",
+                  formButtonPrimary: "!bg-sage hover:bg-blue-700 ",
+                  footerAction: "!hidden",
+                  footer: "!hidden",
                 },
-                socialButtonsBlockButton: "h-[40px] text-base",
-                formButtonPrimary: "!bg-sage hover:bg-blue-700 ",
-                footerAction: "!hidden",
-                footer: "!hidden",
-                // logoBox: {
-                //   padding: '20px',
-                // }
-              },
-            }}
-            routing="hash"
-          />
+              }}
+              routing="hash"
+            />
+            {/* ปุ่มไปหน้าล็อคอินผู้ปกครอง */}
+            <Link
+              href="/login"
+              className="w-full max-w-[400px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-[#a0b8af] bg-white text-[#5d7c6f] text-sm font-medium shadow-sm hover:bg-[#eaf1ee] hover:border-[#5d7c6f] transition-all"
+            >
+              <Users size={18} />
+              เข้าสู่ระบบสำหรับผู้ปกครอง
+            </Link>
+          </div>
         </div>
       </SignedOut>
 

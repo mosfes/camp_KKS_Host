@@ -58,7 +58,7 @@ export async function DELETE(request) {
         }
 
         await prisma.academic_years.delete({
-            where: { years_id: yearId }
+            where: { year: yearId }
         });
 
         return NextResponse.json({ message: "Deleted successfully" });

@@ -41,7 +41,7 @@ export default function EditMissionModal({
   const [title, setTitle] = useState("");
   const [type, setType] = useState("QUESTION_ANSWERING");
   const [description, setDescription] = useState("");
-  const [question, setQuestion] = useState("");
+  const [textQuestions, setTextQuestions] = useState<any[]>([{ text: "" }]);
   const [mcqQuestions, setMcqQuestions] = useState<any[]>([
     { text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] },
   ]);
@@ -56,7 +56,12 @@ export default function EditMissionModal({
 
       if (missionData.mission_question?.length > 0) {
         if (t === "QUESTION_ANSWERING") {
-          setQuestion(missionData.mission_question[0].question_text || "");
+          const tqs = missionData.mission_question.filter((q: any) => q.question_type === "TEXT");
+          setTextQuestions(
+            tqs.length > 0
+              ? tqs.map((q: any) => ({ text: q.question_text }))
+              : [{ text: "" }]
+          );
         } else if (t === "MULTIPLE_CHOICE_QUIZ") {
           const mcqs = missionData.mission_question.filter((q: any) => q.question_type === "MCQ");
           setMcqQuestions(
@@ -70,7 +75,7 @@ export default function EditMissionModal({
           );
         }
       } else {
-        setQuestion("");
+        setTextQuestions([{ text: "" }]);
         setMcqQuestions([{ text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] }]);
       }
     }
@@ -87,6 +92,15 @@ export default function EditMissionModal({
 
   const updateQText = (qi: number, text: string) => {
     const q = [...mcqQuestions]; q[qi].text = text; setMcqQuestions(q);
+  };
+
+  const addTextQuestion = () => setTextQuestions([...textQuestions, { text: "" }]);
+  const removeTextQuestion = (i: number) => {
+    if (textQuestions.length <= 1) return;
+    setTextQuestions(textQuestions.filter((_, idx) => idx !== i));
+  };
+  const updateTextQ = (i: number, val: string) => {
+    const q = [...textQuestions]; q[i].text = val; setTextQuestions(q);
   };
 
   const addChoice = (qi: number) => {
@@ -121,7 +135,9 @@ export default function EditMissionModal({
         if (!q.choices.some((c: any) => c.isCorrect)) { showError("ข้อผิดพลาด", `กรุณาเลือกคำตอบที่ถูกต้องสำหรับคำถามที่ ${i + 1}`); return; }
       }
     } else if (type === "QUESTION_ANSWERING") {
-      if (!question.trim()) { showError("ข้อผิดพลาด", "กรุณากรอกคำถาม"); return; }
+      for (let i = 0; i < textQuestions.length; i++) {
+        if (!textQuestions[i].text.trim()) { showError("ข้อผิดพลาด", `คำถามที่ ${i + 1} ยังว่างอยู่`); return; }
+      }
     }
 
     try {
@@ -131,8 +147,7 @@ export default function EditMissionModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title, type, description,
-          question: type === "QUESTION_ANSWERING" ? question : undefined,
-          questions: type === "MULTIPLE_CHOICE_QUIZ" ? mcqQuestions : undefined,
+          questions: type === "MULTIPLE_CHOICE_QUIZ" ? mcqQuestions : (type === "QUESTION_ANSWERING" ? textQuestions : undefined),
         }),
       });
       if (!res.ok) throw new Error();
@@ -190,9 +205,40 @@ export default function EditMissionModal({
 
               {/* ตอบคำถาม */}
               {type === "QUESTION_ANSWERING" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">คำถาม <span className="text-red-500">*</span></label>
-                  <input className={inputCls} placeholder="กรอกคำถาม" value={question} onChange={(e) => setQuestion(e.target.value)} />
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-5 bg-[#6b857a] rounded-full" />
+                    <label className="text-sm font-semibold text-gray-700">คำถาม</label>
+                  </div>
+                  {textQuestions.map((q, i) => (
+                    <div key={i} className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <span className="absolute left-3 top-2 text-xs text-gray-400 font-bold">
+                          {i + 1}
+                        </span>
+                        <input
+                          className={`${inputCls} pl-8`}
+                          placeholder="กรอกคำถาม..."
+                          value={q.text}
+                          onChange={(e) => updateTextQ(i, e.target.value)}
+                        />
+                      </div>
+                      {textQuestions.length > 1 && (
+                        <button
+                          className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                          onClick={() => removeTextQuestion(i)}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    className="w-full py-2 border-2 border-dashed border-gray-200 hover:border-[#6b857a] rounded-xl text-xs text-gray-500 hover:text-[#6b857a] font-medium transition-colors flex items-center justify-center gap-1"
+                    onClick={addTextQuestion}
+                  >
+                    <Plus size={14} /> เพิ่มคำถาม
+                  </button>
                 </div>
               )}
 

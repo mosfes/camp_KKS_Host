@@ -21,8 +21,8 @@ import {
     SelectItem
 } from "@heroui/react";
 import { useState, useEffect, useRef } from "react";
-import * as XLSX from 'xlsx';
-import { Trash2, SquarePen, FileDown, Upload } from 'lucide-react';
+import { Trash2, Trash, Archive, SquarePen, Search } from 'lucide-react';
+import TrashManager from "./TrashManager";
 import studentService from "@/app/service/adminService";
 import { PlusIcon } from "./Icons";
 
@@ -32,13 +32,13 @@ const TeacherManager = () => {
     const [teachers, setTeachers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
+    const [showTrash, setShowTrash] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [totalTeachers, setTotalTeachers] = useState(0);
 
-    // Excel Import State
-    const [importPreviewData, setImportPreviewData] = useState([]);
-    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-    const [isLoadingImport, setIsLoadingImport] = useState(false);
-    const [selectedImportKeys, setSelectedImportKeys] = useState(new Set(["all"]));
-    const fileInputRef = useRef(null);
+
 
     const [formData, setFormData] = useState({
         teachers_id: "",
@@ -61,14 +61,34 @@ const TeacherManager = () => {
     };
 
     useEffect(() => {
-        fetchTeachers();
-    }, []);
+        setPage(1);
+        fetchTeachers(1);
+    }, [searchTerm]);
 
-    const fetchTeachers = async () => {
+    const fetchTeachers = async (pageNum = 1) => {
         setIsLoading(true);
-        const data = await studentService.getTeachers();
-        setTeachers(data);
-        setIsLoading(false);
+        try {
+            const result = await studentService.getTeachersPaginated(pageNum, 20, searchTerm);
+            const newData = Array.isArray(result) ? result : (result.data || []);
+            
+            if (pageNum === 1) {
+                setTeachers(newData);
+            } else {
+                setTeachers(prev => [...prev, ...newData]);
+            }
+            
+            if (result.pagination) {
+                setHasMore(pageNum < result.pagination.totalPages);
+                setTotalTeachers(result.pagination.total);
+            } else {
+                setHasMore(false);
+                setTotalTeachers(newData.length);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleChange = (e) => {
@@ -104,7 +124,8 @@ const TeacherManager = () => {
                 try {
                     await studentService.deleteTeacher(teacher.teachers_id);
                     showSuccess("สำเร็จ", "ลบข้อมูลสำเร็จ");
-                    fetchTeachers();
+                    setPage(1);
+                    fetchTeachers(1);
                 } catch (error) {
                     showError("เกิดข้อผิดพลาด", error.message);
                 }
@@ -129,7 +150,8 @@ const TeacherManager = () => {
             }
 
             setFormData({ firstname: "", lastname: "", email: "", tel: "", role: "TEACHER" });
-            fetchTeachers();
+            setPage(1);
+            fetchTeachers(1);
             onClose();
         } catch (error) {
             console.error("Teacher operation error:", error);
@@ -137,159 +159,39 @@ const TeacherManager = () => {
         }
     };
 
-    const downloadTemplate = () => {
-        const headers = ["ชื่อ", "นามสกุล", "อีเมล", "เบอร์โทร"];
-        const ws = XLSX.utils.aoa_to_sheet([headers]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Teachers");
-        XLSX.writeFile(wb, "teacher_template.xlsx");
-    };
-
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const bstr = evt.target.result;
-            const wb = XLSX.read(bstr, { type: 'binary' });
-            const wsname = wb.SheetNames[0];
-            const ws = wb.Sheets[wsname];
-            const data = XLSX.utils.sheet_to_json(ws);
-
-            const seenEmails = new Set();
-
-            const validData = data.filter(item => (item.firstname && item.email) || (item["ชื่อ"] && item["อีเมล"])).map((item, index) => {
-                const firstname = item.firstname || item["ชื่อ"];
-                const lastname = item.lastname || item["นามสกุล"] || "";
-                const email = (item.email || item["อีเมล"] || "").trim();
-
-                // 1. Check against DB
-                const isDbDuplicate = teachers.some(t =>
-                    (t.firstname.trim() === firstname.trim() && t.lastname.trim() === lastname.trim()) ||
-                    (t.email && t.email.trim() === email)
-                );
-
-                // 2. Check against internal file duplicates
-                let isInternalDuplicate = false;
-                if (email) {
-                    if (seenEmails.has(email)) {
-                        isInternalDuplicate = true;
-                    } else {
-                        seenEmails.add(email);
-                    }
-                }
-
-                const isDuplicate = isDbDuplicate || isInternalDuplicate;
-
-                let role = "TEACHER";
-
-                return {
-                    id: index,
-                    firstname: firstname,
-                    lastname: lastname,
-                    email: email,
-                    tel: (item.tel || item["เบอร์โทร"]) ? String(item.tel || item["เบอร์โทร"]).replace(/\D/g, '').slice(0, 10) : "",
-                    role: role,
-                    isDuplicate: isDuplicate
-                };
-            });
-
-            if (validData.length === 0) {
-                showError("ไม่พบข้อมูลที่ถูกต้อง", "กรุณาตรวจสอบไฟล์ Excel (ต้องมีชื่อและอีเมล)");
-                e.target.value = null;
-                return;
-            }
-
-            setImportPreviewData(validData);
 
 
-            const nonDuplicateKeys = new Set(
-                validData
-                    .filter(item => !item.isDuplicate)
-                    .map(item => String(item.id))
-            );
-
-            setSelectedImportKeys(nonDuplicateKeys);
-            setIsImportModalOpen(true);
-            e.target.value = null;
-        };
-        reader.readAsBinaryString(file);
-    };
-
-    const confirmImport = async () => {
-        setIsLoadingImport(true);
-        let successCount = 0;
-        let failCount = 0;
-
-        const teachersToImport = importPreviewData.filter(item => selectedImportKeys.has(String(item.id)));
-
-        if (teachersToImport.length === 0) {
-            showError("เตือน", "กรุณาเลือกรายการที่ต้องการนำเข้าอย่างน้อย 1 รายการ");
-            setIsLoadingImport(false);
-            return;
-        }
-
-        for (const teacher of teachersToImport) {
-            try {
-                await studentService.addTeacher(teacher);
-                successCount++;
-            } catch (error) {
-                console.error("Import error for:", teacher, error);
-                failCount++;
-            }
-        }
-
-        setIsLoadingImport(false);
-        setIsImportModalOpen(false);
-        setImportPreviewData([]);
-        fetchTeachers();
-
-        if (failCount > 0) {
-            showError("เสร็จสิ้นแบบมีข้อผิดพลาด", `เพิ่มสำเร็จ ${successCount} รายการ, ล้มเหลว ${failCount} รายการ`);
-        } else {
-            showSuccess("สำเร็จ", `เพิ่มข้อมูลครูสำเร็จทั้งหมด ${successCount} รายการ`);
-        }
-    };
+    if (showTrash) {
+        return <TrashManager type="teacher" onBack={() => { setShowTrash(false); setPage(1); fetchTeachers(1); }} />;
+    }
 
     return (
         <div className="flex flex-col gap-6 w-full pt-4">
             <Card className="border border-[#EFECE5] shadow-sm rounded-lg bg-white" radius="sm">
-                <CardBody className="p-6">
-                    <div className="justify-items-stretch">
-                        <h3 className="text-gray-800 font-semibold">
-                            การจัดการครู ({teachers.length})
-                        </h3>
-                        <p>เพิ่มและจัดการข้อมูลครู</p>
-                        <div className="gap-2 flex justify-end mb-4">
+                <CardBody className="p-4 md:p-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 w-full">
+                        <div>
+                            <h3 className="text-gray-800 font-semibold">
+                                การจัดการครู ({totalTeachers})
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">เพิ่มและจัดการข้อมูลครู</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
+                            <div className="flex items-center gap-2 min-w-[150px] flex-1 sm:flex-none">
+                                <Input
+                                    aria-label="Search teachers"
+                                    placeholder="ค้นหา..."
+                                    size="sm"
+                                    isClearable
+                                    startContent={<Search size={14} className="text-gray-400" />}
+                                    value={searchTerm}
+                                    onValueChange={(val) => setSearchTerm(val)}
+                                    onClear={() => setSearchTerm("")}
+                                    classNames={{ inputWrapper: "bg-white border-gray-200" }}
+                                />
+                            </div>
 
-                            <input
-                                type="file"
-                                hidden
-                                ref={fileInputRef}
-                                onChange={handleFileUpload}
-                                accept=".xlsx, .xls"
-                            />
 
-                            <Button
-                                size="sm"
-                                variant="bordered"
-                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
-                                onPress={downloadTemplate}
-                            >
-                                <FileDown size={16} />
-                                <span className="ml-1 font-medium">โหลด Template</span>
-                            </Button>
-
-                            <Button
-                                size="sm"
-                                variant="bordered"
-                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
-                                onPress={() => fileInputRef.current.click()}
-                            >
-                                <Upload size={16} />
-                                <span className="ml-1 font-medium">นำเข้า Excel</span>
-                            </Button>
 
                             <Button
                                 onPress={openAddModal}
@@ -297,69 +199,96 @@ const TeacherManager = () => {
                                 className="bg-sage text-white hover:bg-sage-dark shadow-sm rounded-full"
                             >
                                 <PlusIcon />
-                                <span className="ml-1">เพิ่มครูใหม่</span>
+                                <span className="ml-1 hidden sm:inline">เพิ่มครูใหม่</span>
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="bordered"
+                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
+                                onPress={() => setShowTrash(true)}
+                            >
+                                <Archive size={16} />
+                                <span className="ml-1 font-medium hidden sm:inline">รายการที่ลบ</span>
                             </Button>
                         </div>
                     </div>
 
 
-                    <Table
-                        aria-label="Teacher Table"
-                        shadow="none"
-                        isHeaderSticky
-                        classNames={{
-                            wrapper: "border-2 border-[#EFECE5] rounded-xl p-0 overflow-hidden",
-                            th: "bg-white border-b border-white text-gray-800",
-                            td: "py-3 border-b border-[#EFECE5]",
-                        }}
-                    >
-                        <TableHeader>
-                            <TableColumn>ชื่อ-นามสกุล</TableColumn>
-                            <TableColumn>อีเมล</TableColumn>
-                            <TableColumn>เบอร์โทร</TableColumn>
-                            <TableColumn>ตำแหน่ง</TableColumn>
-                            <TableColumn>ดำเนินการ</TableColumn>
-                        </TableHeader>
-                        <TableBody
-                            emptyContent={"ไม่มีข้อมูลครู"}
-                            isLoading={isLoading}
-                            loadingContent={
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
-                                    <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
-                                </div>
-                            }
+                    <div className="overflow-x-auto w-full">
+                        <Table
+                            aria-label="Teacher Table"
+                            shadow="none"
+                            isHeaderSticky
+                            classNames={{
+                                wrapper: "border-2 border-[#EFECE5] rounded-xl p-0 overflow-hidden min-w-[700px] md:min-w-full",
+                                th: "bg-white border-b border-white text-gray-800",
+                                td: "py-3 border-b border-[#EFECE5]",
+                            }}
                         >
-                            {teachers.map((t) => (
-                                <TableRow key={t.teachers_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
-                                    <TableCell>{t.firstname} {t.lastname}</TableCell>
-                                    <TableCell>{t.email}</TableCell>
-                                    <TableCell>{t.tel || "-"}</TableCell>
-                                    <TableCell>
-                                        <span className="px-2 py-1 rounded-full bg-green-100 text-sage text-xs font-medium">
-                                            {t.role || "Teacher"}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <span
-                                                className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
-                                                onClick={() => handleEdit(t)}
-                                            >
-                                                <SquarePen size={18} />
+                            <TableHeader>
+                                <TableColumn>ชื่อ-นามสกุล</TableColumn>
+                                <TableColumn>อีเมล</TableColumn>
+                                <TableColumn>เบอร์โทร</TableColumn>
+                                <TableColumn>ตำแหน่ง</TableColumn>
+                                <TableColumn>ดำเนินการ</TableColumn>
+                            </TableHeader>
+                            <TableBody
+                                emptyContent={"ไม่มีข้อมูลครู"}
+                                isLoading={isLoading}
+                                loadingContent={
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
+                                        <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
+                                    </div>
+                                }
+                            >
+                                {teachers.map((t) => (
+                                    <TableRow key={t.teachers_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
+                                        <TableCell>{t.firstname} {t.lastname}</TableCell>
+                                        <TableCell>{t.email}</TableCell>
+                                        <TableCell>{t.tel || "-"}</TableCell>
+                                        <TableCell>
+                                            <span className="px-2 py-1 rounded-full bg-green-100 text-sage text-xs font-medium">
+                                                {t.role || "Teacher"}
                                             </span>
-                                            <span
-                                                className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
-                                                onClick={() => handleDelete(t)}
-                                            >
-                                                <Trash2 size={18} />
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <span
+                                                    className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
+                                                    onClick={() => handleEdit(t)}
+                                                >
+                                                    <SquarePen size={18} />
+                                                </span>
+                                                <span
+                                                    className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
+                                                    onClick={() => handleDelete(t)}
+                                                >
+                                                    <Trash2 size={18} />
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                        {hasMore && teachers.length > 0 && (
+                            <div className="flex justify-center mt-6 w-full">
+                                <Button
+                                    variant="flat"
+                                    className="bg-sage/10 text-sage"
+                                    onPress={() => {
+                                        const nextPage = page + 1;
+                                        setPage(nextPage);
+                                        fetchTeachers(nextPage);
+                                    }}
+                                    isLoading={isLoading && page > 1}
+                                >
+                                    แสดงเพิ่มเติม
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </CardBody>
             </Card>
 
@@ -457,63 +386,7 @@ const TeacherManager = () => {
                 </ModalContent>
             </Modal>
 
-            {/* Import Preview Modal */}
-            <Modal isOpen={isImportModalOpen} onOpenChange={setIsImportModalOpen} size="2xl" scrollBehavior="inside">
-                <ModalContent>
-                    {(onClose) => (
-                        <>
-                            <ModalHeader>ยืนยันการนำเข้าข้อมูล ({importPreviewData.length} รายการ)</ModalHeader>
-                            <ModalBody>
-                                <Table
-                                    aria-label="Import Preview"
-                                    selectionMode="multiple"
-                                    selectedKeys={selectedImportKeys}
-                                    onSelectionChange={setSelectedImportKeys}
-                                    disabledKeys={importPreviewData.filter(item => item.isDuplicate).map(item => String(item.id))}
-                                    color="primary"
-                                >
-                                    <TableHeader>
-                                        <TableColumn>ชื่อ-นามสกุล</TableColumn>
-                                        <TableColumn>อีเมล</TableColumn>
-                                        <TableColumn>เบอร์โทร</TableColumn>
-                                        <TableColumn>สถานะ</TableColumn>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {importPreviewData.map((teacher) => (
-                                            <TableRow key={teacher.id}>
-                                                <TableCell>{teacher.firstname} {teacher.lastname}</TableCell>
-                                                <TableCell>{teacher.email}</TableCell>
-                                                <TableCell>{teacher.tel}</TableCell>
-                                                <TableCell>
-                                                    {teacher.isDuplicate ? (
-                                                        <span className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
-                                                            มีข้อมูลแล้ว
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
-                                                            พร้อมนำเข้า
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
-                                <Button
-                                    className="bg-sage text-white shadow-sm rounded-full"
-                                    onPress={confirmImport}
-                                    isLoading={isLoadingImport}
-                                >
-                                    ยืนยันนำเข้า
-                                </Button>
-                            </ModalFooter>
-                        </>
-                    )}
-                </ModalContent>
-            </Modal>
+
         </div >
     );
 };

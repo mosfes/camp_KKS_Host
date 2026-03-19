@@ -57,10 +57,17 @@ export default function StudentCampDetailPage() {
   const [registering, setRegistering] = useState(false);
   const [shirtSize, setShirtSize] = useState("");
   const [savingShirt, setSavingShirt] = useState(false);
+  const [navigating, setNavigating] = useState(false);
 
   const fetchCamp = async () => {
     try {
-      const res = await fetch("/api/student/camps");
+      const res = await fetch("/api/student/camps", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
 
       if (res.ok) {
         const data = await res.json();
@@ -387,27 +394,33 @@ export default function StudentCampDetailPage() {
                 fullWidth
                 className="bg-[#5d7c6f] text-white font-bold text-lg h-12"
                 startContent={<LayoutDashboard size={20} />}
-                onPress={() =>
-                  router.push(`/student/dashboard/camp/${id}/missions`)
-                }
+                isLoading={navigating}
+                isDisabled={navigating}
+                onPress={() => {
+                  if (navigating) return;
+                  setNavigating(true);
+                  router.push(`/student/dashboard/camp/${id}/missions`);
+                }}
               >
                 ไปยังหน้าภารกิจ
               </Button>
 
               <div className="grid grid-cols-2 gap-3">
                 <Button
-                  className="bg-[#F5F1E8] text-[#5C5C5C]"
+                  className="bg-gray-100 text-gray-400 cursor-not-allowed"
                   startContent={<Ticket size={18} />}
                   variant="flat"
+                  isDisabled
                 >
-                  เกียรติบัตร
+                  เกียรติบัตร (กำลังพัฒนา)
                 </Button>
                 <Button
-                  className="bg-[#F5F1E8] text-[#5C5C5C]"
+                  className="bg-gray-100 text-gray-400 cursor-not-allowed"
                   startContent={<CheckCircle2 size={18} />}
                   variant="flat"
+                  isDisabled
                 >
-                  เช็คชื่อ
+                  เช็คชื่อ (กำลังพัฒนา)
                 </Button>
               </div>
             </>

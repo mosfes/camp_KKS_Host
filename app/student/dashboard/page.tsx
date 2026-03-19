@@ -23,6 +23,13 @@ export default function StudentDashboard() {
   const [camps, setCamps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState<any>(null);
+  const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
+
+  const goToCamp = (campId: number) => {
+    if (navigatingTo !== null) return;
+    setNavigatingTo(campId);
+    router.push(`/student/dashboard/camp/${campId}`);
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -126,12 +133,15 @@ export default function StudentDashboard() {
                 availableCamps.map((camp: any) => (
                   <Card
                     key={camp.id}
-                    isPressable
-                    className="border-none shadow-sm hover:shadow-md transition-shadow bg-white"
-                    onPress={() =>
-                      router.push(`/student/dashboard/camp/${camp.id}`)
-                    }
+                    isPressable={navigatingTo === null}
+                    className={`border-none shadow-sm hover:shadow-md transition-shadow bg-white relative ${navigatingTo === camp.id ? 'opacity-60' : ''}`}
+                    onPress={() => goToCamp(camp.id)}
                   >
+                    {navigatingTo === camp.id && (
+                      <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/60 rounded-2xl">
+                        <div className="w-6 h-6 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
                     <CardBody className="p-0 flex flex-row">
                       <div className="w-1/3 bg-gray-100 flex items-center justify-center relative">
                         {/* Placeholder Image */}
@@ -182,12 +192,15 @@ export default function StudentDashboard() {
                 myCamps.map((camp: any) => (
                   <Card
                     key={camp.id}
-                    isPressable
-                    className="border-none shadow-sm hover:shadow-md transition-shadow bg-white"
-                    onPress={() =>
-                      router.push(`/student/dashboard/camp/${camp.id}`)
-                    }
+                    isPressable={navigatingTo === null}
+                    className={`border-none shadow-sm hover:shadow-md transition-shadow bg-white relative ${navigatingTo === camp.id ? 'opacity-60' : ''}`}
+                    onPress={() => goToCamp(camp.id)}
                   >
+                    {navigatingTo === camp.id && (
+                      <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/60 rounded-2xl">
+                        <div className="w-6 h-6 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
                     <CardBody className="p-4">
                       <div className="flex justify-between items-start mb-4">
                         <div>
@@ -248,13 +261,17 @@ export default function StudentDashboard() {
                 endedCamps.map((camp: any) => (
                   <Card
                     key={camp.id}
-                    isPressable={camp.isRegistered}
-                    className="border-none shadow-sm bg-white opacity-80 hover:opacity-100 transition-opacity"
+                    isPressable={camp.isRegistered && navigatingTo === null}
+                    className={`border-none shadow-sm bg-white opacity-80 hover:opacity-100 transition-opacity relative ${navigatingTo === camp.id ? 'opacity-60' : ''}`}
                     onPress={() =>
-                      camp.isRegistered &&
-                      router.push(`/student/dashboard/camp/${camp.id}`)
+                      camp.isRegistered && goToCamp(camp.id)
                     }
                   >
+                    {navigatingTo === camp.id && (
+                      <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/60 rounded-2xl">
+                        <div className="w-6 h-6 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
                     <CardBody className="p-4">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">

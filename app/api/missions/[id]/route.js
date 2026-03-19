@@ -24,41 +24,38 @@ export async function PUT(request, { params }) {
         // especially to handle reordering or removals without complex diffing.
 
         if (type === 'QUESTION_ANSWERING') {
-            // Check if there's a question provided.
-            const qText = question || (questions && questions.length > 0 ? questions[0].text : null);
+            const questionsToUpdate = questions || [];
+            if (questionsToUpdate.length === 0 && question) {
+                questionsToUpdate.push({ text: question });
+            }
 
-            if (qText) {
-                // Delete existing MCQ questions if any (type switch scenario)
-                const existingMCQ = await prisma.mission_question.findMany({
-                    where: {
-                        mission_mission_id: parseInt(id),
-                        question_type: 'MCQ'
+            if (questionsToUpdate.length > 0) {
+                // Delete existing questions for this mission
+                // To be safe, also delete any choices if they existed (e.g. type switch)
+                const oldQuestions = await prisma.mission_question.findMany({
+                    where: { mission_mission_id: parseInt(id) }
+                });
+                const oldQIds = oldQuestions.map(q => q.question_id);
+
+                await prisma.mission_question_choice.deleteMany({
+                    where: { mission_question_question_id: { in: oldQIds } }
+                });
+
+                await prisma.mission_question.deleteMany({
+                    where: { mission_mission_id: parseInt(id) }
+                });
+
+                // Create new ones
+                for (const q of questionsToUpdate) {
+                    if (q.text) {
+                        await prisma.mission_question.create({
+                            data: {
+                                question_text: q.text,
+                                question_type: 'TEXT',
+                                mission_mission_id: parseInt(id)
+                            }
+                        });
                     }
-                });
-                if (existingMCQ.length > 0) {
-                    await prisma.mission_question.deleteMany({
-                        where: { mission_mission_id: parseInt(id) }
-                    });
-                }
-
-                // Check for existing TEXT question
-                const existingQuestion = await prisma.mission_question.findFirst({
-                    where: { mission_mission_id: parseInt(id), question_type: 'TEXT' }
-                });
-
-                if (existingQuestion) {
-                    await prisma.mission_question.update({
-                        where: { question_id: existingQuestion.question_id },
-                        data: { question_text: qText }
-                    });
-                } else {
-                    await prisma.mission_question.create({
-                        data: {
-                            question_text: qText,
-                            question_type: 'TEXT',
-                            mission_mission_id: parseInt(id)
-                        }
-                    });
                 }
             }
         } else if (type === 'MULTIPLE_CHOICE_QUIZ') {

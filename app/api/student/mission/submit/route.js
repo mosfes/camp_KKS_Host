@@ -10,7 +10,8 @@ export async function POST(req) {
 
     try {
         const body = await req.json();
-        const { campId, missionId, answers } = body;
+        const { campId, missionId, answers, isDraft } = body;
+        const newStatus = isDraft ? "pending" : "completed";
 
         if (!campId || !missionId || !answers) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -40,17 +41,29 @@ export async function POST(req) {
             result = await prisma.mission_result.create({
                 data: {
                     method: "Code",
-                    status: "completed",
+                    status: newStatus,
                     submitted_at: new Date(Date.now() + 7 * 60 * 60 * 1000), // Thai UTC+7
                     student_enrollment_id: enrollment.student_enrollment_id,
                     mission_mission_id: missionId
                 }
             });
         } else {
+            // Clear existing answers first to avoid duplicates
+            const oldAnswers = await prisma.mission_answer.findMany({
+                where: { mission_result_mission_result_id: result.mission_result_id }
+            });
+            const oldAnswerIds = oldAnswers.map(a => a.answer_id);
+            if (oldAnswerIds.length > 0) {
+                 await prisma.mission_answer_text.deleteMany({ where: { mission_answer_id: { in: oldAnswerIds } } });
+                 await prisma.mission_answer_mcq.deleteMany({ where: { mission_answer_id: { in: oldAnswerIds } } });
+                 await prisma.mission_answer_photo.deleteMany({ where: { mission_answer_id: { in: oldAnswerIds } } });
+                 await prisma.mission_answer.deleteMany({ where: { mission_result_mission_result_id: result.mission_result_id } });
+            }
+
             result = await prisma.mission_result.update({
                 where: { mission_result_id: result.mission_result_id },
                 data: {
-                    status: "completed",
+                    status: newStatus,
                     submitted_at: new Date(Date.now() + 7 * 60 * 60 * 1000),
                 }
             });

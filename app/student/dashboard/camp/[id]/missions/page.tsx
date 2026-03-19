@@ -28,10 +28,23 @@ export default function StudentMissionsPage() {
 
   const [camp, setCamp] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
+
+  const goToStation = (stationId: number) => {
+    if (navigatingTo !== null) return;
+    setNavigatingTo(stationId);
+    router.push(`/student/dashboard/camp/${id}/missions/${stationId}`);
+  };
 
   const fetchCamp = async () => {
     try {
-      const res = await fetch("/api/student/camps");
+      const res = await fetch("/api/student/camps", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
 
       if (res.ok) {
         const data = await res.json();
@@ -79,8 +92,16 @@ export default function StudentMissionsPage() {
       0,
     ) || 0;
   const completedOverall =
-    camp.missionResults?.filter((r: any) => r.status === "completed").length ||
-    0;
+    camp.station?.reduce((acc: number, s: any) => {
+      const stationMissions = s.mission || [];
+      const completed = stationMissions.filter((m: any) =>
+        camp.missionResults?.some(
+          (r: any) =>
+            r.mission_mission_id === m.mission_id && r.status === "completed",
+        ),
+      ).length;
+      return acc + completed;
+    }, 0) || 0;
   const overallProgress =
     totalMissions > 0
       ? Math.round((completedOverall / totalMissions) * 100)
@@ -148,13 +169,14 @@ export default function StudentMissionsPage() {
             return (
               <div
                 key={station.station_id}
-                className="bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-[#5d7c6f] transition-all cursor-pointer group"
-                onClick={() =>
-                  router.push(
-                    `/student/dashboard/camp/${id}/missions/${station.station_id}`,
-                  )
-                }
+                className={`bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-[#5d7c6f] transition-all cursor-pointer group relative ${navigatingTo === station.station_id ? 'opacity-60 pointer-events-none' : ''}`}
+                onClick={() => goToStation(station.station_id)}
               >
+                {navigatingTo === station.station_id && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/60 rounded-2xl">
+                    <div className="w-6 h-6 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
                     <Target className="text-[#5d7c6f]" size={24} />

@@ -22,14 +22,16 @@ import {
     Accordion,
     AccordionItem,
     Checkbox,
-    Tooltip
+    Tooltip,
+    Textarea
 } from "@heroui/react";
 import { useState, useEffect, useRef } from "react";
 import * as XLSX from 'xlsx';
-import { Trash2, SquarePen, ArrowUp, FileDown, Upload, HelpCircle } from 'lucide-react';
+import { Trash2, Trash, Archive, SquarePen, ArrowUp, FileDown, ClipboardPaste, HelpCircle, Search } from 'lucide-react';
 import studentService from "@/app/service/adminService";
 import { useRouter } from "next/navigation";
 import { PlusIcon } from "./Icons";
+import TrashManager from "./TrashManager";
 
 const StudentManager = () => {
     const { showSuccess, showError, showConfirm } = useStatusModal();
@@ -39,6 +41,7 @@ const StudentManager = () => {
     const [classrooms, setClassrooms] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
+    const [showTrash, setShowTrash] = useState(false);
 
     // --- State เลื่อนชั้น (Moved to /admin_promote_students) ---
     // const [isPromoteOpen, setIsPromoteOpen] = useState(false);
@@ -52,6 +55,10 @@ const StudentManager = () => {
     const [selectedYear, setSelectedYear] = useState("");
     const [selectedGrade, setSelectedGrade] = useState("all");
     const [selectedRoomType, setSelectedRoomType] = useState("all");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [totalStudents, setTotalStudents] = useState(0);
 
     const gradeOptions = [
         { key: "Level_1", label: "ม.1", value: 1 },
@@ -72,12 +79,17 @@ const StudentManager = () => {
 
     const [allTeachers, setAllTeachers] = useState([]);
 
-    // Excel Import State
+    // Paste Import State
+    const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+    const [pasteYear, setPasteYear] = useState("");
+    const [pasteGrade, setPasteGrade] = useState("");
+    const [pasteClassroomId, setPasteClassroomId] = useState("");
+    const [pasteText, setPasteText] = useState("");
+
     const [importPreviewData, setImportPreviewData] = useState([]);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isLoadingImport, setIsLoadingImport] = useState(false);
     const [selectedImportKeys, setSelectedImportKeys] = useState(new Set(["all"]));
-    const fileInputRef = useRef(null);
 
     // --- State สำหรับ Modal เพิ่มนักเรียน ---
     const [addStudentYear, setAddStudentYear] = useState("");
@@ -107,6 +119,7 @@ const StudentManager = () => {
                     if (sortedYears.length > 0) {
                         setSelectedYear(sortedYears[0].year.toString());
                         setAddStudentYear(sortedYears[0].year.toString());
+                        setPasteYear(sortedYears[0].year.toString());
                     }
                 }
             });
@@ -117,14 +130,31 @@ const StudentManager = () => {
 
 
     useEffect(() => {
-        fetchStudents();
-    }, [selectedYear]);
+        if (selectedYear) {
+            setPage(1);
+            fetchStudents(1);
+        }
+    }, [selectedYear, selectedGrade, selectedRoomType, searchTerm]);
 
-    const fetchStudents = async () => {
+    const fetchStudents = async (pageNum = 1) => {
         setIsLoading(true);
         try {
-            const data = await studentService.getStudents(selectedYear);
-            setStudents(data);
+            const result = await studentService.getStudentsPaginated(selectedYear, selectedGrade, selectedRoomType, pageNum, 20, searchTerm);
+            const newData = Array.isArray(result) ? result : (result.data || []);
+            
+            if (pageNum === 1) {
+                setStudents(newData);
+            } else {
+                setStudents(prev => [...prev, ...newData]);
+            }
+            
+            if (result.pagination) {
+                setHasMore(pageNum < result.pagination.totalPages);
+                setTotalStudents(result.pagination.total);
+            } else {
+                setHasMore(false);
+                setTotalStudents(newData.length);
+            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -225,19 +255,37 @@ const StudentManager = () => {
     };
 
     const handleDelete = (student) => {
+        // หาห้องเรียนของปีการศึกษาที่กำลังดูอยู่
+        const matchedCs = student.classroom_students?.find(
+            cs => cs.classroom?.academic_years_years_id?.toString() === selectedYear?.toString()
+        );
+        const classroomId = matchedCs?.classroom?.classroom_id || null;
+
+        // สร้างข้อความบอกว่าลบออกจากห้องไหน
+        let classroomDesc = "";
+        if (matchedCs?.classroom) {
+            const cls = matchedCs.classroom;
+            const gradeLabel = gradeOptions.find(g => g.key === cls.grade)?.label || cls.grade;
+            const foundType = classroomTypes.find(t => t.classroom_type_id?.toString() === cls.type_classroom?.toString());
+            const roomName = foundType ? foundType.name : cls.type_classroom;
+            const yearBE = cls.academic_years?.year ? parseInt(cls.academic_years.year) + 543 : selectedYear;
+            classroomDesc = `\nห้องเรียน: ${gradeLabel}${roomName ? ` (${roomName})` : ""} ปีการศึกษา ${yearBE}`;
+        }
+
         showConfirm(
-            "ลบนักเรียน",
-            `คุณต้องการลบนักเรียนชื่อ "${student.firstname} ${student.lastname}" (รหัส: ${student.students_id}) ใช่หรือไม่?`,
+            "ลบนักเรียนออกจากห้องเรียน",
+            `ลบนักเรียน "${student.firstname} ${student.lastname}" (รหัส: ${student.students_id}) ออกจากห้องเรียนปีนี้ใช่หรือไม่?${classroomDesc}\n\nนักเรียนจะถูกย้ายไปยังที่เก็บถาวร และสามารถกู้คืนได้ในภายหลัง`,
             async () => {
                 try {
-                    await studentService.deleteStudent(student.students_id);
-                    showSuccess("สำเร็จ", "ลบข้อมูลสำเร็จ");
-                    fetchStudents();
+                    await studentService.deleteStudent(student.students_id, classroomId);
+                    showSuccess("สำเร็จ", "ลบนักเรียนออกจากห้องเรียนสำเร็จ");
+                    setPage(1);
+                    fetchStudents(1);
                 } catch (error) {
                     showError("เกิดข้อผิดพลาด", error.message);
                 }
             },
-            "ลบ"
+            "ลบออกจากห้อง"
         );
     };
 
@@ -254,7 +302,8 @@ const StudentManager = () => {
                 await studentService.addStudent(formData);
                 showSuccess("สำเร็จ", "เพิ่มนักเรียนสำเร็จ!");
             }
-            fetchStudents();
+            setPage(1);
+            fetchStudents(1);
             onClose();
         } catch (error) {
             console.error("Operation error:", error);
@@ -294,30 +343,11 @@ const StudentManager = () => {
         }
         return "-";
     };
-    const filteredStudents = students.filter(stu => {
-        const classroom = getLatestClassroomObj(stu);
-
-        if (selectedGrade !== "all") {
-            if (!classroom || classroom.grade !== selectedGrade) return false;
-        }
-
-        if (selectedRoomType !== "all") {
-            if (!classroom || classroom.type_classroom !== selectedRoomType) return false;
-        }
-        return true;
-    });
+    const filteredStudents = students;
 
 
     const handlePromoteClick = () => {
         router.push("/admin_promote_students");
-    };
-
-    const downloadTemplate = () => {
-        const headers = ["รหัสนักเรียน", "ชื่อ", "นามสกุล", "อีเมล", "เบอร์โทร", "ระดับชั้น", "ห้อง"];
-        const ws = XLSX.utils.aoa_to_sheet([headers]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Students");
-        XLSX.writeFile(wb, "student_template.xlsx");
     };
 
     const mapGradeToEnum = (gradeInput) => {
@@ -332,133 +362,101 @@ const StudentManager = () => {
         return null;
     };
 
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    const openPasteModal = () => {
+        setPasteYear(years.length > 0 ? [...years].sort((a, b) => b.year - a.year)[0].year.toString() : "");
+        setPasteGrade("");
+        setPasteClassroomId("");
+        setPasteText("");
+        setIsPasteModalOpen(true);
+    };
 
-        if (!selectedYear) {
-            showError("กรุณาเลือกปีการศึกษา", "ต้องเลือกปีการศึกษาก่อนนำเข้าข้อมูล");
-            e.target.value = null;
+    const handlePastePreview = () => {
+        if (!pasteYear || !pasteGrade || !pasteClassroomId) {
+            showError("ข้อมูลไม่ครบ", "กรุณาเลือกปีการศึกษา ระดับชั้น และห้องเรียนก่อน");
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const bstr = evt.target.result;
-            const wb = XLSX.read(bstr, { type: 'binary' });
-            const wsname = wb.SheetNames[0];
-            const ws = wb.Sheets[wsname];
-            const data = XLSX.utils.sheet_to_json(ws);
+        if (!pasteText.trim()) {
+            showError("ไม่มีข้อมูล", "กรุณาวางข้อมูลก่อนตรวจสอบ");
+            return;
+        }
 
-            const seenIds = new Set();
+        const lines = pasteText.split('\n').filter(line => line.trim() !== '');
+        if (lines.length === 0) return;
 
-            const validData = data.filter(item => (item.students_id || item["รหัสนักเรียน"]) && (item.firstname || item["ชื่อ"])).map((item, index) => {
-                const studentId = String(item.students_id || item["รหัสนักเรียน"]).trim();
-                const firstname = item.firstname || item["ชื่อ"];
-                const lastname = item.lastname || item["นามสกุล"] || "";
+        const seenIds = new Set();
 
-                // 1. Check DB Duplicate
-                const isDbDuplicate = students.some(s => String(s.students_id) === studentId);
+        const selectedClassroom = classrooms.find(c => c.classroom_id.toString() === pasteClassroomId.toString());
+        const gradeLabel = getGradeLabel(selectedClassroom?.grade) || "-";
+        const roomName = classroomTypes.find(t => t.classroom_type_id === selectedClassroom?.type_classroom)?.name || selectedClassroom?.type_classroom || "-";
 
-                // 2. Check File Duplicate
-                let isInternalDuplicate = false;
-                if (studentId) {
-                    if (seenIds.has(studentId)) {
-                        isInternalDuplicate = true;
-                    } else {
-                        seenIds.add(studentId);
-                    }
+        const validData = lines.map((line, index) => {
+            const cols = line.split('\t').map(c => c.trim());
+            if (cols.length < 2) return null;
+
+            const studentId = cols[0];
+            let firstname = "";
+            let lastname = "";
+
+            if (cols.length >= 3) {
+                firstname = cols[1];
+                lastname = cols[2];
+            } else {
+                const nameParts = cols[1].split(' ');
+                firstname = nameParts[0];
+                if (nameParts.length > 1) {
+                    lastname = nameParts.slice(1).join(' ');
                 }
-
-                const isDuplicate = isDbDuplicate || isInternalDuplicate;
-
-                // Map Grade and Room to Classroom ID
-                const gradeInput = item.grade || item["ระดับชั้น"];
-                const roomInput = item.room || item["ห้อง"];
-
-                let classroomId = null;
-                let classroomStatus = "ไม่ระบุห้อง";
-                let validClass = false;
-                let suggestion = "";
-
-                if (gradeInput && roomInput) {
-                    const gradeEnum = mapGradeToEnum(gradeInput);
-                    const roomName = String(roomInput).trim();
-
-                    if (gradeEnum) {
-                        const foundType = classroomTypes.find(t => t.name.toLowerCase() === roomName.toLowerCase());
-                        const foundClass = classrooms.find(c =>
-                            c.academic_years_years_id.toString() === selectedYear.toString() &&
-                            c.grade === gradeEnum &&
-                            (foundType ? c.type_classroom === foundType.classroom_type_id : c.type_classroom.toString() === roomName)
-                        );
-
-                        if (foundClass) {
-                            classroomId = foundClass.classroom_id;
-                            classroomStatus = `${getGradeLabel(gradeEnum)} / ${roomName}`;
-                            validClass = true;
-                        } else {
-                            classroomStatus = `ไม่พบห้อง (${gradeInput}/${roomName})`;
-                            const availableRooms = classrooms
-                                .filter(c => c.academic_years_years_id.toString() === selectedYear.toString() && c.grade === gradeEnum)
-                                .map(c => c.type_classroom)
-                                .join(", ");
-                            suggestion = availableRooms ? `ห้องที่มีในระบบ: ${availableRooms}` : "ไม่มีห้องเรียนในระดับชั้นนี้";
-                        }
-                    } else {
-                        classroomStatus = `ระดับชั้นไม่ถูกต้อง (${gradeInput})`;
-                        suggestion = "ระดับชั้นที่ถูกต้อง: 1, 2, 3, 4, 5, 6, ม.1, ม.2, ...";
-                    }
-                } else {
-                    if (!gradeInput && !roomInput) {
-                        suggestion = "กรุณาระบุระดับชั้นและห้อง";
-                    } else if (!gradeInput) {
-                        suggestion = "กรุณาระบุระดับชั้น";
-                    } else {
-                        suggestion = "กรุณาระบุห้อง";
-                    }
-                }
-
-                return {
-                    id: index,
-                    students_id: studentId,
-                    firstname: firstname,
-                    lastname: lastname,
-                    email: item.email || item["อีเมล"],
-                    tel: (item.tel || item["เบอร์โทร"]) ? String(item.tel || item["เบอร์โทร"]).replace(/\D/g, '').slice(0, 10) : "",
-                    classroom_id: classroomId,
-                    classroom_status: classroomStatus,
-                    is_valid_class: validClass,
-                    isDuplicate: isDuplicate,
-                    suggestion: suggestion
-                };
-            });
-
-            if (validData.length === 0) {
-                showError("ไม่พบข้อมูลที่ถูกต้อง", "กรุณาตรวจสอบไฟล์ Excel (ต้องมีรหัสนักเรียนและชื่อ)");
-                e.target.value = null;
-                return;
             }
 
-            setImportPreviewData(validData);
+            if (!studentId || !firstname) return null;
 
-            const validKeys = new Set(
-                validData
-                    .filter(item => !item.isDuplicate && item.is_valid_class)
-                    .map(item => String(item.id))
-            );
+            const isDbDuplicate = students.some(s => String(s.students_id) === studentId);
 
-            setSelectedImportKeys(validKeys);
-            setIsImportModalOpen(true);
-            e.target.value = null;
-        };
-        reader.readAsBinaryString(file);
+            let isInternalDuplicate = false;
+            if (seenIds.has(studentId)) {
+                isInternalDuplicate = true;
+            } else {
+                seenIds.add(studentId);
+            }
+
+            const isDuplicate = isDbDuplicate || isInternalDuplicate;
+
+            return {
+                id: index,
+                students_id: studentId,
+                firstname: firstname,
+                lastname: lastname,
+                email: `kks${studentId}@khukhan.ac.th`,
+                tel: "",
+                classroom_id: pasteClassroomId,
+                classroom_status: `${gradeLabel} / ${roomName}`,
+                is_valid_class: true,
+                isDuplicate: isDuplicate,
+                suggestion: ""
+            };
+        }).filter(item => item !== null);
+
+        if (validData.length === 0) {
+            showError("ไม่พบข้อมูลที่ถูกต้อง", "กรุณาตรวจสอบข้อมูลที่วาง (ต้องมีรหัสนักเรียนและชื่อคั่นด้วย Tab)");
+            return;
+        }
+
+        setImportPreviewData(validData);
+
+        const validKeys = new Set(
+            validData
+                .filter(item => !item.isDuplicate)
+                .map(item => String(item.id))
+        );
+
+        setSelectedImportKeys(validKeys);
+        setIsPasteModalOpen(false);
+        setIsImportModalOpen(true);
     };
 
     const confirmImport = async () => {
         setIsLoadingImport(true);
-        let successCount = 0;
-        let failCount = 0;
 
         const studentsToImport = importPreviewData.filter(item => selectedImportKeys.has(String(item.id)));
 
@@ -468,56 +466,69 @@ const StudentManager = () => {
             return;
         }
 
-        for (const stu of studentsToImport) {
-            try {
-                // Construct payload
-                const payload = {
-                    students_id: stu.students_id,
-                    firstname: stu.firstname,
-                    lastname: stu.lastname,
-                    email: stu.email,
-                    tel: stu.tel,
-                    classroom_id: stu.classroom_id ? String(stu.classroom_id) : ""
-                };
-                await studentService.addStudent(payload);
-                successCount++;
-            } catch (error) {
-                console.error("Import error for:", stu, error);
-                failCount++;
-            }
-        }
+        try {
+            const payloadArray = studentsToImport.map(stu => ({
+                students_id: stu.students_id,
+                firstname: stu.firstname,
+                lastname: stu.lastname,
+                email: stu.email,
+                tel: stu.tel,
+                classroom_id: stu.classroom_id ? String(stu.classroom_id) : ""
+            }));
 
-        setIsLoadingImport(false);
-        setIsImportModalOpen(false);
-        setImportPreviewData([]);
-        fetchStudents(); // Refresh list
+            const result = await studentService.addStudentsBulk(payloadArray);
 
-        if (failCount > 0) {
-            showError("เสร็จสิ้นแบบมีข้อผิดพลาด", `เพิ่มสำเร็จ ${successCount} รายการ, ล้มเหลว ${failCount} รายการ`);
-        } else {
-            showSuccess("สำเร็จ", `เพิ่มนักเรียนสำเร็จทั้งหมด ${successCount} รายการ`);
+            setIsLoadingImport(false);
+            setIsImportModalOpen(false);
+            setImportPreviewData([]);
+            setPage(1);
+            fetchStudents(1);
+
+            showSuccess("สำเร็จ", `เพิ่มนักเรียนสำเร็จทั้งหมด ${result.length} รายการ (ข้ามรายการที่ซ้ำกัน)`);
+        } catch (error) {
+            console.error("Bulk import error:", error);
+            setIsLoadingImport(false);
+            showError("เกิดข้อผิดพลาด", "การนำเข้าข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือตรวจสอบไฟล์ของคุณ");
         }
     };
 
 
+    if (showTrash) {
+        return <TrashManager type="student" onBack={() => { setShowTrash(false); setPage(1); fetchStudents(1); }} />;
+    }
+
     return (
         <div className="flex flex-col gap-6 w-full pt-4">
             <Card className="border border-[#EFECE5] shadow-sm rounded-lg bg-white" radius="sm">
-                <CardBody className="p-6">
-                    <div className="flex flex-row justify-between items-start mb-4">
+                <CardBody className="p-4 md:p-6">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
                         <div>
                             <h3 className="text-gray-800 font-semibold">
-                                การจัดการนักเรียน ({filteredStudents.length})
+                                การจัดการนักเรียน ({totalStudents})
                             </h3>
                             <p className="text-sm text-gray-500 mt-1">เพิ่มและจัดการข้อมูลนักเรียน</p>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2 min-w-[160px]">
+                        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                            <div className="flex items-center gap-2 min-w-[180px] flex-1">
+                                <Input
+                                    aria-label="Search students"
+                                    placeholder="ค้นหา..."
+                                    size="sm"
+                                    isClearable
+                                    startContent={<Search size={14} className="text-gray-400" />}
+                                    value={searchTerm}
+                                    onValueChange={(val) => {
+                                        setSearchTerm(val);
+                                    }}
+                                    onClear={() => setSearchTerm("")}
+                                    classNames={{ inputWrapper: "bg-white border-gray-200" }}
+                                />
+                            </div>
+                            <div className="flex items-center gap-2 min-w-[120px] lg:min-w-[160px] flex-1">
                                 <Select
                                     aria-label="Select Academic Year"
                                     placeholder="ปีการศึกษา"
-                                    className="max-w-xs"
                                     size="sm"
                                     selectedKeys={new Set([selectedYear])}
                                     onChange={(e) => setSelectedYear(e.target.value)}
@@ -529,11 +540,10 @@ const StudentManager = () => {
                                     ))}
                                 </Select>
                             </div>
-                            <div className="flex items-center gap-2 min-w-[130px]">
+                            <div className="flex items-center gap-2 min-w-[100px] lg:min-w-[130px] flex-1">
                                 <Select
                                     aria-label="Select Grade"
                                     placeholder="ระดับชั้น"
-                                    className="max-w-xs"
                                     size="sm"
                                     selectedKeys={new Set([selectedGrade])}
                                     onChange={(e) => setSelectedGrade(e.target.value)}
@@ -546,11 +556,10 @@ const StudentManager = () => {
                                     ))}
                                 </Select>
                             </div>
-                            <div className="flex items-center gap-2 min-w-[170px]">
+                            <div className="flex items-center gap-2 min-w-[120px] lg:min-w-[170px] flex-1">
                                 <Select
                                     aria-label="Select Room Type"
                                     placeholder="ประเภทห้อง"
-                                    className="max-w-xs"
                                     size="sm"
                                     selectedKeys={new Set([selectedRoomType])}
                                     onChange={(e) => setSelectedRoomType(e.target.value)}
@@ -563,110 +572,121 @@ const StudentManager = () => {
                                     ))}
                                 </Select>
                             </div>
-                            <Button
-                                size="sm"
-                                variant="bordered"
-                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
-                                onPress={handlePromoteClick}
-                            >
-                                <ArrowUp size={16} />
-                                <span className="ml-1 font-medium">เลื่อนชั้นเรียน</span>
-                            </Button>
+                            <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end mt-2 lg:mt-0">
+                                <Button
+                                    size="sm"
+                                    variant="bordered"
+                                    className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
+                                    onPress={handlePromoteClick}
+                                >
+                                    <ArrowUp size={16} />
+                                    <span className="ml-1 font-medium hidden sm:inline">เลื่อนชั้นเรียน</span>
+                                </Button>
 
-                            <input
-                                type="file"
-                                hidden
-                                ref={fileInputRef}
-                                onChange={handleFileUpload}
-                                accept=".xlsx, .xls"
-                            />
+                                <Button
+                                    size="sm"
+                                    variant="bordered"
+                                    className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
+                                    onPress={openPasteModal}
+                                >
+                                    <ClipboardPaste size={16} />
+                                    <span className="ml-1 font-medium hidden sm:inline">นำเข้ารายชื่อ (วางข้อมูล)</span>
+                                </Button>
 
-                            <Button
-                                size="sm"
-                                variant="bordered"
-                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
-                                onPress={downloadTemplate}
-                            >
-                                <FileDown size={16} />
-                                <span className="ml-1 font-medium">โหลด Template</span>
-                            </Button>
-
-                            <Button
-                                size="sm"
-                                variant="bordered"
-                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
-                                onPress={() => fileInputRef.current.click()}
-                            >
-                                <Upload size={16} />
-                                <span className="ml-1 font-medium">นำเข้า Excel</span>
-                            </Button>
-
-                            <Button
-                                onPress={openAddModal}
-                                size="sm"
-                                className="bg-sage text-white hover:bg-sage-dark shadow-sm rounded-full"
-                            >
-                                <PlusIcon />
-                                <span className="ml-1">เพิ่มนักเรียนใหม่</span>
-                            </Button>
+                                <Button
+                                    onPress={openAddModal}
+                                    size="sm"
+                                    className="bg-sage text-white hover:bg-sage-dark shadow-sm rounded-full"
+                                >
+                                    <PlusIcon />
+                                    <span className="ml-1 hidden sm:inline">เพิ่มนักเรียนใหม่</span>
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="bordered"
+                                    className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
+                                    onPress={() => setShowTrash(true)}
+                                >
+                                    <Archive size={16} />
+                                    <span className="ml-1 font-medium hidden sm:inline">รายการที่ลบ</span>
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
-                    <Table aria-label="Student Table"
-                        shadow="none"
-                        isHeaderSticky
-                        classNames={{
-                            wrapper: "border-2 border-[#EFECE5] rounded-xl p-0 overflow-hidden",
-                            th: "bg-white border-b border-white text-gray-800",
-                            td: "py-3 border-b border-[#EFECE5]",
-                        }}>
-                        <TableHeader>
-                            <TableColumn>รหัสนักเรียน</TableColumn>
-                            <TableColumn>ชื่อ-นามสกุล</TableColumn>
-                            <TableColumn>อีเมล</TableColumn>
-                            <TableColumn>ระดับชั้น/ห้อง</TableColumn>
-                            <TableColumn>เบอร์โทร</TableColumn>
-                            <TableColumn>ดำเนินการ</TableColumn>
-                        </TableHeader>
-                        <TableBody
-                            emptyContent={"ไม่มีข้อมูลนักเรียน"}
-                            isLoading={isLoading}
-                            loadingContent={
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
-                                    <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
-                                </div>
-                            }
-                        >
+                    <div className="overflow-x-auto w-full">
+                        <Table aria-label="Student Table"
+                            shadow="none"
+                            isHeaderSticky
+                            classNames={{
+                                wrapper: "border-2 border-[#EFECE5] rounded-xl p-0 overflow-hidden min-w-[900px] lg:min-w-full",
+                                th: "bg-white border-b border-white text-gray-800",
+                                td: "py-3 border-b border-[#EFECE5]",
+                            }}>
+                            <TableHeader>
+                                <TableColumn>รหัสนักเรียน</TableColumn>
+                                <TableColumn>ชื่อ-นามสกุล</TableColumn>
+                                <TableColumn>อีเมล</TableColumn>
+                                <TableColumn>ระดับชั้น/ห้อง</TableColumn>
+                                <TableColumn>เบอร์โทร</TableColumn>
+                                <TableColumn>ดำเนินการ</TableColumn>
+                            </TableHeader>
+                            <TableBody
+                                emptyContent={"ไม่มีข้อมูลนักเรียน"}
+                                isLoading={isLoading}
+                                loadingContent={
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
+                                        <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
+                                    </div>
+                                }
+                            >
 
-                            {filteredStudents.map((stu) => (
-                                <TableRow key={stu.students_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
-                                    <TableCell>{stu.students_id}</TableCell>
-                                    <TableCell>{stu.firstname} {stu.lastname}</TableCell>
-                                    <TableCell>{stu.email}</TableCell>
+                                {filteredStudents.map((stu) => (
+                                    <TableRow key={stu.students_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
+                                        <TableCell>{stu.students_id}</TableCell>
+                                        <TableCell>{stu.firstname} {stu.lastname}</TableCell>
+                                        <TableCell>{stu.email}</TableCell>
 
-                                    <TableCell>{getStudentClassroom(stu)}</TableCell>
-                                    <TableCell>{stu.tel}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <span
-                                                className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
-                                                onClick={() => handleEdit(stu)}
-                                            >
-                                                <SquarePen size={18} />
-                                            </span>
-                                            <span
-                                                className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
-                                                onClick={() => handleDelete(stu)}
-                                            >
-                                                <Trash2 size={18} />
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                                        <TableCell>{getStudentClassroom(stu)}</TableCell>
+                                        <TableCell>{stu.tel}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <span
+                                                    className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
+                                                    onClick={() => handleEdit(stu)}
+                                                >
+                                                    <SquarePen size={18} />
+                                                </span>
+                                                <span
+                                                    className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
+                                                    onClick={() => handleDelete(stu)}
+                                                >
+                                                    <Trash2 size={18} />
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                        {hasMore && students.length > 0 && (
+                            <div className="flex justify-center mt-6 w-full">
+                                <Button
+                                    variant="flat"
+                                    className="bg-sage/10 text-sage"
+                                    onPress={() => {
+                                        const nextPage = page + 1;
+                                        setPage(nextPage);
+                                        fetchStudents(nextPage);
+                                    }}
+                                    isLoading={isLoading && page > 1}
+                                >
+                                    แสดงเพิ่มเติม
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </CardBody>
             </Card>
 
@@ -837,6 +857,140 @@ const StudentManager = () => {
                             <ModalFooter>
                                 <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
                                 <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmit(onClose)}>บันทึก</Button>
+                            </ModalFooter>
+                        </>
+                    )}
+                </ModalContent>
+            </Modal>
+
+            {/* Paste Data Modal */}
+            <Modal isOpen={isPasteModalOpen} onOpenChange={setIsPasteModalOpen} placement="center" backdrop="blur" size="2xl" scrollBehavior="inside">
+                <ModalContent className="bg-white rounded-2xl shadow-medium border border-gray-100 text-gray-800 p-2">
+                    {(onClosePaste) => (
+                        <>
+                            <ModalHeader>นำเข้ารายชื่อนักเรียน</ModalHeader>
+                            <ModalBody className="gap-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">ปีการศึกษา</label>
+                                        <Select
+                                            placeholder="เลือกปีการศึกษา"
+                                            variant="bordered"
+                                            selectedKeys={pasteYear ? [pasteYear] : []}
+                                            onChange={(e) => {
+                                                setPasteYear(e.target.value);
+                                                setPasteClassroomId("");
+                                            }}
+                                            classNames={{ trigger: "bg-white" }}
+                                        >
+                                            {years.map((y) => (
+                                                <SelectItem key={y.year.toString()} value={y.year.toString()} textValue={`${parseInt(y.year) + 543}`}>
+                                                    {parseInt(y.year) + 543}
+                                                </SelectItem>
+                                            ))}
+                                        </Select>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">ระดับชั้น</label>
+                                        <Select
+                                            placeholder="เลือกระดับชั้น"
+                                            variant="bordered"
+                                            selectedKeys={pasteGrade ? [pasteGrade] : []}
+                                            onChange={(e) => {
+                                                setPasteGrade(e.target.value);
+                                                setPasteClassroomId("");
+                                            }}
+                                            classNames={{ trigger: "bg-white" }}
+                                        >
+                                            {gradeOptions.map((g) => (
+                                                <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
+                                            ))}
+                                        </Select>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-medium text-gray-700">ห้องเรียน</label>
+                                    <Select
+                                        placeholder={!pasteYear || !pasteGrade ? "กรุณาเลือกปีและระดับชั้นก่อน" : "เลือกห้องเรียน"}
+                                        variant="bordered"
+                                        isDisabled={!pasteYear || !pasteGrade}
+                                        selectedKeys={pasteClassroomId ? [pasteClassroomId.toString()] : []}
+                                        onChange={(e) => setPasteClassroomId(e.target.value)}
+                                        classNames={{ trigger: "bg-white" }}
+                                    >
+                                        {classrooms
+                                            .filter(c =>
+                                                c.academic_years_years_id.toString() === pasteYear &&
+                                                c.grade === pasteGrade
+                                            )
+                                            .map((room) => {
+                                                const roomName = classroomTypes.find(t => t.classroom_type_id === room.type_classroom)?.name || room.type_classroom;
+                                                return (
+                                                    <SelectItem
+                                                        key={room.classroom_id}
+                                                        value={room.classroom_id}
+                                                        textValue={`${roomName}`}
+                                                    >
+                                                        {roomName}
+                                                    </SelectItem>
+                                                )
+                                            })}
+                                    </Select>
+                                </div>
+                                {pasteClassroomId && (() => {
+                                    const selectedRoom = classrooms.find(c => c.classroom_id.toString() === pasteClassroomId.toString());
+                                    if (!selectedRoom) return null;
+
+                                    const relatedRooms = classrooms.filter(c =>
+                                        c.type_classroom === selectedRoom.type_classroom &&
+                                        c.grade === selectedRoom.grade &&
+                                        c.academic_years_years_id === selectedRoom.academic_years_years_id
+                                    );
+
+                                    const advisors = [];
+
+                                    relatedRooms.forEach(room => {
+                                        if (room.teacher) advisors.push(room.teacher);
+                                        if (room.classroom_teacher && room.classroom_teacher.length > 0) {
+                                            room.classroom_teacher.forEach(ct => {
+                                                if (ct.teacher) advisors.push(ct.teacher);
+                                            });
+                                        }
+                                    });
+
+                                    const uniqueAdvisors = Array.from(new Map(advisors.map(item => [item.teachers_id, item])).values());
+
+                                    return (
+                                        <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                                            <span className="text-xs text-sage font-medium block mb-1">ครูที่ปรึกษา</span>
+                                            {uniqueAdvisors.length > 0 ? (
+                                                <ul className="list-disc list-inside text-sm text-green-900 grid grid-cols-2 gap-x-4">
+                                                    {uniqueAdvisors.map(t => (
+                                                        <li key={t.teachers_id}>{t.firstname} {t.lastname}</li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <span className="text-sm text-gray-500">- ไม่ระบุ -</span>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-medium text-gray-700">วางข้อมูลนักเรียน (คัดลอกจาก Excel)</label>
+                                    <Textarea
+                                        placeholder={`รหัสนักเรียน\tชื่อ\tนามสกุล\n12345\tสมชาย\tใจดี`}
+                                        variant="bordered"
+                                        minRows={8}
+                                        value={pasteText}
+                                        onChange={(e) => setPasteText(e.target.value)}
+                                        classNames={{ inputWrapper: "bg-white" }}
+                                    />
+                                </div>
+                            </ModalBody>
+                            <ModalFooter>
+                                <Button color="danger" variant="light" onPress={onClosePaste} className="rounded-full">ยกเลิก</Button>
+                                <Button className="bg-sage text-white shadow-sm rounded-full" onPress={handlePastePreview}>ตรวจสอบข้อมูล</Button>
                             </ModalFooter>
                         </>
                     )}

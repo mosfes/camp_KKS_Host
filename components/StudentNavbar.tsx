@@ -15,6 +15,7 @@ import { useClerk } from "@clerk/nextjs";
 export function AppNavbar() {
   const router = useRouter();
   const { signOut } = useClerk();
+  const [navigating, setNavigating] = useState(false);
 
   const [student, setStudent] = useState<{
     students_id: number;
@@ -91,8 +92,12 @@ export function AppNavbar() {
 
               <DropdownItem
                 key="settings"
-                startContent={<Settings size={16} />}
-                onClick={() => router.push("/student/profile")}
+                startContent={navigating ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" /> : <Settings size={16} />}
+                onClick={() => {
+                  if (navigating) return;
+                  setNavigating(true);
+                  router.push("/student/profile");
+                }}
               >
                 ตั้งค่าโปรไฟล์
               </DropdownItem>

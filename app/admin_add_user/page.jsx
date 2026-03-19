@@ -16,7 +16,7 @@ const page = () => {
         <HeroUIProvider>
             <StatusModalProvider>
                 <HeadteacherNavbar />
-                <div className='m-10 mt-5'>
+                <div className='m-4 md:m-10 mt-5'>
                     <div >
                         {/* <Card /> */}
                         {/* <Add /> */}

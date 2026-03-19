@@ -16,7 +16,7 @@ import { ChevronLeft, FileText, CheckCircle2, Circle } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export default function StudentStationDetailPage() {
-  const params = useParams(); // { id: campId, stationId: stationId }
+  const params = useParams();
   const router = useRouter();
   const { id, stationId } = params;
 
@@ -32,7 +32,13 @@ export default function StudentStationDetailPage() {
 
   const fetchCamp = async () => {
     try {
-      const res = await fetch("/api/student/camps");
+      const res = await fetch("/api/student/camps", {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
 
       if (res.ok) {
         const data = await res.json();
@@ -73,7 +79,21 @@ export default function StudentStationDetailPage() {
 
   const openMission = (mission: any) => {
     setSelectedMission(mission);
-    setAnswers({});
+    
+    const existingResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === mission.mission_id);
+    const initialAnswers: any = {};
+    if (existingResult && existingResult.mission_answer) {
+      existingResult.mission_answer.forEach((ans: any) => {
+        const qid = ans.mission_question_question_id;
+        if (ans.answer_text && ans.answer_text.length > 0) {
+          initialAnswers[qid] = ans.answer_text[0].answer_text;
+        } else if (ans.answer_mcq && ans.answer_mcq.length > 0) {
+          initialAnswers[qid] = ans.answer_mcq[0].question_text;
+        }
+      });
+    }
+    
+    setAnswers(initialAnswers);
     onOpen();
   };
 
@@ -99,6 +119,10 @@ export default function StudentStationDetailPage() {
       };
     });
 
+    const isDraft = selectedMission.mission_question.some(
+      (q: any) => !answers[q.question_id] || String(answers[q.question_id]).trim() === ""
+    );
+
     try {
       const res = await fetch("/api/student/mission/submit", {
         method: "POST",
@@ -107,13 +131,16 @@ export default function StudentStationDetailPage() {
           campId: Number(id),
           missionId: selectedMission.mission_id,
           answers: payloadAnswers,
+          isDraft: isDraft,
         }),
       });
 
       if (res.ok) {
-        toast.success("ส่งภารกิจสำเร็จ!");
-        onClose();
-        fetchCamp(); // Refresh status
+        toast.success(isDraft ? "บันทึกคำตอบสำเร็จ!" : "ส่งภารกิจสำเร็จ!");
+        await fetchCamp(); // Refresh status
+        if (!isDraft) {
+          onClose();
+        }
       } else {
         toast.error("ส่งภารกิจล้มเหลว");
       }
@@ -179,10 +206,10 @@ export default function StudentStationDetailPage() {
             <div
               key={mission.mission_id}
               className={`
-                                bg-white p-5 rounded-2xl shadow-sm border transaction-all
-                                ${completed ? "border-green-200 bg-green-50" : "border-transparent hover:border-[#5d7c6f] cursor-pointer"}
+                                bg-white p-5 rounded-2xl shadow-sm border transition-all cursor-pointer
+                                ${completed ? "border-green-200 bg-green-50 hover:border-green-300" : "border-transparent hover:border-[#5d7c6f]"}
                             `}
-              onClick={() => !completed && openMission(mission)}
+              onClick={() => openMission(mission)}
             >
               <div className="flex justify-between items-start">
                 <div className="flex items-start gap-3">
@@ -239,89 +266,105 @@ export default function StudentStationDetailPage() {
                 <h2 className="text-xl font-bold">{selectedMission?.title}</h2>
               </ModalHeader>
               <ModalBody className="py-6 space-y-6">
-                {/* Instructions */}
-                <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-sm leading-relaxed">
-                  <h4 className="font-bold mb-1 flex items-center gap-2">
-                    <FileText size={16} /> คำชี้แจง
-                  </h4>
-                  {selectedMission?.instructions || "ไม่มีคำชี้แจงเพิ่มเติม"}
-                </div>
+                {/* Mission Description */}
+                {selectedMission?.description && (
+                  <div className="bg-blue-50/50 p-4 rounded-xl text-gray-700 text-sm leading-relaxed border border-blue-100/50">
+                    <h4 className="font-bold text-[#5d7c6f] mb-1">รายละเอียดภารกิจ:</h4>
+                    <p className="whitespace-pre-wrap">{selectedMission.description}</p>
+                  </div>
+                )}
 
                 {/* Questions */}
                 <div className="space-y-6">
-                  {selectedMission?.mission_question?.map(
-                    (q: any, idx: number) => (
-                      <div key={q.question_id} className="space-y-3">
-                        <label className="block font-semibold text-gray-700">
-                          {idx + 1}. {q.question_text}
-                        </label>
+                  {(() => {
+                    const currentResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === selectedMission?.mission_id);
+                    const isSubmitted = currentResult?.status === "completed";
+                    
+                    return selectedMission?.mission_question?.map(
+                      (q: any, idx: number) => (
+                        <div key={q.question_id} className="space-y-3">
+                          <label className="block font-semibold text-gray-700">
+                            {idx + 1}. {q.question_text}
+                          </label>
 
-                        {q.question_type === "TEXT" && (
-                          <Textarea
-                            minRows={3}
-                            placeholder="พิมพ์คำตอบของคุณที่นี่..."
-                            value={answers[q.question_id] || ""}
-                            variant="bordered"
-                            onValueChange={(val) =>
-                              handleAnswerChange(q.question_id, val)
-                            }
-                          />
+                          {q.question_type === "TEXT" && (
+                            <Textarea
+                              minRows={3}
+                              placeholder={isSubmitted ? "" : "พิมพ์คำตอบของคุณที่นี่..."}
+                              value={answers[q.question_id] || ""}
+                              variant="bordered"
+                              isReadOnly={isSubmitted}
+                              onValueChange={(val) =>
+                                handleAnswerChange(q.question_id, val)
+                              }
+                            />
                         )}
 
                         {q.question_type === "MCQ" && (
                           <div className="space-y-2">
-                            {q.choices?.map((c: any) => (
-                              <div
-                                key={c.choice_id}
-                                className={`
-                                                                p-3 rounded-lg border cursor-pointer flex items-center gap-3 transition-colors
-                                                                ${answers[
-                                    q
-                                      .question_id
-                                  ] ===
-                                    c.choice_text
-                                    ? "bg-[#5d7c6f] text-white border-[#5d7c6f]"
-                                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                                  }
-                                                            `}
-                                onClick={() =>
-                                  handleAnswerChange(
-                                    q.question_id,
-                                    c.choice_text,
-                                  )
-                                }
-                              >
+                            {q.choices?.map((c: any, choiceIdx: number) => {
+                              const choiceLetter = String.fromCharCode(65 + choiceIdx); // 0=A, 1=B, 2=C...
+                              
+                              return (
                                 <div
+                                  key={c.choice_id}
                                   className={`
-                                                                w-5 h-5 rounded-full border flex items-center justify-center shrink-0
-                                                                ${answers[q.question_id] === c.choice_text ? "border-white" : "border-gray-300"}
-                                                            `}
+                                      p-3 rounded-lg border flex items-center gap-3 transition-colors
+                                      ${answers[q.question_id] === choiceLetter
+                                      ? "bg-[#5d7c6f] text-white border-[#5d7c6f]"
+                                      : "bg-white text-gray-700 border-gray-200"
+                                    }
+                                    ${isSubmitted ? "opacity-75 cursor-not-allowed" : "cursor-pointer hover:bg-gray-50"}
+                                  `}
+                                  onClick={() =>
+                                    !isSubmitted && handleAnswerChange(q.question_id, choiceLetter)
+                                  }
                                 >
-                                  {answers[q.question_id] === c.choice_text && (
-                                    <div className="w-2.5 h-2.5 rounded-full bg-white" />
-                                  )}
+                                  <div
+                                    className={`
+                                        w-6 h-6 rounded-full border flex items-center justify-center shrink-0 font-bold text-xs
+                                        ${answers[q.question_id] === choiceLetter ? "border-white" : "border-gray-400"}
+                                    `}
+                                  >
+                                    {choiceLetter}
+                                  </div>
+                                  <span>{c.choice_text}</span>
                                 </div>
-                                <span>{c.choice_text}</span>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
-                      </div>
-                    ),
-                  )}
+                        </div>
+                      ),
+                    );
+                  })()}
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button color="danger" variant="light" onPress={onClose}>
-                  ยกเลิก
-                </Button>
-                <Button
-                  className="bg-[#5d7c6f] text-white font-bold"
-                  isLoading={submitting}
-                  onPress={submitMission}
-                >
-                  ส่งคำตอบ
-                </Button>
+                {(() => {
+                  const currentResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === selectedMission?.mission_id);
+                  const isSubmitted = currentResult?.status === "completed";
+                  const allAnswered = selectedMission?.mission_question?.every(
+                    (q: any) => answers[q.question_id] && String(answers[q.question_id]).trim() !== ""
+                  );
+                  
+                  return (
+                    <>
+                      <Button color="danger" variant="light" onPress={onClose}>
+                        ปิดหน้าต่าง
+                      </Button>
+                      {!isSubmitted && (
+                        <Button
+                          className={`text-white font-bold ${allAnswered ? "bg-[#5d7c6f]" : "bg-gray-500 hover:bg-gray-600"}`}
+                          isLoading={submitting}
+                          onPress={submitMission}
+                        >
+                          {allAnswered ? "ส่งคำตอบ" : "บันทึกร่าง"}
+                        </Button>
+                      )}
+                    </>
+                  );
+                })()}
               </ModalFooter>
             </>
           )}

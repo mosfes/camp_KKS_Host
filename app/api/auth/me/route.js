@@ -37,8 +37,8 @@ export async function GET() {
     });
     if (isClassroomTeacher) roles.add("TEACHER");
 
-    // ถ้าไม่มีบทบาทเลย ใช้ role จาก cookie เป็น fallback
-    if (roles.size === 0 && teacher.role) roles.add(teacher.role);
+    // เพิ่ม role พื้นฐานจาก cookie ด้วย (เช่น ADMIN)
+    if (teacher.role) roles.add(teacher.role);
 
     return NextResponse.json({
         ...teacher,

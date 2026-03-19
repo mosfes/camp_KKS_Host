@@ -10,7 +10,6 @@ export async function GET() {
 
     try {
         // 1. Find classrooms for the student
-        // ในระบบจริง นักเรียนควรถูก link กับห้องเรียนผ่าน classroom_students
         const classrooms = await prisma.classrooms.findMany({
             where: {
                 classroom_students: {
@@ -51,7 +50,13 @@ export async function GET() {
                     include: {
                         mission_result: {
                             include: {
-                                mission: true
+                                mission: true,
+                                mission_answer: {
+                                    include: {
+                                        answer_text: true,
+                                        answer_mcq: true
+                                    }
+                                }
                             }
                         }
                     }

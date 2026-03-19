@@ -21,6 +21,8 @@ interface StatusModalContextType {
     onConfirm: () => void,
     confirmText?: string,
   ) => void;
+  setIsLoading: (loading: boolean) => void;
+  close: () => void;
 }
 
 const StatusModalContext = createContext<StatusModalContextType | undefined>(
@@ -45,11 +47,15 @@ export function StatusModalProvider({ children }: { children: ReactNode }) {
     message: string;
     onConfirm?: () => void;
     confirmText?: string;
+    isLoading?: boolean;
   }>({
     type: "info",
     title: "",
     message: "",
+    isLoading: false,
   });
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const openModal = useCallback(
     (
@@ -60,6 +66,7 @@ export function StatusModalProvider({ children }: { children: ReactNode }) {
       confirmText?: string,
     ) => {
       setConfig({ type, title, message, onConfirm, confirmText });
+      setIsLoading(false);
       setIsOpen(true);
     },
     [],
@@ -99,7 +106,7 @@ export function StatusModalProvider({ children }: { children: ReactNode }) {
 
   return (
     <StatusModalContext.Provider
-      value={{ showSuccess, showError, showWarning, showInfo, showConfirm }}
+      value={{ showSuccess, showError, showWarning, showInfo, showConfirm, setIsLoading, close }}
     >
       {children}
       <StatusModal
@@ -108,6 +115,7 @@ export function StatusModalProvider({ children }: { children: ReactNode }) {
         message={config.message}
         title={config.title}
         type={config.type}
+        isLoading={isLoading}
         onClose={close}
         onConfirm={config.onConfirm}
       />

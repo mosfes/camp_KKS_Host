@@ -27,7 +27,7 @@ export async function GET(req) {
 
         // 1. ดึงห้องเรียนปีเก่า
         const sourceClassrooms = await prisma.classrooms.findMany({
-            where: { academic_years_years_id: parseInt(fromYearId) },
+            where: { academic_years_years_id: parseInt(fromYearId), deletedAt: null },
             include: {
                 classroom_students: {
                     include: { student: true }
@@ -42,8 +42,8 @@ export async function GET(req) {
 
         // 2. ดึงห้องเรียนปีใหม่ (เพื่อเช็คว่ามีห้องรอรับไหม)
         const targetClassrooms = await prisma.classrooms.findMany({
-            where: { academic_years_years_id: parseInt(toYearId) },
-            include: { teacher: true }
+            where: { academic_years_years_id: parseInt(toYearId), deletedAt: null },
+            include: { teacher: true, classroom_teacher: true }
         });
 
         const groupedData = new Map();
@@ -69,6 +69,11 @@ export async function GET(req) {
                 
                 if (targetRoom) {
                     defaultTeacherIds.add(targetRoom.teachers_teachers_id.toString());
+                    if (targetRoom.classroom_teacher && targetRoom.classroom_teacher.length > 0) {
+                        targetRoom.classroom_teacher.forEach(ct => {
+                            defaultTeacherIds.add(ct.teacher_teachers_id.toString());
+                        });
+                    }
 
                 } else {
                     // ค้นหาห้องในปีปัจจุบัน ที่เป็นระดับชั้นถัดไป (Next Grade) + ประเภทเดิม

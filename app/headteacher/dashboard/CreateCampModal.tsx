@@ -76,7 +76,7 @@ export default function CreateCampModal({
   const { showWarning } = useStatusModal();
   const [classrooms, setClassrooms] = useState<any[]>([]);
   const [filteredClassrooms, setFilteredClassrooms] = useState<any[]>([]);
-  const [selectedGrade, setSelectedGrade] = useState<string>("");
+  const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
   const [selectedClassroomIds, setSelectedClassroomIds] = useState<number[]>(
     [],
   );
@@ -196,12 +196,12 @@ export default function CreateCampModal({
   }, [isOpen]);
 
   useEffect(() => {
-    if (selectedGrade) {
-      const filtered = classrooms.filter((c) => c.grade === selectedGrade);
+    if (selectedGrades.length > 0) {
+      const filtered = classrooms.filter((c) => selectedGrades.includes(c.grade));
 
       console.log(
-        "Filtered classrooms for grade",
-        selectedGrade,
+        "Filtered classrooms for grades",
+        selectedGrades,
         ":",
         filtered,
       );
@@ -210,7 +210,7 @@ export default function CreateCampModal({
       setFilteredClassrooms([]);
     }
     setSelectedClassroomIds([]);
-  }, [selectedGrade, classrooms]);
+  }, [selectedGrades, classrooms]);
 
   // โหลดข้อมูลจาก template เมื่อเปิด modal
   useEffect(() => {
@@ -263,14 +263,17 @@ export default function CreateCampModal({
         dailySchedule: dailySchedule,
       });
 
-      // ถ้ามี grade level ให้ตั้งค่าจาก camp_classroom
+      // ดึง grade ทุกชั้นจาก camp_classroom
       if (campSource.camp_classroom && campSource.camp_classroom.length > 0) {
-        // Assuming all classrooms in a camp are same grade
-        const grade = campSource.camp_classroom[0].classroom?.grade;
-
-        if (grade) {
-          setSelectedGrade(grade);
-        }
+        const gradesSet = new Set<string>();
+        campSource.camp_classroom.forEach((cc: any) => {
+          if (cc.classroom?.grade) {
+            gradesSet.add(cc.classroom.grade);
+          }
+        });
+        setSelectedGrades(Array.from(gradesSet));
+      } else {
+        setSelectedGrades([]);
       }
 
       // ถ้ามีรูปเสื้อ (Note: API doesn't seem to select shirt_image_url yet, but if it did)
@@ -301,7 +304,7 @@ export default function CreateCampModal({
           },
         ],
       });
-      setSelectedGrade("");
+      setSelectedGrades([]);
       setShirtImage(null);
       setShirtImageFile(null);
       setSelectedClassroomIds([]);
@@ -506,6 +509,8 @@ export default function CreateCampModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isLoading) return;
+
     if (selectedClassroomIds.length === 0) {
       showWarning("ข้อมูลไม่ครบถ้วน", "กรุณาเลือกห้องเรียนอย่างน้อย 1 ห้อง");
 
@@ -543,7 +548,7 @@ export default function CreateCampModal({
         })),
       })),
       classroom_ids: selectedClassroomIds,
-      gradeLevel: selectedGrade,
+      gradeLevel: selectedGrades.join(","),
       shirtImage: shirtImage,
       shirtImageFile: shirtImageFile,
     };
@@ -613,20 +618,20 @@ export default function CreateCampModal({
               {/* Grade Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  เลือกระดับชั้น
+                  เลือกระดับชั้น (เลือกได้มากกว่า 1)
                   <Select
                     isRequired
+                    selectionMode="multiple"
                     classNames={{
                       trigger: "border-gray-300",
                     }}
                     label="ระดับชั้น"
                     placeholder="-- เลือกระดับชั้น --"
-                    selectedKeys={selectedGrade ? [selectedGrade] : []}
+                    selectedKeys={new Set(selectedGrades)}
                     onSelectionChange={(keys) => {
-                      const grade = Array.from(keys)[0] as string;
-
-                      setSelectedGrade(grade);
-                      handleChange("gradeLevel", grade);
+                      const grades = Array.from(keys) as string[];
+                      setSelectedGrades(grades);
+                      handleChange("gradeLevel", grades.join(","));
                     }}
                   >
                     {grades.map((grade) => (
@@ -649,7 +654,7 @@ export default function CreateCampModal({
                   )}
                 </label>
                 <div className="w-full px-4 py-2 border border-gray-300 rounded-lg max-h-40 overflow-y-auto bg-white">
-                  {!selectedGrade ? (
+                  {selectedGrades.length === 0 ? (
                     <p className="text-sm text-gray-400">
                       กรุณาเลือกระดับชั้นก่อน
                     </p>
@@ -686,9 +691,17 @@ export default function CreateCampModal({
                             }}
                           />
                           <span className="text-sm">
-                            {classroom.type_classroom} -{" "}
-                            {classroom.teacher.firstname}{" "}
-                            {classroom.teacher.lastname}
+                            {classroom.grade?.replace("Level_", "ม.")} {classroom.classroom_types?.name || classroom.type_classroom} -{" "}
+                            <span className="text-gray-400">
+                              {classroom.teacher.firstname}{" "}
+                              {classroom.teacher.lastname}
+                              {classroom.classroom_teacher && classroom.classroom_teacher.length > 0 && (
+                                <>
+                                  {", "}
+                                  {classroom.classroom_teacher.map((ct: any) => `${ct.teacher.firstname} ${ct.teacher.lastname}`).join(", ")}
+                                </>
+                              )}
+                            </span>
                           </span>
                         </label>
                       ))}
@@ -1010,11 +1023,10 @@ export default function CreateCampModal({
                 {/* Shirt Image Upload */}
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-2">
-                    Shirt Sample Image
+                    รูปตัวอย่างเสื้อค่าย
                   </label>
                   <p className="text-xs text-gray-400 mb-3">
-                    Upload an image showing the camp shirt design for student
-                    reference
+                    อัปโหลดรูปภาพตัวอย่างเสื้อค่ายเพื่อให้นักเรียนใช้ประกอบการตัดสินใจ
                   </p>
 
                   {!shirtImage ? (
@@ -1031,10 +1043,10 @@ export default function CreateCampModal({
                           size={32}
                         />
                         <p className="text-sm text-gray-500 font-medium">
-                          Click to upload or drag and drop
+                          คลิกเพื่ออัปโหลด หรือลากไฟล์มาวางที่นี่
                         </p>
                         <p className="text-xs text-gray-400 mt-1">
-                          PNG, JPG, JPEG up to 10MB
+                          รองรับไฟล์ PNG, JPG, JPEG ขนาดไม่เกิน 10MB
                         </p>
                       </div>
                     </label>
@@ -1053,7 +1065,7 @@ export default function CreateCampModal({
                         <X size={20} />
                       </button>
                       <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2 text-xs">
-                        {shirtImageFile?.name || "Template Image"}
+                        {shirtImageFile?.name || "รูปภาพจาก Template"}
                       </div>
                     </div>
                   )}
@@ -1072,13 +1084,13 @@ export default function CreateCampModal({
                   }
                 />
                 <span className="text-sm font-medium text-gray-700 group-hover:text-black">
-                  Save this configuration as a template
+                  บันทึกข้อมูลนี้เป็น Template (ต้นแบบ)
                 </span>
               </label>
               {formData.saveAsTemplate && (
                 <input
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none text-sm"
-                  placeholder="Template Name (e.g., Annual Science Camp)"
+                  placeholder="ชื่อ Template (เช่น ค่ายวิทยาศาสตร์ประจำปี)"
                   type="text"
                   value={formData.templateName}
                   onChange={(e) => handleChange("templateName", e.target.value)}
@@ -1102,7 +1114,7 @@ export default function CreateCampModal({
               </>
             ) : (
               <>
-                Create Camp & Continue
+                สร้างค่ายและดำเนินการต่อ
                 <ChevronRight size={18} />
               </>
             )}

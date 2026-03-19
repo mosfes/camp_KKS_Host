@@ -8,12 +8,13 @@ import {
 } from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
 import { GraduationCap, LogOut, Settings } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 
 export function HeadteacherNavbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { signOut } = useClerk();
 
   const [teacher, setTeacher] = useState<{
@@ -23,6 +24,8 @@ export function HeadteacherNavbar() {
     role: string;
     roles?: string[];
   } | null>(null);
+
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // ดึงข้อมูลครูจาก session cookie
   useEffect(() => {
@@ -74,7 +77,7 @@ export function HeadteacherNavbar() {
                     key={r}
                     className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
                   >
-                    {r === "HEADTEACHER" ? "หัวหน้าค่าย" : r === "TEACHER" ? "ครู" : r === "ADMIN" ? "ผู้ดูแลระบบ" : r}
+                    {r === "HEADTEACHER" ? "ครูหัวหน้าค่าย" : r === "TEACHER" ? "ครูประจำชั้น" : r === "ADMIN" ? "ผู้ดูแลระบบ" : r}
                   </span>
                 ))}
                 <Avatar
@@ -96,29 +99,44 @@ export function HeadteacherNavbar() {
 
               {(teacher?.roles?.includes("ADMIN") || teacher?.role === "ADMIN") ? (
                 <>
-                  <DropdownItem
-                    key="admin_dashboard"
-                    startContent={<Settings size={16} />}
-                    onClick={() => router.push("/admin_add_user")}
-                  >
-                    หน้าหลักผู้ดูแลระบบ
-                  </DropdownItem>
-                  <DropdownItem
-                    key="headteacher_dashboard"
-                    startContent={<GraduationCap size={16} />}
-                    onClick={() => router.push("/headteacher/dashboard")}
-                  >
-                    เข้าสู่โหมดหัวหน้าค่าย
-                  </DropdownItem>
+                  {!pathname.startsWith("/admin_add_user") ? (
+                    <DropdownItem
+                      key="admin_dashboard"
+                      startContent={<Settings size={16} />}
+                      onClick={() => {
+                        setIsNavigating(true);
+                        router.push("/admin_add_user");
+                      }}
+                    >
+                      หน้าหลักผู้ดูแลระบบ
+                    </DropdownItem>
+                  ) : null}
+                  {!pathname.startsWith("/headteacher") ? (
+                    <DropdownItem
+                      key="headteacher_dashboard"
+                      startContent={<GraduationCap size={16} />}
+                      onClick={() => {
+                        setIsNavigating(true);
+                        router.push("/headteacher/dashboard");
+                      }}
+                    >
+                      เข้าสู่โหมดครู
+                    </DropdownItem>
+                  ) : null}
                 </>
               ) : (
-                <DropdownItem
-                  key="settings"
-                  startContent={<Settings size={16} />}
-                  onClick={() => router.push("/headteacher/dashboard")}
-                >
-                  หน้าหลัก
-                </DropdownItem>
+                !pathname.startsWith("/headteacher") ? (
+                  <DropdownItem
+                    key="settings"
+                    startContent={<Settings size={16} />}
+                    onClick={() => {
+                      setIsNavigating(true);
+                      router.push("/headteacher/dashboard");
+                    }}
+                  >
+                    หน้าหลัก
+                  </DropdownItem>
+                ) : null
               )}
 
               <DropdownItem
@@ -133,6 +151,16 @@ export function HeadteacherNavbar() {
           </Dropdown>
         </NavbarItem>
       </NavbarContent>
+
+      {/* Loading Overlay for Navigation */}
+      {isNavigating && (
+        <div className="fixed inset-0 z-[9999] bg-white/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+            <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+            <p className="text-[#5d7c6f] font-medium text-sm">กำลังสลับโหมด...</p>
+          </div>
+        </div>
+      )}
     </Navbar>
   );
 }

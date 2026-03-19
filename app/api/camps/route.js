@@ -204,11 +204,17 @@ export async function GET(request) {
                 OR: [
                     // ผู้สร้างค่าย
                     { created_by_teacher_id: teacher.teachers_id },
-                    // ครูที่เกี่ยวข้อง (teacher_enrollment)
+                    // ครูประจำชั้นของห้องเรียนที่เชื่อมกับค่ายนี้ (เป็นคนดูแลค่าย)
                     {
-                        teacher_enrollment: {
-                            some: { teacher_teachers_id: teacher.teachers_id },
-                        },
+                        camp_classroom: {
+                            some: {
+                                classroom: {
+                                    classroom_teacher: {
+                                        some: { teacher_teachers_id: teacher.teachers_id }
+                                    }
+                                }
+                            }
+                        }
                     },
                 ],
             },
@@ -226,9 +232,17 @@ export async function GET(request) {
                     include: {
                         classroom: {
                             include: {
+                                classroom_types: true,
                                 teacher: {
                                     select: { firstname: true, lastname: true },
                                 },
+                                classroom_teacher: {
+                                    include: {
+                                        teacher: {
+                                            select: { firstname: true, lastname: true }
+                                        }
+                                    }
+                                }
                             },
                         },
                     },
@@ -248,6 +262,42 @@ export async function GET(request) {
                 if (updated[f]) updated[f] = toThaiISOString(updated[f]);
             }
             updated.isOwner = camp.created_by_teacher_id === teacher.teachers_id;
+            
+            // Extract Grades and Types
+            const typeMap = new Map();
+            const allGrades = new Set();
+            
+            if (camp.camp_classroom) {
+                camp.camp_classroom.forEach(cc => {
+                    if (cc.classroom) {
+                        const g = cc.classroom.grade;
+                        const typeName = cc.classroom.classroom_types?.name || cc.classroom.type_classroom;
+                        if (g) {
+                            const gradeStr = g.replace('Level_', 'ม.');
+                            allGrades.add(gradeStr);
+                            
+                            if (typeName) {
+                                if (!typeMap.has(typeName)) {
+                                    typeMap.set(typeName, new Set());
+                                }
+                                typeMap.get(typeName).add(gradeStr);
+                            }
+                        }
+                    }
+                });
+            }
+            
+            const sortedGrades = Array.from(allGrades).sort((a, b) => a.localeCompare(b));
+            updated.grades = sortedGrades;
+            
+            updated.gradeDisplay = Array.from(typeMap.entries())
+                .sort((a, b) => a[0].toString().localeCompare(b[0].toString()))
+                .map(([type, typeGrades]) => {
+                    const sortedTypeGrades = Array.from(typeGrades).sort((a, b) => a.localeCompare(b));
+                    return `${type}(${sortedTypeGrades.join(', ')})`;
+                })
+                .join(' ');
+            
             return updated;
         });
 

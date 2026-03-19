@@ -20,6 +20,7 @@ interface StatusModalProps {
   message: string;
   onConfirm?: () => void; // Optional for confirmation dialogs
   confirmText?: string;
+  isLoading?: boolean;
 }
 
 export default function StatusModal({
@@ -30,6 +31,7 @@ export default function StatusModal({
   message,
   onConfirm,
   confirmText = "ยืนยัน",
+  isLoading = false,
 }: StatusModalProps) {
   const getIcon = () => {
     switch (type) {
@@ -89,9 +91,9 @@ export default function StatusModal({
                 <>
                   <Button
                     className="bg-[#6b857a] text-white rounded-full font-bold w-36 shadow-sm hover:bg-[#5a7268]"
+                    isLoading={isLoading}
                     onPress={() => {
                       onConfirm();
-                      onClose();
                     }}
                   >
                     {confirmText === "Confirm"

@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
-import { ChevronLeft, Plus, Target, Pencil, Trash2 } from "lucide-react";
+import { ChevronLeft, Plus, Target, Pencil, Trash2, Eye } from "lucide-react";
 
 import CreateMissionModal from "./CreateMissionModal";
 import EditMissionModal from "./EditMissionModal";
+import MonitorMissionModal from "./MonitorMissionModal";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 
@@ -17,11 +18,14 @@ export default function BaseDetailPage() {
 
   const [base, setBase] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { showError, showSuccess } = useStatusModal();
+  const { showError, showSuccess, showConfirm, setIsLoading } = useStatusModal();
   const [isCreateMissionModalOpen, setIsCreateMissionModalOpen] =
     useState(false);
   const [isEditMissionModalOpen, setIsEditMissionModalOpen] = useState(false);
   const [selectedMission, setSelectedMission] = useState<any>(null);
+  
+  const [isMonitorModalOpen, setIsMonitorModalOpen] = useState(false);
+  const [monitorMissionData, setMonitorMissionData] = useState<any>(null);
 
   useEffect(() => {
     if (baseId) {
@@ -52,28 +56,40 @@ export default function BaseDetailPage() {
     setIsEditMissionModalOpen(true);
   };
 
-  const handleDeleteMission = async (
-    missionId: number,
-    e: React.MouseEvent,
-  ) => {
+  const handleMonitorMission = (mission: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this mission?")) return;
+    setMonitorMissionData(mission);
+    setIsMonitorModalOpen(true);
+  };
 
-    try {
-      const response = await fetch(`/api/missions/${missionId}`, {
-        method: "DELETE",
-      });
+  const handleDeleteMission = (missionId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
 
-      if (!response.ok) {
-        throw new Error("Failed to delete mission");
-      }
+    showConfirm(
+      "ยืนยันการลบ",
+      "คุณแน่ใจหรือไม่ว่าต้องการลบภารกิจนี้? การดำเนินการนี้ไม่สามารถย้อนกลับได้",
+      async () => {
+        try {
+          setIsLoading(true);
+          const response = await fetch(`/api/missions/${missionId}`, {
+            method: "DELETE",
+          });
 
-      showSuccess("Success", "Mission deleted successfully");
-      fetchBaseDetail();
-    } catch (error) {
-      console.error("Error deleting mission:", error);
-      showError("Error", "Failed to delete mission");
-    }
+          if (!response.ok) {
+            throw new Error("Failed to delete mission");
+          }
+
+          showSuccess("สำเร็จ", "ลบภารกิจเรียบร้อยแล้ว");
+          fetchBaseDetail();
+        } catch (error) {
+          console.error("Error deleting mission:", error);
+          showError("ข้อผิดพลาด", "ไม่สามารถลบภารกิจได้");
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      "ลบภารกิจ",
+    );
   };
 
   if (loading) {
@@ -178,6 +194,15 @@ export default function BaseDetailPage() {
                   <div className="flex gap-1 ml-4 self-start">
                     <Button
                       isIconOnly
+                      className="text-gray-400 hover:text-green-500"
+                      size="sm"
+                      variant="light"
+                      onClick={(e) => handleMonitorMission(mission, e)}
+                    >
+                      <Eye size={18} />
+                    </Button>
+                    <Button
+                      isIconOnly
                       className="text-gray-400 hover:text-blue-500"
                       size="sm"
                       variant="light"
@@ -228,6 +253,11 @@ export default function BaseDetailPage() {
           missionData={selectedMission}
           onClose={() => setIsEditMissionModalOpen(false)}
           onSuccess={fetchBaseDetail}
+        />
+        <MonitorMissionModal
+          isOpen={isMonitorModalOpen}
+          missionData={monitorMissionData}
+          onClose={() => setIsMonitorModalOpen(false)}
         />
       </div>
     </div>

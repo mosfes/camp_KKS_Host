@@ -59,6 +59,7 @@ interface CampDetail {
   };
   plan_type_name?: string;
   station?: any[];
+  isOwner?: boolean;
 }
 
 export default function CampDetailPage() {
@@ -67,7 +68,7 @@ export default function CampDetailPage() {
   const campId = params?.id;
 
   const [camp, setCamp] = useState<CampDetail | null>(null);
-  const { showError, showSuccess } = useStatusModal();
+  const { showError, showSuccess, showConfirm, setIsLoading } = useStatusModal();
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
@@ -142,25 +143,34 @@ export default function CampDetailPage() {
     setIsEditBaseModalOpen(true);
   };
 
-  const handleDeleteBase = async (baseId: number, e: React.MouseEvent) => {
+  const handleDeleteBase = (baseId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this base?")) return;
 
-    try {
-      const response = await fetch(`/api/stations/${baseId}`, {
-        method: "DELETE",
-      });
+    showConfirm(
+      "ยืนยันการลบ",
+      "คุณแน่ใจหรือไม่ว่าต้องการลบฐานกิจกรรมนี้? ข้อมูลภารกิจทั้งหมดในฐานนี้จะถูกลบไปด้วย",
+      async () => {
+        try {
+          setIsLoading(true);
+          const response = await fetch(`/api/stations/${baseId}`, {
+            method: "DELETE",
+          });
 
-      if (!response.ok) {
-        throw new Error("Failed to delete base");
-      }
+          if (!response.ok) {
+            throw new Error("Failed to delete base");
+          }
 
-      showSuccess("Success", "Base deleted successfully");
-      fetchCampDetail();
-    } catch (error) {
-      console.error("Error deleting base:", error);
-      showError("Error", "Failed to delete base");
-    }
+          showSuccess("สำเร็จ", "ลบฐานกิจกรรมเรียบร้อยแล้ว");
+          fetchCampDetail();
+        } catch (error) {
+          console.error("Error deleting base:", error);
+          showError("ข้อผิดพลาด", "ไม่สามารถลบฐานกิจกรรมได้");
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      "ลบฐานกิจกรรม",
+    );
   };
 
   const handleEditSubmit = async (formData: any) => {

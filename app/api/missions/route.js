@@ -26,16 +26,21 @@ export async function POST(request) {
 
         // Handle Question(s) based on type
         if (type === 'QUESTION_ANSWERING') {
-            // for QA we stick to single question for now, or use the first one from array
-            const qText = question || (questions && questions.length > 0 ? questions[0].text : null);
-            if (qText) {
-                await prisma.mission_question.create({
-                    data: {
-                        question_text: qText,
-                        question_type: 'TEXT',
-                        mission_mission_id: newMission.mission_id
-                    }
-                });
+            const questionsToCreate = questions || [];
+            if (questionsToCreate.length === 0 && question) {
+                questionsToCreate.push({ text: question });
+            }
+
+            for (const q of questionsToCreate) {
+                if (q.text) {
+                    await prisma.mission_question.create({
+                        data: {
+                            question_text: q.text,
+                            question_type: 'TEXT',
+                            mission_mission_id: newMission.mission_id
+                        }
+                    });
+                }
             }
         } else if (type === 'MULTIPLE_CHOICE_QUIZ') {
             // Support multiple questions from 'questions' array

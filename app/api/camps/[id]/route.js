@@ -90,7 +90,7 @@ export async function PUT(request, context) {
         select: { created_by_teacher_id: true },
     });
     if (!existing) return NextResponse.json({ error: "ไม่พบค่าย" }, { status: 404 });
-    if (existing.created_by_teacher_id !== teacher.teachers_id) {
+    if (existing.created_by_teacher_id !== teacher.teachers_id && teacher.role !== "ADMIN") {
         return NextResponse.json({ error: "ไม่มีสิทธิ์แก้ไขค่ายนี้" }, { status: 403 });
     }
 
@@ -221,7 +221,7 @@ export async function DELETE(req, context) {
             select: { created_by_teacher_id: true },
         });
         if (!existing) return NextResponse.json({ error: "ไม่พบค่าย" }, { status: 404 });
-        if (existing.created_by_teacher_id !== teacher.teachers_id) {
+        if (existing.created_by_teacher_id !== teacher.teachers_id && teacher.role !== "ADMIN") {
             return NextResponse.json({ error: "ไม่มีสิทธิ์ลบค่ายนี้" }, { status: 403 });
         }
 

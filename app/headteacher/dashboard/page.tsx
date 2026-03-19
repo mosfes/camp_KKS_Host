@@ -36,7 +36,7 @@ function DefaultCampImage() {
 import { useStatusModal } from "@/components/StatusModalProvider";
 
 export default function StudentDashboard() {
-  const { showSuccess, showError, showConfirm } = useStatusModal();
+  const { showSuccess, showError, showConfirm, setIsLoading } = useStatusModal();
   const router = useRouter();
   const [camps, setCamps] = useState<any[]>([]);
   const [stats, setStats] = useState({
@@ -56,6 +56,13 @@ export default function StudentDashboard() {
   );
   const [selectedTemplateData, setSelectedTemplateData] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
+
+  const goToCampDetail = (campId: number) => {
+    if (navigatingTo !== null) return;
+    setNavigatingTo(campId);
+    router.push(`/headteacher/dashboard/camp/${campId}`);
+  };
 
   const fetchCamps = async () => {
     try {
@@ -89,6 +96,8 @@ export default function StudentDashboard() {
           image: camp.camp_img_url || null,
           isOwner: camp.isOwner,
           ownerName: camp.created_by ? `${camp.created_by.firstname} ${camp.created_by.lastname}`.trim() : "",
+          grades: camp.grades || [],
+          gradeDisplay: camp.gradeDisplay || "",
         };
       });
 
@@ -145,7 +154,7 @@ export default function StudentDashboard() {
       `คุณต้องการลบค่าย "${campName}" ใช่หรือไม่?\n\nการกระทำนี้ไม่สามารถย้อนกลับได้`,
       async () => {
         try {
-          setLoading(true);
+          setIsLoading(true);
           const response = await fetch(`/api/camps/${campId}`, {
             method: "DELETE",
           });
@@ -163,7 +172,7 @@ export default function StudentDashboard() {
           console.error("Error deleting camp:", error);
           showError("ข้อผิดพลาด", "เกิดข้อผิดพลาดในการลบค่าย");
         } finally {
-          setLoading(false);
+          setIsLoading(false);
         }
       },
       "ลบ",
@@ -389,18 +398,23 @@ export default function StudentDashboard() {
                   >
                     {/* Image / SVG (hidden on mobile) */}
                     <div
-                      className="relative h-48 overflow-hidden hidden sm:block cursor-pointer"
-                      onClick={() =>
-                        router.push(`/headteacher/dashboard/camp/${camp.id}`)
-                      }
+                      className={`relative h-48 overflow-hidden hidden sm:block cursor-pointer ${navigatingTo === camp.id ? "opacity-60" : ""}`}
+                      onClick={() => goToCampDetail(camp.id)}
                     >
+                      {navigatingTo === camp.id && (
+                        <div className="absolute inset-0 flex items-center justify-center z-20 bg-white/40">
+                          <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
                       {/* Delete Button - เฉพาะเจ้าของค่าย */}
                       {camp.isOwner && (
                         <button
-                          className="absolute top-2 right-2 z-10 p-2 bg-[#5d7c6f] text-white rounded-full opacity-60 group-hover:opacity-100 transition-opacity hover:bg-[#5d7c6f] shadow-lg hover:text-red-500"
+                          className="absolute top-2 right-2 z-10 p-2 bg-[#5d7c6f] text-white rounded-full opacity-60 group-hover:opacity-100 transition-opacity hover:bg-[#5d7c6f] shadow-lg hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                          disabled={loading}
                           title="ลบค่าย"
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (loading) return;
                             handleDeleteCamp(camp.id, camp.title);
                           }}
                         >
@@ -418,7 +432,7 @@ export default function StudentDashboard() {
                       )}
                     </div>
 
-                    <CardBody className="p-6">
+                    <CardBody className="p-6 flex flex-col">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex-1">
                           <h3 className="text-2xl font-bold mb-2 text-[#2d3748]">
@@ -460,9 +474,19 @@ export default function StudentDashboard() {
 
                       {/* Location */}
                       <div className="flex items-center gap-2 mb-2 text-[#718096]">
-                        <MapPin size={20} />
-                        <span>{camp.location}</span>
+                        <MapPin size={20} className="flex-shrink-0" />
+                        <span className="truncate" title={camp.location}>{camp.location}</span>
                       </div>
+
+                      {/* Grades */}
+                      {camp.gradeDisplay && (
+                        <div className="flex items-start gap-2 mb-4 text-[#718096]">
+                          <GraduationCap size={20} className="flex-shrink-0 mt-0.5" />
+                          <span title={`ระดับชั้น: ${camp.gradeDisplay}`}>
+                            ระดับชั้น: {camp.gradeDisplay}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Date */}
                       <div className="flex items-center gap-2 mb-4 text-[#718096]">
@@ -473,19 +497,17 @@ export default function StudentDashboard() {
                       </div>
 
                       {/* Footer */}
-                      <div className="flex justify-between items-center pt-4 border-t border-[#e2e8f0]">
+                      <div className="flex justify-between items-center pt-4 border-t border-[#e2e8f0] mt-auto">
                         <span className="text-[#718096]">
                           ลงทะเบียนแล้ว {camp.enrolled}/{camp.capacity}
                         </span>
                         <div className="flex items-center gap-2">
                           <Button
                             className="bg-transparent text-[#718096] font-semibold hover:opacity-70"
-                            endContent={<ChevronRight size={20} />}
-                            onPress={() =>
-                              router.push(
-                                `/headteacher/dashboard/camp/${camp.id}`,
-                              )
-                            }
+                            endContent={navigatingTo === camp.id ? null : <ChevronRight size={20} />}
+                            isDisabled={navigatingTo !== null}
+                            isLoading={navigatingTo === camp.id}
+                            onPress={() => goToCampDetail(camp.id)}
                           >
                             ดูรายละเอียด
                           </Button>

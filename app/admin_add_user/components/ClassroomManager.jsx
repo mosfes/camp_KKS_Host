@@ -24,7 +24,8 @@ import {
     Checkbox
 } from "@heroui/react";
 import { useState, useEffect } from "react";
-import { Trash2, SquarePen, Settings } from 'lucide-react';
+import { Trash2, Trash, Archive, SquarePen, Settings } from 'lucide-react';
+import TrashManager from "./TrashManager";
 import studentService from "@/app/service/adminService";
 import { PlusIcon } from "./Icons";
 
@@ -36,10 +37,13 @@ const ClassroomManager = () => {
     const [teachers, setTeachers] = useState([]);
     const [years, setYears] = useState([]);
     const [selectedYear, setSelectedYear] = useState("all");
-
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [totalClassrooms, setTotalClassrooms] = useState(0);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editId, setEditId] = useState(null);
+    const [showTrash, setShowTrash] = useState(false);
 
 
 
@@ -202,7 +206,8 @@ const ClassroomManager = () => {
                 try {
                     await studentService.deleteClassroom(classroom.classroom_id);
                     showSuccess("สำเร็จ", "ลบสำเร็จ");
-                    fetchData();
+                    setPage(1);
+                    fetchClassrooms(1);
                 } catch (error) {
                     showError("เกิดข้อผิดพลาด", error.message);
                 }
@@ -215,25 +220,79 @@ const ClassroomManager = () => {
         const gradeLevel = gradeOptions.find(g => g.key === gradeKey)?.value || 0;
         if (!gradeLevel) return [];
 
+        const existingTypesInYearGrade = classrooms
+            .filter(c =>
+                c.academic_years_years_id?.toString() === formData.academic_year_id?.toString() &&
+                c.grade === gradeKey &&
+                c.classroom_id !== editId
+            )
+            .map(c => c.type_classroom?.toString());
+
         return classroomTypes
             .filter(type => {
                 if (!type.valid_grades) return false;
                 const validGrades = type.valid_grades.split(',').map(Number);
-                return validGrades.includes(gradeLevel);
+                const isValidGrade = validGrades.includes(gradeLevel);
+
+                return isValidGrade && !existingTypesInYearGrade.includes(type.classroom_type_id.toString());
             })
             .map(type => ({ key: type.classroom_type_id.toString(), label: type.name }));
     };
 
-    const fetchData = async () => {
+    const getAvailableTeachers = () => {
+        if (!formData.academic_year_id) return teachers;
+
+        const assignedTeacherIds = classrooms
+            .filter(c =>
+                c.academic_years_years_id?.toString() === formData.academic_year_id?.toString() &&
+                c.classroom_id !== editId
+            )
+            .flatMap(c => {
+                const ids = [];
+                if (c.teachers_teachers_id) ids.push(c.teachers_teachers_id.toString());
+                if (c.classroom_teacher && c.classroom_teacher.length > 0) {
+                    ids.push(c.classroom_teacher[0].teacher_teachers_id.toString());
+                }
+                return ids;
+            });
+
+        return teachers.filter(t => !assignedTeacherIds.includes(t.teachers_id.toString()));
+    };
+
+    const fetchClassrooms = async (pageNum = 1) => {
         setIsLoading(true);
         try {
-            const [clsData, tchData, yearData, typeData] = await Promise.all([
-                studentService.getClassrooms(selectedYear),
+            const result = await studentService.getClassroomsPaginated(selectedYear, pageNum, 20);
+            const newData = Array.isArray(result) ? result : (result.data || []);
+            
+            if (pageNum === 1) {
+                setClassrooms(newData);
+            } else {
+                setClassrooms(prev => [...prev, ...newData]);
+            }
+            
+            if (result.pagination) {
+                setHasMore(pageNum < result.pagination.totalPages);
+                setTotalClassrooms(result.pagination.total);
+            } else {
+                setHasMore(false);
+                setTotalClassrooms(newData.length);
+            }
+        } catch (error) {
+            console.error("Error fetching classrooms:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchData = async (isInitial = false) => {
+        setIsLoading(true);
+        try {
+            const [tchData, yearData, typeData] = await Promise.all([
                 studentService.getTeachers(),
                 studentService.getAcademicYears(),
                 studentService.getClassroomTypes()
             ]);
-            setClassrooms(clsData);
             setTeachers(tchData);
             setYears(yearData);
             setClassroomTypes(typeData);
@@ -241,21 +300,37 @@ const ClassroomManager = () => {
             if (yearData && yearData.length > 0 && yearData[0]?.year && !formData.academic_year_id) {
                 setFormData(prev => ({ ...prev, academic_year_id: yearData[0].year.toString() }));
             }
+            
+            if (isInitial && yearData && yearData.length > 0) {
+                const latestYear = Math.max(...yearData.map(y => parseInt(y.year))).toString();
+                setSelectedYear(latestYear);
+            } else {
+                await fetchClassrooms(1);
+            }
         } catch (error) {
             console.error("Error fetching data:", error);
-        } finally {
             setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchData();
+        setPage(1);
+        if (teachers.length === 0) {
+            fetchData(true);
+        } else {
+            fetchClassrooms(1);
+        }
     }, [selectedYear]);
 
     const handleSelectChange = (key, value) => {
         setFormData(prev => {
             const newData = { ...prev, [key]: value };
-            if (key === 'grade') newData.type_classroom = "";
+            if (key === 'grade') {
+                newData.type_classroom = "";
+            } else if (key === 'academic_year_id') {
+                newData.grade = "";
+                newData.type_classroom = "";
+            }
             return newData;
         });
     };
@@ -290,7 +365,8 @@ const ClassroomManager = () => {
                 await studentService.addClassroom(payload);
                 showSuccess("สำเร็จ", "เพิ่มข้อมูลห้องเรียนสำเร็จ!");
             }
-            fetchData();
+            setPage(1);
+            fetchClassrooms(1);
             onClose();
         } catch (error) {
             showError("เกิดข้อผิดพลาด", error.message);
@@ -312,22 +388,26 @@ const ClassroomManager = () => {
 
 
 
+    if (showTrash) {
+        return <TrashManager type="classroom" onBack={() => { setShowTrash(false); setPage(1); fetchClassrooms(1); }} />;
+    }
+
     return (
         <div className="flex flex-col gap-6 w-full pt-4">
             <Card className="border border-[#EFECE5] shadow-sm rounded-lg bg-white" radius="sm">
-                <CardBody className="p-6">
-                    <div className="flex flex-row justify-between items-start mb-4">
+                <CardBody className="p-4 md:p-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                         <div>
                             <h3 className="text-gray-800 font-semibold text-lg">
-                                ข้อมูลห้องเรียนและครูประจำชั้น ({classrooms.length})
+                                ข้อมูลห้องเรียนและครูประจำชั้น ({totalClassrooms})
                             </h3>
                             <p className="text-sm text-gray-500 mt-1">
                                 ตรวจสอบและจัดการรายชื่อครูประจำชั้นในแต่ละห้อง
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2 min-w-[160px]">
+                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto overflow-hidden">
+                            <div className="flex items-center gap-2 min-w-[120px] max-w-[140px] md:min-w-[160px] md:max-w-none flex-1">
                                 <Select
                                     aria-label="Select Academic Year"
                                     placeholder="ปีการศึกษา"
@@ -357,64 +437,95 @@ const ClassroomManager = () => {
                                 <PlusIcon />
                                 <span className="ml-1">เพิ่มห้องเรียน</span>
                             </Button>
+                            <Button
+                                size="sm"
+                                variant="bordered"
+                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
+                                onPress={() => setShowTrash(true)}
+                            >
+                                <Archive size={16} />
+                                <span className="ml-1 font-medium hidden sm:inline">รายการที่ลบ</span>
+                            </Button>
                         </div>
                     </div>
 
-                    <Table aria-label="Classroom Table" shadow="none">
-                        <TableHeader>
-                            <TableColumn>ระดับชั้น</TableColumn>
-                            <TableColumn>ประเภทห้อง</TableColumn>
-                            <TableColumn>ครูประจำชั้น</TableColumn>
-                            <TableColumn>ปีการศึกษา</TableColumn>
-                            <TableColumn>จำนวนนักเรียน</TableColumn>
-                            <TableColumn>ดำเนินการ</TableColumn>
-                        </TableHeader>
-                        <TableBody
-                            emptyContent="ยังไม่ได้กำหนดห้องเรียนในปีนี้"
-                            isLoading={isLoading}
-                            loadingContent={
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
-                                    <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
-                                </div>
-                            }
+                    <div className="overflow-x-auto w-full">
+                        <Table aria-label="Classroom Table" shadow="none"
+                            classNames={{
+                                wrapper: "min-w-[800px] md:min-w-full"
+                            }}
                         >
-                            {classrooms.map((room) => (
-                                <TableRow key={room.classroom_id}>
-                                    <TableCell>{gradeOptions.find(g => g.key === room.grade)?.label || room.grade}</TableCell>
-                                    <TableCell>{displayRoomName(room.type_classroom)}</TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col">
-                                            <span>{room.teacher?.firstname} {room.teacher?.lastname}</span>
-                                            {room.classroom_teacher && room.classroom_teacher.length > 0 && (
-                                                <span className="text-sm text-gray-500">
-                                                    {room.classroom_teacher[0].teacher?.firstname} {room.classroom_teacher[0].teacher?.lastname}
+                            <TableHeader>
+                                <TableColumn>ระดับชั้น</TableColumn>
+                                <TableColumn>ประเภทห้อง</TableColumn>
+                                <TableColumn>ครูประจำชั้น</TableColumn>
+                                <TableColumn>ปีการศึกษา</TableColumn>
+                                <TableColumn>จำนวนนักเรียน</TableColumn>
+                                <TableColumn>ดำเนินการ</TableColumn>
+                            </TableHeader>
+                            <TableBody
+                                emptyContent="ยังไม่ได้กำหนดห้องเรียนในปีนี้"
+                                isLoading={isLoading}
+                                loadingContent={
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
+                                        <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
+                                    </div>
+                                }
+                            >
+                                {classrooms.map((room) => (
+                                    <TableRow key={room.classroom_id}>
+                                        <TableCell>{gradeOptions.find(g => g.key === room.grade)?.label || room.grade}</TableCell>
+                                        <TableCell>{displayRoomName(room.type_classroom)}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span>{room.teacher?.firstname} {room.teacher?.lastname}</span>
+                                                {room.classroom_teacher && room.classroom_teacher.length > 0 && (
+                                                    <span className="text-sm text-gray-500">
+                                                        {room.classroom_teacher[0].teacher?.firstname} {room.classroom_teacher[0].teacher?.lastname}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>{room.academic_years?.year + 543}</TableCell>
+                                        <TableCell>{room._count?.classroom_students || 0} คน</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <span
+                                                    className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
+                                                    onClick={() => handleEditClassroom(room)}
+                                                >
+                                                    <SquarePen size={18} />
                                                 </span>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>{room.academic_years?.year + 543}</TableCell>
-                                    <TableCell>{room._count?.classroom_students || 0} คน</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <span
-                                                className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
-                                                onClick={() => handleEditClassroom(room)}
-                                            >
-                                                <SquarePen size={18} />
-                                            </span>
-                                            <span
-                                                className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
-                                                onClick={() => handleDeleteClassroom(room)}
-                                            >
-                                                <Trash2 size={18} />
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                                                <span
+                                                    className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
+                                                    onClick={() => handleDeleteClassroom(room)}
+                                                >
+                                                    <Trash2 size={18} />
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                        {hasMore && classrooms.length > 0 && (
+                            <div className="flex justify-center mt-6 w-full">
+                                <Button
+                                    variant="flat"
+                                    className="bg-sage/10 text-sage"
+                                    onPress={() => {
+                                        const nextPage = page + 1;
+                                        setPage(nextPage);
+                                        fetchClassrooms(nextPage);
+                                    }}
+                                    isLoading={isLoading && page > 1}
+                                >
+                                    แสดงเพิ่มเติม
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </CardBody>
             </Card>
 
@@ -520,10 +631,30 @@ const ClassroomManager = () => {
                         <>
                             <ModalHeader>ตั้งค่าห้องเรียน</ModalHeader>
                             <ModalBody className="gap-4">
+                                {/* ส่วนจัดการปีการศึกษา */}
+                                <Select
+                                    label="ปีการศึกษา"
+                                    placeholder="เลือกปีการศึกษา"
+                                    defaultSelectedKeys={formData.academic_year_id ? [formData.academic_year_id] : []}
+                                    selectedKeys={formData.academic_year_id ? [formData.academic_year_id] : []}
+                                    onChange={(e) => handleSelectChange("academic_year_id", e.target.value)}
+                                >
+                                    {years.map((y) => (
+                                        <SelectItem
+                                            key={y.year}
+                                            value={y.year}
+                                            textValue={`${parseInt(y.year) + 543}`}
+                                        >
+                                            {parseInt(y.year) + 543}
+                                        </SelectItem>
+                                    ))}
+                                </Select>
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <Select
                                         label="ระดับชั้น"
                                         placeholder="เลือกระดับชั้น"
+                                        isDisabled={!formData.academic_year_id}
                                         selectedKeys={formData.grade ? [formData.grade] : []}
                                         onChange={(e) => handleSelectChange("grade", e.target.value)}
                                     >
@@ -535,7 +666,7 @@ const ClassroomManager = () => {
                                     <Select
                                         label="ประเภทห้อง"
                                         placeholder={formData.grade ? "เลือกประเภทห้อง" : "กรุณาเลือกระดับชั้นก่อน"}
-                                        isDisabled={!formData.grade}
+                                        isDisabled={!formData.grade || !formData.academic_year_id}
                                         selectedKeys={formData.type_classroom ? [formData.type_classroom] : []}
                                         onChange={(e) => handleSelectChange("type_classroom", e.target.value)}
                                     >
@@ -553,7 +684,7 @@ const ClassroomManager = () => {
                                         onChange={(e) => handleSelectChange("teacher_id", e.target.value)}
                                         classNames={{ listbox: "max-h-[300px] overflow-y-auto" }}
                                     >
-                                        {teachers.map((t) => {
+                                        {getAvailableTeachers().map((t) => {
                                             const idStr = t.teachers_id.toString();
                                             return (
                                                 <SelectItem
@@ -577,39 +708,22 @@ const ClassroomManager = () => {
                                         <SelectItem key="none" value="" textValue="ไม่มี">
                                             ไม่มี
                                         </SelectItem>
-                                        {teachers.map((t) => {
-                                            const idStr = t.teachers_id.toString();
-                                            return (
-                                                <SelectItem
-                                                    key={idStr}
-                                                    value={idStr}
-                                                    textValue={`${t.firstname} ${t.lastname}`}
-                                                >
-                                                    {t.firstname} {t.lastname}
-                                                </SelectItem>
-                                            );
-                                        })}
+                                        {getAvailableTeachers()
+                                            .filter(t => t.teachers_id.toString() !== formData.teacher_id?.toString())
+                                            .map((t) => {
+                                                const idStr = t.teachers_id.toString();
+                                                return (
+                                                    <SelectItem
+                                                        key={idStr}
+                                                        value={idStr}
+                                                        textValue={`${t.firstname} ${t.lastname}`}
+                                                    >
+                                                        {t.firstname} {t.lastname}
+                                                    </SelectItem>
+                                                );
+                                            })}
                                     </Select>
                                 </div>
-
-                                {/* ส่วนจัดการปีการศึกษา */}
-                                <Select
-                                    label="ปีการศึกษา"
-                                    placeholder="เลือกปีการศึกษา"
-                                    defaultSelectedKeys={formData.academic_year_id ? [formData.academic_year_id] : []}
-                                    selectedKeys={formData.academic_year_id ? [formData.academic_year_id] : []}
-                                    onChange={(e) => handleSelectChange("academic_year_id", e.target.value)}
-                                >
-                                    {years.map((y) => (
-                                        <SelectItem
-                                            key={y.year}
-                                            value={y.year}
-                                            textValue={`${parseInt(y.year) + 543}`}
-                                        >
-                                            {parseInt(y.year) + 543}
-                                        </SelectItem>
-                                    ))}
-                                </Select>
 
                             </ModalBody>
                             <ModalFooter>
