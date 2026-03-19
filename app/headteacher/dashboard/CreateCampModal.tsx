@@ -80,8 +80,10 @@ export default function CreateCampModal({
   const [selectedClassroomIds, setSelectedClassroomIds] = useState<number[]>(
     [],
   );
-  const [shirtImage, setShirtImage] = useState<string | null>(null);
-  const [shirtImageFile, setShirtImageFile] = useState<File | null>(null);
+  const [shirtImages, setShirtImages] = useState<(string | null)[]>([null, null, null]);
+  const [shirtImageFiles, setShirtImageFiles] = useState<(File | null)[]>([null, null, null]);
+  const [campImage, setCampImage] = useState<string | null>(null);
+  const [campImageFile, setCampImageFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -305,8 +307,10 @@ export default function CreateCampModal({
         ],
       });
       setSelectedGrades([]);
-      setShirtImage(null);
-      setShirtImageFile(null);
+      setShirtImages([null, null, null]);
+      setShirtImageFiles([null, null, null]);
+      setCampImage(null);
+      setCampImageFile(null);
       setSelectedClassroomIds([]);
     }
   }, [isOpen, projectType, templateData]);
@@ -476,34 +480,67 @@ export default function CreateCampModal({
     setFormData({ ...formData, dailySchedule: newSchedule });
   };
 
-  const handleShirtImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleShirtImageChange = (index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
     if (file) {
       if (!file.type.startsWith("image/")) {
         showWarning("ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพเท่านั้น");
-
         return;
       }
-
       if (file.size > 10 * 1024 * 1024) {
         showWarning("ขนาดไฟล์เกิน", "ขนาดไฟล์ต้องไม่เกิน 10MB");
-
         return;
       }
-      setShirtImageFile(file);
-      const reader = new FileReader();
+      const newFiles = [...shirtImageFiles];
+      newFiles[index] = file;
+      setShirtImageFiles(newFiles);
 
+      const reader = new FileReader();
       reader.onloadend = () => {
-        setShirtImage(reader.result as string);
+        const newImages = [...shirtImages];
+        newImages[index] = reader.result as string;
+        setShirtImages(newImages);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const removeShirtImage = () => {
-    setShirtImage(null);
-    setShirtImageFile(null);
+  const removeShirtImage = (index: number) => {
+    const newImages = [...shirtImages];
+    const newFiles = [...shirtImageFiles];
+    newImages[index] = null;
+    newFiles[index] = null;
+    setShirtImages(newImages);
+    setShirtImageFiles(newFiles);
+  };
+
+  const handleCampImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        showWarning("ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        showWarning("ขนาดไฟล์เกิน", "ขนาดไฟล์ต้องไม่เกิน 10MB");
+        return;
+      }
+      setCampImageFile(file);
+      const reader = new FileReader();
+
+      reader.onloadend = () => {
+        setCampImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeCampImage = () => {
+    setCampImage(null);
+    setCampImageFile(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -549,8 +586,10 @@ export default function CreateCampModal({
       })),
       classroom_ids: selectedClassroomIds,
       gradeLevel: selectedGrades.join(","),
-      shirtImage: shirtImage,
-      shirtImageFile: shirtImageFile,
+      shirtImages: shirtImages,
+      shirtImageFiles: shirtImageFiles,
+      campImage: campImage,
+      campImageFile: campImageFile,
     };
 
     onSubmit(payload);
@@ -733,6 +772,42 @@ export default function CreateCampModal({
                   value={formData.description}
                   onChange={(e) => handleChange("description", e.target.value)}
                 />
+
+                {/* Camp Image Upload */}
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    รูปภาพหน้าปกค่าย
+                  </label>
+                  {!campImage ? (
+                    <label className="block w-full cursor-pointer mt-2">
+                      <input
+                        accept="image/*"
+                        className="hidden"
+                        type="file"
+                        onChange={handleCampImageChange}
+                      />
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all">
+                        <ImageOff className="mx-auto text-gray-400 mb-2" size={28} />
+                        <p className="text-sm text-gray-500 font-medium">คลิกเพื่ออัปโหลดรูปปกค่าย</p>
+                      </div>
+                    </label>
+                  ) : (
+                    <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden mt-2">
+                      <img
+                        alt="Camp cover"
+                        className="w-full h-48 object-cover bg-gray-50"
+                        src={campImage}
+                      />
+                      <button
+                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                        type="button"
+                        onClick={removeCampImage}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </section>
@@ -1020,55 +1095,49 @@ export default function CreateCampModal({
                   />
                 </div>
 
-                {/* Shirt Image Upload */}
+                {/* Shirt Image Upload - up to 3 images */}
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-2">
-                    รูปตัวอย่างเสื้อค่าย
+                    รูปตัวอย่างเสื้อค่าย (สูงสุด 3 รูป)
                   </label>
                   <p className="text-xs text-gray-400 mb-3">
                     อัปโหลดรูปภาพตัวอย่างเสื้อค่ายเพื่อให้นักเรียนใช้ประกอบการตัดสินใจ
                   </p>
-
-                  {!shirtImage ? (
-                    <label className="block w-full cursor-pointer">
-                      <input
-                        accept="image/*"
-                        className="hidden"
-                        type="file"
-                        onChange={handleShirtImageChange}
-                      />
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all">
-                        <ImageOff
-                          className="mx-auto text-gray-400 mb-2"
-                          size={32}
-                        />
-                        <p className="text-sm text-gray-500 font-medium">
-                          คลิกเพื่ออัปโหลด หรือลากไฟล์มาวางที่นี่
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          รองรับไฟล์ PNG, JPG, JPEG ขนาดไม่เกิน 10MB
-                        </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[0, 1, 2].map((index) => (
+                      <div key={index}>
+                        {!shirtImages[index] ? (
+                          <label className="block w-full cursor-pointer">
+                            <input
+                              accept="image/*"
+                              className="hidden"
+                              type="file"
+                              onChange={handleShirtImageChange(index)}
+                            />
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all aspect-square flex flex-col items-center justify-center">
+                              <ImageOff className="text-gray-400 mb-1" size={24} />
+                              <p className="text-xs text-gray-400">รูปที่ {index + 1}</p>
+                            </div>
+                          </label>
+                        ) : (
+                          <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden aspect-square">
+                            <img
+                              alt={`Shirt ${index + 1}`}
+                              className="w-full h-full object-cover bg-gray-50"
+                              src={shirtImages[index]!}
+                            />
+                            <button
+                              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
+                              type="button"
+                              onClick={() => removeShirtImage(index)}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </label>
-                  ) : (
-                    <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden">
-                      <img
-                        alt="Shirt preview"
-                        className="w-full h-64 object-contain bg-gray-50"
-                        src={shirtImage}
-                      />
-                      <button
-                        className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
-                        type="button"
-                        onClick={removeShirtImage}
-                      >
-                        <X size={20} />
-                      </button>
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2 text-xs">
-                        {shirtImageFile?.name || "รูปภาพจาก Template"}
-                      </div>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

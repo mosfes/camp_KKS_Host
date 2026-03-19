@@ -15,6 +15,7 @@ import {
   Shirt,
   LayoutDashboard,
   ClipboardList,
+  ImageOff,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -22,14 +23,7 @@ import TakeSurveyModal from "../TakeSurveyModal";
 
 const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
 
-const SHIRT_SIZE_CHART = [
-  { size: "XS", chest: '32"', length: '24"' },
-  { size: "S", chest: '36"', length: '26"' },
-  { size: "M", chest: '40"', length: '28"' },
-  { size: "L", chest: '44"', length: '30"' },
-  { size: "XL", chest: '48"', length: '32"' },
-  { size: "2XL", chest: '52"', length: '34"' },
-];
+
 
 function formatDate(dateString: string) {
   if (!dateString) return "";
@@ -337,13 +331,46 @@ export default function StudentCampDetailPage() {
             </div>
 
             {/* Shirt Image Mockup */}
-            <div className="h-48 bg-gray-200 rounded-xl mb-6 overflow-hidden relative">
-              {/* Placeholder for Shirt Image provided in design */}
-              <div className="w-full h-full bg-gray-800 flex items-center justify-center text-white">
-                <span className="font-mono tracking-widest text-xl">
-                  เสื้อค่าย
-                </span>
-              </div>
+            <div className="mb-6">
+              {(() => {
+                let shirtUrls: string[] = [];
+                if (camp.img_shirt_url) {
+                  try {
+                    const parsed = JSON.parse(camp.img_shirt_url);
+                    shirtUrls = Array.isArray(parsed) ? parsed.filter(Boolean) : [camp.img_shirt_url];
+                  } catch (e) {
+                    shirtUrls = [camp.img_shirt_url];
+                  }
+                }
+
+                if (shirtUrls.length > 0) {
+                  return (
+                    <div className={`grid gap-3 ${shirtUrls.length === 1 ? 'grid-cols-1 max-w-sm mx-auto' : 'grid-cols-2 md:grid-cols-3'}`}>
+                      {shirtUrls.map((url, idx) => (
+                        <div key={idx} className="bg-gray-100 rounded-xl overflow-hidden aspect-square border border-gray-200 shadow-sm relative group">
+                          <img
+                            alt={`Shirt sample ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                            src={url}
+                          />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                            <span className="text-white text-sm font-medium">ดูรูปขนาดเต็ม</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="h-48 bg-gray-200 rounded-xl overflow-hidden relative border border-gray-200">
+                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 font-medium">
+                      <ImageOff size={32} className="mb-2 opacity-50" />
+                      ไม่มีรูปตัวอย่างเสื้อ
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="mb-4">
@@ -370,29 +397,7 @@ export default function StudentCampDetailPage() {
               </div>
             </div>
 
-            <div className="text-xs text-gray-500">
-              <p className="font-medium mb-2">ตารางไซส์ (นิ้ว):</p>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="py-1">ไซส์</th>
-                      <th className="py-1">อก</th>
-                      <th className="py-1">ยาว</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {SHIRT_SIZE_CHART.map((row) => (
-                      <tr key={row.size} className="border-b border-gray-50">
-                        <td className="py-1 font-medium">{row.size}</td>
-                        <td className="py-1">{row.chest}</td>
-                        <td className="py-1">{row.length}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+
 
             <Button
               fullWidth

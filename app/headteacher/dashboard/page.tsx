@@ -93,7 +93,7 @@ export default function StudentDashboard() {
           endDate: end.toLocaleDateString("en-GB"),
           enrolled: camp._count?.student_enrollment || 0,
           capacity: 0, // Capacity not in current API response, defaulting to 0 or hidden
-          image: camp.camp_img_url || null,
+          image: camp.img_camp_url || null,
           isOwner: camp.isOwner,
           ownerName: camp.created_by ? `${camp.created_by.firstname} ${camp.created_by.lastname}`.trim() : "",
           grades: camp.grades || [],
@@ -186,13 +186,13 @@ export default function StudentDashboard() {
       setIsSubmitting(true);
       console.log("Data being sent:", data); // Debug: ดูข้อมูลที่ส่งไป
 
-      let img_shirt_url = "";
+      let img_camp_url = "";
 
-      // Upload shirt image to Cloudinary if it exists
-      if (data.shirtImageFile) {
+      // Upload camp image to Cloudinary if it exists
+      if (data.campImageFile) {
         try {
           const formData = new FormData();
-          formData.append("file", data.shirtImageFile);
+          formData.append("file", data.campImageFile);
 
           const uploadRes = await fetch("/api/upload", {
             method: "POST",
@@ -201,17 +201,38 @@ export default function StudentDashboard() {
 
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
-            img_shirt_url = uploadData.url;
-            console.log("Uploaded shirt image:", img_shirt_url);
+            img_camp_url = uploadData.url;
+            console.log("Uploaded camp image:", img_camp_url);
           } else {
-            console.error("Failed to upload shirt image");
-            showError("อัปโหลดรูปล้มเหลว", "ไม่สามารถอัปโหลดรูปภาพเสื้อได้ แต่จะดำเนินการสร้างค่ายต่อ");
+            console.error("Failed to upload camp image");
+            showError("อัปโหลดรูปล้มเหลว", "ไม่สามารถอัปโหลดรูปภาพหน้าปกค่ายได้ แต่จะดำเนินการสร้างค่ายต่อ");
           }
         } catch (uploadErr) {
           console.error("Error during upload:", uploadErr);
-          showError("อัปโหลดรูปล้มเหลว", "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพเสื้อ");
+          showError("อัปโหลดรูปล้มเหลว", "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพหน้าปกค่าย");
         }
       }
+
+      // Upload shirt images (up to 3) to Cloudinary
+      const shirtUrls: string[] = [];
+      if (data.shirtImageFiles && Array.isArray(data.shirtImageFiles)) {
+        for (const file of data.shirtImageFiles) {
+          if (file) {
+            try {
+              const formData = new FormData();
+              formData.append("file", file);
+              const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+              if (uploadRes.ok) {
+                const uploadData = await uploadRes.json();
+                shirtUrls.push(uploadData.url);
+              }
+            } catch (uploadErr) {
+              console.error("Error uploading shirt image:", uploadErr);
+            }
+          }
+        }
+      }
+      const img_shirt_url = JSON.stringify(shirtUrls);
 
       // ส่งข้อมูลไปยัง API เพื่อสร้างค่ายใหม่
       const response = await fetch("/api/camps", {
@@ -230,7 +251,7 @@ export default function StudentDashboard() {
           shirtEndDate: data.shirtEndDate,
           description: data.description || "",
           hasShirt: data.hasShirt,
-          classroom_ids: data.classroom_ids, // ส่ง array ของ classroom IDs
+          classroom_ids: data.classroom_ids,
           projectType: selectedProjectType,
           gradeLevel: data.gradeLevel,
           classroomType: data.classroomType,
@@ -238,6 +259,7 @@ export default function StudentDashboard() {
           saveAsTemplate: data.saveAsTemplate,
           templateName: data.templateName,
           img_shirt_url: img_shirt_url,
+          img_camp_url: img_camp_url,
         }),
       });
 

@@ -123,6 +123,8 @@ export async function PUT(request, context) {
                 description: body.description,
                 status: body.status || "OPEN",
                 has_shirt: body.has_shirt,
+                ...(body.img_shirt_url !== undefined && { img_shirt_url: body.img_shirt_url }),
+                ...(body.img_camp_url !== undefined && { img_camp_url: body.img_camp_url }),
             },
         });
 

@@ -54,7 +54,8 @@ interface CampDetail {
   grade_level: string;
   has_shirt: boolean;
   end_shirt_date?: string;
-  shirt_image_url?: string;
+  img_shirt_url?: string;
+  img_camp_url?: string;
   daily_schedule: any;
   status: string;
   plan_type?: any;
@@ -228,21 +229,71 @@ export default function CampDetailPage() {
   const handleEditSubmit = async (formData: any) => {
     try {
       setIsEditing(true);
+
+      let img_shirt_url = formData.shirtImage || "";
+      let img_camp_url = formData.campImage || "";
+
+      // Upload new shirt images if files were picked
+      let finalShirtUrls: (string | null)[] = [];
+      try {
+        const parsed = JSON.parse(formData.shirtImages ? JSON.stringify(formData.shirtImages) : "[]");
+        finalShirtUrls = Array.isArray(parsed) ? parsed : [formData.shirtImages];
+      } catch (e) {
+        finalShirtUrls = [formData.shirtImages];
+      }
+
+      if (formData.shirtImageFiles && Array.isArray(formData.shirtImageFiles)) {
+        for (let i = 0; i < formData.shirtImageFiles.length; i++) {
+          const file = formData.shirtImageFiles[i];
+          if (file) {
+            try {
+              const uploadForm = new FormData();
+              uploadForm.append("file", file);
+              const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
+              if (uploadRes.ok) {
+                const uploadData = await uploadRes.json();
+                finalShirtUrls[i] = uploadData.url;
+              }
+            } catch (uploadErr) {
+              console.error("Error during shirt upload:", uploadErr);
+            }
+          }
+        }
+      }
+      img_shirt_url = JSON.stringify(finalShirtUrls);
+
+      // Upload new camp image if a file was picked
+      if (formData.campImageFile) {
+        try {
+          const uploadForm = new FormData();
+          uploadForm.append("file", formData.campImageFile);
+          const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            img_camp_url = uploadData.url;
+          } else {
+            showError("อัปโหลดรูปล้มเหลว", "ไม่สามารถอัปโหลดรูปปกค่ายได้");
+          }
+        } catch (uploadErr) {
+          console.error("Error during camp image upload:", uploadErr);
+        }
+      }
+
       const response = await fetch(`/api/camps/${campId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          img_shirt_url,
+          img_camp_url,
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to update camp");
-      }
+      if (!response.ok) throw new Error("Failed to update camp");
 
       await fetchCampDetail();
       setIsEditModalOpen(false);
-      showSuccess("Success", "Camp updated successfully");
+      showSuccess("สำเร็จ", "อัปเดตข้อมูลค่ายเรียบร้อยแล้ว");
     } catch (error) {
       console.error("Error updating camp:", error);
       showError("Error", "Failed to update camp");
@@ -314,7 +365,7 @@ export default function CampDetailPage() {
           </button>
 
           <div className="flex justify-between items-start">
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {camp.name}
               </h1>
@@ -331,7 +382,19 @@ export default function CampDetailPage() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+
+            {/* Camp Cover Image */}
+            {camp.img_camp_url && (
+              <div className="ml-4 flex-shrink-0">
+                <img
+                  alt="Camp cover"
+                  className="h-24 w-36 object-cover rounded-xl shadow-sm border border-gray-200"
+                  src={camp.img_camp_url}
+                />
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 ml-4">
               {/* ซ่อนปุ่มแก้ไขถ้าไม่ใช่เจ้าของค่าย */}
               {camp.isOwner && (
                 <Button
@@ -417,19 +480,40 @@ export default function CampDetailPage() {
 
                   <div>
                     <p className="text-gray-500 text-sm mb-2">ตัวอย่างเสื้อ</p>
-                    {camp.shirt_image_url ? (
-                      <img
-                        alt="Shirt sample"
-                        className="w-full h-32 object-contain bg-gray-50 rounded-lg"
-                        src={camp.shirt_image_url}
-                      />
-                    ) : (
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="aspect-square bg-gray-100 rounded-lg" />
-                        <div className="aspect-square bg-gray-100 rounded-lg" />
-                        <div className="aspect-square bg-gray-100 rounded-lg" />
-                      </div>
-                    )}
+                    {(() => {
+                      let shirtUrls: string[] = [];
+                      if (camp.img_shirt_url) {
+                        try {
+                          const parsed = JSON.parse(camp.img_shirt_url);
+                          shirtUrls = Array.isArray(parsed) ? parsed.filter((url) => url != null) : [camp.img_shirt_url];
+                        } catch (e) {
+                          shirtUrls = [camp.img_shirt_url];
+                        }
+                      }
+
+                      if (shirtUrls.length > 0) {
+                        return (
+                          <div className={`grid gap-2 ${shirtUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3'}`}>
+                            {shirtUrls.map((url, idx) => (
+                              <img
+                                key={idx}
+                                alt={`Shirt sample ${idx + 1}`}
+                                className="w-full h-32 object-contain bg-gray-50 rounded-lg border border-gray-100"
+                                src={url}
+                              />
+                            ))}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="aspect-square bg-gray-100 rounded-lg" />
+                          <div className="aspect-square bg-gray-100 rounded-lg" />
+                          <div className="aspect-square bg-gray-100 rounded-lg" />
+                        </div>
+                      );
+                    })()}
                   </div>
                 </>
               )}

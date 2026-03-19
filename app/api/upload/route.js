@@ -15,23 +15,13 @@ export async function POST(request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    
+    // Construct data URI
+    const fileUri = `data:${file.type};base64,${buffer.toString("base64")}`;
 
-    const result = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: "camp-uploads" },
-        (error, result) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(result);
-          }
-        }
-      );
-      
-      const stream = require('stream');
-      const readableStream = new stream.PassThrough();
-      readableStream.end(buffer);
-      readableStream.pipe(uploadStream);
+    // Upload directly using base64 string
+    const result = await cloudinary.uploader.upload(fileUri, {
+      folder: "camp-uploads",
     });
 
     return NextResponse.json(
