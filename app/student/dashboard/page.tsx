@@ -81,7 +81,7 @@ export default function StudentDashboard() {
                 {/* รหัสนักเรียน — แสดงเสมอ */}
                 <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="13" x="3" y="4" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" /></svg>
-                  รหัส: {student.students_id}
+                  รหัสนักเรียน: {student.students_id}
                 </span>
 
                 {student.classroom?.grade_label && (
@@ -99,7 +99,7 @@ export default function StudentDashboard() {
                 {student.classroom?.homeroom_teacher && (
                   <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                    ครูที่ปรึกษา: {student.classroom.homeroom_teacher}
+                    ครูประจำชั้น: {student.classroom.homeroom_teacher}, {student.classroom.homeroom_teacher}
                   </span>
                 )}
               </div>

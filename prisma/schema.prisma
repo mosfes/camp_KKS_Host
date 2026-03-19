@@ -33,6 +33,7 @@ model teachers {
   classroom_teacher  classroom_teacher[]
   camp               camp[]
   teacher_enrollment teacher_enrollment[]
+  survey_template    survey_template[]
 }
 
 model students {
@@ -161,6 +162,7 @@ model camp {
   station             station[]
   evaluation          evaluation[]
   camp_daily_schedule camp_daily_schedule[]
+  survey              survey[]
 
 }
 
@@ -242,6 +244,7 @@ model student_enrollment {
   certificate         certificate[]
   mission_result      mission_result[]
   evaluation          evaluation[]
+  survey_response     survey_response[]
 }
 
 model attendance_record_student {
@@ -469,4 +472,85 @@ model vulgar_words {
   is_ai          Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model survey {
+  survey_id    Int       @id @default(autoincrement())
+  title        String    @db.VarChar(255)
+  description  String?   @db.Text
+  created_at   DateTime  @default(now())
+
+  camp_camp_id Int       @unique
+  camp         camp      @relation(fields: [camp_camp_id], references: [camp_id])
+
+  survey_question  survey_question[]
+  survey_response  survey_response[]
+}
+
+model survey_question {
+  question_id   Int                  @id @default(autoincrement())
+  question_text String               @db.VarChar(255)
+  question_type survey_question_type
+  scale_max     Int?
+
+  survey_survey_id Int
+  survey           survey @relation(fields: [survey_survey_id], references: [survey_id], onDelete: Cascade)
+
+  survey_answer survey_answer[]
+}
+
+// ติดตามว่านักเรียนคนไหนทำแบบสอบถามเสร็จแล้ว (สำหรับปลดล็อคประกาศนียบัตร)
+model survey_response {
+  response_id           Int      @id @default(autoincrement())
+  submitted_at          DateTime @default(now())
+
+  survey_survey_id      Int
+  survey                survey   @relation(fields: [survey_survey_id], references: [survey_id])
+
+  student_enrollment_id Int
+  student_enrollment    student_enrollment @relation(fields: [student_enrollment_id], references: [student_enrollment_id])
+
+  survey_answer survey_answer[]
+
+  @@unique([survey_survey_id, student_enrollment_id])
+}
+
+model survey_answer {
+  answer_id           Int     @id @default(autoincrement())
+  text_answer         String? @db.Text
+  scale_value         Int?
+
+  survey_response_id  Int
+  survey_response     survey_response  @relation(fields: [survey_response_id], references: [response_id], onDelete: Cascade)
+
+  question_id         Int
+  survey_question     survey_question  @relation(fields: [question_id], references: [question_id])
+}
+
+// เทมเพลตแบบสอบถาม เพื่อนำกลับมาใช้ในครั้งต่อไป
+model survey_template {
+  template_id  Int      @id @default(autoincrement())
+  title        String   @db.VarChar(255)
+  description  String?  @db.Text
+  created_at   DateTime @default(now())
+
+  created_by_teacher_id Int
+  created_by            teachers @relation(fields: [created_by_teacher_id], references: [teachers_id])
+
+  survey_template_question survey_template_question[]
+}
+
+model survey_template_question {
+  question_id   Int                  @id @default(autoincrement())
+  question_text String               @db.VarChar(255)
+  question_type survey_question_type
+  scale_max     Int?
+
+  template_id   Int
+  template      survey_template @relation(fields: [template_id], references: [template_id], onDelete: Cascade)
+}
+
+enum survey_question_type {
+  text
+  scale
 }

@@ -14,8 +14,11 @@ import {
   Ticket,
   Shirt,
   LayoutDashboard,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+
+import TakeSurveyModal from "../TakeSurveyModal";
 
 const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
 
@@ -59,6 +62,11 @@ export default function StudentCampDetailPage() {
   const [savingShirt, setSavingShirt] = useState(false);
   const [navigating, setNavigating] = useState(false);
 
+  // Survey State
+  const [surveyData, setSurveyData] = useState<any>(null);
+  const [surveyCompleted, setSurveyCompleted] = useState(false);
+  const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
+
   const fetchCamp = async () => {
     try {
       const res = await fetch("/api/student/camps", {
@@ -89,7 +97,28 @@ export default function StudentCampDetailPage() {
 
   useEffect(() => {
     fetchCamp();
+    fetchSurvey();
   }, [id]);
+
+  const fetchSurvey = async () => {
+    try {
+      const res = await fetch(`/api/student/surveys?campId=${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.survey) {
+          setSurveyData(data.survey);
+          setSurveyCompleted(data.isCompleted);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSurveyCompleted = () => {
+    setSurveyCompleted(true);
+    // Refetch the survey or just assume true to immediately unlock the cert
+  };
 
   const handleRegister = async () => {
     setRegistering(true);
@@ -406,14 +435,32 @@ export default function StudentCampDetailPage() {
               </Button>
 
               <div className="grid grid-cols-2 gap-3">
-                <Button
-                  className="bg-gray-100 text-gray-400 cursor-not-allowed"
-                  startContent={<Ticket size={18} />}
-                  variant="flat"
-                  isDisabled
-                >
-                  เกียรติบัตร (กำลังพัฒนา)
-                </Button>
+                {surveyData && !surveyCompleted ? (
+                  <Button
+                    className="bg-[#FFECC9] text-yellow-800 border border-yellow-300 font-medium"
+                    startContent={<ClipboardList size={18} />}
+                    onPress={() => setIsSurveyModalOpen(true)}
+                  >
+                    ทำแบบสอบถาม
+                  </Button>
+                ) : (
+                  <Button
+                    className={
+                      surveyData && surveyCompleted
+                        ? "bg-[#5d7c6f] text-white font-medium"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    }
+                    startContent={<Ticket size={18} />}
+                    isDisabled={!surveyCompleted && !!surveyData}
+                    onPress={() => {
+                      if (surveyData && surveyCompleted) {
+                        toast.success("กำลังดาวน์โหลดเกียรติบัตร...");
+                      }
+                    }}
+                  >
+                    เกียรติบัตร (กำลังพัฒนา)
+                  </Button>
+                )}
                 <Button
                   className="bg-gray-100 text-gray-400 cursor-not-allowed"
                   startContent={<CheckCircle2 size={18} />}
@@ -427,6 +474,14 @@ export default function StudentCampDetailPage() {
           )}
         </div>
       </div>
+
+      <TakeSurveyModal
+        isOpen={isSurveyModalOpen}
+        onClose={() => setIsSurveyModalOpen(false)}
+        survey={surveyData}
+        campId={Number(id)}
+        onCompleted={handleSurveyCompleted}
+      />
     </div>
   );
 }

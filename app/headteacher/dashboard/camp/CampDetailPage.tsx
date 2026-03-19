@@ -16,6 +16,9 @@ import {
   Pencil,
   Trash2,
   Settings,
+  ClipboardList,
+  Star,
+  Users,
 } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -23,8 +26,10 @@ import { Chip } from "@heroui/chip";
 import EditCampModal from "./EditCampModal";
 import CreateBaseModal from "./CreateBaseModal";
 import EditBaseModal from "./EditBaseModal";
+import CreateSurveyModal from "./CreateSurveyModal";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import { toast } from "react-hot-toast";
 
 interface TimeSlot {
   startTime: string;
@@ -60,6 +65,7 @@ interface CampDetail {
   plan_type_name?: string;
   station?: any[];
   isOwner?: boolean;
+  created_by_teacher_id?: number;
 }
 
 export default function CampDetailPage() {
@@ -76,11 +82,57 @@ export default function CampDetailPage() {
   const [selectedBase, setSelectedBase] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
 
+  // Survey state
+  const [survey, setSurvey] = useState<any>(null);
+  const [isCreateSurveyModalOpen, setIsCreateSurveyModalOpen] = useState(false);
+  const [isEditSurveyModalOpen, setIsEditSurveyModalOpen] = useState(false);
+  const [surveyLoading, setSurveyLoading] = useState(false);
+
   useEffect(() => {
     if (campId) {
       fetchCampDetail();
+      fetchSurvey();
     }
   }, [campId]);
+
+  const fetchSurvey = async () => {
+    setSurveyLoading(true);
+    try {
+      const res = await fetch(`/api/surveys?campId=${campId}`);
+      if (!res.ok) {
+        setSurvey(null);
+        return;
+      }
+      const data = await res.json();
+      // data may be `null` if the survey is not found but returns 200
+      setSurvey(data && !data.error ? data : null);
+    } catch (err) {
+      console.error("Error fetching survey:", err);
+    } finally {
+      setSurveyLoading(false);
+    }
+  };
+
+  const handleDeleteSurvey = () => {
+    showConfirm(
+      "ยืนยันการลบ",
+      "คุณแน่ใจหรือไม่ว่าต้องการลบแบบสอบถามนี้? ข้อมูลคำตอบทั้งหมดจะถูกลบด้วย",
+      async () => {
+        try {
+          setIsLoading(true);
+          const res = await fetch(`/api/surveys?campId=${campId}`, { method: "DELETE" });
+          if (!res.ok) throw new Error();
+          showSuccess("สำเร็จ", "ลบแบบสอบถามเรียบร้อยแล้ว");
+          setSurvey(null);
+        } catch {
+          showError("ข้อผิดพลาด", "ไม่สามารถลบแบบสอบถามได้");
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      "ลบแบบสอบถาม"
+    );
+  };
 
   const fetchCampDetail = async () => {
     // ... existing fetch logic
@@ -593,6 +645,102 @@ export default function CampDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Survey Section */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm mt-8">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="font-semibold text-gray-900 text-lg">แบบสอบถาม</h3>
+              <p className="text-sm text-gray-500">
+                นักเรียนต้องทำแบบสอบถามก่อนดาวน์โหลดประกาศนียบัตร
+              </p>
+            </div>
+            {camp.isOwner && !survey && (
+              <Button
+                className="bg-[#6b857a] text-white"
+                startContent={<Plus size={18} />}
+                onPress={() => setIsCreateSurveyModalOpen(true)}
+              >
+                สร้างแบบสอบถาม
+              </Button>
+            )}
+          </div>
+
+          {surveyLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : survey ? (
+            <div className="w-full">
+              <div
+                className="p-4 rounded-xl border-2 border-gray-100 hover:border-[#6b857a] hover:bg-[#6b857a]/5 transition-all group"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="p-2 bg-white rounded-lg border border-gray-100 group-hover:border-[#6b857a]/20">
+                    <ClipboardList className="text-[#6b857a]" size={24} />
+                  </div>
+                  {camp.isOwner && (
+                    <div className="flex gap-1">
+                      <Button
+                        isIconOnly
+                        className="text-gray-400 hover:text-blue-500"
+                        size="sm"
+                        variant="light"
+                        onClick={() => setIsEditSurveyModalOpen(true)}
+                      >
+                        <Pencil size={18} />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        className="text-gray-400 hover:text-red-500"
+                        size="sm"
+                        variant="light"
+                        onClick={handleDeleteSurvey}
+                      >
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <h4 className="font-semibold text-gray-900 mb-1">
+                  {survey.title}
+                </h4>
+                <p className="text-sm text-gray-500 line-clamp-2">
+                  {survey.description || "ไม่มีคำอธิบาย"}
+                </p>
+                <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <ClipboardList size={14} />
+                    <span>{survey.survey_question?.length || 0} คำถาม</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <Users size={14} />
+                    <span>{survey._count?.survey_response || 0} คนตอบแล้ว</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <ClipboardList className="text-gray-400" size={32} />
+                </div>
+                <p className="text-gray-500 mb-4">ยังไม่ได้สร้างแบบสอบถาม</p>
+                {camp.isOwner && (
+                  <Button
+                    className="bg-[#6b857a] text-white"
+                    size="lg"
+                    startContent={<Plus size={18} />}
+                    onPress={() => setIsCreateSurveyModalOpen(true)}
+                  >
+                    เริ่มสร้างแบบสอบถาม
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <EditCampModal
@@ -614,6 +762,23 @@ export default function CampDetailPage() {
         isOpen={isEditBaseModalOpen}
         onClose={() => setIsEditBaseModalOpen(false)}
         onSuccess={fetchCampDetail}
+      />
+
+      <CreateSurveyModal
+        campId={Number(campId)}
+        teacherId={camp?.created_by_teacher_id || 0}
+        isOpen={isCreateSurveyModalOpen}
+        onClose={() => setIsCreateSurveyModalOpen(false)}
+        onSurveyCreated={fetchSurvey}
+      />
+      
+      <CreateSurveyModal
+        campId={Number(campId)}
+        teacherId={camp?.created_by_teacher_id || 0}
+        isOpen={isEditSurveyModalOpen}
+        onClose={() => setIsEditSurveyModalOpen(false)}
+        onSurveyCreated={fetchSurvey}
+        initialData={survey}
       />
     </div>
   );

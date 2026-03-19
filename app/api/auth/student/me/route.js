@@ -17,7 +17,7 @@ export async function GET() {
 
         // ดึงข้อมูลห้องเรียนเพิ่มเติม
         const classroomInfo = await prisma.classroom_students.findFirst({
-            where: { student_students_id: student.students_id },
+            where: { student_students_id: Number(student.students_id) },
             include: {
                 classroom: {
                     include: {

@@ -1,0 +1,200 @@
+"use client";
+
+import { useState } from "react";
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+} from "@heroui/react";
+import { ClipboardList, Star } from "lucide-react";
+import { toast } from "react-hot-toast";
+
+interface Question {
+  question_id: number;
+  question_text: string;
+  question_type: "text" | "scale";
+  scale_max?: number;
+}
+
+interface TakeSurveyModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  survey: {
+    survey_id: number;
+    title: string;
+    description: string;
+    survey_question: Question[];
+  };
+  campId: number;
+  onCompleted: () => void;
+}
+
+export default function TakeSurveyModal({
+  isOpen,
+  onClose,
+  survey,
+  campId,
+  onCompleted,
+}: TakeSurveyModalProps) {
+  const [answers, setAnswers] = useState<Record<number, any>>({});
+  const [loading, setLoading] = useState(false);
+
+  if (!survey) return null;
+
+  const handleAnswerChange = (qId: number, value: any) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [qId]: value,
+    }));
+  };
+
+  const handleSubmit = async () => {
+    // Validate
+    for (const q of survey.survey_question) {
+      if (!answers[q.question_id]) {
+        toast.error("กรุณาตอบคำถามให้ครบทุกข้อ");
+        return;
+      }
+    }
+
+    const formattedAnswers = survey.survey_question.map((q) => ({
+      questionId: q.question_id,
+      textAnswer: q.question_type === "text" ? answers[q.question_id] : null,
+      scaleValue: q.question_type === "scale" ? Number(answers[q.question_id]) : null,
+    }));
+
+    try {
+      setLoading(true);
+      const res = await fetch("/api/student/surveys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          surveyId: survey.survey_id,
+          campId,
+          answers: formattedAnswers,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to submit survey");
+      }
+
+      toast.success("ส่งแบบสอบถามเรียบร้อยแล้ว");
+      onCompleted();
+      onClose();
+    } catch (error: any) {
+      toast.error(error.message || "เกิดข้อผิดพลาดในการส่งแบบสอบถาม");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      backdrop="blur"
+      classNames={{
+        base: "bg-white rounded-3xl shadow-xl",
+        backdrop: "bg-black/40 backdrop-blur-sm",
+      }}
+      isOpen={isOpen}
+      scrollBehavior="inside"
+      size="2xl"
+      onOpenChange={onClose}
+    >
+      <ModalContent>
+        {() => (
+          <>
+            <ModalHeader className="flex flex-col gap-1 px-8 pt-8 pb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                  <ClipboardList size={20} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">{survey.title}</h2>
+              </div>
+              {survey.description && (
+                <p className="text-sm text-gray-500 font-normal leading-relaxed">
+                  {survey.description}
+                </p>
+              )}
+            </ModalHeader>
+
+            <ModalBody className="px-8 py-4 space-y-6">
+              {survey.survey_question.map((q, index) => (
+                <div key={q.question_id} className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                  <div className="flex gap-3 mb-4">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
+                      {index + 1}
+                    </span>
+                    <p className="font-medium text-gray-800 leading-relaxed pt-0.5">
+                      {q.question_text} <span className="text-red-500">*</span>
+                    </p>
+                  </div>
+
+                  <div className="pl-9">
+                    {q.question_type === "text" ? (
+                      <textarea
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#5d7c6f] focus:border-[#5d7c6f] outline-none transition-all text-sm resize-none bg-white"
+                        placeholder="พิมพ์คำตอบของคุณที่นี่..."
+                        rows={3}
+                        value={answers[q.question_id] || ""}
+                        onChange={(e) => handleAnswerChange(q.question_id, e.target.value)}
+                      />
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
+                          const val = i + 1;
+                          const isSelected = answers[q.question_id] === val;
+                          return (
+                            <button
+                              key={val}
+                              className={`w-12 h-12 flex flex-col items-center justify-center rounded-xl border-2 transition-all ${
+                                isSelected
+                                  ? "border-yellow-400 bg-yellow-50 text-yellow-700 shadow-sm"
+                                  : "border-gray-200 bg-white text-gray-500 hover:border-yellow-200 hover:bg-yellow-50/50"
+                              }`}
+                              onClick={() => handleAnswerChange(q.question_id, val)}
+                            >
+                              <Star
+                                size={18}
+                                className={`mb-0.5 ${isSelected ? "fill-yellow-400 text-yellow-500" : "fill-transparent text-gray-400"}`}
+                              />
+                              <span className="text-xs font-bold">{val}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </ModalBody>
+
+            <ModalFooter className="px-8 py-6 flex-col sm:flex-row gap-3">
+              <Button
+                fullWidth
+                className="bg-gray-100 text-gray-600 font-medium sm:w-1/3"
+                size="lg"
+                onPress={onClose}
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                fullWidth
+                className="bg-[#5d7c6f] text-white font-bold shadow-lg shadow-[#5d7c6f]/20 sm:w-2/3"
+                isLoading={loading}
+                size="lg"
+                onPress={handleSubmit}
+              >
+                ส่งแบบสอบถาม
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
+  );
+}
