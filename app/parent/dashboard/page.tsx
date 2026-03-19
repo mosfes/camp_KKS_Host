@@ -10,6 +10,8 @@ import {
   MapPin,
   CalendarDays,
   Shirt,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { ParentNavbar } from "@/components/ParentNavbar";
 
@@ -18,6 +20,8 @@ interface Teacher {
   prefix_name: string | null;
   firstname: string;
   lastname: string;
+  tel: string;
+  email: string;
 }
 
 interface ClassroomInfo {
@@ -25,7 +29,8 @@ interface ClassroomInfo {
   grade: string;
   academic_years_years_id: number;
   classroom_types: { name: string };
-  classroom_teacher: { teacher: Teacher }[];
+  teacher: Teacher | null;                    // ครูคนที่ 1 (classrooms.teacher)
+  classroom_teacher: { teacher: Teacher }[];  // ครูคนที่ 2+ (classroom_teacher table)
 }
 
 interface Camp {
@@ -114,7 +119,13 @@ export default function ParentDashboard() {
   }
 
   const classroom = student.classroom_students[0]?.classroom;
-  const teachers = classroom?.classroom_teacher?.map((ct) => ct.teacher) ?? [];
+  // รวมครูคนที่ 1 (จาก classrooms.teacher) + ครูคนที่ 2+ (จาก classroom_teacher table)
+  const primaryTeacher = classroom?.teacher ?? null;
+  const secondaryTeachers = classroom?.classroom_teacher?.map((ct) => ct.teacher) ?? [];
+  const teachers: Teacher[] = [
+    ...(primaryTeacher ? [primaryTeacher] : []),
+    ...secondaryTeachers,
+  ];
   const enrollments = student.student_enrollment ?? [];
 
   return (
@@ -154,7 +165,7 @@ export default function ParentDashboard() {
               <div className="bg-[#f5f0e7] rounded-xl p-3 text-center col-span-2 sm:col-span-1">
                 <p className="text-xs text-gray-400 mb-1">ปีการศึกษา</p>
                 <p className="font-bold text-[#5d7c6f] text-lg">
-                  {classroom.academic_years_years_id}
+                  {classroom.academic_years_years_id + 543}
                 </p>
               </div>
             </div>
@@ -165,14 +176,26 @@ export default function ParentDashboard() {
                 <p className="text-sm text-gray-500 font-medium mb-3 flex items-center gap-2">
                   <GraduationCap size={16} className="text-[#5d7c6f]" /> ครูประจำชั้น
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col gap-3">
                   {teachers.map((t, i) => (
-                    <span
+                    <div
                       key={i}
-                      className="px-3 py-1.5 bg-[#eaf1ee] text-[#3d6357] text-sm rounded-full border border-[#c5ddd5]"
+                      className="bg-[#f5f0e7] rounded-xl p-3 flex flex-col gap-2"
                     >
-                      {t.prefix_name ?? ""}{t.firstname} {t.lastname}
-                    </span>
+                      <p className="font-semibold text-[#3d6357] text-sm">
+                        {t.prefix_name ?? ""}{t.firstname} {t.lastname}
+                      </p>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Phone size={13} className="text-[#5d7c6f] shrink-0" />
+                          <span>{t.tel || "-"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Mail size={13} className="text-[#5d7c6f] shrink-0" />
+                          <span>{t.email || "-"}</span>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>

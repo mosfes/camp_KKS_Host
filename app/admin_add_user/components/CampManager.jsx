@@ -224,7 +224,7 @@ const CampManager = () => {
 
     return (
         <div className="flex flex-col gap-6 w-full pt-4">
-            <Card className="border border-[#EFECE5] shadow-sm rounded-lg bg-white" radius="sm">
+            <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-4 md:p-6">
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4 w-full">
                         <div>
@@ -373,9 +373,9 @@ const CampManager = () => {
                                 shadow="none"
                                 isHeaderSticky
                                 classNames={{
-                                    wrapper: "border-2 border-[#EFECE5] rounded-xl p-0 overflow-hidden min-w-[900px] md:min-w-full",
-                                    th: "bg-white border-b border-white text-gray-800",
-                                    td: "py-3 border-b border-[#EFECE5]",
+                                    wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[900px] md:min-w-full",
+                                    th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
+                                    td: "py-4 border-b border-gray-50/50",
                                 }}
                             >
                                 <TableHeader>
@@ -427,13 +427,13 @@ const CampManager = () => {
                                                 <Chip
                                                     size="sm"
                                                     variant="flat"
-                                                    classNames={{
-                                                        base: camp.status === "OPEN"
-                                                            ? "bg-green-100 text-green-700"
-                                                            : "bg-gray-100 text-gray-500",
-                                                    }}
+                                                    className={`border font-medium ${
+                                                        camp.status?.toUpperCase() === "OPEN"
+                                                            ? "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
+                                                            : "bg-[#f5f5f5] text-[#666666] border-[#e5e5e5]"
+                                                    }`}
                                                 >
-                                                    {camp.status === "OPEN" ? "เปิด" : "ปิด"}
+                                                    {camp.status?.toUpperCase() === "OPEN" ? "เปิดรับสมัคร" : "ปิดแล้ว"}
                                                 </Chip>
                                             </TableCell>
                                             <TableCell>
@@ -445,12 +445,12 @@ const CampManager = () => {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col gap-1">
-                                                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                                                        <GraduationCap size={13} className="text-blue-400" />
+                                                    <div className="flex items-center gap-1 text-xs text-gray-500 font-medium">
+                                                        <GraduationCap size={13} className="text-[#5c98d6]" />
                                                         <span>{camp._count?.student_enrollment || 0} นักเรียน</span>
                                                     </div>
-                                                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                                                        <Users size={13} className="text-green-400" />
+                                                    <div className="flex items-center gap-1 text-xs text-gray-500 font-medium">
+                                                        <Users size={13} className="text-[#5da382]" />
                                                         <span>{camp._count?.teacher_enrollment || 0} ครู</span>
                                                     </div>
                                                 </div>
