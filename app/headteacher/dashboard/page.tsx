@@ -495,9 +495,9 @@ export default function StudentDashboard() {
                         <div className="flex flex-col items-end gap-2">
                           <Chip
                             className={`
-                                                          ${STATUS_STYLES[camp.status]?.bg ?? "bg-gray-100"}
-                                                          ${STATUS_STYLES[camp.status]?.text ?? "text-gray-600"}
-                                                      `}
+                              ${STATUS_STYLES[camp.status]?.bg ?? "bg-gray-100"}
+                              ${STATUS_STYLES[camp.status]?.text ?? "text-gray-600"}
+                            `}
                             variant="shadow"
                           >
                             {camp.status}

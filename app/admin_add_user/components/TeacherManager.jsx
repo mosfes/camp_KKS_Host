@@ -10,6 +10,7 @@ import {
     TableBody,
     TableRow,
     TableCell,
+    Chip,
     Modal,
     ModalContent,
     ModalHeader,
@@ -167,7 +168,7 @@ const TeacherManager = () => {
 
     return (
         <div className="flex flex-col gap-6 w-full pt-4">
-            <Card className="border border-[#EFECE5] shadow-sm rounded-lg bg-white" radius="sm">
+            <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-4 md:p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 w-full">
                         <div>
@@ -220,9 +221,9 @@ const TeacherManager = () => {
                             shadow="none"
                             isHeaderSticky
                             classNames={{
-                                wrapper: "border-2 border-[#EFECE5] rounded-xl p-0 overflow-hidden min-w-[700px] md:min-w-full",
-                                th: "bg-white border-b border-white text-gray-800",
-                                td: "py-3 border-b border-[#EFECE5]",
+                                wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[700px] md:min-w-full",
+                                th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
+                                td: "py-4 border-b border-gray-50/50",
                             }}
                         >
                             <TableHeader>
@@ -248,9 +249,17 @@ const TeacherManager = () => {
                                         <TableCell>{t.email}</TableCell>
                                         <TableCell>{t.tel || "-"}</TableCell>
                                         <TableCell>
-                                            <span className="px-2 py-1 rounded-full bg-green-100 text-sage text-xs font-medium">
-                                                {t.role || "Teacher"}
-                                            </span>
+                                            <Chip
+                                                size="sm"
+                                                variant="flat"
+                                                className={`border font-medium ${
+                                                    t.role?.toUpperCase() === "ADMIN"
+                                                        ? "bg-[#f7f2fa] text-[#8e6ba8] border-[#e9dff2]"
+                                                        : "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
+                                                }`}
+                                            >
+                                                {t.role?.toUpperCase() === "ADMIN" ? "ผู้ดูแลระบบ" : t.role?.toUpperCase() === "TEACHER" ? "ครูประจำชั้น" : t.role || "ครู"}
+                                            </Chip>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-3">

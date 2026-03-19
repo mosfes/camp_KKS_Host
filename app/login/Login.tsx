@@ -95,7 +95,6 @@ export default function ParentLoginPage() {
               onValueChange={(v) => { setPassword(v); setError(""); }}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             />
-            <p className="text-xs text-gray-400 mt-1">รหัสผ่านเริ่มต้น: kks + รหัสนักเรียน</p>
           </div>
 
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}

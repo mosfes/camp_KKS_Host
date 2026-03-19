@@ -44,6 +44,17 @@ export async function GET() {
                 classroom_types: {
                   select: { name: true },
                 },
+                // ครูคนที่ 1 (เก็บใน classrooms.teachers_teachers_id)
+                teacher: {
+                  select: {
+                    prefix_name: true,
+                    firstname: true,
+                    lastname: true,
+                    tel: true,
+                    email: true,
+                  },
+                },
+                // ครูคนที่ 2+ (เก็บใน classroom_teacher many-to-many)
                 classroom_teacher: {
                   select: {
                     teacher: {
@@ -51,6 +62,8 @@ export async function GET() {
                         prefix_name: true,
                         firstname: true,
                         lastname: true,
+                        tel: true,
+                        email: true,
                       },
                     },
                   },
@@ -65,6 +78,7 @@ export async function GET() {
             camp: { deletedAt: null },
           },
           select: {
+            student_enrollment_id: true,
             enrolled_at: true,
             shirt_size: true,
             camp: {
@@ -76,6 +90,43 @@ export async function GET() {
                 location: true,
                 status: true,
                 img_camp_url: true,
+                // สถานีและภารกิจทั้งหมดในค่าย (เพื่อนับจำนวนทั้งหมด)
+                station: {
+                  where: { deletedAt: null },
+                  select: {
+                    station_id: true,
+                    name: true,
+                    mission: {
+                      where: { deletedAt: null },
+                      select: {
+                        mission_id: true,
+                        title: true,
+                        type: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            // ผลภารกิจที่นักเรียนทำแล้ว
+            mission_result: {
+              select: {
+                mission_result_id: true,
+                status: true,
+                submitted_at: true,
+                mission: {
+                  select: {
+                    mission_id: true,
+                    title: true,
+                    type: true,
+                    station: {
+                      select: {
+                        station_id: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },

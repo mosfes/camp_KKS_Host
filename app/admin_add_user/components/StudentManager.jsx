@@ -499,7 +499,7 @@ const StudentManager = () => {
 
     return (
         <div className="flex flex-col gap-6 w-full pt-4">
-            <Card className="border border-[#EFECE5] shadow-sm rounded-lg bg-white" radius="sm">
+            <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-4 md:p-6">
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
                         <div>
@@ -619,9 +619,9 @@ const StudentManager = () => {
                             shadow="none"
                             isHeaderSticky
                             classNames={{
-                                wrapper: "border-2 border-[#EFECE5] rounded-xl p-0 overflow-hidden min-w-[900px] lg:min-w-full",
-                                th: "bg-white border-b border-white text-gray-800",
-                                td: "py-3 border-b border-[#EFECE5]",
+                                wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[900px] lg:min-w-full",
+                                th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
+                                td: "py-4 border-b border-gray-50/50",
                             }}>
                             <TableHeader>
                                 <TableColumn>รหัสนักเรียน</TableColumn>
@@ -1025,7 +1025,7 @@ const StudentManager = () => {
                                                 <TableCell>{stu.students_id}</TableCell>
                                                 <TableCell>{stu.firstname} {stu.lastname}</TableCell>
                                                 <TableCell>
-                                                    <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${stu.is_valid_class ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                    <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${stu.is_valid_class ? 'bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1] border' : 'bg-orange-100 text-orange-700'}`}>
                                                         {stu.classroom_status}
                                                     </span>
                                                 </TableCell>
