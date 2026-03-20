@@ -394,7 +394,7 @@ const ClassroomManager = () => {
 
     return (
         <div className="flex flex-col gap-6 w-full pt-4">
-            <Card className="border border-[#EFECE5] shadow-sm rounded-lg bg-white" radius="sm">
+            <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-4 md:p-6">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                         <div>
@@ -452,7 +452,9 @@ const ClassroomManager = () => {
                     <div className="overflow-x-auto w-full">
                         <Table aria-label="Classroom Table" shadow="none"
                             classNames={{
-                                wrapper: "min-w-[800px] md:min-w-full"
+                                wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[800px] md:min-w-full",
+                                th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
+                                td: "py-4 border-b border-gray-50/50",
                             }}
                         >
                             <TableHeader>

@@ -10,6 +10,7 @@ import {
     TableBody,
     TableRow,
     TableCell,
+    Chip,
     Input,
 } from "@heroui/react";
 import { useState, useEffect } from "react";
@@ -100,7 +101,17 @@ const TrashManager = ({ type, onBack }) => {
                 `${item.firstname} ${item.lastname}`,
                 item.email || "-",
                 item.tel || "-",
-                item.role === "ADMIN" ? "แอดมิน" : "ครู",
+                <Chip
+                    size="sm"
+                    variant="flat"
+                    className={`border font-medium ${
+                        item.role?.toUpperCase() === "ADMIN"
+                            ? "bg-[#f7f2fa] text-[#8e6ba8] border-[#e9dff2]"
+                            : "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
+                    }`}
+                >
+                    {item.role?.toUpperCase() === "ADMIN" ? "ผู้ดูแลระบบ" : item.role?.toUpperCase() === "TEACHER" ? "ครูประจำชั้น" : item.role || "ครู"}
+                </Chip>,
             ],
         },
         classroom: {
@@ -217,7 +228,7 @@ const TrashManager = ({ type, onBack }) => {
 
     return (
         <div className="flex flex-col gap-6 w-full pt-4">
-            <Card className="border border-rose-100 shadow-md rounded-xl bg-white" radius="none">
+            <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-0 sm:p-6 overflow-hidden">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 p-4 sm:p-0 gap-4">
                         <div>
@@ -260,9 +271,9 @@ const TrashManager = ({ type, onBack }) => {
                             shadow="none"
                             isHeaderSticky
                             classNames={{
-                                wrapper: "border border-rose-100 rounded-xl p-0 overflow-hidden min-w-[800px] md:min-w-full bg-white",
-                                th: "bg-rose-50/50 border-b border-rose-100 text-rose-800 font-semibold py-4",
-                                td: "py-4 border-b border-rose-50/50",
+                                wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[800px] md:min-w-full bg-white",
+                                th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
+                                td: "py-4 border-b border-gray-50/50",
                             }}
                         >
                             <TableHeader>

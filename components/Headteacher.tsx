@@ -61,7 +61,7 @@ export function HeadteacherNavbar() {
           <GraduationCap size={20} />
         </div>
         <div className="flex flex-col leading-tight">
-          <span className="font-semibold text-sm">EduCamp</span>
+          <span className="font-semibold text-sm">KKS Camp</span>
           <span className="text-xs text-gray-500">ระบบจัดการค่าย</span>
         </div>
       </NavbarBrand>
@@ -75,9 +75,13 @@ export function HeadteacherNavbar() {
                 {(teacher?.roles ?? (teacher?.role ? [teacher.role] : [])).map((r) => (
                   <span
                     key={r}
-                    className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
+                    className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                      r === "ADMIN"
+                        ? "bg-[#f7f2fa] text-[#8e6ba8] border-[#e9dff2]"
+                        : "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
+                    }`}
                   >
-                    {r === "HEADTEACHER" ? "ครูหัวหน้าค่าย" : r === "TEACHER" ? "ครูประจำชั้น" : r === "ADMIN" ? "ผู้ดูแลระบบ" : r}
+                    {r === "ADMIN" ? "ผู้ดูแลระบบ" : r === "HEADTEACHER" ? "ครูหัวหน้าค่าย" : r === "TEACHER" ? "ครูประจำชั้น" : r}
                   </span>
                 ))}
                 <Avatar

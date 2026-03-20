@@ -10,6 +10,7 @@ import {
     TableBody,
     TableRow,
     TableCell,
+    Chip,
     Modal,
     ModalContent,
     ModalHeader,
@@ -18,7 +19,9 @@ import {
     Input,
     useDisclosure,
     Select,
-    SelectItem
+    SelectItem,
+    Autocomplete,
+    AutocompleteItem
 } from "@heroui/react";
 import { useState, useEffect, useRef } from "react";
 import { Trash2, Trash, Archive, SquarePen, Search } from 'lucide-react';
@@ -37,11 +40,23 @@ const TeacherManager = () => {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [totalTeachers, setTotalTeachers] = useState(0);
+    const [isOtherPrefix, setIsOtherPrefix] = useState(false);
 
 
+    // ตัวเลือกคำนำหน้าครู
+    const prefixOptions = [
+        { key: "นาย", label: "นาย" },
+        { key: "นาง", label: "นาง" },
+        { key: "นางสาว", label: "นางสาว" },
+        { key: "ดร.", label: "ดร." },
+        { key: "ว่าที่ร้อยตรี", label: "ว่าที่ร้อยตรี" },
+        { key: "ว่าที่ร้อยตรีหญิง", label: "ว่าที่ร้อยตรีหญิง" },
+        { key: "อื่นๆ", label: "อื่นๆ (ระบุเอง)" },
+    ];
 
     const [formData, setFormData] = useState({
         teachers_id: "",
+        prefix_name: "",
         firstname: "",
         lastname: "",
         email: "",
@@ -98,20 +113,24 @@ const TeacherManager = () => {
 
     const openAddModal = () => {
         setIsEditing(false);
-        setFormData({ firstname: "", lastname: "", email: "", tel: "", role: "TEACHER" });
+        setFormData({ prefix_name: "", firstname: "", lastname: "", email: "", tel: "", role: "TEACHER" });
+        setIsOtherPrefix(false);
         onOpen();
     };
 
     const handleEdit = (teacher) => {
         setIsEditing(true);
+        const prefixInList = prefixOptions.find(p => p.key === teacher.prefix_name && p.key !== "อื่นๆ");
         setFormData({
             teachers_id: teacher.teachers_id,
+            prefix_name: teacher.prefix_name || "",
             firstname: teacher.firstname,
             lastname: teacher.lastname,
             email: teacher.email || "",
             tel: teacher.tel || "",
             role: teacher.role || "TEACHER"
         });
+        setIsOtherPrefix(teacher.prefix_name && !prefixInList);
         onOpen();
     };
 
@@ -149,7 +168,7 @@ const TeacherManager = () => {
                 showSuccess("สำเร็จ", "เพิ่มข้อมูลครูสำเร็จ!");
             }
 
-            setFormData({ firstname: "", lastname: "", email: "", tel: "", role: "TEACHER" });
+            setFormData({ prefix_name: "", firstname: "", lastname: "", email: "", tel: "", role: "TEACHER" });
             setPage(1);
             fetchTeachers(1);
             onClose();
@@ -167,7 +186,7 @@ const TeacherManager = () => {
 
     return (
         <div className="flex flex-col gap-6 w-full pt-4">
-            <Card className="border border-[#EFECE5] shadow-sm rounded-lg bg-white" radius="sm">
+            <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-4 md:p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 w-full">
                         <div>
@@ -220,9 +239,9 @@ const TeacherManager = () => {
                             shadow="none"
                             isHeaderSticky
                             classNames={{
-                                wrapper: "border-2 border-[#EFECE5] rounded-xl p-0 overflow-hidden min-w-[700px] md:min-w-full",
-                                th: "bg-white border-b border-white text-gray-800",
-                                td: "py-3 border-b border-[#EFECE5]",
+                                wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[700px] md:min-w-full",
+                                th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
+                                td: "py-4 border-b border-gray-50/50",
                             }}
                         >
                             <TableHeader>
@@ -244,13 +263,21 @@ const TeacherManager = () => {
                             >
                                 {teachers.map((t) => (
                                     <TableRow key={t.teachers_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
-                                        <TableCell>{t.firstname} {t.lastname}</TableCell>
+                                        <TableCell>{t.prefix_name ? `${t.prefix_name}${t.firstname}` : t.firstname} {t.lastname}</TableCell>
                                         <TableCell>{t.email}</TableCell>
                                         <TableCell>{t.tel || "-"}</TableCell>
                                         <TableCell>
-                                            <span className="px-2 py-1 rounded-full bg-green-100 text-sage text-xs font-medium">
-                                                {t.role || "Teacher"}
-                                            </span>
+                                            <Chip
+                                                size="sm"
+                                                variant="flat"
+                                                className={`border font-medium ${
+                                                    t.role?.toUpperCase() === "ADMIN"
+                                                        ? "bg-[#f7f2fa] text-[#8e6ba8] border-[#e9dff2]"
+                                                        : "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
+                                                }`}
+                                            >
+                                                {t.role?.toUpperCase() === "ADMIN" ? "ผู้ดูแลระบบ" : t.role?.toUpperCase() === "TEACHER" ? "ครูประจำชั้น" : t.role || "ครู"}
+                                            </Chip>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
@@ -299,6 +326,43 @@ const TeacherManager = () => {
                         <>
                             <ModalHeader>{isEditing ? "แก้ไขข้อมูลครู" : "เพิ่มครูใหม่"}</ModalHeader>
                             <ModalBody className="gap-4">
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-medium text-gray-700">คำนำหน้า</label>
+                                    <Select
+                                        placeholder="เลือกคำนำหน้า"
+                                        variant="bordered"
+                                        radius="lg"
+                                        selectedKeys={isOtherPrefix ? ["อื่นๆ"] : (formData.prefix_name ? [formData.prefix_name] : [])}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === "อื่นๆ") {
+                                                setIsOtherPrefix(true);
+                                            } else {
+                                                setIsOtherPrefix(false);
+                                                setFormData(prev => ({ ...prev, prefix_name: val }));
+                                            }
+                                        }}
+                                        classNames={{ trigger: "bg-white" }}
+                                    >
+                                        {prefixOptions.map((p) => (
+                                            <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
+                                        ))}
+                                    </Select>
+                                </div>
+
+                                {isOtherPrefix && (
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">ระบุคำนำหน้าอื่นๆ</label>
+                                        <Input
+                                            placeholder="เช่น ดร., ว่าที่ ร.ต."
+                                            variant="bordered"
+                                            radius="lg"
+                                            value={formData.prefix_name === "อื่นๆ" ? "" : formData.prefix_name}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, prefix_name: e.target.value }))}
+                                            classNames={{ inputWrapper: "bg-white" }}
+                                        />
+                                    </div>
+                                )}
                                 <div className="flex gap-4">
                                     <div className="flex flex-col gap-1 w-full">
                                         <label className="text-sm font-medium text-gray-700">ชื่อจริง</label>

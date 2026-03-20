@@ -22,6 +22,11 @@ export async function POST(request) {
     // Upload directly using base64 string
     const result = await cloudinary.uploader.upload(fileUri, {
       folder: "camp-uploads",
+      transformation: [
+        { width: 1200, height: 1200, crop: "limit" },
+        { quality: "auto" },
+        { fetch_format: "auto" }
+      ]
     });
 
     return NextResponse.json(
