@@ -77,29 +77,30 @@ export default function StudentDashboard() {
 
             {/* Student Info Badges */}
             {student && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {/* รหัสนักเรียน — แสดงเสมอ */}
-                <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium">
+                <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="13" x="3" y="4" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" /></svg>
-                  รหัสนักเรียน: {student.students_id}
+                  <span className="hidden xs:inline">รหัสนักเรียน:</span>
+                  <span className="xs:hidden">ID:</span> {student.students_id}
                 </span>
 
                 {student.classroom?.grade_label && (
-                  <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium">
+                  <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" /></svg>
-                    ชั้น{student.classroom.grade_label}
+                    ชั้น {student.classroom.grade_label}
                   </span>
                 )}
                 {student.classroom?.class_name && (
-                  <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium">
+                  <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M3 9h18M9 21V9" /></svg>
                     ห้อง {student.classroom.class_name}
                   </span>
                 )}
                 {student.classroom?.homeroom_teacher && (
-                  <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                    ครูประจำชั้น: {student.classroom.homeroom_teacher}, {student.classroom.homeroom_teacher}
+                  <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium w-full sm:w-auto overflow-hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" className="flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                    <span className="truncate">ครูประจำชั้น: {student.classroom.homeroom_teacher}</span>
                   </span>
                 )}
               </div>
@@ -142,12 +143,21 @@ export default function StudentDashboard() {
                         <div className="w-6 h-6 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
                       </div>
                     )}
-                    <CardBody className="p-0 flex flex-row">
-                      <div className="w-1/3 bg-gray-100 flex items-center justify-center relative">
-                        {/* Placeholder Image */}
-                        <Flag className="text-[#5d7c6f]/20" size={48} />
+                    <CardBody className="p-0 flex flex-row h-40 sm:h-44">
+                      <div className="w-32 sm:w-56 bg-gray-100 flex-shrink-0 relative overflow-hidden">
+                        {camp.img_camp_url ? (
+                          <img 
+                            src={camp.img_camp_url} 
+                            alt={camp.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Flag className="text-[#5d7c6f]/20" size={32} />
+                          </div>
+                        )}
                       </div>
-                      <div className="w-2/3 p-4">
+                      <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between overflow-hidden">
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-bold text-lg text-gray-800 line-clamp-1">
                             {camp.title}
@@ -201,34 +211,49 @@ export default function StudentDashboard() {
                         <div className="w-6 h-6 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
                       </div>
                     )}
-                    <CardBody className="p-4">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="font-bold text-lg text-gray-800">
-                            {camp.title}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            {camp.location}
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700">
-                          <CheckCircle2 size={20} />
-                        </div>
+                    <CardBody className="p-0 flex flex-row h-40 sm:h-44">
+                      <div className="w-32 sm:w-56 bg-gray-100 flex-shrink-0 relative overflow-hidden">
+                        {camp.img_camp_url ? (
+                          <img 
+                            src={camp.img_camp_url} 
+                            alt={camp.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Flag className="text-[#5d7c6f]/20" size={32} />
+                          </div>
+                        )}
                       </div>
-
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-                        <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
-                          <Calendar size={14} />
-                          {formatDate(camp.rawStartDate)}
+                      <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between overflow-hidden">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="font-bold text-lg text-gray-800 line-clamp-1">
+                              {camp.title}
+                            </h3>
+                            <p className="text-sm text-gray-500 line-clamp-1">
+                              {camp.location}
+                            </p>
+                          </div>
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-700 flex-shrink-0">
+                            <CheckCircle2 size={20} />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
-                          <Shirt size={14} />
-                          {camp.shirtSize || "ยังไม่ระบุไซส์"}
-                        </div>
-                      </div>
 
-                      <div className="w-full bg-[#5d7c6f] text-white font-medium py-3 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity">
-                        เข้าสู่แดชบอร์ดค่าย
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-sm text-gray-600 mb-4">
+                          <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                            <Calendar size={14} />
+                            {formatDate(camp.rawStartDate)}
+                          </div>
+                          <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                            <Shirt size={14} />
+                            {camp.shirtSize || "ยังไม่ระบุไซส์"}
+                          </div>
+                        </div>
+
+                        <div className="w-full bg-[#5d7c6f] text-white font-medium py-3 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity">
+                          เข้าสู่แดชบอร์ดค่าย
+                        </div>
                       </div>
                     </CardBody>
                   </Card>
@@ -272,39 +297,54 @@ export default function StudentDashboard() {
                         <div className="w-6 h-6 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
                       </div>
                     )}
-                    <CardBody className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-lg text-gray-700">
-                              {camp.title}
-                            </h3>
-                            {camp.isRegistered ? (
-                              <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">
-                                <CheckCircle2 size={11} /> เข้าร่วมแล้ว
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">
-                                ไม่ได้เข้าร่วม
-                              </span>
-                            )}
+                    <CardBody className="p-0 flex flex-row h-40 sm:h-44">
+                      <div className="w-32 sm:w-56 bg-gray-100 flex-shrink-0 relative overflow-hidden">
+                        {camp.img_camp_url ? (
+                          <img 
+                            src={camp.img_camp_url} 
+                            alt={camp.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Flag className="text-[#5d7c6f]/20" size={32} />
                           </div>
-                          <p className="text-sm text-gray-400">{camp.location}</p>
-                        </div>
-                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 flex-shrink-0">
-                          <History size={18} />
-                        </div>
+                        )}
                       </div>
-
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
-                          <Calendar size={13} />
-                          {formatDate(camp.rawStartDate)}
+                      <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between overflow-hidden">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-bold text-lg text-gray-700 line-clamp-1">
+                                {camp.title}
+                              </h3>
+                              {camp.isRegistered ? (
+                                <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">
+                                  <CheckCircle2 size={11} /> เข้าร่วมแล้ว
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">
+                                  ไม่ได้เข้าร่วม
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-400 line-clamp-1">{camp.location}</p>
+                          </div>
+                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 flex-shrink-0">
+                            <History size={18} />
+                          </div>
                         </div>
-                        <span className="text-gray-300">–</span>
-                        <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
-                          <Calendar size={13} />
-                          {formatDate(camp.rawEndDate)}
+
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 text-sm text-gray-500">
+                          <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
+                            <Calendar size={13} />
+                            {formatDate(camp.rawStartDate)}
+                          </div>
+                          <span className="text-gray-300 hidden sm:inline">–</span>
+                          <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
+                            <Calendar size={13} />
+                            {formatDate(camp.rawEndDate)}
+                          </div>
                         </div>
                       </div>
                     </CardBody>

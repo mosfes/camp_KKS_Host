@@ -182,11 +182,11 @@ export default function StudentMissionsPage() {
                     <Target className="text-[#5d7c6f]" size={24} />
                   </div>
                   <div className="flex-1">
-                    <div className="flex justify-between items-start mb-1">
+                    <div className="flex flex-wrap justify-between items-start mb-1 gap-2">
                       <h4 className="font-bold text-gray-800 group-hover:text-[#5d7c6f] transition-colors">
                         {station.name}
                       </h4>
-                      <span className="bg-[#EBE7DD] text-[#5a4a3a] text-xs font-bold px-2 py-1 rounded-full">
+                      <span className="bg-[#EBE7DD] text-[#5a4a3a] text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">
                         {completed}/{stationMissions.length}
                       </span>
                     </div>
@@ -215,29 +215,6 @@ export default function StudentMissionsPage() {
               </div>
             );
           })}
-        </div>
-
-        {/* Satisfaction Evaluation */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm cursor-pointer hover:bg-gray-50 transition-colors">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-[#d4c5b0]/20 flex items-center justify-center text-[#8c7b65]">
-              <ClipboardList size={24} />
-            </div>
-            <div className="flex-1">
-              <div className="flex justify-between items-center mb-1">
-                <h4 className="font-bold text-gray-800">
-                  แบบประเมินความพึงพอใจ
-                </h4>
-                <span className="border border-gray-200 text-gray-500 text-xs px-3 py-1 rounded-full">
-                  รอดำเนินการ
-                </span>
-              </div>
-              <p className="text-sm text-gray-500">
-                แชร์ประสบการณ์การเข้าค่ายของคุณ
-              </p>
-            </div>
-            <ChevronRight className="text-gray-300" />
-          </div>
         </div>
       </div>
     </div>

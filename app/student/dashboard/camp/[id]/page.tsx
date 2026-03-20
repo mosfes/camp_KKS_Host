@@ -53,6 +53,7 @@ export default function StudentCampDetailPage() {
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [shirtSize, setShirtSize] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
   const [savingShirt, setSavingShirt] = useState(false);
   const [navigating, setNavigating] = useState(false);
 
@@ -77,7 +78,10 @@ export default function StudentCampDetailPage() {
 
         if (found) {
           setCamp(found);
-          if (found.shirtSize) setShirtSize(found.shirtSize);
+          if (found.shirtSize) {
+            setShirtSize(found.shirtSize);
+            setSelectedSize(found.shirtSize);
+          }
         } else {
           toast.error("ไม่พบค่าย");
         }
@@ -148,6 +152,7 @@ export default function StudentCampDetailPage() {
 
       if (res.ok) {
         toast.success("อัปเดตไซส์เสื้อเรียบร้อย!");
+        setShirtSize(size);
       } else {
         toast.error("ไม่สามารถอัปเดตไซส์เสื้อได้");
       }
@@ -176,11 +181,19 @@ export default function StudentCampDetailPage() {
   return (
     <div className="min-h-screen bg-[#F5F1E8] pb-24">
       {/* Header Image Area */}
-      <div className="h-64 bg-gray-200 relative">
-        {/* Fallback pattern or image */}
-        <div className="w-full h-full bg-[#2d3748] flex items-center justify-center text-white/20">
-          <Flag size={64} />
-        </div>
+      <div className="h-64 bg-gray-200 relative overflow-hidden">
+        {/* Camp Cover Image or Fallback */}
+        {camp.img_camp_url ? (
+          <img 
+            src={camp.img_camp_url} 
+            alt={camp.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-[#2d3748] flex items-center justify-center text-white/20">
+            <Flag size={64} />
+          </div>
+        )}
         <div className="absolute top-4 left-4">
           <Button
             isIconOnly
@@ -309,8 +322,6 @@ export default function StudentCampDetailPage() {
               <span>0 pts</span>
             </div>
           </div>
-        </div>
-
         {/* Shirt Reservation Section */}
         {camp.isRegistered && camp.hasShirt && (
           <div className="bg-white rounded-3xl shadow-sm p-6 mb-6">
@@ -383,13 +394,13 @@ export default function StudentCampDetailPage() {
                     key={size}
                     className={`
                                             py-2 px-4 rounded-lg border text-sm font-medium transition-all
-                                            ${shirtSize === size
+                                            ${selectedSize === size
                         ? "bg-gray-800 text-white border-gray-800 ring-2 ring-gray-300"
                         : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
                       }
                                          `}
-                    disabled={savingShirt}
-                    onClick={() => handleShirtUpdate(size)}
+                    disabled={savingShirt || daysLeftToReserve <= 0}
+                    onClick={() => setSelectedSize(size)}
                   >
                     {size}
                   </button>
@@ -401,14 +412,21 @@ export default function StudentCampDetailPage() {
 
             <Button
               fullWidth
-              className="mt-6 bg-[#5d7c6f] text-white font-medium"
-              isDisabled={daysLeftToReserve <= 0}
+              className={`mt-6 font-medium ${shirtSize && shirtSize === selectedSize ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-[#5d7c6f] text-white'}`}
+              isDisabled={daysLeftToReserve <= 0 || !selectedSize || (shirtSize === selectedSize)}
+              isLoading={savingShirt}
+              onPress={() => handleShirtUpdate(selectedSize)}
             >
-              ยืนยันการจอง
+              {daysLeftToReserve <= 0 
+                ? "หมดเขตการจองแล้ว" 
+                : (shirtSize && shirtSize === selectedSize 
+                  ? "จองสำเร็จ (แก้ไขได้)" 
+                  : (shirtSize ? "อัปเดตการจอง" : "ยืนยันการจอง"))}
             </Button>
           </div>
         )}
       </div>
+    </div>
 
       {/* Bottom Actions Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8 z-50">
@@ -446,7 +464,7 @@ export default function StudentCampDetailPage() {
                     startContent={<ClipboardList size={18} />}
                     onPress={() => setIsSurveyModalOpen(true)}
                   >
-                    ทำแบบสอบถาม
+                    แบบประเมินความพึงพอใจ
                   </Button>
                 ) : (
                   <Button

@@ -19,7 +19,9 @@ import {
     Input,
     useDisclosure,
     Select,
-    SelectItem
+    SelectItem,
+    Autocomplete,
+    AutocompleteItem
 } from "@heroui/react";
 import { useState, useEffect, useRef } from "react";
 import { Trash2, Trash, Archive, SquarePen, Search } from 'lucide-react';
@@ -38,11 +40,23 @@ const TeacherManager = () => {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [totalTeachers, setTotalTeachers] = useState(0);
+    const [isOtherPrefix, setIsOtherPrefix] = useState(false);
 
 
+    // ตัวเลือกคำนำหน้าครู
+    const prefixOptions = [
+        { key: "นาย", label: "นาย" },
+        { key: "นาง", label: "นาง" },
+        { key: "นางสาว", label: "นางสาว" },
+        { key: "ดร.", label: "ดร." },
+        { key: "ว่าที่ร้อยตรี", label: "ว่าที่ร้อยตรี" },
+        { key: "ว่าที่ร้อยตรีหญิง", label: "ว่าที่ร้อยตรีหญิง" },
+        { key: "อื่นๆ", label: "อื่นๆ (ระบุเอง)" },
+    ];
 
     const [formData, setFormData] = useState({
         teachers_id: "",
+        prefix_name: "",
         firstname: "",
         lastname: "",
         email: "",
@@ -99,20 +113,24 @@ const TeacherManager = () => {
 
     const openAddModal = () => {
         setIsEditing(false);
-        setFormData({ firstname: "", lastname: "", email: "", tel: "", role: "TEACHER" });
+        setFormData({ prefix_name: "", firstname: "", lastname: "", email: "", tel: "", role: "TEACHER" });
+        setIsOtherPrefix(false);
         onOpen();
     };
 
     const handleEdit = (teacher) => {
         setIsEditing(true);
+        const prefixInList = prefixOptions.find(p => p.key === teacher.prefix_name && p.key !== "อื่นๆ");
         setFormData({
             teachers_id: teacher.teachers_id,
+            prefix_name: teacher.prefix_name || "",
             firstname: teacher.firstname,
             lastname: teacher.lastname,
             email: teacher.email || "",
             tel: teacher.tel || "",
             role: teacher.role || "TEACHER"
         });
+        setIsOtherPrefix(teacher.prefix_name && !prefixInList);
         onOpen();
     };
 
@@ -150,7 +168,7 @@ const TeacherManager = () => {
                 showSuccess("สำเร็จ", "เพิ่มข้อมูลครูสำเร็จ!");
             }
 
-            setFormData({ firstname: "", lastname: "", email: "", tel: "", role: "TEACHER" });
+            setFormData({ prefix_name: "", firstname: "", lastname: "", email: "", tel: "", role: "TEACHER" });
             setPage(1);
             fetchTeachers(1);
             onClose();
@@ -245,7 +263,7 @@ const TeacherManager = () => {
                             >
                                 {teachers.map((t) => (
                                     <TableRow key={t.teachers_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
-                                        <TableCell>{t.firstname} {t.lastname}</TableCell>
+                                        <TableCell>{t.prefix_name ? `${t.prefix_name}${t.firstname}` : t.firstname} {t.lastname}</TableCell>
                                         <TableCell>{t.email}</TableCell>
                                         <TableCell>{t.tel || "-"}</TableCell>
                                         <TableCell>
@@ -308,6 +326,43 @@ const TeacherManager = () => {
                         <>
                             <ModalHeader>{isEditing ? "แก้ไขข้อมูลครู" : "เพิ่มครูใหม่"}</ModalHeader>
                             <ModalBody className="gap-4">
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-medium text-gray-700">คำนำหน้า</label>
+                                    <Select
+                                        placeholder="เลือกคำนำหน้า"
+                                        variant="bordered"
+                                        radius="lg"
+                                        selectedKeys={isOtherPrefix ? ["อื่นๆ"] : (formData.prefix_name ? [formData.prefix_name] : [])}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === "อื่นๆ") {
+                                                setIsOtherPrefix(true);
+                                            } else {
+                                                setIsOtherPrefix(false);
+                                                setFormData(prev => ({ ...prev, prefix_name: val }));
+                                            }
+                                        }}
+                                        classNames={{ trigger: "bg-white" }}
+                                    >
+                                        {prefixOptions.map((p) => (
+                                            <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
+                                        ))}
+                                    </Select>
+                                </div>
+
+                                {isOtherPrefix && (
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">ระบุคำนำหน้าอื่นๆ</label>
+                                        <Input
+                                            placeholder="เช่น ดร., ว่าที่ ร.ต."
+                                            variant="bordered"
+                                            radius="lg"
+                                            value={formData.prefix_name === "อื่นๆ" ? "" : formData.prefix_name}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, prefix_name: e.target.value }))}
+                                            classNames={{ inputWrapper: "bg-white" }}
+                                        />
+                                    </div>
+                                )}
                                 <div className="flex gap-4">
                                     <div className="flex flex-col gap-1 w-full">
                                         <label className="text-sm font-medium text-gray-700">ชื่อจริง</label>

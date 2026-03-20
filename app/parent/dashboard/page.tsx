@@ -33,6 +33,18 @@ interface ClassroomInfo {
   classroom_teacher: { teacher: Teacher }[];  // ครูคนที่ 2+ (classroom_teacher table)
 }
 
+interface Mission {
+  mission_id: number;
+  title: string;
+  type: string;
+}
+
+interface Station {
+  station_id: number;
+  name: string;
+  mission: Mission[];
+}
+
 interface Camp {
   camp_id: number;
   name: string;
@@ -41,12 +53,20 @@ interface Camp {
   location: string;
   status: string;
   img_camp_url: string;
+  station: Station[];
+}
+
+interface MissionResult {
+  mission_result_id: number;
+  status: string;
 }
 
 interface Enrollment {
+  student_enrollment_id: number;
   enrolled_at: string;
   shirt_size: string | null;
   camp: Camp;
+  mission_result: MissionResult[];
 }
 
 interface Student {
@@ -261,18 +281,63 @@ export default function ParentDashboard() {
                         {en.camp.status === "OPEN" ? "เปิดอยู่" : "ปิดแล้ว"}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                      <MapPin size={11} /> {en.camp.location}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                      <CalendarDays size={11} />{" "}
-                      {formatDate(en.camp.start_date)} – {formatDate(en.camp.end_date)}
-                    </p>
-                    {en.shirt_size && (
-                      <p className="text-xs text-[#5d7c6f] mt-0.5 flex items-center gap-1">
-                        <Shirt size={11} /> ขนาดเสื้อ: {en.shirt_size}
+
+                    {/* Mission Progress */}
+                    {(() => {
+                      const totalMissions =
+                        en.camp.station?.reduce(
+                          (acc, s) => acc + (s.mission?.length || 0),
+                          0,
+                        ) || 0;
+                      const completedMissions =
+                        en.mission_result?.filter((r) => r.status === "completed")
+                          .length || 0;
+                      const progress =
+                        totalMissions > 0
+                          ? Math.round((completedMissions / totalMissions) * 100)
+                          : 0;
+
+                      return (
+                        <div className="mt-2 space-y-1">
+                          <div className="flex justify-between text-[10px] text-gray-500 font-medium">
+                            <span>ความคืบหน้าภารกิจ</span>
+                            <span>
+                              {completedMissions}/{totalMissions}
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#5d7c6f] transition-all duration-500"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                        <MapPin size={10} /> {en.camp.location}
                       </p>
-                    )}
+                      <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                        <CalendarDays size={10} />{" "}
+                        {formatDate(en.camp.start_date)}
+                      </p>
+                      {en.shirt_size && (
+                        <p className="text-[11px] text-[#5d7c6f] flex items-center gap-1">
+                          <Shirt size={10} /> {en.shirt_size}
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        router.push(`/parent/dashboard/camp/${en.camp.camp_id}`)
+                      }
+                      className="mt-3 w-full py-2 bg-white border border-[#5d7c6f] text-[#5d7c6f] rounded-lg text-xs font-semibold hover:bg-[#5d7c6f] hover:text-white transition-colors"
+                    >
+                      ดูความคืบหน้า
+                    </button>
                   </div>
                 </div>
               ))}

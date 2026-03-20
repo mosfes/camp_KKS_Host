@@ -105,7 +105,9 @@ export async function GET() {
                 rawStartDate: camp.start_date,
                 rawEndDate: camp.end_date,
                 missionResults: enrollment?.mission_result || [],
-                station: camp.station
+                station: camp.station,
+                img_camp_url: camp.img_camp_url,
+                img_shirt_url: camp.img_shirt_url
             };
         });
 

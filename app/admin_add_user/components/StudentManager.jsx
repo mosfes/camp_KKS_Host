@@ -95,8 +95,17 @@ const StudentManager = () => {
     const [addStudentYear, setAddStudentYear] = useState("");
     const [addStudentGrade, setAddStudentGrade] = useState("");
 
+    // ตัวเลือกคำนำหน้า
+    const prefixOptions = [
+        { key: "เด็กชาย", label: "เด็กชาย" },
+        { key: "เด็กหญิง", label: "เด็กหญิง" },
+        { key: "นาย", label: "นาย" },
+        { key: "นางสาว", label: "นางสาว" },
+    ];
+
     const [formData, setFormData] = useState({
         students_id: "",
+        prefix_name: "",
         firstname: "",
         lastname: "",
         email: "",
@@ -211,7 +220,7 @@ const StudentManager = () => {
 
     const openAddModal = () => {
         setIsEditing(false);
-        setFormData({ students_id: "", firstname: "", lastname: "", email: "", tel: "", classroom_id: "" });
+        setFormData({ students_id: "", prefix_name: "", firstname: "", lastname: "", email: "", tel: "", classroom_id: "" });
 
         if (years.length > 0) {
 
@@ -233,6 +242,7 @@ const StudentManager = () => {
 
         setFormData({
             students_id: student.students_id,
+            prefix_name: student.prefix_name || "",
             firstname: student.firstname,
             lastname: student.lastname,
             email: student.email || "",
@@ -390,23 +400,45 @@ const StudentManager = () => {
         const gradeLabel = getGradeLabel(selectedClassroom?.grade) || "-";
         const roomName = classroomTypes.find(t => t.classroom_type_id === selectedClassroom?.type_classroom)?.name || selectedClassroom?.type_classroom || "-";
 
+        // ตรวจสอบคำนำหน้าจากข้อความ
+        const knownPrefixes = ["เด็กชาย", "เด็กหญิง", "นางสาว", "นาย", "นาง"];
+        const extractPrefix = (name) => {
+            for (const prefix of knownPrefixes) {
+                if (name.startsWith(prefix)) {
+                    return { prefix_name: prefix, cleanName: name.slice(prefix.length).trim() };
+                }
+            }
+            return { prefix_name: "", cleanName: name };
+        };
+
         const validData = lines.map((line, index) => {
             const cols = line.split('\t').map(c => c.trim());
             if (cols.length < 2) return null;
 
             const studentId = cols[0];
+            let prefix_name = "";
             let firstname = "";
             let lastname = "";
 
-            if (cols.length >= 3) {
-                firstname = cols[1];
+            if (cols.length >= 4) {
+                // รูปแบบ: รหัส \t คำนำหน้า \t ชื่อ \t นามสกุล
+                prefix_name = cols[1];
+                firstname = cols[2];
+                lastname = cols[3];
+            } else if (cols.length >= 3) {
+                // รูปแบบ: รหัส \t ชื่อ \t นามสกุล (ชื่ออาจมีคำนำหน้า)
+                const extracted = extractPrefix(cols[1]);
+                prefix_name = extracted.prefix_name;
+                firstname = extracted.cleanName;
                 lastname = cols[2];
             } else {
-                const nameParts = cols[1].split(' ');
+                // รูปแบบ: รหัส \t ชื่อ นามสกุล (รวมในคอลัมน์เดียว)
+                const combined = cols[1];
+                const extracted = extractPrefix(combined);
+                prefix_name = extracted.prefix_name;
+                const nameParts = extracted.cleanName.split(' ');
                 firstname = nameParts[0];
-                if (nameParts.length > 1) {
-                    lastname = nameParts.slice(1).join(' ');
-                }
+                lastname = nameParts.slice(1).join(' ');
             }
 
             if (!studentId || !firstname) return null;
@@ -425,6 +457,7 @@ const StudentManager = () => {
             return {
                 id: index,
                 students_id: studentId,
+                prefix_name: prefix_name,
                 firstname: firstname,
                 lastname: lastname,
                 email: `kks${studentId}@khukhan.ac.th`,
@@ -469,6 +502,7 @@ const StudentManager = () => {
         try {
             const payloadArray = studentsToImport.map(stu => ({
                 students_id: stu.students_id,
+                prefix_name: stu.prefix_name || "",
                 firstname: stu.firstname,
                 lastname: stu.lastname,
                 email: stu.email,
@@ -645,7 +679,7 @@ const StudentManager = () => {
                                 {filteredStudents.map((stu) => (
                                     <TableRow key={stu.students_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
                                         <TableCell>{stu.students_id}</TableCell>
-                                        <TableCell>{stu.firstname} {stu.lastname}</TableCell>
+                                        <TableCell>{stu.prefix_name ? `${stu.prefix_name}${stu.firstname}` : stu.firstname} {stu.lastname}</TableCell>
                                         <TableCell>{stu.email}</TableCell>
 
                                         <TableCell>{getStudentClassroom(stu)}</TableCell>
@@ -700,6 +734,20 @@ const StudentManager = () => {
                                 <div className="flex flex-col gap-1">
                                     <label className="text-sm font-medium text-gray-700">รหัสนักเรียน</label>
                                     <Input name="students_id" value={formData.students_id} onChange={handleChange} isDisabled={isEditing} variant="bordered" radius="lg" placeholder="กรอกรหัสนักเรียน" classNames={{ inputWrapper: "bg-white" }} />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-medium text-gray-700">คำนำหน้า</label>
+                                    <Select
+                                        placeholder="เลือกคำนำหน้า"
+                                        variant="bordered"
+                                        selectedKeys={formData.prefix_name ? [formData.prefix_name] : []}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, prefix_name: e.target.value }))}
+                                        classNames={{ trigger: "bg-white" }}
+                                    >
+                                        {prefixOptions.map((p) => (
+                                            <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
+                                        ))}
+                                    </Select>
                                 </div>
                                 <div className="flex gap-4">
                                     <div className="flex flex-col gap-1 w-full">
@@ -979,7 +1027,7 @@ const StudentManager = () => {
                                 <div className="flex flex-col gap-1">
                                     <label className="text-sm font-medium text-gray-700">วางข้อมูลนักเรียน (คัดลอกจาก Excel)</label>
                                     <Textarea
-                                        placeholder={`รหัสนักเรียน\tชื่อ\tนามสกุล\n12345\tสมชาย\tใจดี`}
+                                        placeholder={`ก๊อปปี้ข้อมูลมาจากไฟล์ Excel แล้วนำมาวางที่นี่ได้เลย (รองรับรหัสนักเรียน ชื่อ และนามสกุล)\n\nตัวอย่าง:\n12345\tเด็กชาย\tสมชาย\tใจดี\n12346\tเด็กหญิงสมหญิง\tดีมาก`}
                                         variant="bordered"
                                         minRows={8}
                                         value={pasteText}
@@ -1023,7 +1071,7 @@ const StudentManager = () => {
                                         {importPreviewData.map((stu) => (
                                             <TableRow key={stu.id}>
                                                 <TableCell>{stu.students_id}</TableCell>
-                                                <TableCell>{stu.firstname} {stu.lastname}</TableCell>
+                                                <TableCell>{stu.prefix_name ? `${stu.prefix_name}${stu.firstname}` : stu.firstname} {stu.lastname}</TableCell>
                                                 <TableCell>
                                                     <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${stu.is_valid_class ? 'bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1] border' : 'bg-orange-100 text-orange-700'}`}>
                                                         {stu.classroom_status}

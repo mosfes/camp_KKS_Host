@@ -61,7 +61,7 @@ export function HeadteacherNavbar() {
           <GraduationCap size={20} />
         </div>
         <div className="flex flex-col leading-tight">
-          <span className="font-semibold text-sm">EduCamp</span>
+          <span className="font-semibold text-sm">KKS Camp</span>
           <span className="text-xs text-gray-500">ระบบจัดการค่าย</span>
         </div>
       </NavbarBrand>

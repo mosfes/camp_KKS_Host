@@ -72,7 +72,7 @@ export default function EditCampModal({
   const { showWarning } = useStatusModal();
   const [classrooms, setClassrooms] = useState<any[]>([]);
   const [filteredClassrooms, setFilteredClassrooms] = useState<any[]>([]);
-  const [selectedGrade, setSelectedGrade] = useState<string>("");
+  const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
   const [selectedClassroomIds, setSelectedClassroomIds] = useState<number[]>(
     [],
   );
@@ -128,18 +128,13 @@ export default function EditCampModal({
 
     // 1. Registration Logic
     if (regisEnd) {
-      if (data.hasShirt && shirtStart && regisEnd >= shirtStart) {
-        errors.registration = "วันสิ้นสุดรับสมัคร ต้องมาก่อน วันเริ่มจองเสื้อ";
-      } else if (campStart && regisEnd >= campStart) {
+      if (campStart && regisEnd >= campStart) {
         errors.registration = "วันสิ้นสุดรับสมัคร ต้องมาก่อน วันเริ่มค่าย";
       }
     }
 
     // 2. Shirt Logic
     if (data.hasShirt && shirtStart && shirtEnd) {
-      if (regisEnd && shirtStart <= regisEnd) {
-        errors.shirt = "วันเริ่มจองเสื้อ ต้องมาหลัง วันปิดรับสมัคร";
-      }
       if (campStart && shirtEnd >= campStart) {
         errors.shirt = "วันสิ้นสุดจองเสื้อ ต้องมาก่อน วันเริ่มค่าย";
       }
@@ -204,12 +199,18 @@ export default function EditCampModal({
         return date.toISOString().split("T")[0];
       };
 
-      // ดึง grade_level
-      let gradeLevel = "";
-
+      // ดึง grade_level ทุกชั้นจาก camp_classroom
       if (campData.camp_classroom && campData.camp_classroom.length > 0) {
-        gradeLevel = campData.camp_classroom[0].classroom.grade;
-        setSelectedGrade(gradeLevel);
+        const gradesSet = new Set<string>();
+        campData.camp_classroom.forEach((cc: any) => {
+          if (cc.classroom?.grade) {
+            gradesSet.add(cc.classroom.grade);
+          }
+        });
+        const gradesArray = Array.from(gradesSet);
+        setSelectedGrades(gradesArray);
+      } else {
+        setSelectedGrades([]);
       }
 
       // ดึง classroom IDs
@@ -254,7 +255,7 @@ export default function EditCampModal({
       setFormData({
         name: campData.name || "",
         location: campData.location || "",
-        gradeLevel: gradeLevel,
+        gradeLevel: Array.from(new Set(campData.camp_classroom?.map((cc: any) => cc.classroom.grade) || [])).join(","),
         classroomType: campData.plan_type?.name || "",
         registrationStartDate: formatDateForInput(campData.start_regis_date),
         registrationEndDate: formatDateForInput(campData.end_regis_date),
@@ -305,14 +306,14 @@ export default function EditCampModal({
 
   // Filter classrooms by grade
   useEffect(() => {
-    if (selectedGrade) {
-      const filtered = classrooms.filter((c) => c.grade === selectedGrade);
+    if (selectedGrades.length > 0) {
+      const filtered = classrooms.filter((c) => selectedGrades.includes(c.grade));
 
       setFilteredClassrooms(filtered);
     } else {
       setFilteredClassrooms([]);
     }
-  }, [selectedGrade, classrooms]);
+  }, [selectedGrades, classrooms]);
 
   // Auto-generate schedule days based on Camp Period
   useEffect(() => {
@@ -352,7 +353,17 @@ export default function EditCampModal({
   if (!isOpen) return null;
 
   const handleChange = (field: keyof FormData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+
+      if (field === "registrationStartDate") {
+        newData.shirtStartDate = value;
+      } else if (field === "registrationEndDate") {
+        newData.shirtEndDate = value;
+      }
+
+      return newData;
+    });
   };
 
   const addDay = () => {
@@ -534,6 +545,7 @@ export default function EditCampModal({
       has_shirt: formData.hasShirt,
       status: "OPEN",
       classroom_ids: selectedClassroomIds,
+      gradeLevel: selectedGrades.join(","),
       dailySchedule: formData.dailySchedule,
       shirtImages: shirtImages,
       shirtImageFiles: shirtImageFiles,
@@ -601,20 +613,21 @@ export default function EditCampModal({
               {/* Grade Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  เลือกระดับชั้น
+                  เลือกระดับชั้น (เลือกได้มากกว่า 1)
                   <Select
                     isRequired
+                    selectionMode="multiple"
                     classNames={{
                       trigger: "border-gray-300",
                     }}
                     label="ระดับชั้น"
                     placeholder="-- เลือกระดับชั้น --"
-                    selectedKeys={selectedGrade ? [selectedGrade] : []}
+                    selectedKeys={new Set(selectedGrades)}
                     onSelectionChange={(keys) => {
-                      const grade = Array.from(keys)[0] as string;
+                      const grades = Array.from(keys) as string[];
 
-                      setSelectedGrade(grade);
-                      handleChange("gradeLevel", grade);
+                      setSelectedGrades(grades);
+                      handleChange("gradeLevel", grades.join(","));
                     }}
                   >
                     {grades.map((grade) => (
@@ -637,7 +650,7 @@ export default function EditCampModal({
                   )}
                 </label>
                 <div className="w-full px-4 py-2 border border-gray-300 rounded-lg max-h-40 overflow-y-auto bg-white">
-                  {!selectedGrade ? (
+                  {selectedGrades.length === 0 ? (
                     <p className="text-sm text-gray-400">
                       กรุณาเลือกระดับชั้นก่อน
                     </p>
@@ -674,9 +687,17 @@ export default function EditCampModal({
                             }}
                           />
                           <span className="text-sm">
-                            {classroom.type_classroom} -{" "}
-                            {classroom.teacher.firstname}{" "}
-                            {classroom.teacher.lastname}
+                            {classroom.grade?.replace("Level_", "ม.")} {classroom.classroom_types?.name || classroom.type_classroom} -{" "}
+                            <span className="text-gray-400">
+                              {classroom.teacher.firstname}{" "}
+                              {classroom.teacher.lastname}
+                              {classroom.classroom_teacher && classroom.classroom_teacher.length > 0 && (
+                                <>
+                                  {", "}
+                                  {classroom.classroom_teacher.map((ct: any) => `${ct.teacher.firstname} ${ct.teacher.lastname}`).join(", ")}
+                                </>
+                              )}
+                            </span>
                           </span>
                         </label>
                       ))}
@@ -718,18 +739,18 @@ export default function EditCampModal({
                     </div>
                   </label>
                 ) : (
-                  <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden mt-1">
+                  <div className="relative rounded-xl overflow-hidden mt-2 border border-gray-200 shadow-sm max-w-3xl mx-auto">
                     <img
                       alt="Camp cover"
-                      className="w-full h-48 object-cover bg-gray-50"
+                      className="w-full h-64 object-cover bg-gray-50"
                       src={campImage}
                     />
                     <button
-                      className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                      className="absolute top-3 right-3 p-2 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg backdrop-blur-sm"
                       type="button"
                       onClick={removeCampImage}
                     >
-                      <X size={16} />
+                      <X size={18} />
                     </button>
                   </div>
                 )}
@@ -993,32 +1014,14 @@ export default function EditCampModal({
                   <label className="block text-xs font-medium text-gray-500 mb-1">
                     ช่วงเวลาจองเสื้อ
                   </label>
-
-                  <DateRangePicker
-                    aria-label="Shirt Booking Period"
-                    className="w-full h-[56px]"
-                    errorMessage={dateErrors.shirt}
-                    isInvalid={!!dateErrors.shirt}
-                    value={
-                      formData.shirtStartDate && formData.shirtEndDate
-                        ? {
-                            start: parseDate(formData.shirtStartDate),
-                            end: parseDate(formData.shirtEndDate),
-                          }
-                        : null
-                    }
-                    onChange={(range) => {
-                      if (!range) return;
-                      handleChange(
-                        "shirtStartDate",
-                        dateValueToString(range.start),
-                      );
-                      handleChange(
-                        "shirtEndDate",
-                        dateValueToString(range.end),
-                      );
-                    }}
-                  />
+                  <div className="p-3 bg-gray-50 border rounded-lg text-sm text-gray-600">
+                    ตามช่วงเวลารับสมัคร
+                    {formData.registrationStartDate && formData.registrationEndDate && (
+                      <span className="ml-2 font-medium">
+                        ({new Date(formData.registrationStartDate).toLocaleDateString("th-TH", { day: 'numeric', month: 'short' })} - {new Date(formData.registrationEndDate).toLocaleDateString("th-TH", { day: 'numeric', month: 'short', year: '2-digit' })})
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Shirt Image Upload - max 3 images */}

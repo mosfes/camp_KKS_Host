@@ -8,6 +8,7 @@ import {
   ModalBody,
   ModalFooter,
   Button,
+  Alert,
 } from "@heroui/react";
 import { ClipboardList, Star } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -41,6 +42,7 @@ export default function TakeSurveyModal({
 }: TakeSurveyModalProps) {
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!survey) return null;
 
@@ -54,7 +56,7 @@ export default function TakeSurveyModal({
   const handleSubmit = async () => {
     // Validate
     for (const q of survey.survey_question) {
-      if (!answers[q.question_id]) {
+      if (q.question_type === "scale" && !answers[q.question_id]) {
         toast.error("กรุณาตอบคำถามให้ครบทุกข้อ");
         return;
       }
@@ -68,6 +70,7 @@ export default function TakeSurveyModal({
 
     try {
       setLoading(true);
+      setErrorMsg(null);
       const res = await fetch("/api/student/surveys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,14 +82,27 @@ export default function TakeSurveyModal({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to submit survey");
+        const resClone = res.clone();
+        let errorMessage = "Failed to submit survey";
+        
+        try {
+          const err = await res.json();
+          console.error("Survey submission failed (JSON):", err);
+          errorMessage = err.error || errorMessage;
+        } catch (e) {
+          const text = await resClone.text();
+          console.error("Survey submission failed (Text):", text);
+          errorMessage = text.slice(0, 100) || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       toast.success("ส่งแบบสอบถามเรียบร้อยแล้ว");
       onCompleted();
       onClose();
     } catch (error: any) {
+      setErrorMsg(error.message || "เกิดข้อผิดพลาดในการส่งแบบสอบถาม");
       toast.error(error.message || "เกิดข้อผิดพลาดในการส่งแบบสอบถาม");
     } finally {
       setLoading(false);
@@ -130,7 +146,12 @@ export default function TakeSurveyModal({
                       {index + 1}
                     </span>
                     <p className="font-medium text-gray-800 leading-relaxed pt-0.5">
-                      {q.question_text} <span className="text-red-500">*</span>
+                      {q.question_text} 
+                      {q.question_type === "scale" ? (
+                        <span className="text-red-500 ml-1">*</span>
+                      ) : (
+                        <span className="text-gray-400 font-normal ml-2 text-sm">(ไม่บังคับ)</span>
+                      )}
                     </p>
                   </div>
 
@@ -171,6 +192,17 @@ export default function TakeSurveyModal({
                   </div>
                 </div>
               ))}
+
+              {errorMsg && (
+                <Alert
+                  color="danger"
+                  title="ไม่สามารถส่งแบบสอบถามได้"
+                  variant="flat"
+                  onClose={() => setErrorMsg(null)}
+                >
+                  {errorMsg}
+                </Alert>
+              )}
             </ModalBody>
 
             <ModalFooter className="px-8 py-6 flex-col sm:flex-row gap-3">

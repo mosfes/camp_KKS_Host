@@ -136,11 +136,9 @@ export default function StudentStationDetailPage() {
       });
 
       if (res.ok) {
-        toast.success(isDraft ? "บันทึกคำตอบสำเร็จ!" : "ส่งภารกิจสำเร็จ!");
+        toast.success(isDraft ? "บันทึกร่างสำเร็จ!" : "ส่งภารกิจสำเร็จ!");
         await fetchCamp(); // Refresh status
-        if (!isDraft) {
-          onClose();
-        }
+        onClose();
       } else {
         toast.error("ส่งภารกิจล้มเหลว");
       }

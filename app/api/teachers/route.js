@@ -67,6 +67,7 @@ export async function POST(req) {
         const restored = await prisma.teachers.update({
           where: { teachers_id: existing.teachers_id },
           data: {
+            prefix_name: body.prefix_name || null,
             firstname: body.firstname,
             lastname: body.lastname,
             tel: body.tel,
@@ -81,6 +82,7 @@ export async function POST(req) {
 
     const newTeacher = await prisma.teachers.create({
       data: {
+        prefix_name: body.prefix_name || null,
         firstname: body.firstname,
         lastname: body.lastname,
         email: body.email,
@@ -143,6 +145,7 @@ export async function PUT(req) {
     const updatedTeacher = await prisma.teachers.update({
       where: { teachers_id: id },
       data: {
+        prefix_name: body.prefix_name || null,
         firstname: body.firstname,
         lastname: body.lastname,
         email: body.email,

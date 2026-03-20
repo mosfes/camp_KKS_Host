@@ -19,6 +19,7 @@ import {
   ClipboardList,
   Star,
   Users,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -27,6 +28,7 @@ import EditCampModal from "./EditCampModal";
 import CreateBaseModal from "./CreateBaseModal";
 import EditBaseModal from "./EditBaseModal";
 import CreateSurveyModal from "./CreateSurveyModal";
+import SurveyResultsModal from "./SurveyResultsModal";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 import { toast } from "react-hot-toast";
@@ -88,6 +90,7 @@ export default function CampDetailPage() {
   const [isCreateSurveyModalOpen, setIsCreateSurveyModalOpen] = useState(false);
   const [isEditSurveyModalOpen, setIsEditSurveyModalOpen] = useState(false);
   const [surveyLoading, setSurveyLoading] = useState(false);
+  const [isSurveyResultsModalOpen, setIsSurveyResultsModalOpen] = useState(false);
 
   useEffect(() => {
     if (campId) {
@@ -145,20 +148,24 @@ export default function CampDetailPage() {
       // ... (keep existing data processing logic) ...
 
       // ดึง grade_level และ plan_type จาก camp_classroom
-      let gradeLevel = null;
+      const gradesSet = new Set<string>();
       let planTypeName = "MSEC"; // default
 
       if (data.camp_classroom && data.camp_classroom.length > 0) {
-        const classroom = data.camp_classroom[0].classroom;
+        data.camp_classroom.forEach((cc: any) => {
+          if (cc.classroom?.grade) {
+            gradesSet.add(cc.classroom.grade);
+          }
+        });
 
-        if (classroom) {
-          gradeLevel = classroom.grade;
-          planTypeName = classroom.classroom_types?.name || "MSEC";
+        const firstClassroom = data.camp_classroom[0].classroom;
+        if (firstClassroom) {
+          planTypeName = firstClassroom.classroom_types?.name || "MSEC";
         }
       }
 
       // ถ้าไม่มีจาก classroom ให้ลองดูจาก plan_type
-      if (!planTypeName && data.plan_type) {
+      if ((!planTypeName || planTypeName === "MSEC") && data.plan_type) {
         planTypeName = data.plan_type.name || "MSEC";
       }
 
@@ -178,7 +185,7 @@ export default function CampDetailPage() {
           }));
       }
 
-      data.grade_level = gradeLevel;
+      data.grade_level = Array.from(gradesSet).join(",");
       data.plan_type_name = planTypeName;
       data.daily_schedule = dailySchedule;
 
@@ -424,10 +431,26 @@ export default function CampDetailPage() {
 
             <div className="space-y-3 text-sm">
               <div>
-                <p className="text-gray-500">ระดับชั้น</p>
-                <p className="font-medium text-gray-900">
-                  {camp.grade_level?.replace("Level_", "ม.")}
-                </p>
+                <div className="flex items-center gap-2 mb-2 font-medium text-gray-500">
+                  <GraduationCap size={16} />
+                  <span>ระดับชั้นที่เปิดรับ</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {camp.grade_level ? (
+                    camp.grade_level.split(",").map((grade: string) => (
+                      <Chip
+                        key={grade}
+                        className="bg-[#f0f4f2] text-[#5d7c6f] border border-[#d1e0d9]"
+                        size="sm"
+                        variant="flat"
+                      >
+                        {grade.replace("Level_", "ม.")}
+                      </Chip>
+                    ))
+                  ) : (
+                    <span className="text-gray-400">ไม่ได้ระบุ</span>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -567,6 +590,7 @@ export default function CampDetailPage() {
               <Button
                 className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
                 startContent={<FileText size={18} />}
+                onPress={() => setIsSurveyResultsModalOpen(true)}
               >
                 ดูผลการประเมิน
               </Button>
@@ -863,6 +887,12 @@ export default function CampDetailPage() {
         onClose={() => setIsEditSurveyModalOpen(false)}
         onSurveyCreated={fetchSurvey}
         initialData={survey}
+      />
+
+      <SurveyResultsModal
+        isOpen={isSurveyResultsModalOpen}
+        onClose={() => setIsSurveyResultsModalOpen(false)}
+        campId={Number(campId)}
       />
     </div>
   );

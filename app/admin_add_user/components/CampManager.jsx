@@ -142,6 +142,8 @@ const CampManager = () => {
                 end_date: formData.end_date || undefined,
                 start_regis_date: formData.start_regis_date || undefined,
                 end_regis_date: formData.end_regis_date || undefined,
+                start_shirt_date: formData.start_regis_date || undefined,
+                end_shirt_date: formData.end_regis_date || undefined,
             });
             showSuccess("สำเร็จ", "แก้ไขข้อมูลค่ายสำเร็จ!");
             setPage(1);

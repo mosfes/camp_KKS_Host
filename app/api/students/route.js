@@ -139,6 +139,7 @@ export async function POST(req) {
             const result = await prisma.$transaction(async (prisma) => {
                 const studentsData = studentsToCreate.map(item => ({
                     students_id: parseInt(item.students_id),
+                    prefix_name: item.prefix_name || null,
                     firstname: item.firstname,
                     lastname: item.lastname,
                     email: item.email || "",
@@ -188,6 +189,7 @@ export async function POST(req) {
           const restored = await prisma.students.update({
             where: { students_id: id },
             data: {
+              prefix_name: body.prefix_name || null,
               firstname: body.firstname,
               lastname: body.lastname,
               email: body.email,
@@ -226,6 +228,7 @@ export async function POST(req) {
         const newStudent = await prisma.students.create({
             data: {
                 students_id: id,
+                prefix_name: body.prefix_name || null,
                 firstname: body.firstname,
                 lastname: body.lastname,
                 email: body.email,
@@ -297,6 +300,7 @@ export async function PUT(req) {
       const updatedStudent = await prisma.students.update({
         where: { students_id: id },
         data: {
+          prefix_name: body.prefix_name || null,
           firstname: body.firstname,
           lastname: body.lastname,
           email: body.email,

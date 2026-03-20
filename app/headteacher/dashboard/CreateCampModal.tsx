@@ -135,18 +135,13 @@ export default function CreateCampModal({
 
     // 1. Registration Logic
     if (regisEnd) {
-      if (data.hasShirt && shirtStart && regisEnd >= shirtStart) {
-        errors.registration = "วันสิ้นสุดรับสมัคร ต้องมาก่อน วันเริ่มจองเสื้อ";
-      } else if (campStart && regisEnd >= campStart) {
+      if (campStart && regisEnd >= campStart) {
         errors.registration = "วันสิ้นสุดรับสมัคร ต้องมาก่อน วันเริ่มค่าย";
       }
     }
 
     // 2. Shirt Logic
     if (data.hasShirt && shirtStart && shirtEnd) {
-      if (regisEnd && shirtStart <= regisEnd) {
-        errors.shirt = "วันเริ่มจองเสื้อ ต้องมาหลัง วันปิดรับสมัคร";
-      }
       if (campStart && shirtEnd >= campStart) {
         errors.shirt = "วันสิ้นสุดจองเสื้อ ต้องมาก่อน วันเริ่มค่าย";
       }
@@ -280,7 +275,7 @@ export default function CreateCampModal({
 
       // ถ้ามีรูปเสื้อ (Note: API doesn't seem to select shirt_image_url yet, but if it did)
       if (campSource.shirt_image_url) {
-        setShirtImage(campSource.shirt_image_url);
+        setShirtImages([campSource.shirt_image_url, null, null]);
       }
     } else if (isOpen && projectType === "new") {
       // Reset form เมื่อเป็น new project
@@ -404,7 +399,17 @@ export default function CreateCampModal({
   }
 
   const handleChange = (field: keyof FormData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+
+      if (field === "registrationStartDate") {
+        newData.shirtStartDate = value;
+      } else if (field === "registrationEndDate") {
+        newData.shirtEndDate = value;
+      }
+
+      return newData;
+    });
   };
 
   const addDay = () => {
@@ -792,18 +797,18 @@ export default function CreateCampModal({
                       </div>
                     </label>
                   ) : (
-                    <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden mt-2">
+                    <div className="relative rounded-xl overflow-hidden mt-2 border border-gray-200 shadow-sm max-w-3xl mx-auto">
                       <img
                         alt="Camp cover"
-                        className="w-full h-48 object-cover bg-gray-50"
+                        className="w-full h-64 object-cover bg-gray-50"
                         src={campImage}
                       />
                       <button
-                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                        className="absolute top-3 right-3 p-2 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg backdrop-blur-sm"
                         type="button"
                         onClick={removeCampImage}
                       >
-                        <X size={16} />
+                        <X size={18} />
                       </button>
                     </div>
                   )}
@@ -1066,33 +1071,14 @@ export default function CreateCampModal({
                   <label className="block text-xs font-medium text-gray-500 mb-1">
                     ช่วงเวลาจองเสื้อ
                   </label>
-
-                  <DateRangePicker
-                    aria-label="Shirt Booking Period"
-                    className="w-full h-[56px]"
-                    errorMessage={dateErrors.shirt}
-                    isInvalid={!!dateErrors.shirt}
-                    minValue={today(getLocalTimeZone())}
-                    value={
-                      formData.shirtStartDate && formData.shirtEndDate
-                        ? {
-                            start: parseDate(formData.shirtStartDate),
-                            end: parseDate(formData.shirtEndDate),
-                          }
-                        : null
-                    }
-                    onChange={(range) => {
-                      if (!range) return;
-                      handleChange(
-                        "shirtStartDate",
-                        dateValueToString(range.start),
-                      );
-                      handleChange(
-                        "shirtEndDate",
-                        dateValueToString(range.end),
-                      );
-                    }}
-                  />
+                  <div className="p-3 bg-gray-50 border rounded-lg text-sm text-gray-600">
+                    ตามช่วงเวลารับสมัคร
+                    {formData.registrationStartDate && formData.registrationEndDate && (
+                      <span className="ml-2 font-medium">
+                        ({new Date(formData.registrationStartDate).toLocaleDateString("th-TH", { day: 'numeric', month: 'short' })} - {new Date(formData.registrationEndDate).toLocaleDateString("th-TH", { day: 'numeric', month: 'short', year: '2-digit' })})
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Shirt Image Upload - up to 3 images */}

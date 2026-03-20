@@ -43,31 +43,29 @@ export default function ParentLoginPage() {
 
   return (
     <div className="min-h-screen w-full bg-[#f5f0e7] flex flex-col items-center justify-center px-4">
-      {/* Logo + Title */}
-      <div className="text-center mb-8">
-        <div className="flex justify-center mb-4">
-          <Image
-            alt="EduCamp Logo"
-            className="rounded-full bg-[#6b7f73]"
-            height={72}
-            src="/images/login.png"
-            width={72}
-          />
-        </div>
-        <h1 className="text-2xl text-gray-700 font-semibold">EduCamp</h1>
-      </div>
-
-      {/* Card */}
       <Card className="w-full max-w-md rounded-2xl bg-white border border-gray-200 shadow-lg">
         <CardBody className="p-8 space-y-5">
+          {/* Logo + Title */}
+          <div className="flex flex-col items-center mb-4">
+            <div className="mb-4">
+              <Image
+                alt="KKS Camp Logo"
+                className=""
+                height={110}
+                src="/images/logoKKS.png"
+                width={110}
+              />
+            </div>
+            <h1 className="text-2xl text-gray-700 font-semibold">KKS Camp</h1>
+          </div>
+
           {/* Header */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 border-t border-gray-100 pt-6">
             <div className="w-10 h-10 rounded-full bg-[#eaf1ee] flex items-center justify-center text-[#5d7c6f]">
               <Users size={20} />
             </div>
             <div>
               <h2 className="text-xl text-gray-600 font-semibold">เข้าสู่ระบบผู้ปกครอง</h2>
-              <p className="text-gray-500 text-sm">ใช้รหัสนักเรียนของบุตรหลาน</p>
             </div>
           </div>
 
