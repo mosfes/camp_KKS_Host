@@ -395,26 +395,6 @@ export default function EditCampModal({
     value: string,
   ) => {
     const newSchedule = [...formData.dailySchedule];
-    const currentSlot = newSchedule[dayIndex].timeSlots[slotIndex];
-
-    // Validation: End time cannot be before Start time
-    if (field === "endTime" && value) {
-      if (currentSlot.startTime && value < currentSlot.startTime) {
-        showWarning("เวลาไม่ถูกต้อง", "เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่ม");
-
-        return;
-      }
-    }
-
-    // Validation: Start time cannot be after End time
-    if (field === "startTime" && value) {
-      if (currentSlot.endTime && value > currentSlot.endTime) {
-        showWarning("เวลาไม่ถูกต้อง", "เวลาเริ่มต้องมาก่อนเวลาสิ้นสุด");
-
-        return;
-      }
-    }
-
     newSchedule[dayIndex].timeSlots[slotIndex][field] = value;
     setFormData({ ...formData, dailySchedule: newSchedule });
   };
@@ -519,6 +499,18 @@ export default function EditCampModal({
 
         return;
       }
+    }
+
+    // Validation for daily schedule time slots
+    const hasInvalidSchedule = formData.dailySchedule.some((day) =>
+      day.timeSlots.some((slot) => slot.startTime && slot.endTime && slot.startTime > slot.endTime)
+    );
+    if (hasInvalidSchedule) {
+      showWarning(
+        "ข้อมูลไม่ถูกต้อง",
+        "กรุณาตรวจสอบเวลาในกำหนดการรายวัน (เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่ม)",
+      );
+      return;
     }
 
     const payload = {
@@ -953,6 +945,11 @@ export default function EditCampModal({
                               )}
                             </div>
                           </div>
+                          {slot.startTime && slot.endTime && slot.startTime > slot.endTime && (
+                            <p className="text-red-500 text-xs mt-2 px-1">
+                              * เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่ม
+                            </p>
+                          )}
                         </div>
                       ))}
                     </div>

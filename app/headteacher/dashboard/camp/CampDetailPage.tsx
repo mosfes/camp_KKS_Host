@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   MapPin,
@@ -72,7 +72,9 @@ interface CampDetail {
 export default function CampDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const campId = params?.id;
+  const isEdit = searchParams.get("edit");
 
   const [camp, setCamp] = useState<CampDetail | null>(null);
   const { showError, showSuccess, showConfirm, setIsLoading } = useStatusModal();
@@ -94,7 +96,12 @@ export default function CampDetailPage() {
       fetchCampDetail();
       fetchSurvey();
     }
-  }, [campId]);
+    if (isEdit === "true") {
+      setIsEditModalOpen(true);
+      // Clean up the URL to remove the query param so it doesn't re-trigger on refresh
+      router.replace(`/headteacher/dashboard/camp/${campId}`);
+    }
+  }, [campId, isEdit]);
 
   const fetchSurvey = async () => {
     setSurveyLoading(true);
@@ -223,6 +230,34 @@ export default function CampDetailPage() {
         }
       },
       "ลบฐานกิจกรรม",
+    );
+  };
+
+  const handleDeleteCamp = () => {
+    showConfirm(
+      "ยืนยันการลบค่าย",
+      "คุณแน่ใจหรือไม่ว่าต้องการลบค่ายนี้? ข้อมูลทั้งหมดที่เกี่ยวข้องจะถูกลบและไม่สามารถกู้คืนได้",
+      async () => {
+        try {
+          setIsLoading(true);
+          const response = await fetch(`/api/camps/${campId}`, {
+            method: "DELETE",
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to delete camp");
+          }
+
+          showSuccess("สำเร็จ", "ลบค่ายเรียบร้อยแล้ว");
+          router.push("/headteacher/dashboard");
+        } catch (error) {
+          console.error("Error deleting camp:", error);
+          showError("ข้อผิดพลาด", "ไม่สามารถลบค่ายได้");
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      "ลบค่าย"
     );
   };
 
@@ -397,13 +432,22 @@ export default function CampDetailPage() {
             <div className="flex items-center gap-3 ml-4">
               {/* ซ่อนปุ่มแก้ไขถ้าไม่ใช่เจ้าของค่าย */}
               {camp.isOwner && (
-                <Button
-                  className="bg-[#6b857a] text-white hidden sm:flex"
-                  startContent={<Settings size={18} />}
-                  onPress={() => setIsEditModalOpen(true)}
-                >
-                  แก้ไขข้อมูลค่าย
-                </Button>
+                <>
+                  <Button
+                    className="bg-white text-red-600 hidden sm:flex border border-red-200 hover:bg-red-50"
+                    startContent={<Trash2 size={18} />}
+                    onPress={handleDeleteCamp}
+                  >
+                    ลบค่าย
+                  </Button>
+                  <Button
+                    className="bg-[#6b857a] text-white hidden sm:flex"
+                    startContent={<Settings size={18} />}
+                    onPress={() => setIsEditModalOpen(true)}
+                  >
+                    แก้ไขข้อมูลค่าย
+                  </Button>
+                </>
               )}
             </div>
           </div>

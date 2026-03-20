@@ -15,6 +15,7 @@ import {
   Users,
   TrendingUp,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -456,20 +457,34 @@ export default function StudentDashboard() {
                           <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
                         </div>
                       )}
-                      {/* Delete Button - เฉพาะเจ้าของค่าย */}
+                      {/* Action Buttons - เฉพาะเจ้าของค่าย */}
                       {camp.isOwner && (
-                        <button
-                          className="absolute top-2 right-2 z-10 p-2 bg-[#5d7c6f] text-white rounded-full opacity-60 group-hover:opacity-100 transition-opacity hover:bg-[#5d7c6f] shadow-lg hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
-                          disabled={loading}
-                          title="ลบค่าย"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (loading) return;
-                            handleDeleteCamp(camp.id, camp.title);
-                          }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="absolute top-2 right-2 z-10 flex flex-col gap-2">
+                          <button
+                            className="p-2 bg-[#5d7c6f] text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#4a6358] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                            disabled={loading}
+                            title="แก้ไขค่าย"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (loading) return;
+                              router.push(`/headteacher/dashboard/camp/${camp.id}?edit=true`);
+                            }}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            className="p-2 bg-white text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                            disabled={loading}
+                            title="ลบค่าย"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (loading) return;
+                              handleDeleteCamp(camp.id, camp.title);
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       )}
                       {camp.image ? (
                         <img
