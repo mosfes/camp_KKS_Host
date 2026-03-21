@@ -226,7 +226,7 @@ export default function SurveyResultsModal({
                             </span>
                             <Star className="text-amber-500 fill-amber-500" size={24} />
                           </div>
-                          <p className="text-xs text-amber-600/70 mt-2">จาก {q.total} รีวิว</p>
+                          <p className="text-xs text-amber-600/70 mt-2">จาก {q.total} คน</p>
                         </div>
 
                         <div className="col-span-2 flex flex-col justify-center space-y-3">

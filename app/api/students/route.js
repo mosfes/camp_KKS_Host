@@ -144,6 +144,7 @@ export async function POST(req) {
                     lastname: item.lastname,
                     email: item.email || "",
                     tel: item.tel || "",
+                    birthday: item.birthday ? new Date(item.birthday) : null,
                 }));
 
                 await prisma.students.createMany({
@@ -192,6 +193,7 @@ export async function POST(req) {
               prefix_name: body.prefix_name || null,
               firstname: body.firstname,
               lastname: body.lastname,
+              birthday: body.birthday ? new Date(body.birthday) : null,
               email: body.email,
               tel: body.tel,
               deletedAt: null, // กู้คืนออกจากถังขยะ
@@ -231,6 +233,7 @@ export async function POST(req) {
                 prefix_name: body.prefix_name || null,
                 firstname: body.firstname,
                 lastname: body.lastname,
+                birthday: body.birthday ? new Date(body.birthday) : null,
                 email: body.email,
                 tel: body.tel,
             }
@@ -303,6 +306,7 @@ export async function PUT(req) {
           prefix_name: body.prefix_name || null,
           firstname: body.firstname,
           lastname: body.lastname,
+          birthday: body.birthday ? new Date(body.birthday) : null,
           email: body.email,
           tel: body.tel,
         }
