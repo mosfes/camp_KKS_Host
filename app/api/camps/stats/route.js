@@ -42,17 +42,48 @@ export async function GET(request) {
             distinct: ["teacher_teachers_id"],
         });
 
-        // ค่าเฉลี่ย
-        const avgEnrollment = totalCamps > 0 ? Math.round(totalEnrollments / totalCamps) : 0;
+        // คำนวณความพึงพอใจเฉลี่ย
+        const scaleAnswers = await prisma.survey_answer.findMany({
+            where: {
+                survey_question: {
+                    question_type: "scale",
+                    survey: { camp: { created_by_teacher_id: teacherId, deletedAt: null } }
+                }
+            },
+            select: {
+                scale_value: true,
+                survey_question: { select: { scale_max: true } }
+            }
+        });
+
+        let avgSatisfaction = 0;
+        let avgScore = 0;
+        if (scaleAnswers.length > 0) {
+            const sumPerc = scaleAnswers.reduce((acc, curr) => {
+                const max = curr.survey_question.scale_max || 5;
+                return acc + (curr.scale_value / max);
+            }, 0);
+            avgSatisfaction = Math.round((sumPerc / scaleAnswers.length) * 100);
+            avgScore = parseFloat(((sumPerc / scaleAnswers.length) * 5).toFixed(1));
+        }
+
+        // จำนวนคนทำแบบสอบถาม
+        const totalSurveyResponses = await prisma.survey_response.count({
+            where: { survey: { camp: { created_by_teacher_id: teacherId, deletedAt: null } } }
+        });
+
+        // อัตราการทำแบบสอบถาม
+        const surveyResponseRate = totalEnrollments > 0 ? Math.round((totalSurveyResponses / totalEnrollments) * 100) : 0;
 
         return NextResponse.json(
             {
                 totalCamps,
                 activeCamps,
-                totalStudents: uniqueStudents.length,
-                totalTeachers: uniqueTeachers.length,
                 totalEnrollments,
-                avgEnrollment,
+                avgSatisfaction,
+                avgScore,
+                surveyResponseRate,
+                totalStudents: uniqueStudents.length,
             },
             { status: 200 }
         );

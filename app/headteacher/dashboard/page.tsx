@@ -16,12 +16,18 @@ import {
   TrendingUp,
   Trash2,
   Pencil,
+  Target,
+  Layout,
+  Smile,
+  ClipboardCheck,
+  Star,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import StatsCard from "./StatsCard";
 import CreateCampModal from "./CreateCampModal";
 import SelectProjectTypeModal from "./SelectProjectTypeModal";
+import EditCampModal from "./camp/EditCampModal";
 
 /* ---------- Default SVG Component ---------- */
 function DefaultCampImage() {
@@ -47,6 +53,9 @@ export default function StudentDashboard() {
     totalEnrollments: 0,
     totalTeachers: 0,
     avgEnrollment: 0,
+    avgSatisfaction: 0,
+    avgScore: 0,
+    surveyResponseRate: 0,
   });
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState("overview");
@@ -58,6 +67,10 @@ export default function StudentDashboard() {
   const [selectedTemplateData, setSelectedTemplateData] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingCampData, setEditingCampData] = useState<any>(null);
 
   const goToCampDetail = (campId: number) => {
     if (navigatingTo !== null) return;
@@ -288,6 +301,99 @@ export default function StudentDashboard() {
     }
   };
 
+  const handleEditCampClick = async (campId: number) => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/camps/${campId}`);
+      if (!response.ok) throw new Error("Failed to fetch camp data");
+      const data = await response.json();
+      setEditingCampData(data);
+      setIsEditModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching camp for edit:", error);
+      showError("ข้อผิดพลาด", "ไม่สามารถดึงข้อมูลค่ายเพื่อแก้ไขได้");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditSubmit = async (formData: any) => {
+    try {
+      setIsSubmitting(true);
+
+      let img_shirt_url = formData.shirtImage || "";
+      let img_camp_url = formData.campImage || "";
+
+      // Upload new shirt images if files were picked
+      let finalShirtUrls: (string | null)[] = [];
+      try {
+        const parsed = JSON.parse(formData.shirtImages ? JSON.stringify(formData.shirtImages) : "[]");
+        finalShirtUrls = Array.isArray(parsed) ? parsed : [formData.shirtImages];
+      } catch (e) {
+        finalShirtUrls = [formData.shirtImages];
+      }
+
+      if (formData.shirtImageFiles && Array.isArray(formData.shirtImageFiles)) {
+        for (let i = 0; i < formData.shirtImageFiles.length; i++) {
+          const file = formData.shirtImageFiles[i];
+          if (file) {
+            try {
+              const uploadForm = new FormData();
+              uploadForm.append("file", file);
+              const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
+              if (uploadRes.ok) {
+                const uploadData = await uploadRes.json();
+                finalShirtUrls[i] = uploadData.url;
+              }
+            } catch (uploadErr) {
+              console.error("Error during shirt upload:", uploadErr);
+            }
+          }
+        }
+      }
+      img_shirt_url = JSON.stringify(finalShirtUrls);
+
+      if (formData.campImageFile) {
+        try {
+          const uploadForm = new FormData();
+          uploadForm.append("file", formData.campImageFile);
+          const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            img_camp_url = uploadData.url;
+          }
+        } catch (uploadErr) {
+          console.error("Error during camp image upload:", uploadErr);
+        }
+      }
+
+      const response = await fetch(`/api/camps/${editingCampData.camp_id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          img_shirt_url,
+          img_camp_url,
+        }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "Failed to edit camp");
+      }
+
+      showSuccess("สำเร็จ", "อัปเดตข้อมูลค่ายเรียบร้อยแล้ว");
+      setIsEditModalOpen(false);
+      setEditingCampData(null);
+      await fetchCamps();
+    } catch (error: any) {
+      console.error("Error editing camp:", error);
+      showError("ข้อผิดพลาด", error.message || "ไม่สามารถอัปเดตข้อมูลค่ายได้");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
     กำลังจัด: {
       bg: "bg-[#5d7c6f]",
@@ -339,7 +445,6 @@ export default function StudentDashboard() {
           >
             <Tab key="overview" title="ภาพรวม" />
             <Tab key="camp" title="ค่ายที่สร้าง" />
-            <Tab key="user" title="ผู้ใช้" />
           </Tabs>
         </div>
 
@@ -364,24 +469,24 @@ export default function StudentDashboard() {
                   />
 
                   <StatsCard
-                    icon={GraduationCap}
-                    subtitle={`${stats.totalEnrollments} การลงทะเบียน`}
-                    title="นักเรียนทั้งหมด"
-                    value={stats.totalStudents}
+                    icon={Star}
+                    subtitle="จากแบบประเมินทั้งหมด"
+                    title="คะแนนค่ายเฉลี่ย"
+                    value={`${stats.avgScore || 0} / 5`}
                   />
 
                   <StatsCard
-                    icon={Users}
-                    subtitle="1 หัวหน้าค่าย"
-                    title="ครูทั้งหมด"
-                    value={stats.totalTeachers}
+                    icon={Smile}
+                    subtitle="จากแบบสำรวจความพึงพอใจ"
+                    title="ความพึงพอใจเฉลี่ย"
+                    value={`${stats.avgSatisfaction}%`}
                   />
 
                   <StatsCard
-                    icon={TrendingUp}
-                    subtitle="คนต่อค่าย"
-                    title="เฉลี่ยการลงทะเบียน"
-                    value={stats.avgEnrollment}
+                    icon={ClipboardCheck}
+                    subtitle="สัดส่วนผู้ทำแบบสำรวจ"
+                    title="อัตราการตอบกลับ"
+                    value={`${stats.surveyResponseRate}%`}
                   />
                 </div>
               </div>
@@ -462,18 +567,19 @@ export default function StudentDashboard() {
                         <div className="absolute top-2 right-2 z-10 flex flex-col gap-2">
                           <button
                             className="p-2 bg-[#5d7c6f] text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#4a6358] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
-                            disabled={loading}
+                            disabled={loading || isSubmitting}
                             title="แก้ไขค่าย"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (loading) return;
-                              router.push(`/headteacher/dashboard/camp/${camp.id}?edit=true`);
+                              if (loading || isSubmitting) return;
+                              // Fetch full camp detail and open modal
+                              handleEditCampClick(camp.id);
                             }}
                           >
                             <Pencil size={16} />
                           </button>
                           <button
-                            className="p-2 bg-white text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="p-2 bg-[#5d7c6f] text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#4a6358] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
                             disabled={loading}
                             title="ลบค่าย"
                             onClick={(e) => {

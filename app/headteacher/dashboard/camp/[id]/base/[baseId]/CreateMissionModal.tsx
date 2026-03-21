@@ -9,7 +9,7 @@ import {
   Button,
 } from "@heroui/react";
 import { useState } from "react";
-import { Save, Plus, Trash2, CheckCircle2 } from "lucide-react";
+import { Save, Plus, Trash2, CheckCircle2, Circle } from "lucide-react";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 
@@ -250,7 +250,11 @@ export default function CreateMissionModal({
                               title="เลือกเป็นคำตอบที่ถูกต้อง"
                               onClick={() => setCorrect(qi, ci)}
                             >
-                              <CheckCircle2 fill={c.isCorrect ? "currentColor" : "none"} size={20} />
+                              {c.isCorrect ? (
+                                <CheckCircle2 size={20} />
+                              ) : (
+                                <Circle size={20} />
+                              )}
                             </button>
                             <input
                               className={`flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none transition-colors ${c.isCorrect ? "border-[#6b857a] ring-1 ring-[#6b857a] bg-[#6b857a]/5" : "border-gray-300 focus:border-[#6b857a] focus:ring-1 focus:ring-[#6b857a]"}`}

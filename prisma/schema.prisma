@@ -160,7 +160,6 @@ model camp {
   student_enrollment  student_enrollment[]
   attendance_teachers attendance_teachers[]
   station             station[]
-  evaluation          evaluation[]
   camp_daily_schedule camp_daily_schedule[]
   survey              survey[]
 
@@ -243,7 +242,6 @@ model student_enrollment {
   camp                camp             @relation(fields: [camp_camp_id], references: [camp_id])
   certificate         certificate[]
   mission_result      mission_result[]
-  evaluation          evaluation[]
   survey_response     survey_response[]
 }
 
@@ -410,49 +408,7 @@ model mission_answer_text{
   answer_text String @db.Text
 }
 
-model evaluation {
-  evaluation_id Int               @id @default(autoincrement())
-  submitted_at  DateTime          @default(now())
-  status        evaluation_status
 
-  student_enrollment_id Int
-  student_enrollment    student_enrollment @relation(fields: [student_enrollment_id], references: [student_enrollment_id])
-  camp_camp_id          Int
-  camp                  camp               @relation(fields: [camp_camp_id], references: [camp_id])
-
-  evaluation_answer evaluation_answer[]
-}
-
-enum evaluation_status {
-  pending
-  completed
-}
-
-model evaluation_question {
-  question_id       Int                      @id @default(autoincrement())
-  question_text     String                   @db.VarChar(255)
-  question_type     evaluation_question_type
-  scale_max         Int?
-  evaluation_answer evaluation_answer[]
-}
-
-enum evaluation_question_type {
-  scale
-  text
-}
-
-model evaluation_answer {
-  answer_id   Int     @id @default(autoincrement())
-  scale_value Int?
-  text_answer String? @db.Text
-
-  evaluation_evaluation_id        Int
-  evaluation                      evaluation          @relation(fields: [evaluation_evaluation_id], references: [evaluation_id])
-  evaluation_question_question_id Int
-  evaluation_question             evaluation_question @relation(fields: [evaluation_question_question_id], references: [question_id])
-
-  suggestion_analysis_summary suggestion_analysis_summary[]
-}
 
 model suggestion_analysis_summary {
   suggestion_analysis_summary_id  Int               @id @default(autoincrement())
@@ -462,8 +418,10 @@ model suggestion_analysis_summary {
   improvement_areas               String            @db.Text
   positive_percentage             Float
   negative_percentage             Float
-  evaluation_answer_evaluation_id Int
-  evaluation_answer               evaluation_answer @relation(fields: [evaluation_answer_evaluation_id], references: [answer_id])
+  survey_response_survey_response_id Int
+  survey_response survey_response @relation(fields: [survey_response_survey_response_id], references: [survey_response_id])
+  survey_answer_survey_answer_id Int
+  survey_answer survey_answer @relation(fields: [survey_answer_survey_answer_id], references: [answer_id])
 }
 
 model vulgar_words {
@@ -525,6 +483,7 @@ model survey_answer {
 
   question_id         Int
   survey_question     survey_question  @relation(fields: [question_id], references: [question_id])
+  suggestion_analysis_summary suggestion_analysis_summary[]
 }
 
 // เทมเพลตแบบสอบถาม เพื่อนำกลับมาใช้ในครั้งต่อไป

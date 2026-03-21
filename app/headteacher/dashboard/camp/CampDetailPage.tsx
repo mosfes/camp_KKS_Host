@@ -425,23 +425,13 @@ export default function CampDetailPage() {
               </div>
             </div>
 
-            {/* Camp Cover Image */}
-            {camp.img_camp_url && (
-              <div className="ml-4 flex-shrink-0">
-                <img
-                  alt="Camp cover"
-                  className="h-24 w-36 object-cover rounded-xl shadow-sm border border-gray-200"
-                  src={camp.img_camp_url}
-                />
-              </div>
-            )}
 
             <div className="flex items-center gap-3 ml-4">
               {/* ซ่อนปุ่มแก้ไขถ้าไม่ใช่เจ้าของค่าย */}
               {camp.isOwner && (
                 <>
                   <Button
-                    className="bg-white text-red-600 hidden sm:flex border border-red-200 hover:bg-red-50"
+                    className="bg-white text-#6b857a-600 hidden sm:flex border border-#6b857a-200 hover:text-#6b857a-30"
                     startContent={<Trash2 size={18} />}
                     onPress={handleDeleteCamp}
                   >
@@ -516,6 +506,16 @@ export default function CampDetailPage() {
                     : "N/A"}
                 </p>
               </div>
+              {/* Camp Cover Image */}
+              {camp.img_camp_url && (
+                <div className="flex-shrink-0">
+                  <img
+                    alt="Camp cover"
+                    className="h-24 w-36 object-cover rounded-xl shadow-sm border border-gray-200"
+                    src={camp.img_camp_url}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -622,13 +622,23 @@ export default function CampDetailPage() {
 
             <div className="space-y-2">
               {camp.isOwner && (
-                <Button
-                  className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
-                  startContent={<Plus size={18} />}
-                  onPress={() => setIsCreateBaseModalOpen(true)}
-                >
-                  สร้างฐานกิจกรรม
-                </Button>
+                <>
+                  <Button
+                    className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
+                    startContent={<Plus size={18} />}
+                    onPress={() => setIsCreateBaseModalOpen(true)}
+                  >
+                    สร้างฐานกิจกรรม
+                  </Button>
+                  <Button
+                    className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
+                    startContent={<ClipboardList size={18} />}
+                    isDisabled={survey !== null}
+                    onPress={() => setIsCreateSurveyModalOpen(true)}
+                  >
+                    สร้างแบบสอบถาม
+                  </Button>
+                </>
               )}
 
               <Button
@@ -923,7 +933,7 @@ export default function CampDetailPage() {
         onClose={() => setIsCreateSurveyModalOpen(false)}
         onSurveyCreated={fetchSurvey}
       />
-      
+
       <CreateSurveyModal
         campId={Number(campId)}
         teacherId={camp?.created_by_teacher_id || 0}
