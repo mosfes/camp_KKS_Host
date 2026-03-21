@@ -110,8 +110,36 @@ const StudentManager = () => {
         lastname: "",
         email: "",
         tel: "",
-        classroom_id: ""
+        classroom_id: "",
+        birthday: ""
     });
+
+    const handleBirthdayChange = (e) => {
+        const newBirthday = e.target.value;
+        let newFormData = { ...formData, birthday: newBirthday };
+        
+        if (newBirthday) {
+            const birthDate = new Date(newBirthday);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            
+            let currentPrefix = formData.prefix_name;
+            if (age < 15) {
+                if (currentPrefix === "นาย") currentPrefix = "เด็กชาย";
+                if (currentPrefix === "นางสาว") currentPrefix = "เด็กหญิง";
+            } else {
+                if (currentPrefix === "เด็กชาย") currentPrefix = "นาย";
+                if (currentPrefix === "เด็กหญิง") currentPrefix = "นางสาว";
+            }
+            newFormData.prefix_name = currentPrefix;
+        }
+        
+        setFormData(newFormData);
+    };
 
 
     useEffect(() => {
@@ -220,7 +248,7 @@ const StudentManager = () => {
 
     const openAddModal = () => {
         setIsEditing(false);
-        setFormData({ students_id: "", prefix_name: "", firstname: "", lastname: "", email: "", tel: "", classroom_id: "" });
+        setFormData({ students_id: "", prefix_name: "", firstname: "", lastname: "", email: "", tel: "", classroom_id: "", birthday: "" });
 
         if (years.length > 0) {
 
@@ -247,7 +275,8 @@ const StudentManager = () => {
             lastname: student.lastname,
             email: student.email || "",
             tel: student.tel || "",
-            classroom_id: currentClassroomId
+            classroom_id: currentClassroomId,
+            birthday: student.birthday ? new Date(student.birthday).toISOString().split('T')[0] : ""
         });
 
         if (currentClassroom) {
@@ -735,8 +764,13 @@ const StudentManager = () => {
                                     <label className="text-sm font-medium text-gray-700">รหัสนักเรียน</label>
                                     <Input name="students_id" value={formData.students_id} onChange={handleChange} isDisabled={isEditing} variant="bordered" radius="lg" placeholder="กรอกรหัสนักเรียน" classNames={{ inputWrapper: "bg-white" }} />
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-sm font-medium text-gray-700">คำนำหน้า</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">วัน/เดือน/ปีเกิด</label>
+                                        <Input type="date" name="birthday" value={formData.birthday || ""} onChange={handleBirthdayChange} variant="bordered" radius="lg" classNames={{ inputWrapper: "bg-white" }} />
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">คำนำหน้า</label>
                                     <Select
                                         placeholder="เลือกคำนำหน้า"
                                         variant="bordered"
@@ -748,6 +782,7 @@ const StudentManager = () => {
                                             <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
                                         ))}
                                     </Select>
+                                </div>
                                 </div>
                                 <div className="flex gap-4">
                                     <div className="flex flex-col gap-1 w-full">
