@@ -12,6 +12,7 @@ import {
     TableCell,
     Chip,
     Input,
+    Pagination
 } from "@heroui/react";
 import { useState, useEffect } from "react";
 import { Search, RotateCcw, AlertTriangle, Trash, Archive, ArrowLeft } from 'lucide-react';
@@ -24,6 +25,7 @@ const TrashManager = ({ type, onBack }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const [classroomTypes, setClassroomTypes] = useState([]);
 
@@ -156,16 +158,16 @@ const TrashManager = ({ type, onBack }) => {
         try {
             const result = await cfg.fetchFn(pageNum, searchTerm);
             const newData = result.data || [];
-            if (pageNum === 1) {
-                setItems(newData);
-            } else {
-                setItems(prev => [...prev, ...newData]);
-            }
+            
+            setItems(newData);
+            
             if (result.pagination) {
                 setHasMore(pageNum < result.pagination.totalPages);
+                setTotalPages(result.pagination.totalPages || 1);
                 setTotal(result.pagination.total);
             } else {
                 setHasMore(false);
+                setTotalPages(1);
                 setTotal(newData.length);
             }
         } catch (e) {
@@ -324,20 +326,29 @@ const TrashManager = ({ type, onBack }) => {
                                 ))}
                             </TableBody>
                         </Table>
-                        {hasMore && items.length > 0 && (
-                            <div className="flex justify-center mt-6 w-full">
-                                <Button
-                                    variant="flat"
-                                    className="bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-full px-8"
-                                    onPress={() => {
-                                        const nextPage = page + 1;
-                                        setPage(nextPage);
-                                        fetchItems(nextPage);
+                    </div>
+
+                    <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4 px-4 pb-4">
+                        <div className="text-sm text-gray-500 order-2 md:order-1">
+                            แสดง {items.length} จาก {total} รายการ
+                        </div>
+                        {totalPages > 1 && (
+                            <div className="order-1 md:order-2">
+                                <Pagination
+                                    isCompact
+                                    showControls
+                                    total={totalPages}
+                                    page={page}
+                                    onChange={(newPage) => {
+                                        setPage(newPage);
+                                        fetchItems(newPage);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
                                     }}
-                                    isLoading={isLoading && page > 1}
-                                >
-                                    แสดงเพิ่มเติม
-                                </Button>
+                                    className="overflow-x-auto"
+                                    classNames={{
+                                        cursor: "bg-sage text-white",
+                                    }}
+                                />
                             </div>
                         )}
                     </div>

@@ -104,10 +104,10 @@ export async function POST(request) {
       .map((ans) => String(ans.textAnswer).trim());
 
     if (textAnswers.length > 0) {
-      const dbVulgarWords = await prisma.vulgar_words.findMany();
-      const vulgarList = dbVulgarWords
+      const debugVulgarWordsList = await prisma.vulgar_words.findMany();
+      const vulgarList = debugVulgarWordsList
         .map((v) => v.word.toLowerCase())
-        .filter((w) => w !== 'หมา'); // อนุโลมคำว่า หมา
+        .filter((w) => w !== '');
 
       let foundVulgarInDb = null;
       for (const text of textAnswers) {
@@ -131,11 +131,16 @@ export async function POST(request) {
 
       if (process.env.GEMINI_API_KEY) {
         const combinedText = textAnswers.join(' | ');
-        const prompt = `ตรวจคำตอบเหล่านี้ว่ามีคำหยาบคาย คำด่า หรือคำที่ไม่เหมาะสม (ภาษาไทยหรืออังกฤษ) หรือไม่
-รวมถึงการระบุคำที่ใช้คำแสลง, คำที่จงใจเขียนเลี่ยง (เช่น ใช้ "I" แทน "ไอ้" หรือเขียนสลับตัวอักษร) 
+        const prompt = `ประเมินว่าข้อความเหล่านี้เป็นข้อความที่เหมาะสมหรือไม่ (ตรวจสอบคำหยาบ, คำด่า, ภาษาลับ, ภาษาวิบัติที่รุนแรง, ภาษาลู เป็นต้น) 
+ทั้งภาษาไทยและอังกฤษ รวมถึงการระบุคำที่ใช้คำแสลง หรือคำที่จงใจเขียนเลี่ยง (เช่น ใช้ "I" แทน "ไอ้" หรือเขียนสลับตัวอักษร) 
+
+สำคัญที่สุด: ให้พิจารณา "บริบท (Context)" ของประโยคด้วย 
+- หากเป็นคำที่มักใช้เป็นคำด่า แต่ในประโยคนั้นใช้ในความหมายปกติหรือพูดถึงสัตว์/สิ่งของ (เช่น "เมื่อคืนหมาหอน", "ฉันเห็นควายกินหญ้า", "เหี้ยตัวใหญ่มาก") ให้ถือว่า "ไม่หยาบ" (isVulgar: false)
+- หากใช้ในบริบทที่ตั้งใจด่าทอ เปรียบเปรยให้เสียหาย หรือคำสแลงที่ไม่สุภาพ (เช่น "อาหารหมาไม่แดก", "ไอ้ควาย", "เหี้ยเอ๊ย") ให้ถือว่า "หยาบ" (isVulgar: true)
+
+ในกรณีที่พบคำหยาบ ให้ระบุคำหรือวลีนั้นๆ ลงใน detectedWords โดยพยายามระบุเป็น "วลีเต็มๆ" ที่ทำให้เกิดความหมายหยาบคาย (เช่น "หมาไม่แดก", "ไอ้ควาย") แทนที่จะระบุแค่คำโดดๆ เพื่อป้องกันการแบนเงื่อนไขยิบย่อยที่ผิดพลาดในอนาคต
 
 ตอบกลับเป็น JSON ในรูปแบบ {"isVulgar": boolean, "detectedWords": string[]} 
-(ข้อควรระวัง: คำว่า "หมา" อนุโลมให้ใช้ได้ ไม่ต้องนับเป็นคำหยาบ) 
 
 ข้อความที่ต้องการตรวจ: "${combinedText}"`;
 
@@ -159,10 +164,9 @@ export async function POST(request) {
             if (jsonMatch) {
               let result = JSON.parse(jsonMatch[0]);
               
-              // กรองคำว่า หมา ออกจากผลลัพธ์ AI อีกคร้ังเพื่อความชัวร์
-              if (result.detectedWords) {
-                result.detectedWords = result.detectedWords.filter((w) => w !== 'หมา');
-                if (result.detectedWords.length === 0) result.isVulgar = false;
+              // บันทึกคำที่ตรวจพบลงใน DB
+              if (result.detectedWords && result.detectedWords.length > 0) {
+                result.isVulgar = true;
               }
 
               if (result.isVulgar && result.detectedWords && result.detectedWords.length > 0) {

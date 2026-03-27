@@ -23,7 +23,8 @@ import {
     AccordionItem,
     Checkbox,
     Tooltip,
-    Textarea
+    Textarea,
+    Pagination
 } from "@heroui/react";
 import { useState, useEffect, useRef } from "react";
 import * as XLSX from 'xlsx';
@@ -57,6 +58,7 @@ const StudentManager = () => {
     const [selectedRoomType, setSelectedRoomType] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [totalStudents, setTotalStudents] = useState(0);
 
@@ -179,17 +181,15 @@ const StudentManager = () => {
             const result = await studentService.getStudentsPaginated(selectedYear, selectedGrade, selectedRoomType, pageNum, 20, searchTerm);
             const newData = Array.isArray(result) ? result : (result.data || []);
             
-            if (pageNum === 1) {
-                setStudents(newData);
-            } else {
-                setStudents(prev => [...prev, ...newData]);
-            }
+            setStudents(newData);
             
             if (result.pagination) {
                 setHasMore(pageNum < result.pagination.totalPages);
+                setTotalPages(result.pagination.totalPages || 1);
                 setTotalStudents(result.pagination.total);
             } else {
                 setHasMore(false);
+                setTotalPages(1);
                 setTotalStudents(newData.length);
             }
         } catch (error) {
@@ -641,9 +641,10 @@ const StudentManager = () => {
                                     variant="bordered"
                                     className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
                                     onPress={handlePromoteClick}
+                                    isDisabled
                                 >
                                     <ArrowUp size={16} />
-                                    <span className="ml-1 font-medium hidden sm:inline">เลื่อนชั้นเรียน</span>
+                                    <span className="ml-1 font-medium hidden sm:inline">เลื่อนชั้นเรียน (กําลังพัฒนา)</span>
                                 </Button>
 
                                 <Button
@@ -677,78 +678,88 @@ const StudentManager = () => {
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto w-full">
-                        <Table aria-label="Student Table"
-                            shadow="none"
-                            isHeaderSticky
-                            classNames={{
-                                wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[900px] lg:min-w-full",
-                                th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
-                                td: "py-4 border-b border-gray-50/50",
-                            }}>
-                            <TableHeader>
-                                <TableColumn>รหัสนักเรียน</TableColumn>
-                                <TableColumn>ชื่อ-นามสกุล</TableColumn>
-                                <TableColumn>อีเมล</TableColumn>
-                                <TableColumn>ระดับชั้น/ห้อง</TableColumn>
-                                <TableColumn>เบอร์โทร</TableColumn>
-                                <TableColumn>ดำเนินการ</TableColumn>
-                            </TableHeader>
-                            <TableBody
-                                emptyContent={"ไม่มีข้อมูลนักเรียน"}
-                                isLoading={isLoading}
-                                loadingContent={
-                                    <div className="flex flex-col items-center gap-2">
-                                        <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
-                                        <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
-                                    </div>
-                                }
-                            >
-
-                                {filteredStudents.map((stu) => (
-                                    <TableRow key={stu.students_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
-                                        <TableCell>{stu.students_id}</TableCell>
-                                        <TableCell>{stu.prefix_name ? `${stu.prefix_name}${stu.firstname}` : stu.firstname} {stu.lastname}</TableCell>
-                                        <TableCell>{stu.email}</TableCell>
-
-                                        <TableCell>{getStudentClassroom(stu)}</TableCell>
-                                        <TableCell>{stu.tel}</TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <span
-                                                    className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
-                                                    onClick={() => handleEdit(stu)}
-                                                >
-                                                    <SquarePen size={18} />
-                                                </span>
-                                                <span
-                                                    className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
-                                                    onClick={() => handleDelete(stu)}
-                                                >
-                                                    <Trash2 size={18} />
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                        {hasMore && students.length > 0 && (
-                            <div className="flex justify-center mt-6 w-full">
-                                <Button
-                                    variant="flat"
-                                    className="bg-sage/10 text-sage"
-                                    onPress={() => {
-                                        const nextPage = page + 1;
-                                        setPage(nextPage);
-                                        fetchStudents(nextPage);
-                                    }}
-                                    isLoading={isLoading && page > 1}
+                    <div className="w-full">
+                        <div className="overflow-x-auto w-full">
+                            <Table aria-label="Student Table"
+                                shadow="none"
+                                isHeaderSticky
+                                classNames={{
+                                    wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[900px] lg:min-w-full",
+                                    th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
+                                    td: "py-4 border-b border-gray-50/50",
+                                }}>
+                                <TableHeader>
+                                    <TableColumn>รหัสนักเรียน</TableColumn>
+                                    <TableColumn>ชื่อ-นามสกุล</TableColumn>
+                                    <TableColumn>อีเมล</TableColumn>
+                                    <TableColumn>ระดับชั้น/ห้อง</TableColumn>
+                                    <TableColumn>เบอร์โทร</TableColumn>
+                                    <TableColumn>ดำเนินการ</TableColumn>
+                                </TableHeader>
+                                <TableBody
+                                    emptyContent={"ไม่มีข้อมูลนักเรียน"}
+                                    isLoading={isLoading}
+                                    loadingContent={
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
+                                            <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
+                                        </div>
+                                    }
                                 >
-                                    แสดงเพิ่มเติม
-                                </Button>
-                            </div>
-                        )}
+
+                                    {filteredStudents.map((stu) => (
+                                        <TableRow key={stu.students_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
+                                            <TableCell>{stu.students_id}</TableCell>
+                                            <TableCell>{stu.prefix_name ? `${stu.prefix_name}${stu.firstname}` : stu.firstname} {stu.lastname}</TableCell>
+                                            <TableCell>{stu.email}</TableCell>
+
+                                            <TableCell>{getStudentClassroom(stu)}</TableCell>
+                                            <TableCell>{stu.tel}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-3">
+                                                    <span
+                                                        className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
+                                                        onClick={() => handleEdit(stu)}
+                                                    >
+                                                        <SquarePen size={18} />
+                                                    </span>
+                                                    <span
+                                                        className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
+                                                        onClick={() => handleDelete(stu)}
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row justify-between items-center mt-6 w-full px-2 gap-4">
+                            <p className="text-sm text-gray-500">
+                                แสดง {students.length} จาก {totalStudents} รายการ
+                            </p>
+                            {totalPages > 1 && (
+                                <Pagination
+                                    isCompact
+                                    showControls
+                                    showShadow
+                                    color="default"
+                                    page={page}
+                                    total={totalPages}
+                                    onChange={(newPage) => {
+                                        setPage(newPage);
+                                        fetchStudents(newPage);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
+                                    classNames={{
+                                        cursor: "bg-sage text-white font-medium",
+                                    }}
+                                />
+                            )}
+                        </div>
                     </div>
                 </CardBody>
             </Card>

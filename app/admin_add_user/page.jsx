@@ -13,7 +13,7 @@ import {
 
 const page = () => {
     return (
-        <HeroUIProvider>
+        <>
             <StatusModalProvider>
                 <HeadteacherNavbar />
                 <div className='m-4 md:m-10 mt-5'>
@@ -30,7 +30,7 @@ const page = () => {
 
                 </div>
             </StatusModalProvider>
-        </HeroUIProvider>
+        </>
     )
 }
 export default page
