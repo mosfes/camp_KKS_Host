@@ -130,22 +130,6 @@ export async function POST(req) {
             }
         }
 
-        // Enroll ครูหัวหน้าค่าย
-        const existingHeadTeacher = await prisma.teacher_enrollment.findFirst({
-            where: {
-                teacher_teachers_id: 1,
-                camp_camp_id: newCamp.camp_id,
-            },
-        });
-
-        if (!existingHeadTeacher) {
-            await prisma.teacher_enrollment.create({
-                data: {
-                    teacher_teachers_id: 1,
-                    camp_camp_id: newCamp.camp_id,
-                },
-            });
-        }
 
         // ถ้ามีการบันทึกเป็น template
         if (body.saveAsTemplate && body.templateName) {
@@ -197,14 +181,30 @@ export async function GET(request) {
             };
         }
 
-        const camps = await prisma.camp.findMany({
+        let camps = await prisma.camp.findMany({
             where: {
                 deletedAt: null,
                 ...dateFilter,
                 OR: [
                     // ผู้สร้างค่าย
                     { created_by_teacher_id: teacher.teachers_id },
-                    // ครูประจำชั้นของห้องเรียนที่เชื่อมกับค่ายนี้ (เป็นคนดูแลค่าย)
+                    // ครูชั่วคราวที่ถูกระบุในค่าย
+                    {
+                        teacher_enrollment: {
+                            some: { teacher_teachers_id: teacher.teachers_id }
+                        }
+                    },
+                    // ครูประจำชั้นคนที่ 1 ของห้องเรียนที่เชื่อมกับค่ายนี้
+                    {
+                        camp_classroom: {
+                            some: {
+                                classroom: {
+                                    teachers_teachers_id: teacher.teachers_id
+                                }
+                            }
+                        }
+                    },
+                    // ครูประจำชั้นคนที่ 2 ของห้องเรียนที่เชื่อมกับค่ายนี้
                     {
                         camp_classroom: {
                             some: {
@@ -247,9 +247,36 @@ export async function GET(request) {
                         },
                     },
                 },
+                teacher_enrollment: true,
             },
             orderBy: { camp_id: "desc" },
         });
+
+        // ==========================================
+        // Explicitly double check the access in JS
+        // ==========================================
+        camps = camps.filter(camp => {
+            if (camp.created_by_teacher_id === teacher.teachers_id) return true;
+            
+            const isEnrolled = camp.teacher_enrollment?.some(t => t.teacher_teachers_id === teacher.teachers_id);
+            if (isEnrolled) return true;
+
+            let isHomeroom = false;
+            camp.camp_classroom?.forEach(cc => {
+                if (cc.classroom?.teachers_teachers_id === teacher.teachers_id) isHomeroom = true;
+                if (cc.classroom?.classroom_teacher?.some(ct => ct.teacher_teachers_id === teacher.teachers_id)) isHomeroom = true;
+            });
+            if (isHomeroom) return true;
+
+            return false;
+        });
+
+
+        console.log("=== DEBUG /api/camps ===");
+        console.log("Teacher ID:", teacher.teachers_id);
+        console.log("Total camps fetched:", camps.length);
+        console.log("Camp IDs:", camps.map(c => c.camp_id).join(', '));
+        console.log("========================");
 
         const dateFields = [
             'start_date', 'end_date',
@@ -301,7 +328,12 @@ export async function GET(request) {
             return updated;
         });
 
-        return NextResponse.json(campsWithMeta);
+        return NextResponse.json(campsWithMeta, {
+            status: 200,
+            headers: {
+                'Cache-Control': 'no-store, max-age=0'
+            }
+        });
     } catch (error) {
         console.error("API_GET_CAMPS_ERROR:", error);
         return NextResponse.json(

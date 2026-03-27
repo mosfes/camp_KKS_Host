@@ -40,6 +40,8 @@ export async function GET() {
     // เพิ่ม role พื้นฐานจาก cookie ด้วย (เช่น ADMIN)
     if (teacher.role) roles.add(teacher.role);
 
+    console.log("Teacher checking API:", teacher.teachers_id, "Roles:", Array.from(roles));
+
     return NextResponse.json({
         ...teacher,
         roles: [...roles],

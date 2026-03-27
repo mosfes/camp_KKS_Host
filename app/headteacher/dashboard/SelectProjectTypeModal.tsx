@@ -7,6 +7,7 @@ import {
   ModalBody,
   ModalFooter,
   Button,
+  Input,
 } from "@heroui/react";
 import { useState, useEffect } from "react";
 import {
@@ -50,6 +51,11 @@ export default function SelectProjectTypeModal({
   );
   const [loading, setLoading] = useState(false);
   const [showTemplateList, setShowTemplateList] = useState(false);
+
+  // States for Edit Template Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [editingTemplateName, setEditingTemplateName] = useState("");
 
   // Fetch templates when modal opens
   useEffect(() => {
@@ -187,8 +193,9 @@ export default function SelectProjectTypeModal({
     (selectedType === "continuing" && selectedTemplate);
 
   return (
-    <Modal
-      backdrop="blur"
+    <>
+      <Modal
+        backdrop="blur"
       classNames={{
         base: "bg-white rounded-2xl shadow-xl",
         backdrop: "bg-black/60 backdrop-blur-sm",
@@ -331,17 +338,9 @@ export default function SelectProjectTypeModal({
                               title="เปลี่ยนชื่อ Template"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const newName = window.prompt(
-                                  "ชื่อ Template ใหม่:",
-                                  template.name,
-                                );
-
-                                if (newName && newName !== template.name) {
-                                  handleRenameTemplate(
-                                    template.camp_template_id,
-                                    newName,
-                                  );
-                                }
+                                setEditingTemplate(template);
+                                setEditingTemplateName(template.name);
+                                setIsEditModalOpen(true);
                               }}
                             >
                               <Pencil size={18} />
@@ -388,6 +387,66 @@ export default function SelectProjectTypeModal({
           </>
         )}
       </ModalContent>
-    </Modal>
+      </Modal>
+
+      {/* Edit Template Name Modal */}
+      <Modal
+        classNames={{
+          base: "bg-white rounded-2xl shadow-xl",
+        }}
+        isOpen={isEditModalOpen}
+        size="md"
+        onOpenChange={setIsEditModalOpen}
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
+                <h3 className="text-xl font-bold text-gray-900">
+                  แก้ไขชื่อ Template
+                </h3>
+              </ModalHeader>
+              <ModalBody className="px-6 py-4">
+                <Input
+                  autoFocus
+                  label="ชื่อ Template"
+                  placeholder="กรอกชื่อ Template ใหม่..."
+                  value={editingTemplateName}
+                  variant="bordered"
+                  onValueChange={setEditingTemplateName}
+                />
+              </ModalBody>
+              <ModalFooter className="p-6 pt-2 border-t border-gray-100">
+                <Button variant="light" onPress={onClose}>
+                  ยกเลิก
+                </Button>
+                <Button
+                  className="bg-[#6b857a] text-white font-medium shadow-sm hover:bg-[#5a7268] transition-colors"
+                  isDisabled={
+                    !editingTemplateName.trim() ||
+                    editingTemplateName.trim() === editingTemplate?.name
+                  }
+                  onPress={() => {
+                    if (
+                      editingTemplate &&
+                      editingTemplateName.trim() &&
+                      editingTemplateName.trim() !== editingTemplate.name
+                    ) {
+                      handleRenameTemplate(
+                        editingTemplate.camp_template_id,
+                        editingTemplateName.trim(),
+                      );
+                    }
+                    onClose();
+                  }}
+                >
+                  บันทึก
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+    </>
   );
 }

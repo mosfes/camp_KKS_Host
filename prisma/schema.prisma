@@ -418,10 +418,10 @@ model suggestion_analysis_summary {
   improvement_areas               String            @db.Text
   positive_percentage             Float
   negative_percentage             Float
-  survey_response_survey_response_id Int
-  survey_response survey_response @relation(fields: [survey_response_survey_response_id], references: [survey_response_id])
-  survey_answer_survey_answer_id Int
-  survey_answer survey_answer @relation(fields: [survey_answer_survey_answer_id], references: [answer_id])
+  survey_response_id Int
+  survey_response survey_response @relation(fields: [survey_response_id], references: [response_id])
+  survey_answer_id Int
+  survey_answer survey_answer @relation(fields: [survey_answer_id], references: [answer_id])
 }
 
 model vulgar_words {
@@ -467,11 +467,12 @@ model survey_response {
 
   student_enrollment_id Int
   student_enrollment    student_enrollment @relation(fields: [student_enrollment_id], references: [student_enrollment_id])
-
+  suggestion_analysis_summary suggestion_analysis_summary[]
   survey_answer survey_answer[]
 
   @@unique([survey_survey_id, student_enrollment_id])
 }
+
 
 model survey_answer {
   answer_id           Int     @id @default(autoincrement())

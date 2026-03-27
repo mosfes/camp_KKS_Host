@@ -13,31 +13,61 @@ export async function GET(request) {
     const teacherId = teacher.teachers_id;
 
     try {
-        // นับจำนวนค่ายทั้งหมดที่สร้าง
-        const totalCamps = await prisma.camp.count({
-            where: { created_by_teacher_id: teacherId, deletedAt: null },
+        const rawCamps = await prisma.camp.findMany({
+            where: { deletedAt: null },
+            select: {
+                camp_id: true,
+                created_by_teacher_id: true,
+                teacher_enrollment: { select: { teacher_teachers_id: true } },
+                camp_classroom: {
+                    select: {
+                        classroom: {
+                            select: {
+                                teachers_teachers_id: true,
+                                classroom_teacher: { select: { teacher_teachers_id: true } }
+                            }
+                        }
+                    }
+                }
+            }
         });
+
+        const allowedCampIds = rawCamps.filter(camp => {
+            if (camp.created_by_teacher_id === teacherId) return true;
+            if (camp.teacher_enrollment?.some(t => t.teacher_teachers_id === teacherId)) return true;
+            let isHomeroom = false;
+            camp.camp_classroom?.forEach(cc => {
+                if (cc.classroom?.teachers_teachers_id === teacherId) isHomeroom = true;
+                if (cc.classroom?.classroom_teacher?.some(ct => ct.teacher_teachers_id === teacherId)) isHomeroom = true;
+            });
+            return isHomeroom;
+        }).map(c => c.camp_id);
+
+        const campFilter = { camp_id: { in: allowedCampIds } };
+
+        // นับจำนวนค่ายทั้งหมดที่ดูแล
+        const totalCamps = allowedCampIds.length;
 
         // นับจำนวนค่ายที่ active (OPEN)
         const activeCamps = await prisma.camp.count({
-            where: { created_by_teacher_id: teacherId, status: "OPEN", deletedAt: null },
+            where: { camp_id: { in: allowedCampIds }, status: "OPEN" },
         });
 
         // นับจำนวนนักเรียนทั้งหมดที่ลงทะเบียน
         const totalEnrollments = await prisma.student_enrollment.count({
-            where: { camp: { created_by_teacher_id: teacherId, deletedAt: null } },
+            where: { camp_camp_id: { in: allowedCampIds } },
         });
 
         // นักเรียนที่ไม่ซ้ำกัน
         const uniqueStudents = await prisma.student_enrollment.findMany({
-            where: { camp: { created_by_teacher_id: teacherId, deletedAt: null } },
+            where: { camp_camp_id: { in: allowedCampIds } },
             select: { student_students_id: true },
             distinct: ["student_students_id"],
         });
 
         // ครูที่ไม่ซ้ำกัน
         const uniqueTeachers = await prisma.teacher_enrollment.findMany({
-            where: { camp: { created_by_teacher_id: teacherId, deletedAt: null } },
+            where: { camp: campFilter },
             select: { teacher_teachers_id: true },
             distinct: ["teacher_teachers_id"],
         });
@@ -47,7 +77,7 @@ export async function GET(request) {
             where: {
                 survey_question: {
                     question_type: "scale",
-                    survey: { camp: { created_by_teacher_id: teacherId, deletedAt: null } }
+                    survey: { camp: campFilter }
                 }
             },
             select: {
@@ -69,7 +99,7 @@ export async function GET(request) {
 
         // จำนวนคนทำแบบสอบถาม
         const totalSurveyResponses = await prisma.survey_response.count({
-            where: { survey: { camp: { created_by_teacher_id: teacherId, deletedAt: null } } }
+            where: { survey: { camp: campFilter } }
         });
 
         // อัตราการทำแบบสอบถาม
@@ -85,7 +115,12 @@ export async function GET(request) {
                 surveyResponseRate,
                 totalStudents: uniqueStudents.length,
             },
-            { status: 200 }
+            {
+                status: 200,
+                headers: {
+                    'Cache-Control': 'no-store, max-age=0'
+                }
+            }
         );
     } catch (error) {
         console.error("Error fetching stats:", error);
