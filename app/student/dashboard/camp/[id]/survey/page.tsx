@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
-import { RadioGroup, Radio } from "@heroui/radio";
 import { Textarea } from "@heroui/input";
-import { ChevronLeft, ClipboardList } from "lucide-react";
+import { ChevronLeft, ClipboardList, Star } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export default function StudentSurveyPage() {
@@ -163,27 +162,34 @@ export default function StudentSurveyPage() {
 
               {q.question_type === 'scale' && (
                 <div className="mt-2">
-                  <RadioGroup 
-                    orientation="horizontal"
-                    value={answers[q.question_id]?.toString()}
-                    onValueChange={(val) => handleAnswerChange(q.question_id, val)}
-                    classNames={{
-                      wrapper: "gap-4 md:gap-8 flex-wrap justify-between md:justify-start"
-                    }}
-                  >
+                  <div className="flex items-center gap-2">
                     {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
-                      const value = (i + 1).toString();
+                      const value = i + 1;
+                      const selected = Number(answers[q.question_id]) >= value;
                       return (
-                        <Radio key={value} value={value} classNames={{
-                          base: "m-0",
-                          label: "text-gray-600"
-                        }}>
-                          {value}
-                        </Radio>
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => handleAnswerChange(q.question_id, value.toString())}
+                          className="flex flex-col items-center gap-1 group focus:outline-none"
+                          aria-label={`ให้คะแนน ${value}`}
+                        >
+                          <Star
+                            size={36}
+                            className={`transition-all duration-150 ${
+                              selected
+                                ? "fill-amber-400 text-amber-400 scale-110"
+                                : "fill-none text-gray-300 group-hover:text-amber-300 group-hover:scale-110"
+                            }`}
+                          />
+                          <span className={`text-xs font-medium transition-colors ${selected ? "text-amber-500" : "text-gray-400"}`}>
+                            {value}
+                          </span>
+                        </button>
                       );
                     })}
-                  </RadioGroup>
-                  <div className="flex justify-between text-xs text-gray-400 mt-2 px-1 max-w-[280px]">
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-400 mt-1 px-1" style={{ width: `${(q.scale_max || 5) * 52}px`, maxWidth: '100%' }}>
                     <span>น้อยที่สุด</span>
                     <span>มากที่สุด</span>
                   </div>

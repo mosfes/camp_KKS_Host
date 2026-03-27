@@ -43,19 +43,13 @@ export async function GET() {
                 }
             },
             include: {
-                student_enrollment: {
-                    where: {
-                        student_students_id: studentId
-                    },
+                student_enrollment: true,
+                camp_classroom: {
                     include: {
-                        mission_result: {
+                        classroom: {
                             include: {
-                                mission: true,
-                                mission_answer: {
-                                    include: {
-                                        answer_text: true,
-                                        answer_mcq: true
-                                    }
+                                _count: {
+                                    select: { classroom_students: true }
                                 }
                             }
                         }
@@ -77,16 +71,22 @@ export async function GET() {
                 }
             },
             orderBy: {
-                start_date: 'asc'
+                camp_id: 'desc'
             }
         });
 
         // 3. Transform data for frontend
         const now = new Date();
         const studentCamps = camps.map(camp => {
-            const enrollment = camp.student_enrollment.length > 0 ? camp.student_enrollment[0] : null;
-            const isRegistered = !!enrollment?.enrolled_at;
+            const enrollments = camp.student_enrollment;
+            const myEnrollment = enrollments.find(e => e.student_students_id === studentId);
+            
+            const isRegistered = !!myEnrollment?.enrolled_at;
             const isEnded = camp.end_date < now;
+
+            // Total capacity = sum of students in all linked classrooms
+            const totalCapacity = camp.camp_classroom.reduce((sum, cc) => sum + (cc.classroom?._count?.classroom_students || 0), 0);
+            const totalEnrolled = enrollments.filter(e => e.enrolled_at).length;
 
             return {
                 id: camp.camp_id,
@@ -98,16 +98,21 @@ export async function GET() {
                 status: isRegistered ? "Registered" : "Available",
                 isRegistered: isRegistered,
                 isEnded: isEnded,
-                shirtSize: enrollment?.shirt_size || null,
+                shirtSize: myEnrollment?.shirt_size || null,
                 hasShirt: camp.has_shirt,
                 startShirtDate: camp.start_shirt_date,
                 endShirtDate: camp.end_shirt_date,
                 rawStartDate: camp.start_date,
                 rawEndDate: camp.end_date,
-                missionResults: enrollment?.mission_result || [],
+                missionResults: myEnrollment?.mission_result || [],
                 station: camp.station,
                 img_camp_url: camp.img_camp_url,
-                img_shirt_url: camp.img_shirt_url
+                img_shirt_url: camp.img_shirt_url,
+                enrolledAt: myEnrollment?.enrolled_at,
+                startRegisDate: camp.start_regis_date,
+                endRegisDate: camp.end_regis_date,
+                totalCapacity,
+                totalEnrolled,
             };
         });
 

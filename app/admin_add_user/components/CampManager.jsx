@@ -23,12 +23,13 @@ import {
     useDisclosure,
     Pagination,
     DatePicker,
+    DateRangePicker,
     HeroUIProvider
 } from "@heroui/react";
-import { parseDate } from "@internationalized/date";
+import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
 import { I18nProvider } from "@react-aria/i18n";
 import { useState, useEffect } from "react";
-import { Search, MapPin, Users, Calendar, GraduationCap, SquarePen, Trash2, RotateCcw, Trash, Archive, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Search, MapPin, Users, Calendar, GraduationCap, SquarePen, Trash2, RotateCcw, Trash, Archive, AlertTriangle, ArrowLeft, X } from 'lucide-react';
 import adminService from "@/app/service/adminService";
 
 const CampManager = () => {
@@ -40,7 +41,7 @@ const CampManager = () => {
     };
 
 
-    const { isOpen, onOpen, onOpenChange } = useDisclosure();
+    const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
     const [camps, setCamps] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -64,27 +65,31 @@ const CampManager = () => {
         end_regis_date: "",
     });
 
-    const getDateErrors = () => {
-        const errors = {};
-        if (formData.start_regis_date && formData.end_regis_date) {
-            if (new Date(formData.start_regis_date) > new Date(formData.end_regis_date)) {
-                errors.regisEnd = "ต้องมาหลังวันเปิดลงทะเบียน";
-            }
+    const [dateErrors, setDateErrors] = useState({ registration: "", camp: "" });
+
+    const validateDates = (data) => {
+        const errors = { registration: "", camp: "" };
+        const regisEnd = data.end_regis_date ? new Date(data.end_regis_date) : null;
+        const campStart = data.start_date ? new Date(data.start_date) : null;
+        const campEnd = data.end_date ? new Date(data.end_date) : null;
+
+        if (regisEnd && campStart && regisEnd >= campStart) {
+            errors.registration = "วันสิ้นสุดรับสมัคร ต้องมาก่อน วันเริ่มค่าย";
         }
-        if (formData.end_regis_date && formData.start_date) {
-            if (new Date(formData.end_regis_date) > new Date(formData.start_date)) {
-                errors.startDate = "ต้องไม่มาก่อนวันปิดลงทะเบียน";
-            }
+        if (campStart && regisEnd && campStart <= regisEnd) {
+            errors.camp = "วันเริ่มค่าย ต้องมาหลัง วันปิดรับสมัคร";
         }
-        if (formData.start_date && formData.end_date) {
-            if (new Date(formData.start_date) > new Date(formData.end_date)) {
-                errors.endDate = "ต้องมาหลังวันเริ่มค่าย";
-            }
+        if (campStart && campEnd && campStart > campEnd) {
+            errors.camp = errors.camp || "วันสิ้นสุดค่าย ต้องมาหลัง วันเริ่มค่าย";
         }
-        return errors;
+
+        setDateErrors(errors);
+        return !errors.registration && !errors.camp;
     };
 
-    const dateErrors = getDateErrors();
+    useEffect(() => {
+        validateDates(formData);
+    }, [formData.start_regis_date, formData.end_regis_date, formData.start_date, formData.end_date]);
 
     useEffect(() => {
         setPage(1);
@@ -164,24 +169,9 @@ const CampManager = () => {
             return;
         }
 
-        // Date Logic Validation
-        if (formData.start_regis_date && formData.end_regis_date) {
-            if (new Date(formData.start_regis_date) > new Date(formData.end_regis_date)) {
-                showError("วันที่ไม่ถูกต้อง", "วันเปิดลงทะเบียนต้องมาก่อนวันปิดลงทะเบียน");
-                return;
-            }
-        }
-        if (formData.end_regis_date && formData.start_date) {
-            if (new Date(formData.end_regis_date) > new Date(formData.start_date)) {
-                showError("วันที่ไม่ถูกต้อง", "วันปิดลงทะเบียนต้องไม่เกินวันเริ่มค่าย");
-                return;
-            }
-        }
-        if (formData.start_date && formData.end_date) {
-            if (new Date(formData.start_date) > new Date(formData.end_date)) {
-                showError("วันที่ไม่ถูกต้อง", "วันเริ่มค่ายต้องมาก่อนวันสิ้นสุดค่าย");
-                return;
-            }
+        if (!validateDates(formData)) {
+            showError("วันที่ไม่ถูกต้อง", "กรุณาตรวจสอบช่วงเวลาให้ถูกต้อง");
+            return;
         }
 
         try {
@@ -318,7 +308,7 @@ const CampManager = () => {
     };
 
     return (
-        <I18nProvider locale="en-GB">
+        <I18nProvider locale="th-TH">
         <div className="flex flex-col gap-6 w-full pt-4 pb-10">
             <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-4 md:p-6">
@@ -615,13 +605,15 @@ const CampManager = () => {
 
             {/* Edit Camp Modal */}
             {isOpen && (
-                <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" backdrop="blur" size="2xl">
-                    <ModalContent className="bg-white rounded-2xl shadow-medium border border-gray-100 text-gray-800 p-2">
-                        {(onClose) => (
-                            <>
-                                <ModalHeader>แก้ไขข้อมูลค่าย</ModalHeader>
-                                <ModalBody className="gap-4">
-                                    <div className="flex flex-col gap-1">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+                    <div className="relative bg-white rounded-2xl shadow-medium border border-gray-100 text-gray-800 p-6 flex flex-col gap-4 max-w-2xl w-full max-h-[90vh]">
+                        <div className="flex justify-between items-center pb-2 border-b">
+                            <h2 className="text-xl font-bold">แก้ไขข้อมูลค่าย</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X size={20}/></button>
+                        </div>
+                        <div className="overflow-y-auto flex-1 pr-2 flex flex-col gap-4">
+                            <div className="flex flex-col gap-1">
                                         <label className="text-sm font-medium text-gray-700">ชื่อค่าย</label>
                                         <Input
                                             name="name"
@@ -662,67 +654,63 @@ const CampManager = () => {
                                     </div>
 
 
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col gap-1 w-full">
-                                            <label className="text-sm font-medium text-gray-700">วันเริ่มค่าย</label>
-                                            <DatePicker
-                                                name="start_date"
-                                                value={formData.start_date ? parseDate(formData.start_date) : null}
-                                                onChange={(date) => setFormData({ ...formData, start_date: dateValueToString(date) })}
-                                                isInvalid={!!dateErrors.startDate}
-                                                errorMessage={dateErrors.startDate}
-                                                variant="bordered"
-                                                radius="lg"
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                                                ช่วงเวลารับสมัคร
+                                            </label>
+                                            <DateRangePicker
+                                                aria-label="Registration Period"
+                                                className="w-full h-[56px]"
+                                                errorMessage={dateErrors.registration}
+                                                isInvalid={!!dateErrors.registration}
+                                                value={formData.start_regis_date && formData.end_regis_date ? {
+                                                    start: parseDate(formData.start_regis_date.split('T')[0]),
+                                                    end: parseDate(formData.end_regis_date.split('T')[0])
+                                                } : null}
+                                                onChange={(range) => {
+                                                    if (!range) return;
+                                                    setFormData(prev => ({ 
+                                                        ...prev, 
+                                                        start_regis_date: dateValueToString(range.start),
+                                                        end_regis_date: dateValueToString(range.end)
+                                                    }));
+                                                }}
                                             />
                                         </div>
-                                        <div className="flex flex-col gap-1 w-full">
-                                            <label className="text-sm font-medium text-gray-700">วันสิ้นสุดค่าย</label>
-                                            <DatePicker
-                                                name="end_date"
-                                                value={formData.end_date ? parseDate(formData.end_date) : null}
-                                                onChange={(date) => setFormData({ ...formData, end_date: dateValueToString(date) })}
-                                                isInvalid={!!dateErrors.endDate}
-                                                errorMessage={dateErrors.endDate}
-                                                variant="bordered"
-                                                radius="lg"
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-[#6b857a] uppercase mb-1">
+                                                วันจัดค่าย
+                                            </label>
+                                            <DateRangePicker
+                                                aria-label="Camp Period"
+                                                className="w-full h-[56px]"
+                                                errorMessage={dateErrors.camp}
+                                                isInvalid={!!dateErrors.camp}
+                                                value={formData.start_date && formData.end_date ? {
+                                                    start: parseDate(formData.start_date.split('T')[0]),
+                                                    end: parseDate(formData.end_date.split('T')[0])
+                                                } : null}
+                                                onChange={(range) => {
+                                                    if (!range) return;
+                                                    setFormData(prev => ({ 
+                                                        ...prev, 
+                                                        start_date: dateValueToString(range.start),
+                                                        end_date: dateValueToString(range.end)
+                                                    }));
+                                                }}
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-4">
-                                        <div className="flex flex-col gap-1 w-full">
-                                            <label className="text-sm font-medium text-gray-700">เปิดลงทะเบียน</label>
-                                            <DatePicker
-                                                name="start_regis_date"
-                                                value={formData.start_regis_date ? parseDate(formData.start_regis_date) : null}
-                                                onChange={(date) => setFormData({ ...formData, start_regis_date: dateValueToString(date) })}
-                                                variant="bordered"
-                                                radius="lg"
-                                            />
-                                        </div>
-                                        <div className="flex flex-col gap-1 w-full">
-                                            <label className="text-sm font-medium text-gray-700">ปิดลงทะเบียน</label>
-                                            <DatePicker
-                                                name="end_regis_date"
-                                                value={formData.end_regis_date ? parseDate(formData.end_regis_date) : null}
-                                                onChange={(date) => setFormData({ ...formData, end_regis_date: dateValueToString(date) })}
-                                                isInvalid={!!dateErrors.regisEnd}
-                                                errorMessage={dateErrors.regisEnd}
-                                                variant="bordered"
-                                                radius="lg"
-                                            />
-                                        </div>
-                                    </div>
-
-                                </ModalBody>
-                                <ModalFooter>
-                                    <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
-                                    <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmitEdit(onClose)}>บันทึก</Button>
-                                </ModalFooter>
-                            </>
-                        )}
-                    </ModalContent>
-                </Modal>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-4 border-t mt-auto">
+                            <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
+                            <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmitEdit(onClose)}>บันทึก</Button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
         </I18nProvider>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Modal,
   ModalContent,
@@ -43,6 +43,18 @@ export default function TakeSurveyModal({
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (errorMsg) {
+      const timer = setTimeout(() => {
+        if (errorRef.current) {
+          errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMsg]);
 
   if (!survey) return null;
 
@@ -58,6 +70,7 @@ export default function TakeSurveyModal({
     for (const q of survey.survey_question) {
       if (q.question_type === "scale" && !answers[q.question_id]) {
         toast.error("กรุณาตอบคำถามให้ครบทุกข้อ");
+        setErrorMsg("กรุณาตอบคำถามที่มีเครื่องหมาย * ให้ครบทุกข้อก่อนส่งแบบสอบถาม");
         return;
       }
     }
@@ -87,11 +100,11 @@ export default function TakeSurveyModal({
         
         try {
           const err = await res.json();
-          console.error("Survey submission failed (JSON):", err);
+          console.warn("Survey submission failed (JSON):", err);
           errorMessage = err.error || errorMessage;
         } catch (e) {
           const text = await resClone.text();
-          console.error("Survey submission failed (Text):", text);
+          console.warn("Survey submission failed (Text):", text);
           errorMessage = text.slice(0, 100) || errorMessage;
         }
         
@@ -165,28 +178,38 @@ export default function TakeSurveyModal({
                         onChange={(e) => handleAnswerChange(q.question_id, e.target.value)}
                       />
                     ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
-                          const val = i + 1;
-                          const isSelected = answers[q.question_id] === val;
-                          return (
-                            <button
-                              key={val}
-                              className={`w-12 h-12 flex flex-col items-center justify-center rounded-xl border-2 transition-all ${
-                                isSelected
-                                  ? "border-yellow-400 bg-yellow-50 text-yellow-700 shadow-sm"
-                                  : "border-gray-200 bg-white text-gray-500 hover:border-yellow-200 hover:bg-yellow-50/50"
-                              }`}
-                              onClick={() => handleAnswerChange(q.question_id, val)}
-                            >
-                              <Star
-                                size={18}
-                                className={`mb-0.5 ${isSelected ? "fill-yellow-400 text-yellow-500" : "fill-transparent text-gray-400"}`}
-                              />
-                              <span className="text-xs font-bold">{val}</span>
-                            </button>
-                          );
-                        })}
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
+                            const val = i + 1;
+                            const filled = Number(answers[q.question_id]) >= val;
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => handleAnswerChange(q.question_id, val)}
+                                className="flex flex-col items-center gap-0.5 group focus:outline-none flex-shrink-0"
+                                aria-label={`ให้คะแนน ${val}`}
+                              >
+                                <Star
+                                  size={32}
+                                  className={`transition-all duration-150 ${
+                                    filled
+                                      ? "fill-amber-400 text-amber-400"
+                                      : "fill-none text-gray-300 group-hover:text-amber-300"
+                                  }`}
+                                />
+                                <span className={`text-[10px] font-semibold leading-none ${filled ? "text-amber-500" : "text-gray-400"}`}>
+                                  {val}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="flex justify-between text-[10px] text-gray-400 mt-1" style={{ width: `${(q.scale_max || 5) * 44}px`, maxWidth: '100%' }}>
+                          <span>น้อยที่สุด</span>
+                          <span>มากที่สุด</span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -194,14 +217,31 @@ export default function TakeSurveyModal({
               ))}
 
               {errorMsg && (
-                <Alert
-                  color="danger"
-                  title="ไม่สามารถส่งแบบสอบถามได้"
-                  variant="flat"
-                  onClose={() => setErrorMsg(null)}
-                >
-                  {errorMsg}
-                </Alert>
+                <div ref={errorRef} className="pt-2 pb-4">
+                  <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                    <div className="mt-0.5 flex-shrink-0">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-500">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-rose-800 mb-1">ไม่สามารถส่งแบบสอบถามได้</h3>
+                      <p className="text-sm text-rose-600 leading-relaxed">{errorMsg}</p>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => setErrorMsg(null)} 
+                      className="text-rose-400 hover:text-rose-600 transition-colors flex-shrink-0"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               )}
             </ModalBody>
 
