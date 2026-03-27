@@ -17,6 +17,7 @@ const thaiNow = () => new Date(Date.now() + 7 * 60 * 60 * 1000);
 
 
 /**
+ * 
  * POST - สร้างค่ายใหม่ พร้อม enroll students และ teachers จาก classrooms (รองรับหลายห้อง)
  */
 export async function POST(req) {
@@ -181,42 +182,52 @@ export async function GET(request) {
             };
         }
 
+        // สร้าง OR conditions ตาม role
+        // CAMP_LEADER: เห็นเฉพาะค่ายที่ตัวเองสร้าง + ค่ายที่ตัวเองเป็นครูประจำชั้น
+        // TEACHER: เห็นค่ายที่สร้าง + ที่ถูก enroll + ที่เป็นครูประจำชั้น
+        const isCampLeader = teacher.role === 'CAMP_LEADER';
+
+        const orConditions = [
+            // ผู้สร้างค่าย (ทุก role)
+            { created_by_teacher_id: teacher.teachers_id },
+            // ครูประจำชั้นคนที่ 1 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
+            {
+                camp_classroom: {
+                    some: {
+                        classroom: {
+                            teachers_teachers_id: teacher.teachers_id
+                        }
+                    }
+                }
+            },
+            // ครูประจำชั้นคนที่ 2 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
+            {
+                camp_classroom: {
+                    some: {
+                        classroom: {
+                            classroom_teacher: {
+                                some: { teacher_teachers_id: teacher.teachers_id }
+                            }
+                        }
+                    }
+                }
+            },
+        ];
+
+        // เพิ่ม teacher_enrollment เฉพาะ TEACHER role (ไม่ใช่ CAMP_LEADER)
+        if (!isCampLeader) {
+            orConditions.splice(1, 0, {
+                teacher_enrollment: {
+                    some: { teacher_teachers_id: teacher.teachers_id }
+                }
+            });
+        }
+
         let camps = await prisma.camp.findMany({
             where: {
                 deletedAt: null,
                 ...dateFilter,
-                OR: [
-                    // ผู้สร้างค่าย
-                    { created_by_teacher_id: teacher.teachers_id },
-                    // ครูชั่วคราวที่ถูกระบุในค่าย
-                    {
-                        teacher_enrollment: {
-                            some: { teacher_teachers_id: teacher.teachers_id }
-                        }
-                    },
-                    // ครูประจำชั้นคนที่ 1 ของห้องเรียนที่เชื่อมกับค่ายนี้
-                    {
-                        camp_classroom: {
-                            some: {
-                                classroom: {
-                                    teachers_teachers_id: teacher.teachers_id
-                                }
-                            }
-                        }
-                    },
-                    // ครูประจำชั้นคนที่ 2 ของห้องเรียนที่เชื่อมกับค่ายนี้
-                    {
-                        camp_classroom: {
-                            some: {
-                                classroom: {
-                                    classroom_teacher: {
-                                        some: { teacher_teachers_id: teacher.teachers_id }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                ],
+                OR: orConditions,
             },
             include: {
                 created_by: {
@@ -257,9 +268,6 @@ export async function GET(request) {
         // ==========================================
         camps = camps.filter(camp => {
             if (camp.created_by_teacher_id === teacher.teachers_id) return true;
-            
-            const isEnrolled = camp.teacher_enrollment?.some(t => t.teacher_teachers_id === teacher.teachers_id);
-            if (isEnrolled) return true;
 
             let isHomeroom = false;
             camp.camp_classroom?.forEach(cc => {
@@ -267,6 +275,12 @@ export async function GET(request) {
                 if (cc.classroom?.classroom_teacher?.some(ct => ct.teacher_teachers_id === teacher.teachers_id)) isHomeroom = true;
             });
             if (isHomeroom) return true;
+
+            // TEACHER role เท่านั้นที่เข้าถึงได้ผ่าน teacher_enrollment
+            if (!isCampLeader) {
+                const isEnrolled = camp.teacher_enrollment?.some(t => t.teacher_teachers_id === teacher.teachers_id);
+                if (isEnrolled) return true;
+            }
 
             return false;
         });
