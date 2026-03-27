@@ -469,6 +469,7 @@ model survey_response {
   student_enrollment    student_enrollment @relation(fields: [student_enrollment_id], references: [student_enrollment_id])
   suggestion_analysis_summary suggestion_analysis_summary[]
   survey_answer survey_answer[]
+  suggestion_analysis_summary suggestion_analysis_summary[]
 
   @@unique([survey_survey_id, student_enrollment_id])
 }
