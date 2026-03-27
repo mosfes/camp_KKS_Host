@@ -32,6 +32,7 @@ export async function GET(request) {
       where: {
         student_students_id: student.students_id,
         camp_camp_id: parseInt(campId),
+        enrolled_at: { not: null }
       },
     });
 

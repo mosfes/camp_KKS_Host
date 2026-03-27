@@ -63,7 +63,12 @@ export default function SurveyResultsModal({
         throw new Error("Failed to fetch results");
       }
       const json = await res.json();
-      setData(json);
+      // API returns { survey: null } when no survey exists
+      if (json.survey === null) {
+        setData(null);
+      } else {
+        setData(json);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || "ไม่สามารถดึงข้อมูลผลแบบประเมินได้");
     } finally {
@@ -199,7 +204,13 @@ export default function SurveyResultsModal({
                 <div className="bg-red-50 text-red-600 p-4 rounded-xl text-center">
                   <p>{errorMsg}</p>
                 </div>
-              ) : !data || data.totalResponses === 0 ? (
+              ) : !data ? (
+                <div className="text-center py-12 bg-gray-50 rounded-2xl border border-gray-100">
+                  <FileText className="mx-auto text-gray-300 mb-2" size={32} />
+                  <p className="text-gray-500 font-medium">ยังไม่มีแบบประเมิน</p>
+                  <p className="text-gray-400 text-sm mt-1">สร้างแบบประเมินก่อนเพื่อดูผลที่นี่</p>
+                </div>
+              ) : data.totalResponses === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-2xl border border-gray-100">
                   <FileText className="mx-auto text-gray-300 mb-2" size={32} />
                   <p className="text-gray-500 font-medium">ยังไม่มีผู้ตอบแบบประเมิน</p>

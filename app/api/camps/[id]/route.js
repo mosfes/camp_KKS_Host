@@ -48,6 +48,7 @@ export async function GET(request, context) {
                             include: {
                                 academic_years: true,
                                 classroom_types: true,
+                                classroom_teacher: true,
                             },
                         },
                     },
@@ -65,9 +66,16 @@ export async function GET(request, context) {
             return NextResponse.json({ error: "Camp not found" }, { status: 404 });
         }
 
+        // ตรวจสอบว่า teacher คนนี้เป็นครูประจำชั้นของห้องใดห้องหนึ่งที่เชื่อมกับค่ายนี้หรือไม่
+        const isHomeroomTeacher = camp.camp_classroom?.some(cc =>
+            cc.classroom?.teachers_teachers_id === teacher.teachers_id ||
+            cc.classroom?.classroom_teacher?.some(ct => ct.teacher_teachers_id === teacher.teachers_id)
+        ) ?? false;
+
         return NextResponse.json({
             ...camp,
             isOwner: camp.created_by_teacher_id === teacher.teachers_id,
+            isHomeroomTeacher,
         }, { status: 200 });
     } catch (error) {
         console.error("Error fetching camp:", error);

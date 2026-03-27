@@ -21,7 +21,8 @@ export async function POST(req) {
         const enrollment = await prisma.student_enrollment.findFirst({
             where: {
                 student_students_id: studentId,
-                camp_camp_id: campId
+                camp_camp_id: campId,
+                enrolled_at: { not: null }
             }
         });
 

@@ -56,6 +56,12 @@ export default function StudentMissionsPage() {
             router.replace(`/student/dashboard/camp/${id}`);
             return;
           }
+          // ตรวจสอบว่าค่ายเริ่มแล้วหรือยัง
+          if (found.rawStartDate && new Date() < new Date(found.rawStartDate)) {
+            toast.error("ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
+            router.replace(`/student/dashboard/camp/${id}`);
+            return;
+          }
           setCamp(found);
         } else {
           toast.error("ไม่พบค่าย");

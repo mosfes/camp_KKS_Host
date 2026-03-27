@@ -5,6 +5,7 @@ import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Button } from "@heroui/button";
 import { Tabs, Tab } from "@heroui/tabs";
+import { Select, SelectItem } from "@heroui/react";
 import {
   MapPin,
   Calendar,
@@ -28,6 +29,7 @@ import StatsCard from "./StatsCard";
 import CreateCampModal from "./CreateCampModal";
 import SelectProjectTypeModal from "./SelectProjectTypeModal";
 import EditCampModal from "./camp/EditCampModal";
+import EnrollmentModal from "./EnrollmentModal";
 
 /* ---------- Default SVG Component ---------- */
 function DefaultCampImage() {
@@ -57,6 +59,7 @@ export default function StudentDashboard() {
     avgScore: 0,
     surveyResponseRate: 0,
   });
+  const [teacherInfo, setTeacherInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState("overview");
   const [isSelectTypeOpen, setIsSelectTypeOpen] = useState(false);
@@ -71,6 +74,11 @@ export default function StudentDashboard() {
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingCampData, setEditingCampData] = useState<any>(null);
+
+  // Enrollment Modal State
+  const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
+  const [enrollmentCampId, setEnrollmentCampId] = useState<number | null>(null);
+  const [enrollmentCampName, setEnrollmentCampName] = useState("");
 
   const goToCampDetail = (campId: number) => {
     if (navigatingTo !== null) return;
@@ -103,10 +111,10 @@ export default function StudentDashboard() {
           description: camp.description,
           status: statusLabel,
           location: camp.location,
-          startDate: start.toLocaleDateString("en-GB"),
-          endDate: end.toLocaleDateString("en-GB"),
+          startDate: start.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" }),
+          endDate: end.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" }),
           enrolled: camp._count?.student_enrollment || 0,
-          capacity: 0, // Capacity not in current API response, defaulting to 0 or hidden
+          totalStudents: (camp.camp_classroom || []).reduce((sum: number, cc: any) => sum + (cc.classroom?._count?.classroom_students ?? 0), 0),
           image: camp.img_camp_url || null,
           isOwner: camp.isOwner,
           ownerName: camp.created_by ? `${camp.created_by.firstname} ${camp.created_by.lastname}`.trim() : "",
@@ -141,10 +149,21 @@ export default function StudentDashboard() {
   };
 
 
+  const fetchTeacher = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        setTeacherInfo(await res.json());
+      }
+    } catch (err) {
+      console.error("Failed to fetch teacher:", err);
+    }
+  };
+
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
-      await Promise.all([fetchCamps(), fetchStats()]);
+      await Promise.all([fetchCamps(), fetchStats(), fetchTeacher()]);
       setLoading(false);
     };
 
@@ -410,10 +429,14 @@ export default function StudentDashboard() {
   };
 
   const [campStatusFilter, setCampStatusFilter] = useState("all");
-  const filteredMyCamps =
-    campStatusFilter === "all"
-      ? camps
-      : camps.filter((camp) => camp.status === campStatusFilter);
+  const [campRoleFilter, setCampRoleFilter] = useState("all"); // "all", "owner", "related"
+
+  const filteredMyCamps = camps.filter((camp) => {
+    if (campStatusFilter !== "all" && camp.status !== campStatusFilter) return false;
+    if (campRoleFilter === "owner" && !camp.isOwner) return false;
+    if (campRoleFilter === "related" && camp.isOwner) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-[#F5F1E8]">
@@ -421,7 +444,7 @@ export default function StudentDashboard() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 text-[#2d3748]">
-            ยินดีต้อนรับ, ครูหัวหน้าค่าย!
+            ยินดีต้อนรับ, ครู{teacherInfo?.firstname || "หัวหน้าค่าย"}{teacherInfo?.classroomName ? ` ประจำชั้น ${teacherInfo.classroomName}` : ""}
           </h1>
           <p className="text-lg text-gray-500">
             จัดการค่ายและติดตามการเรียนรู้ของนักเรียน
@@ -444,7 +467,7 @@ export default function StudentDashboard() {
             onSelectionChange={(key) => setSelectedTab(String(key))}
           >
             <Tab key="overview" title="ภาพรวม" />
-            <Tab key="camp" title="ค่ายที่สร้าง" />
+            <Tab key="camp" title="ค่ายที่เกี่ยวข้อง" />
           </Tabs>
         </div>
 
@@ -514,24 +537,45 @@ export default function StudentDashboard() {
             </div>
 
             {/* ===== FILTER ===== */}
-            <div className="flex gap-2">
-              {["all", "กำลังจัด", "ยังไม่เริ่ม", "เสร็จสิ้น"].map((status) => {
-                const isActive = campStatusFilter === status;
-                const base = "rounded-full px-4 border text-sm";
-                const active = "bg-[#6b857a] text-white";
-                const inactive = "bg-white text-gray-600";
+            <div className="flex flex-col sm:flex-row justify-end gap-4">
+              {/* Status Filter */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-500 font-medium mr-1">สถานะ:</span>
+                <Select
+                  aria-label="สถานะ"
+                  className="w-40"
+                  classNames={{
+                    trigger: "h-8 min-h-8 rounded-full border border-gray-200 shadow-sm",
+                    value: "text-sm text-gray-700",
+                  }}
+                  selectedKeys={[campStatusFilter]}
+                  onSelectionChange={(keys) => setCampStatusFilter(Array.from(keys)[0] as string)}
+                >
+                  <SelectItem key="all" textValue="ทั้งหมด">ทั้งหมด</SelectItem>
+                  <SelectItem key="กำลังจัด" textValue="กำลังจัด">กำลังจัด</SelectItem>
+                  <SelectItem key="ยังไม่เริ่ม" textValue="ยังไม่เริ่ม">ยังไม่เริ่ม</SelectItem>
+                  <SelectItem key="เสร็จสิ้น" textValue="เสร็จสิ้น">เสร็จสิ้น</SelectItem>
+                </Select>
+              </div>
 
-                return (
-                  <Button
-                    key={status}
-                    className={`${base} ${isActive ? active : inactive}`}
-                    size="sm"
-                    onPress={() => setCampStatusFilter(status)}
-                  >
-                    {status === "all" ? "ทั้งหมด" : status}
-                  </Button>
-                );
-              })}
+              {/* Role Filter (Dropdown) */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-500 font-medium mr-1 xl:ml-2">ประเภท:</span>
+                <Select
+                  aria-label="ประเภทค่าย"
+                  className="w-40"
+                  classNames={{
+                    trigger: "h-8 min-h-8 rounded-full border border-gray-200 shadow-sm",
+                    value: "text-sm text-gray-700",
+                  }}
+                  selectedKeys={[campRoleFilter]}
+                  onSelectionChange={(keys) => setCampRoleFilter(Array.from(keys)[0] as string)}
+                >
+                  <SelectItem key="all" textValue="ทั้งหมด">ทั้งหมด</SelectItem>
+                  <SelectItem key="owner" textValue="ค่ายที่สร้าง">ค่ายที่สร้าง</SelectItem>
+                  <SelectItem key="related" textValue="ค่ายที่เกี่ยวข้อง">ค่ายที่เกี่ยวข้อง</SelectItem>
+                </Select>
+              </div>
             </div>
 
             {loading ? (
@@ -669,16 +713,20 @@ export default function StudentDashboard() {
 
                       {/* Footer */}
                       <div className="flex justify-between items-center pt-4 border-t border-[#e2e8f0] mt-auto">
-                        <span className="text-[#718096]">
-                          ลงทะเบียนแล้ว {camp.enrolled}/{camp.capacity}
+                        <span className="text-[#718096] text-sm">
+                          ลงทะเบียนแล้ว {camp.enrolled}/{camp.totalStudents} คน
                         </span>
                         <div className="flex items-center gap-2">
                           <Button
-                            className="bg-transparent text-[#718096] font-semibold hover:opacity-70"
+                            className="bg-transparent text-[#5d7c6f] font-semibold hover:opacity-70"
                             endContent={navigatingTo === camp.id ? null : <ChevronRight size={20} />}
                             isDisabled={navigatingTo !== null}
                             isLoading={navigatingTo === camp.id}
-                            onPress={() => goToCampDetail(camp.id)}
+                            onPress={() => {
+                              setEnrollmentCampId(camp.id);
+                              setEnrollmentCampName(camp.title);
+                              setIsEnrollmentModalOpen(true);
+                            }}
                           >
                             ดูรายละเอียด
                           </Button>
@@ -711,6 +759,13 @@ export default function StudentDashboard() {
           setSelectedTemplateData(null);
         }}
         onSubmit={handleCreateCampSubmit}
+      />
+
+      <EnrollmentModal
+        isOpen={isEnrollmentModalOpen}
+        campId={enrollmentCampId ?? 0}
+        campName={enrollmentCampName}
+        onClose={() => setIsEnrollmentModalOpen(false)}
       />
     </div>
   );

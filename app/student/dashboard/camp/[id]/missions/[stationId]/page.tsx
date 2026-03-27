@@ -50,6 +50,12 @@ export default function StudentStationDetailPage() {
             router.replace(`/student/dashboard/camp/${id}`);
             return;
           }
+          // ตรวจสอบว่าค่ายเริ่มแล้วหรือยัง
+          if (foundCamp.rawStartDate && new Date() < new Date(foundCamp.rawStartDate)) {
+            toast.error("ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
+            router.replace(`/student/dashboard/camp/${id}`);
+            return;
+          }
           setCamp(foundCamp);
           // Find Station
           // Note: Original endpoint structure puts 'stations' under camp with full nested data

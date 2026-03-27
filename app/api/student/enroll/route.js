@@ -75,6 +75,40 @@ export async function PUT(req) {
             return NextResponse.json({ error: "Camp ID and Shirt Size required" }, { status: 400 });
         }
 
+        // ตรวจสอบว่าอยู่ในช่วงเวลาจองเสื้อหรือไม่
+        const camp = await prisma.camp.findUnique({
+            where: { camp_id: campId },
+            select: { has_shirt: true, start_shirt_date: true, end_shirt_date: true }
+        });
+
+        if (!camp) {
+            return NextResponse.json({ error: "Camp not found" }, { status: 404 });
+        }
+
+        if (!camp.has_shirt) {
+            return NextResponse.json({ error: "ค่ายนี้ไม่ได้เปิดจองเสื้อ" }, { status: 400 });
+        }
+
+        const now = new Date();
+        // เปรียบเทียบวันปัจจุบัน (วันเท่านั้น ไม่รวมเวลา) กับช่วงจองเสื้อ
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (camp.start_shirt_date) {
+            const shirtStart = new Date(camp.start_shirt_date);
+            const shirtStartDay = new Date(shirtStart.getFullYear(), shirtStart.getMonth(), shirtStart.getDate());
+            if (todayStart < shirtStartDay) {
+                return NextResponse.json({ error: "ยังไม่ถึงช่วงเวลาจองเสื้อ" }, { status: 400 });
+            }
+        }
+
+        if (camp.end_shirt_date) {
+            const shirtEnd = new Date(camp.end_shirt_date);
+            const shirtEndDay = new Date(shirtEnd.getFullYear(), shirtEnd.getMonth(), shirtEnd.getDate());
+            if (todayStart > shirtEndDay) {
+                return NextResponse.json({ error: "หมดช่วงเวลาจองเสื้อแล้ว ไม่สามารถจองย้อนหลังได้" }, { status: 400 });
+            }
+        }
+
         const enrollment = await prisma.student_enrollment.findFirst({
             where: {
                 student_students_id: student.students_id,

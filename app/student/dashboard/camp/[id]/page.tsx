@@ -29,9 +29,9 @@ function formatDate(dateString: string) {
   if (!dateString) return "";
 
   return new Date(dateString).toLocaleDateString("th-TH", {
-    month: "short",
-    day: "numeric",
     year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   });
 }
 
@@ -42,6 +42,23 @@ function getDaysRemaining(endDate: string) {
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
 
   return days > 0 ? days : 0;
+}
+
+/** คืน true ถ้าวันนี้อยู่ในช่วงจองเสื้อ (ไม่ย้อนหลัง ไม่เกินวันหมดเขต) */
+function isInShirtPeriod(startDate?: string, endDate?: string): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (startDate) {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    if (today < start) return false;
+  }
+  if (endDate) {
+    const end = new Date(endDate);
+    end.setHours(0, 0, 0, 0);
+    if (today > end) return false;
+  }
+  return true;
 }
 
 export default function StudentCampDetailPage() {
@@ -177,6 +194,9 @@ export default function StudentCampDetailPage() {
   const completedMissions = 0;
 
   const daysLeftToReserve = getDaysRemaining(camp.endShirtDate);
+  const shirtPeriodActive = isInShirtPeriod(camp.startShirtDate, camp.endShirtDate);
+  const shirtNotYetStarted = camp.startShirtDate && new Date() < (() => { const d = new Date(camp.startShirtDate); d.setHours(0,0,0,0); return d; })();
+  const campNotStarted = camp.rawStartDate && new Date() < new Date(camp.rawStartDate);
 
   return (
     <div className="min-h-screen bg-[#F5F1E8] pb-24">
@@ -399,7 +419,7 @@ export default function StudentCampDetailPage() {
                         : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
                       }
                                          `}
-                    disabled={savingShirt || daysLeftToReserve <= 0}
+                    disabled={savingShirt || !shirtPeriodActive}
                     onClick={() => setSelectedSize(size)}
                   >
                     {size}
@@ -413,15 +433,17 @@ export default function StudentCampDetailPage() {
             <Button
               fullWidth
               className={`mt-6 font-medium ${shirtSize && shirtSize === selectedSize ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-[#5d7c6f] text-white'}`}
-              isDisabled={daysLeftToReserve <= 0 || !selectedSize || (shirtSize === selectedSize)}
+              isDisabled={!shirtPeriodActive || !selectedSize || (shirtSize === selectedSize)}
               isLoading={savingShirt}
               onPress={() => handleShirtUpdate(selectedSize)}
             >
-              {daysLeftToReserve <= 0 
-                ? "หมดเขตการจองแล้ว" 
-                : (shirtSize && shirtSize === selectedSize 
-                  ? "จองสำเร็จ (แก้ไขได้)" 
-                  : (shirtSize ? "อัปเดตการจอง" : "ยืนยันการจอง"))}
+              {shirtNotYetStarted
+                ? "ยังไม่ถึงช่วงเวลาจองเสื้อ"
+                : !shirtPeriodActive
+                  ? "หมดเขตการจองแล้ว"
+                  : (shirtSize && shirtSize === selectedSize
+                    ? "จองสำเร็จ (แก้ไขได้)"
+                    : (shirtSize ? "อัปเดตการจอง" : "ยืนยันการจอง"))}
             </Button>
           </div>
         )}
@@ -444,17 +466,21 @@ export default function StudentCampDetailPage() {
             <>
               <Button
                 fullWidth
-                className="bg-[#5d7c6f] text-white font-bold text-lg h-12"
+                className={`font-bold text-lg h-12 ${
+                  campNotStarted
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#5d7c6f] text-white'
+                }`}
                 startContent={<LayoutDashboard size={20} />}
                 isLoading={navigating}
-                isDisabled={navigating}
+                isDisabled={navigating || !!campNotStarted}
                 onPress={() => {
-                  if (navigating) return;
+                  if (navigating || campNotStarted) return;
                   setNavigating(true);
                   router.push(`/student/dashboard/camp/${id}/missions`);
                 }}
               >
-                ไปยังหน้าภารกิจ
+                {campNotStarted ? `ค่ายเริ่ม ${formatDate(camp.rawStartDate)}` : 'ไปยังหน้าภารกิจ'}
               </Button>
 
               <div className="grid grid-cols-2 gap-3">

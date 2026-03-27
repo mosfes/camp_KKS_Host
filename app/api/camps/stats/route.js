@@ -53,14 +53,20 @@ export async function GET(request) {
             where: { camp_id: { in: allowedCampIds }, status: "OPEN" },
         });
 
-        // นับจำนวนนักเรียนทั้งหมดที่ลงทะเบียน
+        // นับจำนวนนักเรียนทั้งหมดที่ลงทะเบียน (เฉพาะคนที่กดลงทะเบียนแล้ว)
         const totalEnrollments = await prisma.student_enrollment.count({
-            where: { camp_camp_id: { in: allowedCampIds } },
+            where: { 
+                camp_camp_id: { in: allowedCampIds },
+                enrolled_at: { not: null }
+            },
         });
 
-        // นักเรียนที่ไม่ซ้ำกัน
+        // นักเรียนที่ไม่ซ้ำกัน (เฉพาะคนที่กดลงทะเบียนแล้ว)
         const uniqueStudents = await prisma.student_enrollment.findMany({
-            where: { camp_camp_id: { in: allowedCampIds } },
+            where: { 
+                camp_camp_id: { in: allowedCampIds },
+                enrolled_at: { not: null }
+            },
             select: { student_students_id: true },
             distinct: ["student_students_id"],
         });

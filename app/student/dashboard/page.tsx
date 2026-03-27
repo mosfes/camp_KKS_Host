@@ -13,8 +13,8 @@ const formatDate = (dateString: string) => {
 
   return new Date(dateString).toLocaleDateString("th-TH", {
     year: "numeric",
-    month: "long",
-    day: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   });
 };
 

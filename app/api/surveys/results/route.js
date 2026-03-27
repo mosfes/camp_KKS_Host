@@ -49,7 +49,7 @@ export async function GET(request) {
     });
 
     if (!survey) {
-      return NextResponse.json({ error: 'Survey not found for this camp' }, { status: 404 });
+      return NextResponse.json({ survey: null }, { status: 200 });
     }
 
     const totalResponses = survey._count.survey_response;

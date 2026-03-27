@@ -29,6 +29,8 @@ import CreateBaseModal from "./CreateBaseModal";
 import EditBaseModal from "./EditBaseModal";
 import CreateSurveyModal from "./CreateSurveyModal";
 import SurveyResultsModal from "./SurveyResultsModal";
+import TrackingModal from "./TrackingModal";
+import ShirtTrackingModal from "./ShirtTrackingModal";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 import { toast } from "react-hot-toast";
@@ -55,6 +57,7 @@ interface CampDetail {
   description: string;
   grade_level: string;
   has_shirt: boolean;
+  start_shirt_date?: string;
   end_shirt_date?: string;
   img_shirt_url?: string;
   img_camp_url?: string;
@@ -68,6 +71,7 @@ interface CampDetail {
   plan_type_name?: string;
   station?: any[];
   isOwner?: boolean;
+  isHomeroomTeacher?: boolean;
   created_by_teacher_id?: number;
 }
 
@@ -93,6 +97,8 @@ export default function CampDetailPage() {
   const [isEditSurveyModalOpen, setIsEditSurveyModalOpen] = useState(false);
   const [surveyLoading, setSurveyLoading] = useState(false);
   const [isSurveyResultsModalOpen, setIsSurveyResultsModalOpen] = useState(false);
+  const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
+  const [isShirtModalOpen, setIsShirtModalOpen] = useState(false);
 
   useEffect(() => {
     if (campId) {
@@ -279,7 +285,7 @@ export default function CampDetailPage() {
       let finalShirtUrls: (string | null)[] = [];
       try {
         const parsed = JSON.parse(formData.shirtImages ? JSON.stringify(formData.shirtImages) : "[]");
-        finalShirtUrls = Array.isArray(parsed) ? parsed : [formData.shirtImages];
+        finalShirtUrls = Array.isArray(parsed) ? parsed.filter((url: any) => url != null) : [formData.shirtImages];
       } catch (e) {
         finalShirtUrls = [formData.shirtImages];
       }
@@ -349,9 +355,9 @@ export default function CampDetailPage() {
     const date = new Date(dateString);
 
     return date.toLocaleDateString("th-TH", {
-      day: "numeric",
-      month: "short",
-      year: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   };
 
@@ -536,11 +542,11 @@ export default function CampDetailPage() {
 
               {camp.has_shirt && (
                 <>
-                  <div>
-                    <p className="text-gray-500 text-sm">วันปิดจอง</p>
+                  <div className="text-sm">
+                    <p className="text-gray-500">ช่วงเวลาจองเสื้อ</p>
                     <p className="font-medium text-gray-900">
-                      {camp.end_shirt_date
-                        ? formatDate(camp.end_shirt_date)
+                      {camp.start_shirt_date && camp.end_shirt_date
+                        ? `${formatDate(camp.start_shirt_date)} - ${formatDate(camp.end_shirt_date)}`
                         : "ไม่มีข้อมูล"}
                     </p>
                   </div>
@@ -584,6 +590,14 @@ export default function CampDetailPage() {
                   </div>
                 </>
               )}
+              {(camp.isOwner || camp.isHomeroomTeacher) && (
+                <Button
+                  className="mt-3 w-full bg-orange-100 text-orange-700 font-medium hover:bg-orange-200"
+                  onPress={() => setIsShirtModalOpen(true)}
+                >
+                  ดูรายการจองเสื้อ
+                </Button>
+              )}
             </div>
           </div>
 
@@ -624,14 +638,14 @@ export default function CampDetailPage() {
               {camp.isOwner && (
                 <>
                   <Button
-                    className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
+                    className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
                     startContent={<Plus size={18} />}
                     onPress={() => setIsCreateBaseModalOpen(true)}
                   >
                     สร้างฐานกิจกรรม
                   </Button>
                   <Button
-                    className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
+                    className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
                     startContent={<ClipboardList size={18} />}
                     isDisabled={survey !== null}
                     onPress={() => setIsCreateSurveyModalOpen(true)}
@@ -642,7 +656,7 @@ export default function CampDetailPage() {
               )}
 
               <Button
-                className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
+                className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
                 startContent={<FileText size={18} />}
                 onPress={() => setIsSurveyResultsModalOpen(true)}
               >
@@ -650,14 +664,24 @@ export default function CampDetailPage() {
               </Button>
 
               <Button
-                className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
-                startContent={<Award size={18} />}
+                className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
+                startContent={<Target size={18} />}
+                onPress={() => setIsTrackingModalOpen(true)}
               >
-                ดูประกาศนียบัตร
+                ติดตามนักเรียน
               </Button>
 
+              {camp.isOwner && (
+                <Button
+                  className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
+                  startContent={<Award size={18} />}
+                >
+                  สร้างประกาศนียบัตร
+                </Button>
+              )}
+
               <Button
-                className="w-full justify-start bg-transparent hover:bg-gray-50 text-gray-700"
+                className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
                 startContent={<BarChart3 size={18} />}
               >
                 ดูสถิติ
@@ -948,6 +972,22 @@ export default function CampDetailPage() {
         onClose={() => setIsSurveyResultsModalOpen(false)}
         campId={Number(campId)}
       />
+
+      <TrackingModal
+        isOpen={isTrackingModalOpen}
+        onClose={() => setIsTrackingModalOpen(false)}
+        campId={Number(campId)}
+        campName={camp?.name || ""}
+      />
+
+      {camp && (
+        <ShirtTrackingModal
+          isOpen={isShirtModalOpen}
+          onClose={() => setIsShirtModalOpen(false)}
+          campId={camp.camp_id}
+          campName={camp.name}
+        />
+      )}
     </div>
   );
 }

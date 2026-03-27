@@ -73,7 +73,7 @@ export async function POST(req) {
             },
         });
 
-        // เชื่อมค่ายกับห้องเรียนทั้งหมด + สร้าง enrollment record ให้นักเรียน (ยังไม่เข้าร่วม = null)
+        // เชื่อมค่ายกับห้องเรียนทั้งหมด (ไม่สร้าง student_enrollment อัตโนมัติ — นักเรียนลงเองในหน้าของตัวเอง)
         for (const classroomId of body.classroom_ids) {
             await prisma.camp_classroom.create({
                 data: {
@@ -81,31 +81,6 @@ export async function POST(req) {
                     classroom_classroom_id: classroomId,
                 },
             });
-
-            // สร้าง enrollment record ให้นักเรียนทุกคนในห้อง (enrolled_at = null จนกว่าจะกดเข้าร่วม)
-            const classroomStudents = await prisma.classroom_students.findMany({
-                where: { classroom_classroom_id: classroomId },
-            });
-
-            for (const cs of classroomStudents) {
-                const existingEnrollment = await prisma.student_enrollment.findFirst({
-                    where: {
-                        student_students_id: cs.student_students_id,
-                        camp_camp_id: newCamp.camp_id,
-                    },
-                });
-
-                if (!existingEnrollment) {
-                    await prisma.student_enrollment.create({
-                        data: {
-                            student: { connect: { students_id: cs.student_students_id } },
-                            camp: { connect: { camp_id: newCamp.camp_id } },
-                            enrolled_at: null,
-                            shirt_size: null,
-                        },
-                    });
-                }
-            }
 
             // Enroll teachers จากห้องนี้
             const classroomTeachers = await prisma.classroom_teacher.findMany({
@@ -243,6 +218,7 @@ export async function GET(request) {
                     include: {
                         classroom: {
                             include: {
+                                _count: { select: { classroom_students: true } },
                                 classroom_types: true,
                                 teacher: {
                                     select: { firstname: true, lastname: true },

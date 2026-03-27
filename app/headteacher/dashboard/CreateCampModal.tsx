@@ -56,9 +56,9 @@ function formatDateWithOffset(startDateStr: string, dayOffset: number) {
   date.setDate(date.getDate() + dayOffset);
 
   return date.toLocaleDateString("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   });
 }
 
@@ -403,9 +403,13 @@ export default function CreateCampModal({
       const newData = { ...prev, [field]: value };
 
       if (field === "registrationStartDate") {
-        newData.shirtStartDate = value;
+        if (!prev.shirtStartDate || prev.shirtStartDate === prev.registrationStartDate) {
+          newData.shirtStartDate = value;
+        }
       } else if (field === "registrationEndDate") {
-        newData.shirtEndDate = value;
+        if (!prev.shirtEndDate || prev.shirtEndDate === prev.registrationEndDate) {
+          newData.shirtEndDate = value;
+        }
       }
 
       return newData;
@@ -1068,14 +1072,26 @@ export default function CreateCampModal({
                   <label className="block text-xs font-medium text-gray-500 mb-1">
                     ช่วงเวลาจองเสื้อ
                   </label>
-                  <div className="p-3 bg-gray-50 border rounded-lg text-sm text-gray-600">
-                    ตามช่วงเวลารับสมัคร
-                    {formData.registrationStartDate && formData.registrationEndDate && (
-                      <span className="ml-2 font-medium">
-                        ({new Date(formData.registrationStartDate).toLocaleDateString("th-TH", { day: 'numeric', month: 'short' })} - {new Date(formData.registrationEndDate).toLocaleDateString("th-TH", { day: 'numeric', month: 'short', year: '2-digit' })})
-                      </span>
-                    )}
-                  </div>
+                  <DateRangePicker
+                    aria-label="Shirt Reservation Period"
+                    className="w-full h-[56px]"
+                    errorMessage={dateErrors.shirt}
+                    isInvalid={!!dateErrors.shirt}
+                    minValue={today(getLocalTimeZone())}
+                    value={
+                      formData.shirtStartDate && formData.shirtEndDate
+                        ? {
+                            start: parseDate(formData.shirtStartDate),
+                            end: parseDate(formData.shirtEndDate),
+                          }
+                        : null
+                    }
+                    onChange={(range) => {
+                      if (!range) return;
+                      handleChange("shirtStartDate", dateValueToString(range.start));
+                      handleChange("shirtEndDate", dateValueToString(range.end));
+                    }}
+                  />
                 </div>
 
                 {/* Shirt Image Upload - up to 3 images */}

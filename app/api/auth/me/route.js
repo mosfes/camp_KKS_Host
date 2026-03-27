@@ -25,7 +25,7 @@ export async function GET() {
     if (createdCamp) roles.add("HEADTEACHER");
 
     // เป็นครูประจำชั้น (classroom_teacher หรือ classrooms.teacher)
-    const isClassroomTeacher = await prisma.classrooms.findFirst({
+    const classroomData = await prisma.classrooms.findFirst({
         where: {
             deletedAt: null,
             OR: [
@@ -33,9 +33,24 @@ export async function GET() {
                 { classroom_teacher: { some: { teacher_teachers_id: teacher.teachers_id } } },
             ],
         },
-        select: { classroom_id: true },
+        include: {
+            academic_years: true,
+            classroom_types: true
+        }
     });
-    if (isClassroomTeacher) roles.add("TEACHER");
+
+    let classroomName = null;
+    if (classroomData) {
+        roles.add("TEACHER");
+        
+        let gradeStr = "";
+        if (classroomData.grade) {
+            gradeStr = classroomData.grade.replace("Level_", "");
+        }
+        
+        const roomType = classroomData.classroom_types?.name || "";
+        classroomName = `ม.${gradeStr} ห้อง ${roomType}`;
+    }
 
     // เพิ่ม role พื้นฐานจาก cookie ด้วย (เช่น ADMIN)
     if (teacher.role) roles.add(teacher.role);
@@ -45,5 +60,6 @@ export async function GET() {
     return NextResponse.json({
         ...teacher,
         roles: [...roles],
+        classroomName
     });
 }

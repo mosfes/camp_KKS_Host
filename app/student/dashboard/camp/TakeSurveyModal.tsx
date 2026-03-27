@@ -10,13 +10,13 @@ import {
   Button,
   Alert,
 } from "@heroui/react";
-import { ClipboardList, Star } from "lucide-react";
+import { ClipboardList, Star, Heading } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 interface Question {
   question_id: number;
   question_text: string;
-  question_type: "text" | "scale";
+  question_type: "text" | "scale" | "header";
   scale_max?: number;
 }
 
@@ -54,15 +54,17 @@ export default function TakeSurveyModal({
   };
 
   const handleSubmit = async () => {
+    const validQuestions = survey.survey_question.filter(q => q.question_type !== "header");
+    
     // Validate
-    for (const q of survey.survey_question) {
+    for (const q of validQuestions) {
       if (q.question_type === "scale" && !answers[q.question_id]) {
-        toast.error("กรุณาตอบคำถามให้ครบทุกข้อ");
+        toast.error("กรุณาตอบคำถามแบบประเมินให้ครบทุกข้อ");
         return;
       }
     }
 
-    const formattedAnswers = survey.survey_question.map((q) => ({
+    const formattedAnswers = validQuestions.map((q) => ({
       questionId: q.question_id,
       textAnswer: q.question_type === "text" ? answers[q.question_id] : null,
       scaleValue: q.question_type === "scale" ? Number(answers[q.question_id]) : null,
@@ -139,59 +141,80 @@ export default function TakeSurveyModal({
             </ModalHeader>
 
             <ModalBody className="px-8 py-4 space-y-6">
-              {survey.survey_question.map((q, index) => (
-                <div key={q.question_id} className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
-                  <div className="flex gap-3 mb-4">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
-                      {index + 1}
-                    </span>
-                    <p className="font-medium text-gray-800 leading-relaxed pt-0.5">
-                      {q.question_text} 
-                      {q.question_type === "scale" ? (
-                        <span className="text-red-500 ml-1">*</span>
-                      ) : (
-                        <span className="text-gray-400 font-normal ml-2 text-sm">(ไม่บังคับ)</span>
-                      )}
-                    </p>
-                  </div>
-
-                  <div className="pl-9">
-                    {q.question_type === "text" ? (
-                      <textarea
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#5d7c6f] focus:border-[#5d7c6f] outline-none transition-all text-sm resize-none bg-white"
-                        placeholder="พิมพ์คำตอบของคุณที่นี่..."
-                        rows={3}
-                        value={answers[q.question_id] || ""}
-                        onChange={(e) => handleAnswerChange(q.question_id, e.target.value)}
-                      />
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
-                          const val = i + 1;
-                          const isSelected = answers[q.question_id] === val;
-                          return (
-                            <button
-                              key={val}
-                              className={`w-12 h-12 flex flex-col items-center justify-center rounded-xl border-2 transition-all ${
-                                isSelected
-                                  ? "border-yellow-400 bg-yellow-50 text-yellow-700 shadow-sm"
-                                  : "border-gray-200 bg-white text-gray-500 hover:border-yellow-200 hover:bg-yellow-50/50"
-                              }`}
-                              onClick={() => handleAnswerChange(q.question_id, val)}
-                            >
-                              <Star
-                                size={18}
-                                className={`mb-0.5 ${isSelected ? "fill-yellow-400 text-yellow-500" : "fill-transparent text-gray-400"}`}
-                              />
-                              <span className="text-xs font-bold">{val}</span>
-                            </button>
-                          );
-                        })}
+              {(() => {
+                let qNumber = 1;
+                return survey.survey_question.map((q) => {
+                  if (q.question_type === "header") {
+                    return (
+                      <div key={q.question_id} className="bg-purple-50/50 rounded-2xl p-5 border border-purple-100 mt-2">
+                        <div className="flex gap-3 items-center">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                            <Heading size={16} />
+                          </div>
+                          <h3 className="font-bold text-purple-900 text-lg">
+                            {q.question_text}
+                          </h3>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                    );
+                  }
+
+                  const currentIndex = qNumber++;
+                  return (
+                    <div key={q.question_id} className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                      <div className="flex gap-3 mb-4">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
+                          {currentIndex}
+                        </span>
+                        <p className="font-medium text-gray-800 leading-relaxed pt-0.5">
+                          {q.question_text} 
+                          {q.question_type === "scale" ? (
+                            <span className="text-red-500 ml-1">*</span>
+                          ) : (
+                            <span className="text-gray-400 font-normal ml-2 text-sm">(ไม่บังคับ)</span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="pl-9">
+                        {q.question_type === "text" ? (
+                          <textarea
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#5d7c6f] focus:border-[#5d7c6f] outline-none transition-all text-sm resize-none bg-white"
+                            placeholder="พิมพ์คำตอบของคุณที่นี่..."
+                            rows={3}
+                            value={answers[q.question_id] || ""}
+                            onChange={(e) => handleAnswerChange(q.question_id, e.target.value)}
+                          />
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
+                              const val = i + 1;
+                              const isSelected = answers[q.question_id] === val;
+                              return (
+                                <button
+                                  key={val}
+                                  className={`w-12 h-12 flex flex-col items-center justify-center rounded-xl border-2 transition-all ${
+                                    isSelected
+                                      ? "border-yellow-400 bg-yellow-50 text-yellow-700 shadow-sm"
+                                      : "border-gray-200 bg-white text-gray-500 hover:border-yellow-200 hover:bg-yellow-50/50"
+                                  }`}
+                                  onClick={() => handleAnswerChange(q.question_id, val)}
+                                >
+                                  <Star
+                                    size={18}
+                                    className={`mb-0.5 ${isSelected ? "fill-yellow-400 text-yellow-500" : "fill-transparent text-gray-400"}`}
+                                  />
+                                  <span className="text-xs font-bold">{val}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
 
               {errorMsg && (
                 <Alert
