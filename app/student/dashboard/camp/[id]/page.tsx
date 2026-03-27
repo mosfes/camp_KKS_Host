@@ -23,8 +23,6 @@ import TakeSurveyModal from "../TakeSurveyModal";
 
 const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
 
-
-
 function formatDate(dateString: string) {
   if (!dateString) return "";
 
@@ -73,6 +71,7 @@ export default function StudentCampDetailPage() {
   const [selectedSize, setSelectedSize] = useState("");
   const [savingShirt, setSavingShirt] = useState(false);
   const [navigating, setNavigating] = useState(false);
+  const [isEditingShirt, setIsEditingShirt] = useState(false);
 
   // Survey State
   const [surveyData, setSurveyData] = useState<any>(null);
@@ -132,7 +131,6 @@ export default function StudentCampDetailPage() {
 
   const handleSurveyCompleted = () => {
     setSurveyCompleted(true);
-    // Refetch the survey or just assume true to immediately unlock the cert
   };
 
   const handleRegister = async () => {
@@ -146,7 +144,7 @@ export default function StudentCampDetailPage() {
 
       if (res.ok) {
         toast.success("ลงทะเบียนสำเร็จ!");
-        fetchCamp(); // Refresh state
+        fetchCamp();
       } else {
         toast.error("ลงทะเบียนล้มเหลว");
       }
@@ -158,7 +156,6 @@ export default function StudentCampDetailPage() {
   };
 
   const handleShirtUpdate = async (size: string) => {
-    setShirtSize(size);
     setSavingShirt(true);
     try {
       const res = await fetch("/api/student/enroll", {
@@ -170,6 +167,7 @@ export default function StudentCampDetailPage() {
       if (res.ok) {
         toast.success("อัปเดตไซส์เสื้อเรียบร้อย!");
         setShirtSize(size);
+        setIsEditingShirt(false);
       } else {
         toast.error("ไม่สามารถอัปเดตไซส์เสื้อได้");
       }
@@ -183,68 +181,40 @@ export default function StudentCampDetailPage() {
   if (loading) return <div className="p-8 text-center">กำลังโหลด...</div>;
   if (!camp) return <div className="p-8 text-center">ไม่พบค่าย</div>;
 
-  // Hardcoded progress for demo visual (since we don't have mission results yet)
-  // In real app, calculate from camp.station metrics
-  const overallProgress = 0;
-  const totalMissions =
-    camp.station?.reduce(
-      (acc: number, s: any) => acc + (s.mission?.length || 0),
-      0,
-    ) || 0;
+  const totalMissions = camp.station?.reduce((acc: number, s: any) => acc + (s.mission?.length || 0), 0) || 0;
   const completedMissions = 0;
 
   const daysLeftToReserve = getDaysRemaining(camp.endShirtDate);
   const shirtPeriodActive = isInShirtPeriod(camp.startShirtDate, camp.endShirtDate);
-  const shirtNotYetStarted = camp.startShirtDate && new Date() < (() => { const d = new Date(camp.startShirtDate); d.setHours(0,0,0,0); return d; })();
   const campNotStarted = camp.rawStartDate && new Date() < new Date(camp.rawStartDate);
 
   return (
     <div className="min-h-screen bg-[#F5F1E8] pb-24">
-      {/* Header Image Area */}
       <div className="h-64 bg-gray-200 relative overflow-hidden">
-        {/* Camp Cover Image or Fallback */}
         {camp.img_camp_url ? (
-          <img 
-            src={camp.img_camp_url} 
-            alt={camp.title}
-            className="w-full h-full object-cover"
-          />
+          <img src={camp.img_camp_url} alt={camp.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-[#2d3748] flex items-center justify-center text-white/20">
             <Flag size={64} />
           </div>
         )}
         <div className="absolute top-4 left-4">
-          <Button
-            isIconOnly
-            className="bg-white/80 backdrop-blur-md text-gray-700"
-            variant="flat"
-            onPress={() => router.back()}
-          >
+          <Button isIconOnly className="bg-white/80 backdrop-blur-md text-gray-700" variant="flat" onPress={() => router.back()}>
             <ChevronLeft />
           </Button>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 -mt-20 relative z-10">
-        {/* Camp Title Card */}
         <div className="bg-white rounded-3xl shadow-lg p-6 mb-6">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-[#2d3748] mb-2">
-                {camp.title}
-              </h1>
-              <p className="text-gray-500 text-sm mb-4 line-clamp-2">
-                {camp.description}
-              </p>
-
+              <h1 className="text-2xl font-bold text-[#2d3748] mb-2">{camp.title}</h1>
+              <p className="text-gray-500 text-sm mb-4 line-clamp-2">{camp.description}</p>
               <div className="space-y-2 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
                   <Calendar size={16} />
-                  <span>
-                    {formatDate(camp.rawStartDate)} -{" "}
-                    {formatDate(camp.rawEndDate)}
-                  </span>
+                  <span>{formatDate(camp.rawStartDate)} - {formatDate(camp.rawEndDate)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin size={16} />
@@ -252,44 +222,29 @@ export default function StudentCampDetailPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Ticket size={16} />
-                  <span>8/25 ลงทะเบียนแล้ว</span>
+                  <span>{camp.totalEnrolled}/{camp.totalCapacity} ลงทะเบียนแล้ว</span>
                 </div>
               </div>
             </div>
-            <Chip className="bg-[#E2DCC8] text-[#5C5C5C]" size="sm">
-              กำลังจะมาถึง
-            </Chip>
+            <Chip className="bg-[#E2DCC8] text-[#5C5C5C]" size="sm">กำลังจะมาถึง</Chip>
           </div>
         </div>
 
-        {/* Schedule Section */}
         {camp.camp_daily_schedule && camp.camp_daily_schedule.length > 0 && (
           <div className="bg-white rounded-3xl shadow-sm p-6 mb-6">
-            <h2 className="text-lg font-bold text-[#2d3748] mb-4">
-              ตารางกิจกรรม
-            </h2>
+            <h2 className="text-lg font-bold text-[#2d3748] mb-4">ตารางกิจกรรม</h2>
             <div className="space-y-3">
               {camp.camp_daily_schedule.map((day: any) => (
-                <div
-                  key={day.daily_schedule_id}
-                  className="bg-gray-50 rounded-xl p-4"
-                >
+                <div key={day.daily_schedule_id} className="bg-gray-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Clock className="text-gray-400" size={16} />
-                    <span className="font-semibold text-gray-700">
-                      วันที่ {day.day}
-                    </span>
+                    <span className="font-semibold text-gray-700">วันที่ {day.day}</span>
                   </div>
                   {day.time_slots && day.time_slots.length > 0 ? (
                     <div className="space-y-1 pl-6 border-l-2 border-gray-200 ml-2">
                       {day.time_slots.map((slot: any) => (
-                        <div
-                          key={slot.time_slot_id}
-                          className="text-sm text-gray-600"
-                        >
-                          <span className="font-mono text-gray-400 mr-2">
-                            {slot.startTime} - {slot.endTime}
-                          </span>
+                        <div key={slot.time_slot_id} className="text-sm text-gray-600">
+                          <span className="font-mono text-gray-400 mr-2">{slot.startTime} - {slot.endTime}</span>
                           {slot.activity}
                         </div>
                       ))}
@@ -303,234 +258,129 @@ export default function StudentCampDetailPage() {
           </div>
         )}
 
-        {/* Progress Section - Only shown if registered */}
         <div className="bg-white rounded-3xl shadow-sm p-6 mb-6 relative overflow-hidden">
           {!camp.isRegistered && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-3">
                 <Flag size={24} />
               </div>
-              <h3 className="font-bold text-[#2d3748] mb-1">
-                ลงทะเบียนเพื่อดูความคืบหน้า
-              </h3>
-              <p className="text-xs text-gray-500">
-                คุณจะสามารถสะสมคะแนนและทำภารกิจได้หลังจากเข้าร่วมค่ายแล้ว
-              </p>
+              <h3 className="font-bold text-[#2d3748] mb-1">ลงทะเบียนเพื่อดูความคืบหน้า</h3>
+              <p className="text-xs text-gray-500">คุณจะสามารถสะสมคะแนนและทำภารกิจได้หลังจากเข้าร่วมค่ายแล้ว</p>
             </div>
           )}
           <h2 className="text-lg font-bold text-[#2d3748] mb-4">ความคืบหน้า</h2>
           <div className="space-y-4">
             <div className="flex justify-between text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 size={16} />
-                <span>ฐานที่ทำเสร็จ</span>
-              </div>
+              <div className="flex items-center gap-2"><CheckCircle2 size={16} /><span>ฐานที่ทำเสร็จ</span></div>
               <span>0/{camp.station?.length || 0}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <Flag size={16} />
-                <span>ภารกิจทั้งหมด</span>
-              </div>
+              <div className="flex items-center gap-2"><Flag size={16} /><span>ภารกิจทั้งหมด</span></div>
               <span>{completedMissions} สำเร็จ</span>
             </div>
             <div className="flex justify-between text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <Ticket size={16} />
-                <span>คะแนนสะสม</span>
-              </div>
+              <div className="flex items-center gap-2"><Ticket size={16} /><span>คะแนนสะสม</span></div>
               <span>0 pts</span>
             </div>
           </div>
-        {/* Shirt Reservation Section */}
+        </div>
+
         {camp.isRegistered && camp.hasShirt && (
           <div className="bg-white rounded-3xl shadow-sm p-6 mb-6">
-            <div className="flex items-center gap-2 mb-2">
-              <Shirt className="text-gray-600" size={20} />
-              <h2 className="text-lg font-bold text-[#2d3748]">จองเสื้อค่าย</h2>
-            </div>
-            <p className="text-gray-500 text-sm mb-4">
-              กรุณาจองเสื้อค่ายของคุณก่อน {formatDate(camp.endShirtDate)}
-            </p>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-700 text-sm flex items-center gap-2 mb-6">
-              <Clock size={16} />
-              เหลือเวลาอีก {daysLeftToReserve} วัน
-              <span className="text-blue-500 ml-auto text-xs">
-                หมดเขต: {formatDate(camp.endShirtDate)}
-              </span>
-            </div>
-
-            {/* Shirt Image Mockup */}
-            <div className="mb-6">
-              {(() => {
-                let shirtUrls: string[] = [];
-                if (camp.img_shirt_url) {
-                  try {
-                    const parsed = JSON.parse(camp.img_shirt_url);
-                    shirtUrls = Array.isArray(parsed) ? parsed.filter(Boolean) : [camp.img_shirt_url];
-                  } catch (e) {
-                    shirtUrls = [camp.img_shirt_url];
-                  }
-                }
-
-                if (shirtUrls.length > 0) {
-                  return (
-                    <div className={`grid gap-3 ${shirtUrls.length === 1 ? 'grid-cols-1 max-w-sm mx-auto' : 'grid-cols-2 md:grid-cols-3'}`}>
-                      {shirtUrls.map((url, idx) => (
-                        <div key={idx} className="bg-gray-100 rounded-xl overflow-hidden aspect-square border border-gray-200 shadow-sm relative group">
-                          <img
-                            alt={`Shirt sample ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                            src={url}
-                          />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => window.open(url, '_blank')}>
-                            <span className="text-white text-sm font-medium">ดูรูปขนาดเต็ม</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="h-48 bg-gray-200 rounded-xl overflow-hidden relative border border-gray-200">
-                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 font-medium">
-                      <ImageOff size={32} className="mb-2 opacity-50" />
-                      ไม่มีรูปตัวอย่างเสื้อ
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                เลือกไซส์เสื้อของคุณ:
-              </label>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {SHIRT_SIZES.map((size) => (
-                  <button
-                    key={size}
-                    className={`
-                                            py-2 px-4 rounded-lg border text-sm font-medium transition-all
-                                            ${selectedSize === size
-                        ? "bg-gray-800 text-white border-gray-800 ring-2 ring-gray-300"
-                        : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
-                      }
-                                         `}
-                    disabled={savingShirt || !shirtPeriodActive}
-                    onClick={() => setSelectedSize(size)}
-                  >
-                    {size}
-                  </button>
-                ))}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Shirt className="text-gray-600" size={20} />
+                <h2 className="text-lg font-bold text-[#2d3748]">จองเสื้อค่าย</h2>
               </div>
+              {shirtSize && daysLeftToReserve > 0 && !isEditingShirt && (
+                <Button size="sm" variant="flat" className="bg-gray-100 text-[#5C5C5C] font-medium" onPress={() => setIsEditingShirt(true)}>
+                  แก้ไขไซส์เสื้อ
+                </Button>
+              )}
             </div>
 
-
-
-            <Button
-              fullWidth
-              className={`mt-6 font-medium ${shirtSize && shirtSize === selectedSize ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-[#5d7c6f] text-white'}`}
-              isDisabled={!shirtPeriodActive || !selectedSize || (shirtSize === selectedSize)}
-              isLoading={savingShirt}
-              onPress={() => handleShirtUpdate(selectedSize)}
-            >
-              {shirtNotYetStarted
-                ? "ยังไม่ถึงช่วงเวลาจองเสื้อ"
-                : !shirtPeriodActive
-                  ? "หมดเขตการจองแล้ว"
-                  : (shirtSize && shirtSize === selectedSize
-                    ? "จองสำเร็จ (แก้ไขได้)"
-                    : (shirtSize ? "อัปเดตการจอง" : "ยืนยันการจอง"))}
-            </Button>
+            {shirtSize && !isEditingShirt ? (
+              <div className="bg-gray-50/50 rounded-2xl p-4 flex flex-col items-center justify-center border border-gray-100/50">
+                <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-[#5d7c6f] font-bold text-xl mb-2">{shirtSize}</div>
+                <p className="text-gray-600 text-sm font-medium">จองเสื้อไซส์ {shirtSize} เรียบร้อยแล้ว</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{daysLeftToReserve > 0 ? "แก้ไขได้ภายในกำหนดเวลา" : "หมดเขตการแก้ไขแล้ว"}</p>
+              </div>
+            ) : (!shirtSize && daysLeftToReserve <= 0) ? (
+              <div className="bg-orange-50/50 rounded-2xl p-4 flex flex-col items-center justify-center border border-orange-100/50">
+                <p className="text-orange-600 text-sm font-medium">หมดเขตการจองเสื้อแล้ว</p>
+                <p className="text-[10px] text-orange-400 mt-0.5">คุณไม่ได้ทำรายการในช่วงเวลาที่กำหนด</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-500 text-sm mb-4">กรุณาจองเสื้อค่ายของคุณก่อน {formatDate(camp.endShirtDate)}</p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-700 text-sm flex items-center gap-2 mb-6">
+                  <Clock size={16} />
+                  เหลือเวลาอีก {daysLeftToReserve} วัน
+                  <span className="text-blue-500 ml-auto text-xs">หมดเขต: {formatDate(camp.endShirtDate)}</span>
+                </div>
+                <div className="mb-6">
+                  {(() => {
+                    let shirtUrls: string[] = [];
+                    if (camp.img_shirt_url) {
+                      try {
+                        const parsed = JSON.parse(camp.img_shirt_url);
+                        shirtUrls = Array.isArray(parsed) ? parsed.filter(Boolean) : [camp.img_shirt_url];
+                      } catch (e) { shirtUrls = [camp.img_shirt_url]; }
+                    }
+                    if (shirtUrls.length > 0) {
+                      return (
+                        <div className={`grid gap-3 ${shirtUrls.length === 1 ? 'grid-cols-1 max-w-sm mx-auto' : 'grid-cols-2 md:grid-cols-3'}`}>
+                          {shirtUrls.map((url, idx) => (
+                            <div key={idx} className="bg-gray-100 rounded-xl overflow-hidden aspect-square border border-gray-200 shadow-sm relative group">
+                              <img src={url} alt="Shirt" className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                                <span className="text-white text-sm font-medium">ดูรูปขนาดเต็ม</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return <div className="h-48 bg-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 font-medium"><ImageOff size={32} className="mb-2 opacity-50" />ไม่มีรูปตัวอย่างเสื้อ</div>;
+                  })()}
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">เลือกไซส์เสื้อของคุณ:</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {SHIRT_SIZES.map((size) => (
+                      <button key={size} disabled={savingShirt || daysLeftToReserve <= 0} onClick={() => setSelectedSize(size)} className={`py-2 px-4 rounded-lg border text-sm font-medium transition-all ${selectedSize === size ? "bg-gray-800 text-white border-gray-800 ring-2 ring-gray-300" : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"}`}>{size}</button>
+                    ))}
+                  </div>
+                </div>
+                <Button fullWidth className={`mt-6 font-medium ${shirtSize && shirtSize === selectedSize ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-[#5d7c6f] text-white'}`} isDisabled={daysLeftToReserve <= 0 || !selectedSize || (shirtSize === selectedSize)} isLoading={savingShirt} onPress={() => handleShirtUpdate(selectedSize)}>
+                  {daysLeftToReserve <= 0 ? "หมดเขตการจองแล้ว" : (shirtSize && shirtSize === selectedSize ? "จองสำเร็จ (แก้ไขได้)" : (shirtSize ? "อัปเดตการจอง" : "ยืนยันการจอง"))}
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>
-    </div>
 
-      {/* Bottom Actions Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8 z-50">
         <div className="max-w-4xl mx-auto space-y-3">
           {!camp.isRegistered ? (
-            <Button
-              fullWidth
-              className="bg-[#5d7c6f] text-white font-bold text-lg h-12"
-              isLoading={registering}
-              onPress={handleRegister}
-            >
-              เข้าร่วมค่าย
-            </Button>
+            <Button fullWidth className="bg-[#5d7c6f] text-white font-bold text-lg h-12" isLoading={registering} onPress={handleRegister}>เข้าร่วมค่าย</Button>
           ) : (
             <>
-              <Button
-                fullWidth
-                className={`font-bold text-lg h-12 ${
-                  campNotStarted
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#5d7c6f] text-white'
-                }`}
-                startContent={<LayoutDashboard size={20} />}
-                isLoading={navigating}
-                isDisabled={navigating || !!campNotStarted}
-                onPress={() => {
-                  if (navigating || campNotStarted) return;
-                  setNavigating(true);
-                  router.push(`/student/dashboard/camp/${id}/missions`);
-                }}
-              >
-                {campNotStarted ? `ค่ายเริ่ม ${formatDate(camp.rawStartDate)}` : 'ไปยังหน้าภารกิจ'}
-              </Button>
-
-              <div className="grid grid-cols-2 gap-3">
-                {surveyData && !surveyCompleted ? (
-                  <Button
-                    className="bg-[#FFECC9] text-yellow-800 border border-yellow-300 font-medium"
-                    startContent={<ClipboardList size={18} />}
-                    onPress={() => setIsSurveyModalOpen(true)}
-                  >
-                    แบบประเมินความพึงพอใจ
-                  </Button>
-                ) : (
-                  <Button
-                    className={
-                      surveyData && surveyCompleted
-                        ? "bg-[#5d7c6f] text-white font-medium"
-                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    }
-                    startContent={<Ticket size={18} />}
-                    isDisabled={!surveyCompleted && !!surveyData}
-                    onPress={() => {
-                      if (surveyData && surveyCompleted) {
-                        toast.success("กำลังดาวน์โหลดเกียรติบัตร...");
-                      }
-                    }}
-                  >
-                    เกียรติบัตร (กำลังพัฒนา)
-                  </Button>
-                )}
-                <Button
-                  className="bg-gray-100 text-gray-400 cursor-not-allowed"
-                  startContent={<CheckCircle2 size={18} />}
-                  variant="flat"
-                  isDisabled
-                >
-                  เช็คชื่อ (กำลังพัฒนา)
-                </Button>
+              <Button fullWidth className={`font-bold text-lg h-12 ${campNotStarted ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#5d7c6f] text-white'}`} startContent={<LayoutDashboard size={20} />} isLoading={navigating} isDisabled={navigating || !!campNotStarted} onPress={() => { if (!campNotStarted) { setNavigating(true); router.push(`/student/dashboard/camp/${id}/missions`); } }}>ไปยังหน้าภารกิจ</Button>
+              <div className="flex flex-col gap-3">
+                <Button fullWidth className={`border font-medium ${surveyData && !surveyCompleted ? "bg-[#FFECC9] text-yellow-800 border-yellow-300" : "bg-gray-100 text-gray-500 border-gray-200"}`} startContent={<ClipboardList size={18} />} onPress={() => setIsSurveyModalOpen(true)} isDisabled={!surveyData || surveyCompleted}>{surveyCompleted ? "ทำแบบประเมินเรียบร้อยแล้ว" : "แบบประเมินความพึงพอใจ"}</Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button className={`border font-medium ${surveyCompleted ? "bg-[#FFECC9] text-orange-800 border-orange-300" : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-80"}`} startContent={<Ticket size={18} />} onPress={() => { toast.success("กำลังดาวน์โหลดเกียรติบัตร..."); }} isDisabled={!surveyCompleted}>เกียรติบัตร (กำลังพัฒนา)</Button>
+                  <Button className="bg-[#FFECC9] text-orange-800 border border-orange-200 font-medium cursor-not-allowed opacity-80" startContent={<CheckCircle2 size={18} />} variant="flat" isDisabled>เช็คชื่อ (กำลังพัฒนา)</Button>
+                </div>
               </div>
             </>
           )}
         </div>
       </div>
 
-      <TakeSurveyModal
-        isOpen={isSurveyModalOpen}
-        onClose={() => setIsSurveyModalOpen(false)}
-        survey={surveyData}
-        campId={Number(id)}
-        onCompleted={handleSurveyCompleted}
-      />
+      <TakeSurveyModal isOpen={isSurveyModalOpen} onClose={() => setIsSurveyModalOpen(false)} survey={surveyData} campId={Number(id)} onCompleted={handleSurveyCompleted} />
     </div>
   );
 }

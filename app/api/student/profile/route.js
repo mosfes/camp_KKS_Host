@@ -1,0 +1,67 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { cookies } from 'next/headers';
+
+export async function GET() {
+    try {
+        const cookieStore = await cookies();
+        const session = cookieStore.get('student_session');
+        if (!session?.value) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        
+        const studentSession = JSON.parse(session.value);
+        
+        const student = await prisma.students.findUnique({
+            where: { students_id: Number(studentSession.students_id) },
+            include: { parents: true }
+        });
+        
+        if (!student) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+        
+        return NextResponse.json(student);
+    } catch (error) {
+        console.error("Profile GET Error:", error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+export async function PUT(req) {
+    try {
+        const cookieStore = await cookies();
+        const session = cookieStore.get('student_session');
+        if (!session?.value) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        
+        const studentSession = JSON.parse(session.value);
+        const body = await req.json();
+        
+        const updateData = {
+            chronic_disease: body.chronic_disease || null,
+            food_allergy: body.food_allergy || null,
+            birthday: body.birthday ? new Date(body.birthday) : null,
+            remark: body.remark || null,
+            tel: body.parent_tel || null, // Assuming tel in students table stores the contact number
+        };
+        
+        const updatedStudent = await prisma.students.update({
+            where: { students_id: Number(studentSession.students_id) },
+            data: updateData
+        });
+        
+        // Update parent phone if parent exists
+        if (body.parent_tel) {
+            const parents = await prisma.parents.findMany({
+                where: { username_student_id: Number(studentSession.students_id) }
+            });
+            if (parents.length > 0) {
+                await prisma.parents.update({
+                    where: { parents_id: parents[0].parents_id },
+                    data: { tel: body.parent_tel }
+                });
+            }
+        }
+        
+        return NextResponse.json({ success: true, data: updatedStudent });
+    } catch (error) {
+        console.error("Profile PUT Error:", error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
