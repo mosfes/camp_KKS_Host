@@ -50,8 +50,24 @@ export async function GET(request) {
             ];
         }
 
-        if (!showDeleted && status && (status === "OPEN" || status === "CLOSED")) {
-            where.status = status;
+        const now = new Date();
+        if (!showDeleted && status && status !== "all") {
+            if (status === "FINISHED") {
+                where.end_date = { lt: now };
+            } else if (status === "ACTIVE") {
+                where.start_date = { lte: now };
+                where.end_date = { gte: now };
+            } else if (status === "REGISTRATION_OPEN") {
+                where.start_regis_date = { lte: now };
+                where.end_regis_date = { gte: now };
+            } else if (status === "PREPARING") {
+                where.end_regis_date = { lt: now };
+                where.start_date = { gt: now };
+            } else if (status === "REGISTRATION_PENDING") {
+                where.start_regis_date = { gt: now };
+            } else if (status === "OPEN" || status === "CLOSED") {
+                where.status = status;
+            }
         }
 
         const [camps, total] = await Promise.all([

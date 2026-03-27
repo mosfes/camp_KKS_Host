@@ -21,7 +21,8 @@ import {
     Select,
     SelectItem,
     Autocomplete,
-    AutocompleteItem
+    AutocompleteItem,
+    Pagination
 } from "@heroui/react";
 import { useState, useEffect, useRef } from "react";
 import { Trash2, Trash, Archive, SquarePen, Search } from 'lucide-react';
@@ -39,6 +40,7 @@ const TeacherManager = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [totalPages, setTotalPages] = useState(1);
     const [totalTeachers, setTotalTeachers] = useState(0);
     const [isOtherPrefix, setIsOtherPrefix] = useState(false);
 
@@ -86,17 +88,15 @@ const TeacherManager = () => {
             const result = await studentService.getTeachersPaginated(pageNum, 20, searchTerm);
             const newData = Array.isArray(result) ? result : (result.data || []);
             
-            if (pageNum === 1) {
-                setTeachers(newData);
-            } else {
-                setTeachers(prev => [...prev, ...newData]);
-            }
+            setTeachers(newData);
             
             if (result.pagination) {
                 setHasMore(pageNum < result.pagination.totalPages);
+                setTotalPages(result.pagination.totalPages || 1);
                 setTotalTeachers(result.pagination.total);
             } else {
                 setHasMore(false);
+                setTotalPages(1);
                 setTotalTeachers(newData.length);
             }
         } catch (error) {
@@ -299,20 +299,29 @@ const TeacherManager = () => {
                                 ))}
                             </TableBody>
                         </Table>
-                        {hasMore && teachers.length > 0 && (
-                            <div className="flex justify-center mt-6 w-full">
-                                <Button
-                                    variant="flat"
-                                    className="bg-sage/10 text-sage"
-                                    onPress={() => {
-                                        const nextPage = page + 1;
-                                        setPage(nextPage);
-                                        fetchTeachers(nextPage);
+                    </div>
+
+                    <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4 px-2">
+                        <div className="text-sm text-gray-500 order-2 md:order-1">
+                            แสดง {teachers.length} จาก {totalTeachers} รายการ
+                        </div>
+                        {totalPages > 1 && (
+                            <div className="order-1 md:order-2">
+                                <Pagination
+                                    isCompact
+                                    showControls
+                                    total={totalPages}
+                                    page={page}
+                                    onChange={(newPage) => {
+                                        setPage(newPage);
+                                        fetchTeachers(newPage);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
                                     }}
-                                    isLoading={isLoading && page > 1}
-                                >
-                                    แสดงเพิ่มเติม
-                                </Button>
+                                    className="overflow-x-auto"
+                                    classNames={{
+                                        cursor: "bg-sage text-white",
+                                    }}
+                                />
                             </div>
                         )}
                     </div>
