@@ -212,7 +212,6 @@ export default function VulgarWordsManager() {
               }}
             >
               <TableHeader>
-                <TableColumn>ลำดับ</TableColumn>
                 <TableColumn>คำหยาบ</TableColumn>
                 <TableColumn>แหล่งที่มา</TableColumn>
                 <TableColumn>วันที่เพิ่ม</TableColumn>
@@ -231,7 +230,6 @@ export default function VulgarWordsManager() {
               >
                 {(item) => (
                   <TableRow key={item.vulgar_word_id} className="last:border-b-0 hover:bg-gray-50">
-                    <TableCell>#{item.vulgar_word_id}</TableCell>
                     <TableCell className="font-medium text-gray-800">{item.word}</TableCell>
                     <TableCell>
                     <Chip
@@ -289,7 +287,7 @@ export default function VulgarWordsManager() {
                   <label className="text-sm font-medium text-gray-700">คำหยาบ</label>
                   <Input
                     autoFocus
-                    placeholder="เช่น ไอ้บ้า, ไอ้โง่ ..."
+                    
                     variant="bordered"
                     radius="lg"
                     value={wordInput}

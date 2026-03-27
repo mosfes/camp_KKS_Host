@@ -21,13 +21,25 @@ import {
     ModalBody,
     ModalFooter,
     useDisclosure,
+    Pagination,
+    DatePicker,
+    HeroUIProvider
 } from "@heroui/react";
+import { parseDate } from "@internationalized/date";
+import { I18nProvider } from "@react-aria/i18n";
 import { useState, useEffect } from "react";
 import { Search, MapPin, Users, Calendar, GraduationCap, SquarePen, Trash2, RotateCcw, Trash, Archive, AlertTriangle, ArrowLeft } from 'lucide-react';
 import adminService from "@/app/service/adminService";
 
 const CampManager = () => {
     const { showError, showSuccess, showConfirm } = useStatusModal();
+
+    const dateValueToString = (date) => {
+        if (!date) return "";
+        return `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
+    };
+
+
     const { isOpen, onOpen, onOpenChange } = useDisclosure();
     const [camps, setCamps] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +47,7 @@ const CampManager = () => {
     const [statusFilter, setStatusFilter] = useState("all");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [totalPages, setTotalPages] = useState(1);
     const [totalCamps, setTotalCamps] = useState(0);
     const [showTrash, setShowTrash] = useState(false);
 
@@ -51,6 +64,28 @@ const CampManager = () => {
         end_regis_date: "",
     });
 
+    const getDateErrors = () => {
+        const errors = {};
+        if (formData.start_regis_date && formData.end_regis_date) {
+            if (new Date(formData.start_regis_date) > new Date(formData.end_regis_date)) {
+                errors.regisEnd = "ต้องมาหลังวันเปิดลงทะเบียน";
+            }
+        }
+        if (formData.end_regis_date && formData.start_date) {
+            if (new Date(formData.end_regis_date) > new Date(formData.start_date)) {
+                errors.startDate = "ต้องไม่มาก่อนวันปิดลงทะเบียน";
+            }
+        }
+        if (formData.start_date && formData.end_date) {
+            if (new Date(formData.start_date) > new Date(formData.end_date)) {
+                errors.endDate = "ต้องมาหลังวันเริ่มค่าย";
+            }
+        }
+        return errors;
+    };
+
+    const dateErrors = getDateErrors();
+
     useEffect(() => {
         setPage(1);
         fetchCamps(1);
@@ -65,18 +100,16 @@ const CampManager = () => {
                 showTrash
             );
             const newData = Array.isArray(result) ? result : (result.data || []);
-
-            if (pageNum === 1) {
-                setCamps(newData);
-            } else {
-                setCamps(prev => [...prev, ...newData]);
-            }
+            
+            setCamps(newData);
 
             if (result.pagination) {
                 setHasMore(pageNum < result.pagination.totalPages);
+                setTotalPages(result.pagination.totalPages || 1);
                 setTotalCamps(result.pagination.total);
             } else {
                 setHasMore(false);
+                setTotalPages(1);
                 setTotalCamps(newData.length);
             }
         } catch (error) {
@@ -91,11 +124,10 @@ const CampManager = () => {
         if (!dateStr) return "-";
         try {
             const d = new Date(dateStr);
-            return d.toLocaleDateString("th-TH", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-            });
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear() + 543;
+            return `${day}/${month}/${year}`;
         } catch {
             return "-";
         }
@@ -130,6 +162,26 @@ const CampManager = () => {
         if (!formData.name) {
             showError("ข้อมูลไม่ครบ", "กรุณากรอกชื่อค่าย");
             return;
+        }
+
+        // Date Logic Validation
+        if (formData.start_regis_date && formData.end_regis_date) {
+            if (new Date(formData.start_regis_date) > new Date(formData.end_regis_date)) {
+                showError("วันที่ไม่ถูกต้อง", "วันเปิดลงทะเบียนต้องมาก่อนวันปิดลงทะเบียน");
+                return;
+            }
+        }
+        if (formData.end_regis_date && formData.start_date) {
+            if (new Date(formData.end_regis_date) > new Date(formData.start_date)) {
+                showError("วันที่ไม่ถูกต้อง", "วันปิดลงทะเบียนต้องไม่เกินวันเริ่มค่าย");
+                return;
+            }
+        }
+        if (formData.start_date && formData.end_date) {
+            if (new Date(formData.start_date) > new Date(formData.end_date)) {
+                showError("วันที่ไม่ถูกต้อง", "วันเริ่มค่ายต้องมาก่อนวันสิ้นสุดค่าย");
+                return;
+            }
         }
 
         try {
@@ -220,18 +272,60 @@ const CampManager = () => {
         );
     };
 
+    const getCampStatusDisplay = (camp) => {
+        if (!camp) return { text: "-", colorClass: "bg-gray-100 text-gray-600 border-gray-200" };
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        const parseDate = (d) => {
+            if (!d) return null;
+            const date = new Date(d);
+            date.setHours(0, 0, 0, 0);
+            return date;
+        };
+
+        const startRegis = parseDate(camp.start_regis_date);
+        const endRegis = parseDate(camp.end_regis_date);
+        const startDate = parseDate(camp.start_date);
+        const endDate = parseDate(camp.end_date);
+
+        if (endDate && now > endDate) {
+            return { text: "สิ้นสุดโครงการ", colorClass: "bg-slate-50 text-slate-400 border-slate-200/50" };
+        }
+        if (startDate && endDate && now >= startDate && now <= endDate) {
+            return { text: "กำลังดำเนินโครงการ", colorClass: "bg-slate-50 text-indigo-400/80 border-slate-200/50" };
+        }
+        if (startRegis && endRegis && now >= startRegis && now <= endRegis) {
+            return { text: "กำลังเปิดลงทะเบียน", colorClass: "bg-slate-50 text-teal-500/70 border-slate-200/50" };
+        }
+        if (endRegis && startDate && now > endRegis && now < startDate) {
+            return { text: "เตรียมดำเนินโครงการ", colorClass: "bg-slate-50 text-amber-500/70 border-slate-200/50" };
+        }
+        if (startRegis && now < startRegis) {
+            return { text: "เตรียมเปิดลงทะเบียน", colorClass: "bg-slate-50 text-gray-400 border-slate-200/50" };
+        }
+
+        if (camp.status?.toUpperCase() === "OPEN") {
+            return { text: "เปิดลงทะเบียน", colorClass: "bg-slate-50 text-teal-500/70 border-slate-200/50" };
+        } else {
+            return { text: "ปิดลงทะเบียน", colorClass: "bg-slate-50 text-slate-400 border-slate-200/50" };
+        }
+    };
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     return (
-        <div className="flex flex-col gap-6 w-full pt-4">
+        <I18nProvider locale="en-GB">
+        <div className="flex flex-col gap-6 w-full pt-4 pb-10">
             <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-4 md:p-6">
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4 w-full">
                         <div>
                             <h3 className="text-gray-800 font-semibold">
-                                {showTrash ? "🗑️ ถังขยะค่าย" : "จัดการค่าย"} ({totalCamps})
+                                {showTrash ? "ถังขยะค่าย" : "จัดการค่าย"} ({totalCamps})
                             </h3>
                             <p className="text-sm text-gray-500 mt-1">
                                 {showTrash ? "ค่ายที่ถูกลบ สามารถกู้คืนหรือลบถาวรได้" : "ค่ายทั้งหมดที่สร้างในระบบ"}
@@ -248,24 +342,24 @@ const CampManager = () => {
                                     value={searchTerm}
                                     onValueChange={(val) => setSearchTerm(val)}
                                     onClear={() => setSearchTerm("")}
-                                    classNames={{ inputWrapper: "bg-white border-gray-200" }}
+                                    classNames={{ 
+                                        inputWrapper: "bg-white border-gray-200",
+                                    }}
                                 />
                             </div>
                             {!showTrash && (
-                                <div className="flex items-center gap-2 min-w-[150px] flex-1">
+                                <div className="flex items-center gap-2 min-w-[120px] max-w-[140px] md:min-w-[160px] md:max-w-none flex-1">
                                     <Select
                                         aria-label="Filter by status"
                                         size="sm"
                                         selectedKeys={[statusFilter]}
                                         onChange={(e) => setStatusFilter(e.target.value)}
-                                        classNames={{
-                                            trigger: "bg-white border-gray-200 w-full",
-                                        }}
-                                        variant="bordered"
+                                        className="max-w-xs"
                                     >
                                         <SelectItem key="all" value="all">ทั้งหมด</SelectItem>
-                                        <SelectItem key="OPEN" value="OPEN">เปิดรับสมัคร</SelectItem>
-                                        <SelectItem key="CLOSED" value="CLOSED">ปิดแล้ว</SelectItem>
+                                        <SelectItem key="REGISTRATION_OPEN" value="REGISTRATION_OPEN">กำลังเปิดลงทะเบียน</SelectItem>
+                                        <SelectItem key="ACTIVE" value="ACTIVE">กำลังดำเนินโครงการ</SelectItem>
+                                        <SelectItem key="FINISHED" value="FINISHED">สิ้นสุดโครงการ</SelectItem>
                                     </Select>
                                 </div>
                             )}
@@ -297,9 +391,9 @@ const CampManager = () => {
                                 shadow="none"
                                 isHeaderSticky
                                 classNames={{
-                                    wrapper: "border-2 border-red-200 rounded-xl p-0 overflow-hidden min-w-[700px] md:min-w-full",
-                                    th: "bg-red-50 border-b border-red-100 text-gray-800",
-                                    td: "py-3 border-b border-red-100",
+                                    wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[700px] md:min-w-full bg-white",
+                                    th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
+                                    td: "py-4 border-b border-gray-50/50",
                                 }}
                             >
                                 <TableHeader>
@@ -375,7 +469,7 @@ const CampManager = () => {
                                 shadow="none"
                                 isHeaderSticky
                                 classNames={{
-                                    wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[900px] md:min-w-full",
+                                    wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[900px] md:min-w-full bg-white",
                                     th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
                                     td: "py-4 border-b border-gray-50/50",
                                 }}
@@ -383,10 +477,10 @@ const CampManager = () => {
                                 <TableHeader>
                                     <TableColumn>ชื่อค่าย</TableColumn>
                                     <TableColumn>สถานที่</TableColumn>
-                                    <TableColumn>วันที่จัดค่าย</TableColumn>
+                                    <TableColumn>กำหนดการ</TableColumn>
                                     <TableColumn>สถานะ</TableColumn>
                                     <TableColumn>ผู้สร้าง</TableColumn>
-                                    <TableColumn>ผู้เข้าร่วม</TableColumn>
+                                    <TableColumn>ระดับ/ห้องเรียน</TableColumn>
                                     <TableColumn>ดำเนินการ</TableColumn>
                                 </TableHeader>
                                 <TableBody
@@ -418,24 +512,24 @@ const CampManager = () => {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex items-center gap-1 text-gray-600 text-sm">
-                                                    <Calendar size={14} className="text-gray-400 flex-shrink-0" />
-                                                    <span className="whitespace-nowrap">
-                                                        {formatDate(camp.start_date)} - {formatDate(camp.end_date)}
-                                                    </span>
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                                                        <Users size={13} className="text-slate-400 flex-shrink-0" />
+                                                        <span className="truncate">ลงทะเบียน: {formatDate(camp.start_regis_date)} - {formatDate(camp.end_regis_date)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 text-xs text-slate-400">
+                                                        <Calendar size={13} className="text-slate-300 flex-shrink-0" />
+                                                        <span className="truncate">วันจัดค่าย: {formatDate(camp.start_date)} - {formatDate(camp.end_date)}</span>
+                                                    </div>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
                                                 <Chip
                                                     size="sm"
                                                     variant="flat"
-                                                    className={`border font-medium ${
-                                                        camp.status?.toUpperCase() === "OPEN"
-                                                            ? "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
-                                                            : "bg-[#f5f5f5] text-[#666666] border-[#e5e5e5]"
-                                                    }`}
+                                                    className={`border font-medium ${getCampStatusDisplay(camp).colorClass}`}
                                                 >
-                                                    {camp.status?.toUpperCase() === "OPEN" ? "เปิดรับสมัคร" : "ปิดแล้ว"}
+                                                    {getCampStatusDisplay(camp).text}
                                                 </Chip>
                                             </TableCell>
                                             <TableCell>
@@ -446,16 +540,26 @@ const CampManager = () => {
                                                 </span>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="flex items-center gap-1 text-xs text-gray-500 font-medium">
-                                                        <GraduationCap size={13} className="text-[#5c98d6]" />
-                                                        <span>{camp._count?.student_enrollment || 0} นักเรียน</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 text-xs text-gray-500 font-medium">
-                                                        <Users size={13} className="text-[#5da382]" />
-                                                        <span>{camp._count?.teacher_enrollment || 0} ครู</span>
-                                                    </div>
-                                                </div>
+                                                <span className="text-xs text-slate-500 leading-tight">
+                                                    {(() => {
+                                                        if (!camp.camp_classroom || camp.camp_classroom.length === 0)
+                                                            return <span className="text-slate-300">-</span>;
+                                                        const gradeMap = {
+                                                            "Level_1": "ม.1", "Level_2": "ม.2", "Level_3": "ม.3",
+                                                            "Level_4": "ม.4", "Level_5": "ม.5", "Level_6": "ม.6"
+                                                        };
+                                                        const grouped = {};
+                                                        camp.camp_classroom.forEach((cc) => {
+                                                            const type = cc.classroom?.classroom_types?.name || "ไม่ระบุ";
+                                                            const grade = gradeMap[cc.classroom?.grade] || cc.classroom?.grade;
+                                                            if (!grouped[type]) grouped[type] = [];
+                                                            if (grade) grouped[type].push(grade);
+                                                        });
+                                                        return Object.entries(grouped)
+                                                            .map(([type, grades]) => `${type} (${grades.join(", ")})`)
+                                                            .join(", ");
+                                                    })()}
+                                                </span>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
@@ -480,20 +584,29 @@ const CampManager = () => {
                                 </TableBody>
                             </Table>
                         )}
-                        {hasMore && camps.length > 0 && (
-                            <div className="flex justify-center mt-6 w-full">
-                                <Button
-                                    variant="flat"
-                                    className="bg-sage/10 text-sage"
-                                    onPress={() => {
-                                        const nextPage = page + 1;
-                                        setPage(nextPage);
-                                        fetchCamps(nextPage);
+                    </div>
+
+                    <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4 px-2">
+                        <div className="text-sm text-gray-500 order-2 md:order-1">
+                            แสดง {camps.length} จาก {totalCamps} รายการ
+                        </div>
+                        {totalPages > 1 && (
+                            <div className="order-1 md:order-2">
+                                <Pagination
+                                    isCompact
+                                    showControls
+                                    total={totalPages}
+                                    page={page}
+                                    onChange={(newPage) => {
+                                        setPage(newPage);
+                                        fetchCamps(newPage);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
                                     }}
-                                    isLoading={isLoading && page > 1}
-                                >
-                                    แสดงเพิ่มเติม
-                                </Button>
+                                    className="overflow-x-auto"
+                                    classNames={{
+                                        cursor: "bg-sage text-white",
+                                    }}
+                                />
                             </div>
                         )}
                     </div>
@@ -501,131 +614,118 @@ const CampManager = () => {
             </Card>
 
             {/* Edit Camp Modal */}
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" backdrop="blur" size="2xl">
-                <ModalContent className="bg-white rounded-2xl shadow-medium border border-gray-100 text-gray-800 p-2">
-                    {(onClose) => (
-                        <>
-                            <ModalHeader>แก้ไขข้อมูลค่าย</ModalHeader>
-                            <ModalBody className="gap-4">
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-sm font-medium text-gray-700">ชื่อค่าย</label>
-                                    <Input
-                                        name="name"
-                                        value={formData.name}
-                                        onChange={handleChange}
-                                        variant="bordered"
-                                        radius="lg"
-                                        placeholder="กรอกชื่อค่าย"
-                                        classNames={{ inputWrapper: "bg-white" }}
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-sm font-medium text-gray-700">สถานที่</label>
-                                    <Input
-                                        name="location"
-                                        value={formData.location}
-                                        onChange={handleChange}
-                                        variant="bordered"
-                                        radius="lg"
-                                        placeholder="กรอกสถานที่"
-                                        classNames={{ inputWrapper: "bg-white" }}
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-sm font-medium text-gray-700">รายละเอียด</label>
-                                    <Textarea
-                                        name="description"
-                                        value={formData.description}
-                                        onChange={handleChange}
-                                        variant="bordered"
-                                        radius="lg"
-                                        placeholder="รายละเอียดค่าย"
-                                        minRows={2}
-                                        classNames={{ inputWrapper: "bg-white" }}
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-sm font-medium text-gray-700">สถานะ</label>
-                                    <Select
-                                        name="status"
-                                        selectedKeys={[formData.status]}
-                                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                        variant="bordered"
-                                        radius="lg"
-                                        disallowEmptySelection
-                                        classNames={{ trigger: "bg-white" }}
-                                    >
-                                        <SelectItem key="OPEN" value="OPEN">เปิดรับสมัคร</SelectItem>
-                                        <SelectItem key="CLOSED" value="CLOSED">ปิดแล้ว</SelectItem>
-                                    </Select>
-                                </div>
-
-                                <div className="flex gap-4">
-                                    <div className="flex flex-col gap-1 w-full">
-                                        <label className="text-sm font-medium text-gray-700">วันเริ่มค่าย</label>
+            {isOpen && (
+                <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" backdrop="blur" size="2xl">
+                    <ModalContent className="bg-white rounded-2xl shadow-medium border border-gray-100 text-gray-800 p-2">
+                        {(onClose) => (
+                            <>
+                                <ModalHeader>แก้ไขข้อมูลค่าย</ModalHeader>
+                                <ModalBody className="gap-4">
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">ชื่อค่าย</label>
                                         <Input
-                                            name="start_date"
-                                            type="date"
-                                            value={formData.start_date}
+                                            name="name"
+                                            value={formData.name}
                                             onChange={handleChange}
                                             variant="bordered"
                                             radius="lg"
+                                            placeholder="กรอกชื่อค่าย"
                                             classNames={{ inputWrapper: "bg-white" }}
                                         />
                                     </div>
-                                    <div className="flex flex-col gap-1 w-full">
-                                        <label className="text-sm font-medium text-gray-700">วันสิ้นสุดค่าย</label>
-                                        <Input
-                                            name="end_date"
-                                            type="date"
-                                            value={formData.end_date}
-                                            onChange={handleChange}
-                                            variant="bordered"
-                                            radius="lg"
-                                            classNames={{ inputWrapper: "bg-white" }}
-                                        />
-                                    </div>
-                                </div>
 
-                                <div className="flex gap-4">
-                                    <div className="flex flex-col gap-1 w-full">
-                                        <label className="text-sm font-medium text-gray-700">เปิดลงทะเบียน</label>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">สถานที่</label>
                                         <Input
-                                            name="start_regis_date"
-                                            type="date"
-                                            value={formData.start_regis_date}
+                                            name="location"
+                                            value={formData.location}
                                             onChange={handleChange}
                                             variant="bordered"
                                             radius="lg"
+                                            placeholder="กรอกสถานที่"
                                             classNames={{ inputWrapper: "bg-white" }}
                                         />
                                     </div>
-                                    <div className="flex flex-col gap-1 w-full">
-                                        <label className="text-sm font-medium text-gray-700">ปิดลงทะเบียน</label>
-                                        <Input
-                                            name="end_regis_date"
-                                            type="date"
-                                            value={formData.end_regis_date}
+
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">รายละเอียด</label>
+                                        <Textarea
+                                            name="description"
+                                            value={formData.description}
                                             onChange={handleChange}
                                             variant="bordered"
                                             radius="lg"
+                                            placeholder="รายละเอียดค่าย"
+                                            minRows={2}
                                             classNames={{ inputWrapper: "bg-white" }}
                                         />
                                     </div>
-                                </div>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
-                                <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmitEdit(onClose)}>บันทึก</Button>
-                            </ModalFooter>
-                        </>
-                    )}
-                </ModalContent>
-            </Modal>
+
+
+                                    <div className="flex gap-4">
+                                        <div className="flex flex-col gap-1 w-full">
+                                            <label className="text-sm font-medium text-gray-700">วันเริ่มค่าย</label>
+                                            <DatePicker
+                                                name="start_date"
+                                                value={formData.start_date ? parseDate(formData.start_date) : null}
+                                                onChange={(date) => setFormData({ ...formData, start_date: dateValueToString(date) })}
+                                                isInvalid={!!dateErrors.startDate}
+                                                errorMessage={dateErrors.startDate}
+                                                variant="bordered"
+                                                radius="lg"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-1 w-full">
+                                            <label className="text-sm font-medium text-gray-700">วันสิ้นสุดค่าย</label>
+                                            <DatePicker
+                                                name="end_date"
+                                                value={formData.end_date ? parseDate(formData.end_date) : null}
+                                                onChange={(date) => setFormData({ ...formData, end_date: dateValueToString(date) })}
+                                                isInvalid={!!dateErrors.endDate}
+                                                errorMessage={dateErrors.endDate}
+                                                variant="bordered"
+                                                radius="lg"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-4">
+                                        <div className="flex flex-col gap-1 w-full">
+                                            <label className="text-sm font-medium text-gray-700">เปิดลงทะเบียน</label>
+                                            <DatePicker
+                                                name="start_regis_date"
+                                                value={formData.start_regis_date ? parseDate(formData.start_regis_date) : null}
+                                                onChange={(date) => setFormData({ ...formData, start_regis_date: dateValueToString(date) })}
+                                                variant="bordered"
+                                                radius="lg"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-1 w-full">
+                                            <label className="text-sm font-medium text-gray-700">ปิดลงทะเบียน</label>
+                                            <DatePicker
+                                                name="end_regis_date"
+                                                value={formData.end_regis_date ? parseDate(formData.end_regis_date) : null}
+                                                onChange={(date) => setFormData({ ...formData, end_regis_date: dateValueToString(date) })}
+                                                isInvalid={!!dateErrors.regisEnd}
+                                                errorMessage={dateErrors.regisEnd}
+                                                variant="bordered"
+                                                radius="lg"
+                                            />
+                                        </div>
+                                    </div>
+
+                                </ModalBody>
+                                <ModalFooter>
+                                    <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
+                                    <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmitEdit(onClose)}>บันทึก</Button>
+                                </ModalFooter>
+                            </>
+                        )}
+                    </ModalContent>
+                </Modal>
+            )}
         </div>
+        </I18nProvider>
     );
 };
 
