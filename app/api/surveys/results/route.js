@@ -77,7 +77,7 @@ export async function GET(request) {
           total,
           distribution,
         };
-      } else {
+      } else if (q.question_type === 'text') {
         // text
         const answers = q.survey_answer
           .filter((a) => a.text_answer && String(a.text_answer).trim() !== '')
@@ -89,6 +89,14 @@ export async function GET(request) {
           type: 'text',
           total: answers.length,
           answers,
+        };
+      } else {
+        // header
+        return {
+          id: q.question_id,
+          text: q.question_text,
+          type: 'header',
+          total: 0,
         };
       }
     });
