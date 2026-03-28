@@ -235,7 +235,6 @@ export default function StudentCampDetailPage() {
                 </div>
               </div>
             </div>
-            <Chip className="bg-[#E2DCC8] text-[#5C5C5C]" size="sm">กำลังจะมาถึง</Chip>
           </div>
         </div>
 
@@ -273,8 +272,14 @@ export default function StudentCampDetailPage() {
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-3">
                 <Flag size={24} />
               </div>
-              <h3 className="font-bold text-[#2d3748] mb-1">ลงทะเบียนเพื่อดูความคืบหน้า</h3>
-              <p className="text-xs text-gray-500">คุณจะสามารถสะสมคะแนนและทำภารกิจได้หลังจากเข้าร่วมค่ายแล้ว</p>
+              <h3 className="font-bold text-[#2d3748] mb-1">
+                {camp.isEnded ? "ค่ายนี้จบลงแล้ว" : "ลงทะเบียนเพื่อดูความคืบหน้า"}
+              </h3>
+              <p className="text-xs text-gray-500">
+                {camp.isEnded 
+                  ? "คุณไม่ได้เข้าร่วมค่ายนี้ในระยะเวลาที่กำหนด" 
+                  : "คุณจะสามารถทำภารกิจได้หลังจากเข้าร่วมค่ายแล้ว"}
+              </p>
             </div>
           )}
           <h2 className="text-lg font-bold text-[#2d3748] mb-4">ความคืบหน้า</h2>
@@ -286,10 +291,6 @@ export default function StudentCampDetailPage() {
             <div className="flex justify-between text-sm text-gray-600">
               <div className="flex items-center gap-2"><Flag size={16} /><span>ภารกิจทั้งหมด</span></div>
               <span>{completedMissions} สำเร็จ</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600">
-              <div className="flex items-center gap-2"><Ticket size={16} /><span>คะแนนสะสม</span></div>
-              <span>0 pts</span>
             </div>
           </div>
         </div>
@@ -382,7 +383,11 @@ export default function StudentCampDetailPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8 z-50">
         <div className="max-w-4xl mx-auto space-y-3">
           {!camp.isRegistered ? (
-            <Button fullWidth className="bg-[#5d7c6f] text-white font-bold text-lg h-12" isLoading={registering} onPress={handleRegister}>เข้าร่วมค่าย</Button>
+             camp.isEnded ? (
+                <Button fullWidth className="bg-gray-300 text-gray-500 font-bold text-lg h-12 cursor-not-allowed" isDisabled>สิ้นสุดการรับสมัครแล้ว</Button>
+             ) : (
+                <Button fullWidth className="bg-[#5d7c6f] text-white font-bold text-lg h-12" isLoading={registering} onPress={handleRegister}>เข้าร่วมค่าย</Button>
+             )
           ) : (
             <div className="relative">
               {/* Overlay เมื่อค่ายยังไม่เริ่ม */}
@@ -394,26 +399,44 @@ export default function StudentCampDetailPage() {
                 </div>
               )}
               <div className="flex flex-col gap-3">
-                <Button fullWidth className="bg-[#5d7c6f] text-white font-bold text-lg h-12" startContent={<LayoutDashboard size={20} />} isLoading={navigating} isDisabled={navigating || !!campNotStarted} onPress={() => { setNavigating(true); router.push(`/student/dashboard/camp/${id}/missions`); }}>
-                  ไปยังหน้าภารกิจ
-                </Button>
-                <Button fullWidth className={`border font-medium ${surveyData && !surveyCompleted ? "bg-[#FFECC9] text-yellow-800 border-yellow-300" : "bg-gray-100 text-gray-500 border-gray-200"}`} startContent={<ClipboardList size={18} />} onPress={() => setIsSurveyModalOpen(true)} isDisabled={!surveyData || surveyCompleted}>{surveyCompleted ? "ทำแบบประเมินเรียบร้อยแล้ว" : "แบบประเมินความพึงพอใจ"}</Button>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button 
-                    className="bg-gray-100 text-gray-400 border-gray-200 font-medium cursor-not-allowed opacity-80"
-                    startContent={<Ticket size={18} />} 
-                    isDisabled
-                  >
-                    เกียรติบัตร (กำลังพัฒนา)
-                  </Button>
-                  <Button
-                    className="bg-gray-100 text-gray-400 border-gray-200 font-medium cursor-not-allowed opacity-80"
-                    startContent={<CheckCircle2 size={18} />}
-                    isDisabled
-                  >
-                    เช็คชื่อ (กำลังพัฒนา)
-                  </Button>
-                </div>
+                {camp.isEnded ? (
+                  <>
+                    <Button fullWidth className="bg-[#5d7c6f] text-white font-bold text-lg h-12" startContent={<LayoutDashboard size={20} />} isLoading={navigating} onPress={() => { setNavigating(true); router.push(`/student/dashboard/camp/${id}/missions`); }}>
+                      สรุปผลการทำภารกิจ
+                    </Button>
+                    <Button 
+                      fullWidth
+                      className="bg-gray-100 text-gray-400 border border-gray-200 font-bold text-lg h-12 cursor-not-allowed opacity-80"
+                      startContent={<Ticket size={20} />} 
+                      isDisabled
+                    >
+                      ดาวน์โหลดเกียรติบัตร (กำลังพัฒนา)
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button fullWidth className="bg-[#5d7c6f] text-white font-bold text-lg h-12" startContent={<LayoutDashboard size={20} />} isLoading={navigating} isDisabled={navigating || !!campNotStarted} onPress={() => { setNavigating(true); router.push(`/student/dashboard/camp/${id}/missions`); }}>
+                      ไปยังหน้าภารกิจ
+                    </Button>
+                    <Button fullWidth className={`border font-medium ${surveyData && !surveyCompleted ? "bg-[#FFECC9] text-yellow-800 border-yellow-300" : "bg-gray-100 text-gray-500 border-gray-200"}`} startContent={<ClipboardList size={18} />} onPress={() => setIsSurveyModalOpen(true)} isDisabled={!surveyData || surveyCompleted}>{surveyCompleted ? "ทำแบบประเมินเรียบร้อยแล้ว" : "แบบประเมินความพึงพอใจ"}</Button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button 
+                        className="bg-gray-100 text-gray-400 border-gray-200 font-medium cursor-not-allowed opacity-80"
+                        startContent={<Ticket size={18} />} 
+                        isDisabled
+                      >
+                        เกียรติบัตร (กำลังพัฒนา)
+                      </Button>
+                      <Button
+                        className="bg-gray-100 text-gray-400 border-gray-200 font-medium cursor-not-allowed opacity-80"
+                        startContent={<CheckCircle2 size={18} />}
+                        isDisabled
+                      >
+                        เช็คชื่อ (กำลังพัฒนา)
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}

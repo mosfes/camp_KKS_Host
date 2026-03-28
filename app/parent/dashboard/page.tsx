@@ -17,6 +17,7 @@ import {
   UserCircle2,
   CheckCircle2,
   AlertCircle,
+  Clock,
 } from "lucide-react";
 import { ParentNavbar } from "@/components/ParentNavbar";
 
@@ -444,14 +445,48 @@ function CampCard({
   onPress: () => void;
   isEnded?: boolean;
 }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const regisStart = camp.startRegisDate ? new Date(camp.startRegisDate) : null;
+  const isUpcomingRegis = regisStart && now < regisStart && !isEnded && !camp.isRegistered;
+
+  let countdownText = "";
+  if (isUpcomingRegis && regisStart) {
+    const diffTime = Math.abs(regisStart.getTime() - now.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 1) {
+      countdownText = `อีก ${diffDays} วัน`;
+    } else {
+      countdownText = "เปิดรับสมัครเร็วๆ นี้";
+    }
+  }
+
   return (
     <Card
-      isPressable={navigatingTo === null}
-      className={`border-none shadow-sm hover:shadow-md transition-shadow bg-white relative ${
+      isPressable={navigatingTo === null && !isUpcomingRegis}
+      className={`border-none shadow-sm transition-shadow bg-white relative ${
         navigatingTo === camp.id ? "opacity-60" : ""
-      } ${isEnded ? "opacity-80 hover:opacity-100 transition-opacity" : ""}`}
-      onPress={onPress}
+      } ${
+        isEnded ? "opacity-80 hover:opacity-100 transition-opacity" : "hover:shadow-md"
+      } ${isUpcomingRegis ? "cursor-not-allowed opacity-90" : ""}`}
+      onPress={isUpcomingRegis ? undefined : onPress}
     >
+      {isUpcomingRegis && (
+        <div className="absolute inset-0 z-20 bg-gray-900/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-white rounded-2xl">
+          <div className="mb-3">
+            <Clock size={28} className="text-white" />
+          </div>
+          <h3 className="font-bold text-lg mb-1">ยังไม่เปิดรับสมัคร</h3>
+          <p className="text-sm opacity-90">{countdownText}</p>
+        </div>
+      )}
+
       {navigatingTo === camp.id && (
         <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/60 rounded-2xl">
           <div className="w-6 h-6 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
