@@ -19,6 +19,7 @@ import {
   Sparkles,
   CheckCircle2,
   Lightbulb,
+  ChevronDown,
 } from "lucide-react";
 
 interface SurveyResultsModalProps {
@@ -54,6 +55,15 @@ export default function SurveyResultsModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<any>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+
+  const toggleExpand = (id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (isOpen && campId) {
@@ -66,6 +76,7 @@ export default function SurveyResultsModal({
       setLoading(true);
       setErrorMsg(null);
       setAiSummary(null);
+      setExpandedIds(new Set());
       const res = await fetch(`/api/surveys/results?campId=${campId}`);
       if (!res.ok) throw new Error("Failed to fetch results");
       const json = await res.json();
@@ -292,100 +303,118 @@ export default function SurveyResultsModal({
                     </div>
                   )}
 
-                  {/* Question cards — always fully visible */}
-                  {data.questions.map((q, index) => (
+                  {/* Question cards — expandable with internal scrolling */}
+                  {data.questions.map((q, index) => {
+                    const isExpanded = expandedIds.has(q.id);
+                    return (
                     <div
                       key={q.id}
-                      className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5"
+                      className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden"
                     >
                       {/* Header row: number + title + inline average badge */}
-                      <div className="flex items-start gap-3 mb-4">
+                      <button
+                        className="w-full flex items-start gap-3 p-5 text-left hover:bg-gray-50/60 transition-colors"
+                        onClick={() => toggleExpand(q.id)}
+                      >
                         <span className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold mt-0.5">
                           {index + 1}
                         </span>
                         <h3 className="flex-1 min-w-0 font-semibold text-gray-900 text-base leading-snug whitespace-normal break-words pt-0.5">
                           {q.text}
                         </h3>
-                        {q.type === "scale" && q.average != null && (
-                          <div className="flex-shrink-0 flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 mt-0.5">
-                            <Star
-                              className="text-amber-400 fill-amber-400"
-                              size={13}
-                            />
-                            <span className="text-amber-700 font-bold text-sm leading-none">
-                              {q.average}
-                            </span>
-                            <span className="text-amber-500/70 text-xs leading-none">
-                              / 5
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Scale distribution */}
-                      {q.type === "scale" && q.distribution && (
-                        <div className="ml-10 flex flex-col gap-2.5">
-                          {[5, 4, 3, 2, 1].map((star) => {
-                            const count = q.distribution![star] || 0;
-                            const percentage =
-                              q.total > 0 ? (count / q.total) * 100 : 0;
-                            return (
-                              <div
-                                key={star}
-                                className="flex items-center gap-3"
-                              >
-                                <span className="w-7 text-xs font-medium text-gray-500 flex items-center gap-1 flex-shrink-0">
-                                  {star}{" "}
-                                  <Star
-                                    size={10}
-                                    className="text-gray-400 fill-gray-400"
-                                  />
-                                </span>
-                                <Progress
-                                  className="flex-1"
-                                  classNames={{
-                                    indicator: "bg-amber-400",
-                                    track: "bg-gray-100",
-                                  }}
-                                  size="sm"
-                                  value={percentage}
-                                />
-                                <span className="w-7 text-xs text-gray-500 text-right flex-shrink-0">
-                                  {count}
-                                </span>
-                              </div>
-                            );
-                          })}
+                        <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+                          {q.type === "scale" && q.average != null && (
+                            <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
+                              <Star
+                                className="text-amber-400 fill-amber-400"
+                                size={13}
+                              />
+                              <span className="text-amber-700 font-bold text-sm leading-none">
+                                {q.average}
+                              </span>
+                              <span className="text-amber-500/70 text-xs leading-none">
+                                / 5
+                              </span>
+                            </div>
+                          )}
+                          <ChevronDown
+                            size={18}
+                            className={`text-gray-400 transition-transform duration-200 ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                          />
                         </div>
-                      )}
+                      </button>
 
-                      {/* Text answers */}
-                      {q.type === "text" && q.answers && (
-                        <div className="ml-10 space-y-2.5">
-                          {q.answers.length > 0 ? (
-                            q.answers.map((ans, idx) => (
-                              <div
-                                key={idx}
-                                className="bg-gray-50 p-3 rounded-xl text-gray-700 text-sm border border-gray-100 relative pr-8"
-                              >
-                                <MessageSquare
-                                  className="absolute top-3 right-3 text-gray-300"
-                                  size={14}
-                                />
-                                {ans}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-center py-5 bg-gray-50 rounded-xl border border-gray-100 border-dashed">
-                              <p className="text-gray-400 text-sm">
-                                ไม่มีข้อเสนอแนะ
-                              </p>
+                      {/* Expanded detail */}
+                      {isExpanded && (
+                        <div className="px-5 pb-5 border-t border-gray-100 bg-gray-50/30">
+                          {/* Scale distribution */}
+                          {q.type === "scale" && q.distribution && (
+                            <div className="pt-4 flex flex-col gap-2.5">
+                              {[5, 4, 3, 2, 1].map((star) => {
+                                const count = q.distribution![star] || 0;
+                                const percentage =
+                                  q.total > 0 ? (count / q.total) * 100 : 0;
+                                return (
+                                  <div
+                                    key={star}
+                                    className="flex items-center gap-3"
+                                  >
+                                    <span className="w-7 text-xs font-medium text-gray-500 flex items-center gap-1 flex-shrink-0">
+                                      {star}{" "}
+                                      <Star
+                                        size={10}
+                                        className="text-gray-400 fill-gray-400"
+                                      />
+                                    </span>
+                                    <Progress
+                                      className="flex-1"
+                                      classNames={{
+                                        indicator: "bg-amber-400",
+                                        track: "bg-gray-100",
+                                      }}
+                                      size="sm"
+                                      value={percentage}
+                                    />
+                                    <span className="w-7 text-xs text-gray-500 text-right flex-shrink-0">
+                                      {count}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Text answers with max height and inner scroll */}
+                          {q.type === "text" && q.answers && (
+                            <div className="pt-4 space-y-2.5 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                              {q.answers.length > 0 ? (
+                                q.answers.map((ans, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="bg-white p-3 rounded-xl text-gray-700 text-sm border border-gray-200 relative pr-8 shadow-sm"
+                                  >
+                                    <MessageSquare
+                                      className="absolute top-3 right-3 text-gray-300"
+                                      size={14}
+                                    />
+                                    {ans}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-center py-5 bg-white rounded-xl border border-gray-100 border-dashed">
+                                  <p className="text-gray-400 text-sm">
+                                    ไม่มีข้อเสนอแนะ
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       )}
                     </div>
-                  ))}
+                  );})}
                 </>
               )}
             </ModalBody>

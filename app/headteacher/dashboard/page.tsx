@@ -75,6 +75,7 @@ export default function StudentDashboard() {
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingCampData, setEditingCampData] = useState<any>(null);
+  const [isEditFetching, setIsEditFetching] = useState(false);
 
   // Enrollment Modal State
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
@@ -342,7 +343,7 @@ export default function StudentDashboard() {
 
   const handleEditCampClick = async (campId: number) => {
     try {
-      setIsLoading(true);
+      setIsEditFetching(true);
       const response = await fetch(`/api/camps/${campId}`);
       if (!response.ok) throw new Error("Failed to fetch camp data");
       const data = await response.json();
@@ -352,7 +353,7 @@ export default function StudentDashboard() {
       console.error("Error fetching camp for edit:", error);
       showError("ข้อผิดพลาด", "ไม่สามารถดึงข้อมูลค่ายเพื่อแก้ไขได้");
     } finally {
-      setIsLoading(false);
+      setIsEditFetching(false);
     }
   };
 
@@ -462,6 +463,19 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F5F1E8]">
+      {/* Edit-fetch loading overlay */}
+      {isEditFetching && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+          <div className="relative bg-white rounded-2xl shadow-2xl px-10 py-8 flex flex-col items-center gap-4">
+            <div className="w-14 h-14 rounded-full border-4 border-[#6b857a]/20 border-t-[#6b857a] animate-spin" />
+            <div className="text-center">
+              <p className="font-semibold text-[#2d3748] text-base">กำลังโหลดข้อมูลค่าย</p>
+              <p className="text-sm text-gray-400 mt-0.5">กรุณารอสักครู่...</p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -806,6 +820,17 @@ export default function StudentDashboard() {
         campId={enrollmentCampId ?? 0}
         campName={enrollmentCampName}
         onClose={() => setIsEnrollmentModalOpen(false)}
+      />
+
+      <EditCampModal
+        isOpen={isEditModalOpen}
+        campData={editingCampData}
+        isLoading={isSubmitting}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingCampData(null);
+        }}
+        onSubmit={handleEditSubmit}
       />
     </div>
   );
