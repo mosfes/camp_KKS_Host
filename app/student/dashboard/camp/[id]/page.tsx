@@ -34,12 +34,15 @@ function formatDate(dateString: string) {
 }
 
 function getDaysRemaining(endDate: string) {
+  if (!endDate) return null;
   const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
   const now = new Date();
+  now.setHours(0, 0, 0, 0);
   const diff = end.getTime() - now.getTime();
-  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+  const days = Math.round(diff / (1000 * 60 * 60 * 24)); // Use round to avoid -0 issues
 
-  return days > 0 ? days : 0;
+  return days >= 0 ? days : 0;
 }
 
 /** คืน true ถ้าวันนี้อยู่ในช่วงจองเสื้อ (ไม่ย้อนหลัง ไม่เกินวันหมดเขต) */
@@ -185,11 +188,17 @@ export default function StudentCampDetailPage() {
   const completedMissions = 0;
 
   const daysLeftToReserve = getDaysRemaining(camp.endShirtDate);
+  const daysUntilStart = getDaysRemaining(camp.rawStartDate);
   const shirtPeriodActive = isInShirtPeriod(camp.startShirtDate, camp.endShirtDate);
-  const campNotStarted = camp.rawStartDate && new Date() < new Date(camp.rawStartDate);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startDate = camp.rawStartDate ? new Date(camp.rawStartDate) : null;
+  if (startDate) startDate.setHours(0, 0, 0, 0);
+  const campNotStarted = startDate && today < startDate;
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8] pb-24">
+    <div className="min-h-screen bg-[#F5F1E8] pb-64">
       <div className="h-64 bg-gray-200 relative overflow-hidden">
         {camp.img_camp_url ? (
           <img src={camp.img_camp_url} alt={camp.title} className="w-full h-full object-cover" />
@@ -292,20 +301,27 @@ export default function StudentCampDetailPage() {
                 <Shirt className="text-gray-600" size={20} />
                 <h2 className="text-lg font-bold text-[#2d3748]">จองเสื้อค่าย</h2>
               </div>
-              {shirtSize && daysLeftToReserve > 0 && !isEditingShirt && (
-                <Button size="sm" variant="flat" className="bg-gray-100 text-[#5C5C5C] font-medium" onPress={() => setIsEditingShirt(true)}>
-                  แก้ไขไซส์เสื้อ
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {isEditingShirt && (
+                  <Button size="sm" variant="light" className="text-gray-500 font-medium hover:bg-gray-100" onPress={() => { setSelectedSize(shirtSize); setIsEditingShirt(false); }}>
+                    ยกเลิก
+                  </Button>
+                )}
+                {shirtSize && shirtPeriodActive && !isEditingShirt && (
+                  <Button size="sm" variant="flat" className="bg-gray-100 text-[#5C5C5C] font-medium" onPress={() => setIsEditingShirt(true)}>
+                    แก้ไขไซส์เสื้อ
+                  </Button>
+                )}
+              </div>
             </div>
 
             {shirtSize && !isEditingShirt ? (
               <div className="bg-gray-50/50 rounded-2xl p-4 flex flex-col items-center justify-center border border-gray-100/50">
                 <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-[#5d7c6f] font-bold text-xl mb-2">{shirtSize}</div>
                 <p className="text-gray-600 text-sm font-medium">จองเสื้อไซส์ {shirtSize} เรียบร้อยแล้ว</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{daysLeftToReserve > 0 ? "แก้ไขได้ภายในกำหนดเวลา" : "หมดเขตการแก้ไขแล้ว"}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{shirtPeriodActive ? "แก้ไขได้ภายในกำหนดเวลา" : "หมดเขตการแก้ไขแล้ว"}</p>
               </div>
-            ) : (!shirtSize && daysLeftToReserve <= 0) ? (
+            ) : (!shirtSize && !shirtPeriodActive) ? (
               <div className="bg-orange-50/50 rounded-2xl p-4 flex flex-col items-center justify-center border border-orange-100/50">
                 <p className="text-orange-600 text-sm font-medium">หมดเขตการจองเสื้อแล้ว</p>
                 <p className="text-[10px] text-orange-400 mt-0.5">คุณไม่ได้ทำรายการในช่วงเวลาที่กำหนด</p>
@@ -313,11 +329,13 @@ export default function StudentCampDetailPage() {
             ) : (
               <>
                 <p className="text-gray-500 text-sm mb-4">กรุณาจองเสื้อค่ายของคุณก่อน {formatDate(camp.endShirtDate)}</p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-700 text-sm flex items-center gap-2 mb-6">
-                  <Clock size={16} />
-                  เหลือเวลาอีก {daysLeftToReserve} วัน
-                  <span className="text-blue-500 ml-auto text-xs">หมดเขต: {formatDate(camp.endShirtDate)}</span>
-                </div>
+                {daysLeftToReserve !== null && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-700 text-sm flex items-center gap-2 mb-6">
+                    <Clock size={16} />
+                    {daysLeftToReserve === 0 ? "วันนี้วันสุดท้ายของการจอง" : `เหลือเวลาอีก ${daysLeftToReserve} วัน`}
+                    <span className="text-blue-500 ml-auto text-xs">หมดเขต: {formatDate(camp.endShirtDate)}</span>
+                  </div>
+                )}
                 <div className="mb-6">
                   {(() => {
                     let shirtUrls: string[] = [];
@@ -348,12 +366,12 @@ export default function StudentCampDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">เลือกไซส์เสื้อของคุณ:</label>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     {SHIRT_SIZES.map((size) => (
-                      <button key={size} disabled={savingShirt || daysLeftToReserve <= 0} onClick={() => setSelectedSize(size)} className={`py-2 px-4 rounded-lg border text-sm font-medium transition-all ${selectedSize === size ? "bg-gray-800 text-white border-gray-800 ring-2 ring-gray-300" : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"}`}>{size}</button>
+                      <button key={size} disabled={savingShirt || !shirtPeriodActive} onClick={() => setSelectedSize(size)} className={`py-2 px-4 rounded-lg border text-sm font-medium transition-all ${selectedSize === size ? "bg-gray-800 text-white border-gray-800 ring-2 ring-gray-300" : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"} ${!shirtPeriodActive ? "opacity-60 cursor-not-allowed" : ""}`}>{size}</button>
                     ))}
                   </div>
                 </div>
-                <Button fullWidth className={`mt-6 font-medium ${shirtSize && shirtSize === selectedSize ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-[#5d7c6f] text-white'}`} isDisabled={daysLeftToReserve <= 0 || !selectedSize || (shirtSize === selectedSize)} isLoading={savingShirt} onPress={() => handleShirtUpdate(selectedSize)}>
-                  {daysLeftToReserve <= 0 ? "หมดเขตการจองแล้ว" : (shirtSize && shirtSize === selectedSize ? "จองสำเร็จ (แก้ไขได้)" : (shirtSize ? "อัปเดตการจอง" : "ยืนยันการจอง"))}
+                <Button fullWidth className="mt-6 font-bold bg-[#5d7c6f] text-white" isDisabled={!shirtPeriodActive || !selectedSize} isLoading={savingShirt} onPress={() => { if(shirtSize === selectedSize) setIsEditingShirt(false); else handleShirtUpdate(selectedSize); }}>
+                  {!shirtPeriodActive ? "ไม่อยู่ในช่วงเวลาการจอง" : (shirtSize ? (shirtSize === selectedSize ? "ยกเลิกการแก้ไข" : "ยืนยันการแก้ไข") : "ยืนยันการจองเสื้อ")}
                 </Button>
               </>
             )}
@@ -366,16 +384,38 @@ export default function StudentCampDetailPage() {
           {!camp.isRegistered ? (
             <Button fullWidth className="bg-[#5d7c6f] text-white font-bold text-lg h-12" isLoading={registering} onPress={handleRegister}>เข้าร่วมค่าย</Button>
           ) : (
-            <>
-              <Button fullWidth className={`font-bold text-lg h-12 ${campNotStarted ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#5d7c6f] text-white'}`} startContent={<LayoutDashboard size={20} />} isLoading={navigating} isDisabled={navigating || !!campNotStarted} onPress={() => { if (!campNotStarted) { setNavigating(true); router.push(`/student/dashboard/camp/${id}/missions`); } }}>ไปยังหน้าภารกิจ</Button>
+            <div className="relative">
+              {/* Overlay เมื่อค่ายยังไม่เริ่ม */}
+              {campNotStarted && (
+                <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-10 rounded-xl flex flex-col items-center justify-center gap-1">
+                  <Clock className="text-gray-400" size={22} />
+                  <p className="text-sm font-bold text-gray-600">ยังไม่ถึงเวลาเริ่มค่าย</p>
+                  <p className="text-xs text-gray-400">อีก {daysUntilStart} วัน · เริ่ม {formatDate(camp.rawStartDate)}</p>
+                </div>
+              )}
               <div className="flex flex-col gap-3">
+                <Button fullWidth className="bg-[#5d7c6f] text-white font-bold text-lg h-12" startContent={<LayoutDashboard size={20} />} isLoading={navigating} isDisabled={navigating || !!campNotStarted} onPress={() => { setNavigating(true); router.push(`/student/dashboard/camp/${id}/missions`); }}>
+                  ไปยังหน้าภารกิจ
+                </Button>
                 <Button fullWidth className={`border font-medium ${surveyData && !surveyCompleted ? "bg-[#FFECC9] text-yellow-800 border-yellow-300" : "bg-gray-100 text-gray-500 border-gray-200"}`} startContent={<ClipboardList size={18} />} onPress={() => setIsSurveyModalOpen(true)} isDisabled={!surveyData || surveyCompleted}>{surveyCompleted ? "ทำแบบประเมินเรียบร้อยแล้ว" : "แบบประเมินความพึงพอใจ"}</Button>
                 <div className="grid grid-cols-2 gap-3">
-                  <Button className={`border font-medium ${surveyCompleted ? "bg-[#FFECC9] text-orange-800 border-orange-300" : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-80"}`} startContent={<Ticket size={18} />} onPress={() => { toast.success("กำลังดาวน์โหลดเกียรติบัตร..."); }} isDisabled={!surveyCompleted}>เกียรติบัตร (กำลังพัฒนา)</Button>
-                  <Button className="bg-[#FFECC9] text-orange-800 border border-orange-200 font-medium cursor-not-allowed opacity-80" startContent={<CheckCircle2 size={18} />} variant="flat" isDisabled>เช็คชื่อ (กำลังพัฒนา)</Button>
+                  <Button 
+                    className="bg-gray-100 text-gray-400 border-gray-200 font-medium cursor-not-allowed opacity-80"
+                    startContent={<Ticket size={18} />} 
+                    isDisabled
+                  >
+                    เกียรติบัตร (กำลังพัฒนา)
+                  </Button>
+                  <Button
+                    className="bg-gray-100 text-gray-400 border-gray-200 font-medium cursor-not-allowed opacity-80"
+                    startContent={<CheckCircle2 size={18} />}
+                    isDisabled
+                  >
+                    เช็คชื่อ (กำลังพัฒนา)
+                  </Button>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
