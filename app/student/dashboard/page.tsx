@@ -135,8 +135,7 @@ export default function StudentDashboard() {
               <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="13" x="3" y="4" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" /></svg>
-                  <span className="hidden xs:inline">รหัสนักเรียน:</span>
-                  <span className="xs:hidden">ID:</span> {student.students_id}
+                  <span>รหัสนักเรียน:</span> {student.students_id}
                 </span>
 
                 {student.classroom?.grade_label && (

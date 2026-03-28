@@ -22,6 +22,10 @@ import {
   Smile,
   ClipboardCheck,
   Star,
+  HeartPulse,
+  ShieldAlert,
+  Info,
+  Search,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -30,6 +34,7 @@ import CreateCampModal from "./CreateCampModal";
 import SelectProjectTypeModal from "./SelectProjectTypeModal";
 import EditCampModal from "./camp/EditCampModal";
 import EnrollmentModal from "./EnrollmentModal";
+import HomeroomStudentModal from "./HomeroomStudentModal";
 
 /* ---------- Default SVG Component ---------- */
 function DefaultCampImage() {
@@ -81,6 +86,18 @@ export default function StudentDashboard() {
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
   const [enrollmentCampId, setEnrollmentCampId] = useState<number | null>(null);
   const [enrollmentCampName, setEnrollmentCampName] = useState("");
+
+  // Homeroom State
+  const [homeroomData, setHomeroomData] = useState<any>(null);
+  const [loadingHomeroom, setLoadingHomeroom] = useState(true);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [homeroomSearch, setHomeroomSearch] = useState("");
+
+  const filteredHomeroomStudents = homeroomData?.students?.filter((s: any) => {
+    const searchLower = homeroomSearch.toLowerCase();
+    const fullName = `${s.prefix || ""}${s.firstname} ${s.lastname}`.toLowerCase();
+    return s.id.toString().includes(searchLower) || fullName.includes(searchLower);
+  }) || [];
 
   const goToCampDetail = (campId: number) => {
     if (navigatingTo !== null) return;
@@ -181,15 +198,48 @@ export default function StudentDashboard() {
     }
   };
 
+  const fetchHomeroom = async () => {
+    try {
+      setLoadingHomeroom(true);
+      const res = await fetch("/api/teacher/homeroom");
+      if (res.ok) {
+        setHomeroomData(await res.json());
+      }
+    } catch (err) {
+      console.error("Failed to fetch homeroom data:", err);
+    } finally {
+      setLoadingHomeroom(false);
+    }
+  };
+
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
-      await Promise.all([fetchCamps(), fetchStats(), fetchTeacher(), fetchAcademicYears()]);
+      await Promise.all([
+        fetchCamps(), 
+        fetchStats(), 
+        fetchTeacher(), 
+        fetchAcademicYears(),
+        fetchHomeroom()
+      ]);
       setLoading(false);
     };
 
     initData();
   }, []);
+
+  useEffect(() => {
+    if (!loading && teacherInfo) {
+      const isHeadteacher = teacherInfo.roles?.includes("HEADTEACHER") || teacherInfo.role === "HEADTEACHER" || teacherInfo.role === "ADMIN";
+      if (!isHeadteacher && selectedTab === "overview") {
+        if (homeroomData?.hasHomeroom) {
+          setSelectedTab("homeroom");
+        } else {
+          setSelectedTab("camp");
+        }
+      }
+    }
+  }, [loading, teacherInfo, homeroomData, selectedTab]);
 
   const openCreateCampFlow = () => {
     setIsSelectTypeOpen(true);
@@ -498,12 +548,16 @@ export default function StudentDashboard() {
               cursor: "rounded-full",
               tabContent: "font-semibold text-center",
             }}
+            items={[
+              ...(teacherInfo?.roles?.includes("HEADTEACHER") || teacherInfo?.role === "HEADTEACHER" || teacherInfo?.role === "ADMIN" ? [{ id: "overview", label: "ภาพรวมระบบ" }] : []),
+              ...(homeroomData?.hasHomeroom ? [{ id: "homeroom", label: "นักเรียนประจำชั้น" }] : []),
+              { id: "camp", label: "ค่ายที่เกี่ยวข้อง" },
+            ]}
             selectedKey={selectedTab}
             size="lg"
             onSelectionChange={(key) => setSelectedTab(String(key))}
           >
-            <Tab key="overview" title="ภาพรวม" />
-            <Tab key="camp" title="ค่ายที่เกี่ยวข้อง" />
+            {(item) => <Tab key={item.id} title={item.label} />}
           </Tabs>
         </div>
 
@@ -549,6 +603,136 @@ export default function StudentDashboard() {
                   />
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Homeroom Tab */}
+        {selectedTab === "homeroom" && (
+          <div className="w-full space-y-6">
+            {!homeroomData?.hasHomeroom ? (
+              <div className="bg-white rounded-2xl shadow-sm p-12 text-center border border-gray-100 flex flex-col items-center justify-center">
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                  <Info className="text-gray-400" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">ไม่พบข้อมูลชั้นเรียนประจำ</h3>
+                <p className="text-gray-500 max-w-md mx-auto">
+                  คุณยังไม่ได้ถูกกำหนดให้เป็นครูประจำชั้นของห้องใดๆ ในระบบ 
+                  หากต้องการตรวจสอบข้อมูล กรุณาติดต่อผู้ดูแลระบบ (Admin)
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-100 rounded-2xl px-6 py-5 shadow-sm">
+                  <div>
+                    <h2 className="text-xl font-bold text-teal-900 flex items-center gap-2">
+                      <Users className="text-teal-600" size={24} />
+                      นักเรียนประจำชั้น {homeroomData.classroomName}
+                    </h2>
+                    <p className="text-sm text-teal-700/80 mt-1">
+                      มีนักเรียนทั้งหมด {homeroomData.students?.length || 0} คน
+                    </p>
+                  </div>
+                  
+                  {/* Special Care summary box */}
+                  <div className="bg-white/60 backdrop-blur-sm px-4 py-3 rounded-xl border border-teal-100/50 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+                      <HeartPulse className="text-rose-500" size={20} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">ต้องการดูแลเป็นพิเศษ</p>
+                      <p className="text-lg font-bold text-rose-600">
+                        {homeroomData.students?.filter((s: any) => s.isSpecialCare).length || 0} คน
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative w-full max-w-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                    placeholder="ค้นหาชื่อ, นามสกุล หรือเลขประจำตัว..."
+                    value={homeroomSearch}
+                    onChange={(e) => setHomeroomSearch(e.target.value)}
+                  />
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="py-4 px-6 font-semibold text-gray-600 text-sm">รหัส นร.</th>
+                          <th className="py-4 px-6 font-semibold text-gray-600 text-sm">ชื่อ-นามสกุล</th>
+                          <th className="py-4 px-6 font-semibold text-gray-600 text-sm">โรคประจำตัว</th>
+                          <th className="py-4 px-6 font-semibold text-gray-600 text-sm">อาหารที่แพ้</th>
+                          <th className="py-4 px-6 font-semibold text-gray-600 text-sm w-1/4">หมายเหตุ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {loadingHomeroom ? (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-gray-400">
+                              กำลังโหลดข้อมูล...
+                            </td>
+                          </tr>
+                        ) : filteredHomeroomStudents.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-12 text-center text-gray-400">
+                              {homeroomSearch ? "ไม่พบนักเรียนที่ค้นหา" : "ยังไม่มีนักเรียนในห้องนี้"}
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredHomeroomStudents.map((student: any) => (
+                            <tr 
+                              key={student.id} 
+                              className={`cursor-pointer hover:bg-teal-50/50 transition-colors ${student.isSpecialCare ? "bg-rose-50/20" : ""}`}
+                              onClick={() => setSelectedStudent(student)}
+                            >
+                              <td className="py-4 px-6 text-sm text-gray-600">{student.id}</td>
+                              <td className="py-4 px-6">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-gray-900">
+                                    {student.prefix}{student.firstname} {student.lastname}
+                                  </span>
+                                  {student.isSpecialCare && (
+                                    <span title="ต้องการดูแลเป็นพิเศษ">
+                                      <ShieldAlert size={14} className="text-rose-500" />
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                {student.chronicDisease && student.chronicDisease !== "-" ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    {student.chronicDisease}
+                                  </span>
+                                ) : <span className="text-gray-400">-</span>}
+                              </td>
+                              <td className="py-4 px-6">
+                                {student.foodAllergy && student.foodAllergy !== "-" ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                    {student.foodAllergy}
+                                  </span>
+                                ) : <span className="text-gray-400">-</span>}
+                              </td>
+                              <td className="py-4 px-6">
+                                {student.remark && student.remark !== "-" ? (
+                                  <span className="text-sm text-gray-600">{student.remark}</span>
+                                ) : <span className="text-gray-400">-</span>}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -831,6 +1015,12 @@ export default function StudentDashboard() {
           setEditingCampData(null);
         }}
         onSubmit={handleEditSubmit}
+      />
+
+      <HomeroomStudentModal
+        isOpen={!!selectedStudent}
+        onClose={() => setSelectedStudent(null)}
+        student={selectedStudent}
       />
     </div>
   );
