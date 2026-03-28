@@ -67,7 +67,7 @@ export default function ParentCampProgressPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f5f0e7] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
           <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
@@ -78,7 +78,7 @@ export default function ParentCampProgressPage() {
 
   if (error || !student) {
     return (
-      <div className="min-h-screen bg-[#f5f0e7] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center">
         <p className="text-red-500">{error || "ไม่พบข้อมูล"}</p>
       </div>
     );
@@ -90,7 +90,7 @@ export default function ParentCampProgressPage() {
 
   if (!enrollment) {
     return (
-      <div className="min-h-screen bg-[#f5f0e7] flex items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center p-6 text-center">
         <div>
           <p className="text-gray-500 mb-4">ไม่พบข้อมูลความคืบหน้าของค่ายนี้</p>
           <Button 
@@ -112,7 +112,7 @@ export default function ParentCampProgressPage() {
   const overallProgress = totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#f5f0e7]">
+    <div className="min-h-screen bg-[#F5F1E8]">
       <ParentNavbar />
 
       <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -150,11 +150,11 @@ export default function ParentCampProgressPage() {
               </div>
               
               <div className="grid grid-cols-2 gap-4 flex-1 max-w-xs">
-                <div className="bg-[#f5f0e7] rounded-2xl p-3 text-center">
+                <div className="bg-[#F5F1E8] rounded-2xl p-3 text-center">
                   <p className="text-[10px] text-gray-400 mb-1">สำเร็จแล้ว</p>
                   <p className="font-bold text-[#5d7c6f] text-lg">{completedMissions}</p>
                 </div>
-                <div className="bg-[#f5f0e7] rounded-2xl p-3 text-center">
+                <div className="bg-[#F5F1E8] rounded-2xl p-3 text-center">
                   <p className="text-[10px] text-gray-400 mb-1">ทั้งหมด</p>
                   <p className="font-bold text-[#5d7c6f] text-lg">{totalMissions}</p>
                 </div>

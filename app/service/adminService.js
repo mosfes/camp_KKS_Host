@@ -68,6 +68,28 @@ const addStudentsBulk = async (studentsArray) => {
   }
 };
 
+const checkStudentsExist = async (ids) => {
+  try {
+    const res = await fetch(`${API_URL}/check`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ids }),
+    });
+    
+    if (!res.ok) {
+      throw new Error('Failed to check existing students');
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error("Error checking students:", error);
+    return [];
+  }
+};
+
+
 const getTeachers = async () => {
   try {
     const res = await fetch(API_URL_TEACHERS);
@@ -76,6 +98,48 @@ const getTeachers = async () => {
     return Array.isArray(data) ? data : []; 
   } catch (error) {
     console.error("Error getting teachers:", error);
+    return [];
+  }
+};
+
+const addTeachersBulk = async (teachersArray) => {
+  try {
+    const res = await fetch(API_URL_TEACHERS, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(teachersArray),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to add teachers in bulk');
+    }
+    
+    return await res.json();
+  } catch (error) {
+    throw error; 
+  }
+};
+
+const checkTeachersExist = async (emails) => {
+  try {
+    const res = await fetch(`${API_URL_TEACHERS}/check`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ emails }),
+    });
+    
+    if (!res.ok) {
+      throw new Error('Failed to check existing teachers');
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error("Error checking teachers:", error);
     return [];
   }
 };
@@ -382,6 +446,7 @@ export default {
   getStudentsPaginated,
   addStudent,
   addStudentsBulk,
+  checkStudentsExist,
   deleteStudent,
   updateStudent,
   deleteTeacher,
@@ -389,6 +454,8 @@ export default {
   getTeachers,
   getTeachersPaginated,
   addTeacher,
+  addTeachersBulk,
+  checkTeachersExist,
   getClassrooms,
   getClassroomsPaginated,
   addClassroom,

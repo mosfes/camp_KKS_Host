@@ -113,6 +113,7 @@ export async function GET() {
                 endRegisDate: camp.end_regis_date,
                 totalCapacity,
                 totalEnrolled,
+                academicYear: camp.camp_classroom[0]?.classroom?.academic_years_years_id,
             };
         });
 

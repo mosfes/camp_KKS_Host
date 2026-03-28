@@ -183,6 +183,16 @@ export async function POST(req) {
       where: { students_id: id }
     });
 
+    if (body.email) {
+      const existingTeacher = await prisma.teachers.findFirst({ where: { email: body.email } });
+      if (existingTeacher) return NextResponse.json({ error: 'อีเมลนี้ถูกใช้งานโดยครูแล้ว' }, { status: 400 });
+      
+      const existingStudentByEmail = await prisma.students.findFirst({ where: { email: body.email } });
+      if (existingStudentByEmail && existingStudentByEmail.students_id !== id) {
+         return NextResponse.json({ error: 'อีเมลนี้ถูกใช้งานโดยนักเรียนคนอื่นแล้ว' }, { status: 400 });
+      }
+    }
+
     if (existing) {
       // ถ้านักเรียนถูก soft-delete อยู่ในถังขยะ ให้กู้คืนและอัปเดตข้อมูลใหม่
       if (existing.deletedAt) {
@@ -300,6 +310,16 @@ export async function PUT(req) {
 
     const result = await prisma.$transaction(async (prisma) => {
 
+      if (body.email) {
+        const existingTeacher = await prisma.teachers.findFirst({ where: { email: body.email } });
+        if (existingTeacher) throw new Error('อีเมลนี้ถูกใช้งานโดยครูแล้ว');
+        
+        const existingStudentByEmail = await prisma.students.findFirst({ where: { email: body.email } });
+        if (existingStudentByEmail && existingStudentByEmail.students_id !== id) {
+           throw new Error('อีเมลนี้ถูกใช้งานโดยนักเรียนคนอื่นแล้ว');
+        }
+      }
+
       const updatedStudent = await prisma.students.update({
         where: { students_id: id },
         data: {
@@ -331,6 +351,6 @@ export async function PUT(req) {
     return NextResponse.json(result);
   } catch (error) {
     console.error("Update error:", error);
-    return NextResponse.json({ error: 'Failed to update student' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to update student' }, { status: 500 });
   }
 }

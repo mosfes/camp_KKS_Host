@@ -57,6 +57,56 @@ export async function POST(req) {
   try {
     const body = await req.json();
 
+    if (Array.isArray(body)) {
+      const existingTeachers = await prisma.teachers.findMany({
+        where: { email: { in: body.map(t => t.email) } }
+      });
+      
+      const newTeachersList = [];
+      const restoredTeachersList = [];
+
+      for (const t of body) {
+        const exist = existingTeachers.find(ex => ex.email === t.email);
+        if (exist) {
+          if (exist.deletedAt) {
+            restoredTeachersList.push({
+              where: { teachers_id: exist.teachers_id },
+              data: {
+                prefix_name: t.prefix_name || null,
+                firstname: t.firstname,
+                lastname: t.lastname,
+                tel: t.tel,
+                role: t.role || 'TEACHER',
+                deletedAt: null
+              }
+            });
+          }
+        } else {
+          newTeachersList.push({
+            prefix_name: t.prefix_name || null,
+            firstname: t.firstname,
+            lastname: t.lastname,
+            email: t.email,
+            tel: t.tel || "",
+            role: t.role || 'TEACHER'
+          });
+        }
+      }
+
+      for (const updateOp of restoredTeachersList) {
+        await prisma.teachers.update(updateOp);
+      }
+
+      if (newTeachersList.length > 0) {
+        await prisma.teachers.createMany({
+          data: newTeachersList,
+          skipDuplicates: true
+        });
+      }
+      
+      return NextResponse.json({ message: "Bulk added successfully", count: newTeachersList.length + restoredTeachersList.length }, { status: 201 });
+    }
+
     const existing = await prisma.teachers.findFirst({
       where: { email: body.email }
     });
