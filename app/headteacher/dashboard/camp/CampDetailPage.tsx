@@ -437,7 +437,7 @@ export default function CampDetailPage() {
               {camp.isOwner && (
                 <>
                   <Button
-                    className="bg-white text-#6b857a-600 hidden sm:flex border border-#6b857a-200 hover:text-#6b857a-30"
+                    className="bg-[#E84A5F] text-white hidden sm:flex hover:bg-[#FF847C] transition-colors shadow-sm"
                     startContent={<Trash2 size={18} />}
                     onPress={handleDeleteCamp}
                   >
@@ -791,7 +791,7 @@ export default function CampDetailPage() {
                         </Button>
                         <Button
                           isIconOnly
-                          className="text-gray-400 hover:text-red-500"
+                          className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 hover:text-[#FF847C]"
                           size="sm"
                           variant="light"
                           onClick={(e) => handleDeleteBase(station.station_id, e)}
@@ -878,7 +878,7 @@ export default function CampDetailPage() {
                       </Button>
                       <Button
                         isIconOnly
-                        className="text-gray-400 hover:text-red-500"
+                        className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 hover:text-[#FF847C]"
                         size="sm"
                         variant="light"
                         onClick={handleDeleteSurvey}

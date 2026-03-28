@@ -429,7 +429,7 @@ const ClassroomManager = () => {
                                 size="sm"
                                 isIconOnly
                                 variant="light"
-                                className="text-gray-500 rounded-full"
+                                className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded-full"
                             >
                                 <Settings size={20} />
                             </Button>
@@ -500,7 +500,7 @@ const ClassroomManager = () => {
                                                     <SquarePen size={18} />
                                                 </span>
                                                 <span
-                                                    className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
+                                                    className="cursor-pointer active:opacity-50 text-[#E84A5F] hover:text-[#FF847C] transition-colors"
                                                     onClick={() => handleDeleteClassroom(room)}
                                                 >
                                                     <Trash2 size={18} />
@@ -531,7 +531,7 @@ const ClassroomManager = () => {
                                     }}
                                     className="overflow-x-auto"
                                     classNames={{
-                                        cursor: "bg-sage text-white",
+                                        cursor: "bg-[#5d7c6f] text-white",
                                     }}
                                 />
                             </div>
@@ -561,7 +561,7 @@ const ClassroomManager = () => {
                                                 <div key={y.year} className="p-2 border rounded-xl flex justify-between items-center text-sm">
                                                     <span>{(parseInt(y.year) + 543)}</span>
                                                     <span
-                                                        className="text-red-500 cursor-pointer hover:bg-red-50 p-1 rounded"
+                                                        className="text-[#E84A5F] cursor-pointer hover:bg-[#E84A5F]/10 hover:text-[#FF847C] p-1 rounded transition-colors"
                                                         onClick={() => handleDeleteAcademicYear(y.year)}
                                                     >
                                                         <Trash2 size={14} />
@@ -615,7 +615,7 @@ const ClassroomManager = () => {
                                                         </TableCell>
                                                         <TableCell>
                                                             <span
-                                                                className="text-red-500 cursor-pointer"
+                                                                className="text-[#E84A5F] cursor-pointer hover:text-[#FF847C] transition-colors"
                                                                 onClick={() => handleDeleteClassroomType(type.classroom_type_id)}
                                                             >
                                                                 <Trash2 size={16} />

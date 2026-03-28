@@ -119,7 +119,7 @@ const StudentManager = () => {
     const handleBirthdayChange = (e) => {
         const newBirthday = e.target.value;
         let newFormData = { ...formData, birthday: newBirthday };
-        
+
         if (newBirthday) {
             const birthDate = new Date(newBirthday);
             const today = new Date();
@@ -128,7 +128,7 @@ const StudentManager = () => {
             if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
                 age--;
             }
-            
+
             let currentPrefix = formData.prefix_name;
             if (age < 15) {
                 if (currentPrefix === "นาย") currentPrefix = "เด็กชาย";
@@ -139,7 +139,7 @@ const StudentManager = () => {
             }
             newFormData.prefix_name = currentPrefix;
         }
-        
+
         setFormData(newFormData);
     };
 
@@ -180,9 +180,9 @@ const StudentManager = () => {
         try {
             const result = await studentService.getStudentsPaginated(selectedYear, selectedGrade, selectedRoomType, pageNum, 20, searchTerm);
             const newData = Array.isArray(result) ? result : (result.data || []);
-            
+
             setStudents(newData);
-            
+
             if (result.pagination) {
                 setHasMore(pageNum < result.pagination.totalPages);
                 setTotalPages(result.pagination.totalPages || 1);
@@ -724,7 +724,7 @@ const StudentManager = () => {
                                                         <SquarePen size={18} />
                                                     </span>
                                                     <span
-                                                        className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
+                                                        className="cursor-pointer active:opacity-50 text-[#E84A5F] hover:text-[#FF847C] transition-colors"
                                                         onClick={() => handleDelete(stu)}
                                                     >
                                                         <Trash2 size={18} />
@@ -782,18 +782,18 @@ const StudentManager = () => {
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <label className="text-sm font-medium text-gray-700">คำนำหน้า</label>
-                                    <Select
-                                        placeholder="เลือกคำนำหน้า"
-                                        variant="bordered"
-                                        selectedKeys={formData.prefix_name ? [formData.prefix_name] : []}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, prefix_name: e.target.value }))}
-                                        classNames={{ trigger: "bg-white" }}
-                                    >
-                                        {prefixOptions.map((p) => (
-                                            <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
-                                        ))}
-                                    </Select>
-                                </div>
+                                        <Select
+                                            placeholder="เลือกคำนำหน้า"
+                                            variant="bordered"
+                                            selectedKeys={formData.prefix_name ? [formData.prefix_name] : []}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, prefix_name: e.target.value }))}
+                                            classNames={{ trigger: "bg-white" }}
+                                        >
+                                            {prefixOptions.map((p) => (
+                                                <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>
+                                            ))}
+                                        </Select>
+                                    </div>
                                 </div>
                                 <div className="flex gap-4">
                                     <div className="flex flex-col gap-1 w-full">

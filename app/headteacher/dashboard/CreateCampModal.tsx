@@ -1016,7 +1016,7 @@ export default function CreateCampModal({
                             <div className="col-span-1 flex justify-end">
                               {day.timeSlots.length > 1 && (
                                 <button
-                                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors mt-5"
+                                  className="p-2 text-[#E84A5F] opacity-70 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded transition-colors mt-5"
                                   type="button"
                                   onClick={() =>
                                     removeTimeSlot(dayIndex, slotIndex)

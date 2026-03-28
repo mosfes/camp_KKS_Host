@@ -212,7 +212,7 @@ export default function BaseDetailPage() {
                     </Button>
                     <Button
                       isIconOnly
-                      className="text-gray-400 hover:text-red-500"
+                      className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 hover:text-[#FF847C]"
                       size="sm"
                       variant="light"
                       onClick={(e) =>

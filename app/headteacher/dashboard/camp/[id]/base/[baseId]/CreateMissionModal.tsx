@@ -198,7 +198,7 @@ export default function CreateMissionModal({
                       </div>
                       {textQuestions.length > 1 && (
                         <button
-                          className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                          className="p-2 text-[#E84A5F] opacity-0 group-hover:opacity-70 hover:!opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded-lg transition-all"
                           onClick={() => removeTextQuestion(i)}
                         >
                           <Trash2 size={18} />
@@ -224,10 +224,10 @@ export default function CreateMissionModal({
                   </div>
 
                   {mcqQuestions.map((q, qi) => (
-                    <div key={qi} className="p-4 bg-gray-50 rounded-xl border border-gray-200 relative">
+                    <div key={qi} className="p-4 bg-gray-50 rounded-xl border border-gray-200 relative group">
                       {mcqQuestions.length > 1 && (
                         <button
-                          className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors"
+                          className="p-2 text-[#E84A5F] opacity-0 group-hover:opacity-70 hover:!opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded-lg transition-all absolute top-3 right-3"
                           onClick={() => removeMcqQuestion(qi)}
                         >
                           <Trash2 size={16} />
@@ -263,7 +263,7 @@ export default function CreateMissionModal({
                               onChange={(e) => updateChoiceText(qi, ci, e.target.value)}
                             />
                             {q.choices.length > 2 && (
-                              <button className="text-gray-400 hover:text-red-500 transition-colors" onClick={() => removeChoice(qi, ci)}>
+                              <button className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 p-1 rounded transition-colors" onClick={() => removeChoice(qi, ci)}>
                                 <Trash2 size={14} />
                               </button>
                             )}

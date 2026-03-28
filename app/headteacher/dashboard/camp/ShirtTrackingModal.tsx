@@ -230,9 +230,8 @@ export default function ShirtTrackingModal({
                     <div className="flex justify-center mt-4 pb-2">
                       <Pagination
                         classNames={{
-                          cursor: "bg-[#6b857a] text-white font-bold",
+                          cursor: "bg-[#5d7c6f] text-white font-bold",
                         }}
-                        color="success"
                         page={page}
                         total={pages}
                         onChange={setPage}

@@ -60,6 +60,7 @@ export default function StudentDashboard() {
     surveyResponseRate: 0,
   });
   const [teacherInfo, setTeacherInfo] = useState<any>(null);
+  const [dbAcademicYears, setDbAcademicYears] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState("overview");
   const [isSelectTypeOpen, setIsSelectTypeOpen] = useState(false);
@@ -120,6 +121,7 @@ export default function StudentDashboard() {
           ownerName: camp.created_by ? `${camp.created_by.firstname} ${camp.created_by.lastname}`.trim() : "",
           grades: camp.grades || [],
           gradeDisplay: camp.gradeDisplay || "",
+          academicYear: camp.academicYear || "",
         };
       });
 
@@ -160,10 +162,28 @@ export default function StudentDashboard() {
     }
   };
 
+  const fetchAcademicYears = async () => {
+    try {
+      const res = await fetch("/api/academic_years");
+      if (res.ok) {
+        const data = await res.json();
+        setDbAcademicYears(data);
+        const activeYear = data.find((y: any) => 
+          y.status === "แอคทีฟ" || y.status === "Active" || y.status === "ใช้งาน"
+        );
+        if (activeYear) {
+          setCampAcademicYearFilter(activeYear.year.toString());
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch academic years:", err);
+    }
+  };
+
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
-      await Promise.all([fetchCamps(), fetchStats(), fetchTeacher()]);
+      await Promise.all([fetchCamps(), fetchStats(), fetchTeacher(), fetchAcademicYears()]);
       setLoading(false);
     };
 
@@ -430,11 +450,13 @@ export default function StudentDashboard() {
 
   const [campStatusFilter, setCampStatusFilter] = useState("all");
   const [campRoleFilter, setCampRoleFilter] = useState("all"); // "all", "owner", "related"
+  const [campAcademicYearFilter, setCampAcademicYearFilter] = useState("all");
 
   const filteredMyCamps = camps.filter((camp) => {
     if (campStatusFilter !== "all" && camp.status !== campStatusFilter) return false;
     if (campRoleFilter === "owner" && !camp.isOwner) return false;
     if (campRoleFilter === "related" && camp.isOwner) return false;
+    if (campAcademicYearFilter !== "all" && String(camp.academicYear) !== String(campAcademicYearFilter)) return false;
     return true;
   });
 
@@ -537,43 +559,61 @@ export default function StudentDashboard() {
             </div>
 
             {/* ===== FILTER ===== */}
-            <div className="flex flex-col sm:flex-row justify-end gap-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 w-full mt-4 sm:mt-0">
+              {/* Academic Year Filter */}
+              <div className="w-full sm:w-[180px] min-w-[180px]">
+                <Select
+                  aria-label="Select Academic Year"
+                  placeholder="ปีการศึกษา: ทั้งหมด"
+                  className="w-full"
+                  size="sm"
+                  selectedKeys={[campAcademicYearFilter]}
+                  onChange={(e) => setCampAcademicYearFilter(e.target.value)}
+                  classNames={{ trigger: "bg-white border border-gray-100 text-gray-700 font-medium" }}
+                >
+                  {[{year: "all"}, ...dbAcademicYears].map(item => (
+                    <SelectItem 
+                      key={String(item.year)} 
+                      textValue={item.year === "all" ? "ปีการศึกษา: ทั้งหมด" : `ปีการศึกษา: ${(parseInt(item.year) + 543).toString()}`}
+                    >
+                      {item.year === "all" ? "ปีการศึกษา: ทั้งหมด" : `ปีการศึกษา: ${parseInt(item.year) + 543}`}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </div>
+
               {/* Status Filter */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-500 font-medium mr-1">สถานะ:</span>
+              <div className="w-full sm:w-[160px] min-w-[160px]">
                 <Select
                   aria-label="สถานะ"
-                  className="w-40"
-                  classNames={{
-                    trigger: "h-8 min-h-8 rounded-full border border-gray-200 shadow-sm",
-                    value: "text-sm text-gray-700",
-                  }}
+                  placeholder="สถานะ: ทั้งหมด"
+                  className="w-full"
+                  size="sm"
                   selectedKeys={[campStatusFilter]}
-                  onSelectionChange={(keys) => setCampStatusFilter(Array.from(keys)[0] as string)}
+                  onChange={(e) => setCampStatusFilter(e.target.value)}
+                  classNames={{ trigger: "bg-white border border-gray-100 text-gray-700 font-medium" }}
                 >
-                  <SelectItem key="all" textValue="ทั้งหมด">ทั้งหมด</SelectItem>
-                  <SelectItem key="กำลังจัด" textValue="กำลังจัด">กำลังจัด</SelectItem>
-                  <SelectItem key="ยังไม่เริ่ม" textValue="ยังไม่เริ่ม">ยังไม่เริ่ม</SelectItem>
-                  <SelectItem key="เสร็จสิ้น" textValue="เสร็จสิ้น">เสร็จสิ้น</SelectItem>
+                  <SelectItem key="all" textValue="สถานะ: ทั้งหมด">สถานะ: ทั้งหมด</SelectItem>
+                  <SelectItem key="กำลังจัด" textValue="สถานะ: กำลังจัด">สถานะ: กำลังจัด</SelectItem>
+                  <SelectItem key="ยังไม่เริ่ม" textValue="สถานะ: ยังไม่เริ่ม">สถานะ: ยังไม่เริ่ม</SelectItem>
+                  <SelectItem key="เสร็จสิ้น" textValue="สถานะ: เสร็จสิ้น">สถานะ: เสร็จสิ้น</SelectItem>
                 </Select>
               </div>
 
               {/* Role Filter (Dropdown) */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-500 font-medium mr-1 xl:ml-2">ประเภท:</span>
+              <div className="w-full sm:w-[210px] min-w-[210px]">
                 <Select
-                  aria-label="ประเภทค่าย"
-                  className="w-40"
-                  classNames={{
-                    trigger: "h-8 min-h-8 rounded-full border border-gray-200 shadow-sm",
-                    value: "text-sm text-gray-700",
-                  }}
+                  aria-label="ประเภท"
+                  placeholder="ประเภท: ทั้งหมด"
+                  className="w-full"
+                  size="sm"
                   selectedKeys={[campRoleFilter]}
-                  onSelectionChange={(keys) => setCampRoleFilter(Array.from(keys)[0] as string)}
+                  onChange={(e) => setCampRoleFilter(e.target.value)}
+                  classNames={{ trigger: "bg-white border border-gray-100 text-gray-700 font-medium" }}
                 >
-                  <SelectItem key="all" textValue="ทั้งหมด">ทั้งหมด</SelectItem>
-                  <SelectItem key="owner" textValue="ค่ายที่สร้าง">ค่ายที่สร้าง</SelectItem>
-                  <SelectItem key="related" textValue="ค่ายที่เกี่ยวข้อง">ค่ายที่เกี่ยวข้อง</SelectItem>
+                  <SelectItem key="all" textValue="ประเภท: ทั้งหมด">ประเภท: ทั้งหมด</SelectItem>
+                  <SelectItem key="owner" textValue="ประเภท: ค่ายที่สร้าง">ประเภท: ค่ายที่สร้าง</SelectItem>
+                  <SelectItem key="related" textValue="ประเภท: ค่ายที่เกี่ยวข้อง">ประเภท: ค่ายที่เกี่ยวข้อง</SelectItem>
                 </Select>
               </div>
             </div>
@@ -623,7 +663,7 @@ export default function StudentDashboard() {
                             <Pencil size={16} />
                           </button>
                           <button
-                            className="p-2 bg-[#5d7c6f] text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#4a6358] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="p-2 bg-[#E84A5F] text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#FF847C] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
                             disabled={loading}
                             title="ลบค่าย"
                             onClick={(e) => {

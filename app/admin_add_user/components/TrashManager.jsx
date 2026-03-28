@@ -106,11 +106,10 @@ const TrashManager = ({ type, onBack }) => {
                 <Chip
                     size="sm"
                     variant="flat"
-                    className={`border font-medium ${
-                        item.role?.toUpperCase() === "ADMIN"
+                    className={`border font-medium ${item.role?.toUpperCase() === "ADMIN"
                             ? "bg-[#f7f2fa] text-[#8e6ba8] border-[#e9dff2]"
                             : "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
-                    }`}
+                        }`}
                 >
                     {item.role?.toUpperCase() === "ADMIN" ? "ผู้ดูแลระบบ" : item.role?.toUpperCase() === "TEACHER" ? "ครูประจำชั้น" : item.role || "ครู"}
                 </Chip>,
@@ -158,9 +157,9 @@ const TrashManager = ({ type, onBack }) => {
         try {
             const result = await cfg.fetchFn(pageNum, searchTerm);
             const newData = result.data || [];
-            
+
             setItems(newData);
-            
+
             if (result.pagination) {
                 setHasMore(pageNum < result.pagination.totalPages);
                 setTotalPages(result.pagination.totalPages || 1);
@@ -314,7 +313,7 @@ const TrashManager = ({ type, onBack }) => {
                                                 <Button
                                                     size="sm"
                                                     variant="flat"
-                                                    className="bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-full font-medium transition-all"
+                                                    className="bg-[#E84A5F]/10 text-[#E84A5F] hover:bg-[#E84A5F]/20 hover:text-[#FF847C] rounded-full font-medium transition-all"
                                                     onPress={() => handlePermanentDelete(item)}
                                                 >
                                                     <AlertTriangle size={14} />

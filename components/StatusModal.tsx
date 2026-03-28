@@ -8,7 +8,7 @@ import {
   ModalFooter,
   Button,
 } from "@heroui/react";
-import { CheckCircle, AlertOctagon, AlertCircle, Info } from "lucide-react";
+import { CheckCircle, AlertOctagon, AlertCircle, Info, Trash2 } from "lucide-react";
 
 export type ModalType = "success" | "error" | "warning" | "info";
 
@@ -33,7 +33,14 @@ export default function StatusModal({
   confirmText = "ยืนยัน",
   isLoading = false,
 }: StatusModalProps) {
+  const isDeleteAction =
+    type === "warning" &&
+    (title.includes("ลบ") || confirmText.includes("ลบ"));
+
   const getIcon = () => {
+    if (isDeleteAction) {
+      return <Trash2 className="text-[#E84A5F]" size={48} />;
+    }
     switch (type) {
       case "success":
         return <CheckCircle className="text-green-500" size={48} />;
@@ -90,7 +97,11 @@ export default function StatusModal({
               {onConfirm ? (
                 <>
                   <Button
-                    className="bg-[#6b857a] text-white rounded-full font-bold w-36 shadow-sm hover:bg-[#5a7268]"
+                    className={`text-white rounded-full font-bold w-36 shadow-sm ${
+                      isDeleteAction
+                        ? "bg-[#E84A5F] hover:bg-[#FF847C]"
+                        : "bg-[#6b857a] hover:bg-[#5a7268]"
+                    }`}
                     isLoading={isLoading}
                     onPress={() => {
                       onConfirm();

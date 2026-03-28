@@ -255,7 +255,7 @@ export default function VulgarWordsManager() {
                             <SquarePen size={18} />
                         </span>
                         <span
-                            className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
+                            className="cursor-pointer active:opacity-50 text-[#E84A5F] hover:text-[#FF847C] transition-colors"
                             onClick={() => handleDeleteWord(item.vulgar_word_id, item.word)}
                         >
                             <Trash2 size={18} />

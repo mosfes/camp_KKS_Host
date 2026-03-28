@@ -313,7 +313,7 @@ export default function CreateSurveyModal({
                             </p>
                           </button>
                           <button
-                            className="p-2 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            className="p-2 text-[#E84A5F] opacity-0 group-hover:opacity-70 hover:!opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded-lg transition-all"
                             onClick={(e) => {
                               e.stopPropagation();
                               deleteTemplate(tpl.template_id);
@@ -458,7 +458,7 @@ export default function CreateSurveyModal({
 
                         {questions.length > 1 && (
                           <button
-                            className="p-1 ml-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                            className="p-1 ml-1 text-[#E84A5F] opacity-70 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded transition-colors"
                             onClick={() => removeQuestion(i)}
                             title="ลบคำถาม"
                           >

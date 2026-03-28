@@ -215,10 +215,16 @@ export default function TrackingModal({
                         isCompact
                         showControls
                         showShadow
-                        color="success"
+                        className="bg-transparent"
+                        classNames={{
+                          cursor: "bg-[#5d7c6f] text-white font-medium",
+                        }}
                         page={page}
                         total={pages}
-                        onChange={(newPage) => setPage(newPage)}
+                        onChange={(newPage) => {
+                          setPage(newPage);
+                          // find parent scroll container if needed, but pagination inside modal body usually is fine
+                        }}
                       />
                     </div>
                   )}

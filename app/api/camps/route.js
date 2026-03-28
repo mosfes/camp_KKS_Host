@@ -219,6 +219,7 @@ export async function GET(request) {
                         classroom: {
                             include: {
                                 _count: { select: { classroom_students: true } },
+                                academic_years: true,
                                 classroom_types: true,
                                 teacher: {
                                     select: { firstname: true, lastname: true },
@@ -280,13 +281,17 @@ export async function GET(request) {
             }
             updated.isOwner = camp.created_by_teacher_id === teacher.teachers_id;
             
-            // Extract Grades and Types
+            // Extract Grades, Types, and Academic Year
             const typeMap = new Map();
             const allGrades = new Set();
+            let campAcademicYear = "";
             
             if (camp.camp_classroom) {
                 camp.camp_classroom.forEach(cc => {
                     if (cc.classroom) {
+                        if (!campAcademicYear && cc.classroom.academic_years) {
+                            campAcademicYear = cc.classroom.academic_years.year.toString();
+                        }
                         const g = cc.classroom.grade;
                         const typeName = cc.classroom.classroom_types?.name || cc.classroom.type_classroom;
                         if (g) {
@@ -306,6 +311,7 @@ export async function GET(request) {
             
             const sortedGrades = Array.from(allGrades).sort((a, b) => a.localeCompare(b));
             updated.grades = sortedGrades;
+            updated.academicYear = campAcademicYear;
             
             updated.gradeDisplay = Array.from(typeMap.entries())
                 .sort((a, b) => a[0].toString().localeCompare(b[0].toString()))

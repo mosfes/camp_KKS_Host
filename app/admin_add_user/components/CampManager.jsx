@@ -561,7 +561,7 @@ const CampManager = () => {
                                                         <SquarePen size={18} />
                                                     </span>
                                                     <span
-                                                        className="cursor-pointer active:opacity-50 text-red-500 hover:text-red-700"
+                                                        className="cursor-pointer active:opacity-50 text-[#E84A5F] hover:text-[#FF847C] transition-colors"
                                                         onClick={() => handleDeleteCamp(camp)}
                                                         title="ลบค่าย"
                                                     >
@@ -594,7 +594,7 @@ const CampManager = () => {
                                     }}
                                     className="overflow-x-auto"
                                     classNames={{
-                                        cursor: "bg-sage text-white",
+                                        cursor: "bg-[#5d7c6f] text-white",
                                     }}
                                 />
                             </div>
