@@ -22,10 +22,12 @@ import {
     SelectItem,
     Autocomplete,
     AutocompleteItem,
-    Pagination
+    Pagination,
+    Textarea,
+    Tooltip
 } from "@heroui/react";
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Trash, Archive, SquarePen, Search } from 'lucide-react';
+import { Trash2, Trash, Archive, SquarePen, Search, ClipboardPaste, HelpCircle } from 'lucide-react';
 import TrashManager from "./TrashManager";
 import studentService from "@/app/service/adminService";
 import { PlusIcon } from "./Icons";
@@ -43,6 +45,14 @@ const TeacherManager = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [totalTeachers, setTotalTeachers] = useState(0);
     const [isOtherPrefix, setIsOtherPrefix] = useState(false);
+
+    // Paste Import State
+    const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+    const [pasteText, setPasteText] = useState("");
+    const [importPreviewData, setImportPreviewData] = useState([]);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isLoadingImport, setIsLoadingImport] = useState(false);
+    const [selectedImportKeys, setSelectedImportKeys] = useState(new Set(["all"]));
 
 
     // ตัวเลือกคำนำหน้าครู
@@ -159,6 +169,12 @@ const TeacherManager = () => {
             return;
         }
 
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            showError("รูปแบบอีเมลไม่ถูกต้อง", "กรุณาตรวจสอบรูปแบบอีเมลอีกครั้ง");
+            return;
+        }
+
         try {
             if (isEditing) {
                 await studentService.updateTeacher(formData);
@@ -173,8 +189,179 @@ const TeacherManager = () => {
             fetchTeachers(1);
             onClose();
         } catch (error) {
-            console.error("Teacher operation error:", error);
             showError("เกิดข้อผิดพลาด", error.message);
+        }
+    };
+
+    const openPasteModal = () => {
+        setPasteText("");
+        setIsPasteModalOpen(true);
+    };
+
+    const handlePastePreview = async () => {
+        if (!pasteText.trim()) {
+            showError("ไม่มีข้อมูล", "กรุณาวางข้อมูลก่อนตรวจสอบ");
+            return;
+        }
+
+        const lines = pasteText.split('\n').filter(line => line.trim() !== '');
+        if (lines.length === 0) return;
+
+        let emailsToCheck = [];
+        const validDataPrep = lines.map((line, index) => {
+            const cols = line.split('\t').map(c => c.trim());
+            if (cols.length < 2) return null;
+
+            let prefix_name = "";
+            let firstname = "";
+            let lastname = "";
+            let email = "";
+            let tel = "";
+
+            const knownPrefixes = ["เด็กชาย", "เด็กหญิง", "นางสาว", "นาย", "นาง", "ดร.", "ว่าที่ร้อยตรีหญิง", "ว่าที่ร้อยตรี"];
+            const extractPrefix = (name) => {
+                for (const prefix of knownPrefixes) {
+                    if (name.startsWith(prefix)) {
+                        return { prefix_name: prefix, cleanName: name.slice(prefix.length).trim() };
+                    }
+                }
+                return { prefix_name: "", cleanName: name };
+            };
+
+            if (cols.length >= 4 && cols[3].includes('@')) {
+               prefix_name = cols[0];
+               firstname = cols[1];
+               lastname = cols[2];
+               email = cols[3];
+               tel = cols[4] || "";
+            } else if (cols.length >= 3 && cols[2].includes('@')) {
+               const extracted = extractPrefix(cols[0]);
+               prefix_name = extracted.prefix_name;
+               firstname = extracted.cleanName;
+               lastname = cols[1];
+               email = cols[2];
+               tel = cols[3] || "";
+            } else {
+               const combined = cols[0];
+               const extracted = extractPrefix(combined);
+               prefix_name = extracted.prefix_name;
+               const nameParts = extracted.cleanName.split(' ');
+               firstname = nameParts[0];
+               lastname = nameParts.slice(1).join(' ');
+               email = cols[1];
+               tel = cols[2] || "";
+            }
+
+            if (!firstname || !email) return null;
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const isEmailValid = emailRegex.test(email);
+
+            if (isEmailValid) {
+                emailsToCheck.push(email);
+            }
+
+            return {
+                id: index,
+                prefix_name: prefix_name,
+                firstname: firstname,
+                lastname: lastname,
+                email: email,
+                tel: tel,
+                role: "TEACHER",
+                isEmailValid: isEmailValid
+            };
+        }).filter(item => item !== null);
+
+        if (validDataPrep.length === 0) {
+            showError("ไม่พบข้อมูลที่ถูกต้อง", "กรุณาตรวจสอบข้อมูลที่วาง (ต้องมีอย่างน้อยชื่อและอีเมลคั่นด้วย Tab)");
+            return;
+        }
+
+        let existingInDb = [];
+        try {
+            if (emailsToCheck.length > 0) {
+                existingInDb = await studentService.checkTeachersExist(emailsToCheck);
+            }
+        } catch (error) {
+            console.error("Check existence error:", error);
+        }
+
+        const dbEmailSet = new Set(existingInDb.map(t => String(t.email)));
+        const trashEmailSet = new Set(existingInDb.filter(t => t.deletedAt).map(t => String(t.email)));
+        const seenEmails = new Set();
+
+        const validData = validDataPrep.map(item => {
+            const isDbDuplicate = item.isEmailValid ? dbEmailSet.has(item.email) : false;
+            const isInTrash = item.isEmailValid ? trashEmailSet.has(item.email) : false;
+
+            let isInternalDuplicate = false;
+            if (item.isEmailValid) {
+                if (seenEmails.has(item.email)) {
+                    isInternalDuplicate = true;
+                } else {
+                    seenEmails.add(item.email);
+                }
+            }
+
+            const isDuplicate = isDbDuplicate || isInternalDuplicate;
+
+            return {
+                ...item,
+                isDuplicate: isDuplicate,
+                isInTrash: isInTrash,
+                suggestion: isInTrash ? "ครูคนนี้อยู่ในถังขยะ จะถูกกู้คืนและอัพเดทข้อมูลอัตโนมัติ" : ""
+            };
+        });
+
+        setImportPreviewData(validData);
+
+        const validKeys = new Set(
+            validData.filter(item => !item.isDuplicate && item.isEmailValid).map(item => String(item.id))
+        );
+
+        setSelectedImportKeys(validKeys);
+        setIsPasteModalOpen(false);
+        setIsImportModalOpen(true);
+    };
+
+    const confirmImport = async () => {
+        setIsLoadingImport(true);
+
+        const isAllSelected = selectedImportKeys === "all";
+        const teachersToImport = importPreviewData.filter(item => {
+            if (isAllSelected) return !item.isDuplicate && item.isEmailValid;
+            return selectedImportKeys.has(String(item.id));
+        });
+
+        if (teachersToImport.length === 0) {
+            showError("เตือน", "กรุณาเลือกรายการที่ต้องการนำเข้าอย่างน้อย 1 รายการ");
+            setIsLoadingImport(false);
+            return;
+        }
+
+        try {
+            const payloadArray = teachersToImport.map(t => ({
+                prefix_name: t.prefix_name || "",
+                firstname: t.firstname,
+                lastname: t.lastname,
+                email: t.email,
+                tel: t.tel,
+                role: t.role
+            }));
+
+            const result = await studentService.addTeachersBulk(payloadArray);
+
+            setIsLoadingImport(false);
+            setIsImportModalOpen(false);
+            setImportPreviewData([]);
+            setPage(1);
+            fetchTeachers(1);
+
+            showSuccess("สำเร็จ", `เพิ่มข้อมูลครูสำเร็จทั้งหมด ${result.count || payloadArray.length} รายการ (ข้ามรายการที่ซ้ำกัน)`);
+        } catch (error) {
+            setIsLoadingImport(false);
+            showError("เกิดข้อผิดพลาด", "การนำเข้าข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือตรวจสอบไฟล์ของคุณ");
         }
     };
 
@@ -210,7 +397,15 @@ const TeacherManager = () => {
                                 />
                             </div>
 
-
+                            <Button
+                                size="sm"
+                                variant="bordered"
+                                className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
+                                onPress={openPasteModal}
+                            >
+                                <ClipboardPaste size={16} />
+                                <span className="ml-1 font-medium hidden sm:inline">นำเข้ารายชื่อ (วางข้อมูล)</span>
+                            </Button>
 
                             <Button
                                 onPress={openAddModal}
@@ -459,6 +654,118 @@ const TeacherManager = () => {
                 </ModalContent>
             </Modal>
 
+            {/* Paste Data Modal */}
+            <Modal isOpen={isPasteModalOpen} onOpenChange={setIsPasteModalOpen} placement="center" backdrop="blur" size="2xl">
+                <ModalContent className="bg-white rounded-2xl shadow-medium border border-gray-100 text-gray-800 p-2">
+                    {(onClosePaste) => (
+                        <>
+                            <ModalHeader>นำเข้ารายชื่อครู</ModalHeader>
+                            <ModalBody className="gap-4">
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm font-medium text-gray-700">วางข้อมูลครู (คัดลอกจาก Excel)</label>
+                                    <Textarea
+                                        placeholder={`ก๊อปปี้ข้อมูลมาจากไฟล์ Excel แล้วนำมาวางที่นี่ได้เลย (ชื่อ และ อีเมล จำเป็นต้องมี)\n\nตัวอย่าง:\nนาย\tสมชาย\tใจดี\tsomchai@school.ac.th\t0812345678\nนายสมหญิง ดีมาก\tsomying@school.ac.th\nดร.\tสมศตวรรษ\tใจปอง\tsomsatwat@school.ac.th`}
+                                        variant="bordered"
+                                        minRows={8}
+                                        value={pasteText}
+                                        onChange={(e) => setPasteText(e.target.value)}
+                                        classNames={{ inputWrapper: "bg-white" }}
+                                    />
+                                </div>
+                            </ModalBody>
+                            <ModalFooter>
+                                <Button color="danger" variant="light" onPress={onClosePaste} className="rounded-full">ยกเลิก</Button>
+                                <Button className="bg-sage text-white shadow-sm rounded-full" onPress={handlePastePreview}>ตรวจสอบข้อมูล</Button>
+                            </ModalFooter>
+                        </>
+                    )}
+                </ModalContent>
+            </Modal>
+
+            {/* Import Preview Modal */}
+            <Modal isOpen={isImportModalOpen} onOpenChange={setIsImportModalOpen} size="5xl" scrollBehavior="inside">
+                <ModalContent>
+                    {(onClose) => {
+                        const isAllSelected = selectedImportKeys === "all";
+                        const selectedCount = isAllSelected 
+                            ? importPreviewData.filter(item => !item.isDuplicate && item.isEmailValid).length 
+                            : selectedImportKeys.size;
+                        
+                        return (
+                        <>
+                            <ModalHeader>ยืนยันการนำเข้าข้อมูล (เลือก {selectedCount} จาก {importPreviewData.length} รายการ)</ModalHeader>
+                            <ModalBody>
+                                <div className="overflow-x-auto w-full">
+                                    <Table
+                                        aria-label="Import Preview"
+                                        selectionMode="multiple"
+                                        selectedKeys={selectedImportKeys}
+                                        onSelectionChange={setSelectedImportKeys}
+                                        disabledKeys={importPreviewData.filter(item => item.isDuplicate || !item.isEmailValid).map(item => String(item.id))}
+                                        color="primary"
+                                        classNames={{ wrapper: "min-w-fit" }}
+                                    >
+                                        <TableHeader>
+                                            <TableColumn>ชื่อ-นามสกุล</TableColumn>
+                                            <TableColumn>อีเมล</TableColumn>
+                                            <TableColumn>เบอร์โทร</TableColumn>
+                                            <TableColumn>สถานะ</TableColumn>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {importPreviewData.map((t) => (
+                                                <TableRow key={t.id}>
+                                                    <TableCell>
+                                                        <div className="whitespace-nowrap">
+                                                            {t.prefix_name ? `${t.prefix_name}${t.firstname}` : t.firstname} {t.lastname}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className={!t.isEmailValid ? "text-red-500" : ""}>{t.email}</TableCell>
+                                                    <TableCell>{t.tel || "-"}</TableCell>
+                                                    <TableCell>
+                                                        {!t.isEmailValid ? (
+                                                            <span className="text-orange-500 text-xs bg-orange-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
+                                                                รูปแบบอีเมลไม่ถูกต้อง
+                                                            </span>
+                                                        ) : t.isDuplicate ? (
+                                                            <span className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
+                                                                มีอีเมลนี้แล้ว
+                                                            </span>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
+                                                                    พร้อมนำเข้า
+                                                                </span>
+                                                                {t.suggestion && (
+                                                                    <Tooltip content={t.suggestion} color="warning" className="text-white">
+                                                                        <span className="cursor-help text-orange-400 hover:text-orange-600">
+                                                                            <HelpCircle size={16} />
+                                                                        </span>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </ModalBody>
+                            <ModalFooter>
+                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
+                                <Button
+                                    className="bg-sage text-white shadow-sm rounded-full"
+                                    onPress={confirmImport}
+                                    isLoading={isLoadingImport}
+                                >
+                                    ยืนยันนำเข้า
+                                </Button>
+                            </ModalFooter>
+                        </>
+                        );
+                    }}
+                </ModalContent>
+            </Modal>
 
         </div >
     );

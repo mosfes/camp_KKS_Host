@@ -312,8 +312,8 @@ const StudentManager = () => {
         }
 
         showConfirm(
-            "ลบนักเรียนออกจากห้องเรียน",
-            `ลบนักเรียน "${student.firstname} ${student.lastname}" (รหัส: ${student.students_id}) ออกจากห้องเรียนปีนี้ใช่หรือไม่?${classroomDesc}\n\nนักเรียนจะถูกย้ายไปยังที่เก็บถาวร และสามารถกู้คืนได้ในภายหลัง`,
+            "ยืนยันการลบนักเรียน",
+            `ต้องการลบ "${student.firstname} ${student.lastname}" (รหัส: ${student.students_id})?${classroomDesc}\n\n ใช่หรือไม่`,
             async () => {
                 try {
                     await studentService.deleteStudent(student.students_id, classroomId);
@@ -333,6 +333,15 @@ const StudentManager = () => {
             showError("ข้อมูลไม่ครบ", "กรุณากรอกรหัสนักเรียนและชื่อ");
             return;
         }
+
+        if (formData.email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(formData.email)) {
+                showError("รูปแบบอีเมลไม่ถูกต้อง", "กรุณาตรวจสอบรูปแบบอีเมลอีกครั้ง");
+                return;
+            }
+        }
+
         try {
             if (isEditing) {
                 await studentService.updateStudent(formData);
@@ -386,30 +395,18 @@ const StudentManager = () => {
 
 
     const handlePromoteClick = () => {
-        router.push("/admin_promote_students");
-    };
-
-    const mapGradeToEnum = (gradeInput) => {
-        if (!gradeInput) return null;
-        const g = String(gradeInput).trim();
-        if (g === "1" || g === "ม.1" || g === "M.1") return "Level_1";
-        if (g === "2" || g === "ม.2" || g === "M.2") return "Level_2";
-        if (g === "3" || g === "ม.3" || g === "M.3") return "Level_3";
-        if (g === "4" || g === "ม.4" || g === "M.4") return "Level_4";
-        if (g === "5" || g === "ม.5" || g === "M.5") return "Level_5";
-        if (g === "6" || g === "ม.6" || g === "M.6") return "Level_6";
-        return null;
+        router.push('/admin_promote_students');
     };
 
     const openPasteModal = () => {
-        setPasteYear(years.length > 0 ? [...years].sort((a, b) => b.year - a.year)[0].year.toString() : "");
-        setPasteGrade("");
+        setPasteYear(selectedYear);
+        setPasteGrade(selectedGrade === "all" ? "" : selectedGrade);
         setPasteClassroomId("");
         setPasteText("");
         setIsPasteModalOpen(true);
     };
 
-    const handlePastePreview = () => {
+    const handlePastePreview = async () => {
         if (!pasteYear || !pasteGrade || !pasteClassroomId) {
             showError("ข้อมูลไม่ครบ", "กรุณาเลือกปีการศึกษา ระดับชั้น และห้องเรียนก่อน");
             return;
@@ -422,6 +419,20 @@ const StudentManager = () => {
 
         const lines = pasteText.split('\n').filter(line => line.trim() !== '');
         if (lines.length === 0) return;
+
+        // ดึงรหัสนักเรียนทั้งหมดเพื่อไปเช็คในฐานข้อมูล
+        const allIds = lines.map(line => line.split('\t')[0].trim()).filter(id => id);
+
+        // เช็คกับฐานข้อมูล
+        let existingInDb = [];
+        try {
+            existingInDb = await studentService.checkStudentsExist(allIds);
+        } catch (error) {
+            console.error("Check existence error:", error);
+        }
+
+        const dbIdSet = new Set(existingInDb.map(s => String(s.students_id)));
+        const trashIdSet = new Set(existingInDb.filter(s => s.deletedAt).map(s => String(s.students_id)));
 
         const seenIds = new Set();
 
@@ -472,7 +483,8 @@ const StudentManager = () => {
 
             if (!studentId || !firstname) return null;
 
-            const isDbDuplicate = students.some(s => String(s.students_id) === studentId);
+            const isDbDuplicate = dbIdSet.has(studentId);
+            const isInTrash = trashIdSet.has(studentId);
 
             let isInternalDuplicate = false;
             if (seenIds.has(studentId)) {
@@ -495,7 +507,8 @@ const StudentManager = () => {
                 classroom_status: `${gradeLabel} / ${roomName}`,
                 is_valid_class: true,
                 isDuplicate: isDuplicate,
-                suggestion: ""
+                isInTrash: isInTrash,
+                suggestion: isInTrash ? "นักเรียนคนนี้อยู่ในถังขยะ จะถูกกู้คืนและย้ายมาห้องนี้อัตโนมัติ" : ""
             };
         }).filter(item => item !== null);
 
@@ -520,7 +533,11 @@ const StudentManager = () => {
     const confirmImport = async () => {
         setIsLoadingImport(true);
 
-        const studentsToImport = importPreviewData.filter(item => selectedImportKeys.has(String(item.id)));
+        const isAllSelected = selectedImportKeys === "all";
+        const studentsToImport = importPreviewData.filter(item => {
+            if (isAllSelected) return (!item.isDuplicate && item.is_valid_class);
+            return selectedImportKeys.has(String(item.id));
+        });
 
         if (studentsToImport.length === 0) {
             showError("เตือน", "กรุณาเลือกรายการที่ต้องการนำเข้าอย่างน้อย 1 รายการ");
@@ -710,7 +727,11 @@ const StudentManager = () => {
                                     {filteredStudents.map((stu) => (
                                         <TableRow key={stu.students_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
                                             <TableCell>{stu.students_id}</TableCell>
-                                            <TableCell>{stu.prefix_name ? `${stu.prefix_name}${stu.firstname}` : stu.firstname} {stu.lastname}</TableCell>
+                                            <TableCell>
+                                                <div className="whitespace-nowrap">
+                                                    {stu.prefix_name ? `${stu.prefix_name}${stu.firstname}` : stu.firstname} {stu.lastname}
+                                                </div>
+                                            </TableCell>
                                             <TableCell>{stu.email}</TableCell>
 
                                             <TableCell>{getStudentClassroom(stu)}</TableCell>
@@ -1092,79 +1113,93 @@ const StudentManager = () => {
             </Modal>
 
             {/* Import Preview Modal */}
-            <Modal isOpen={isImportModalOpen} onOpenChange={setIsImportModalOpen} size="3xl" scrollBehavior="inside">
+            <Modal isOpen={isImportModalOpen} onOpenChange={setIsImportModalOpen} size="5xl" scrollBehavior="inside">
                 <ModalContent>
-                    {(onClose) => (
-                        <>
-                            <ModalHeader>ยืนยันการนำเข้าข้อมูล ({importPreviewData.length} รายการ)</ModalHeader>
-                            <ModalBody>
-                                <Table
-                                    aria-label="Import Preview"
-                                    selectionMode="multiple"
-                                    selectedKeys={selectedImportKeys}
-                                    onSelectionChange={setSelectedImportKeys}
-                                    disabledKeys={importPreviewData.filter(item => item.isDuplicate || !item.is_valid_class).map(item => String(item.id))}
-                                    color="primary"
-                                >
-                                    <TableHeader>
-                                        <TableColumn>รหัสนักเรียน</TableColumn>
-                                        <TableColumn>ชื่อ-นามสกุล</TableColumn>
-                                        <TableColumn>ระดับชั้น/ห้อง</TableColumn>
-                                        <TableColumn>อีเมล</TableColumn>
-                                        <TableColumn>สถานะ</TableColumn>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {importPreviewData.map((stu) => (
-                                            <TableRow key={stu.id}>
-                                                <TableCell>{stu.students_id}</TableCell>
-                                                <TableCell>{stu.prefix_name ? `${stu.prefix_name}${stu.firstname}` : stu.firstname} {stu.lastname}</TableCell>
-                                                <TableCell>
-                                                    <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${stu.is_valid_class ? 'bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1] border' : 'bg-orange-100 text-orange-700'}`}>
-                                                        {stu.classroom_status}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell>{stu.email}</TableCell>
-                                                <TableCell>
-                                                    {stu.isDuplicate ? (
-                                                        <span className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
-                                                            มีรหัสนักเรียนนี้แล้ว
-                                                        </span>
-                                                    ) : !stu.is_valid_class ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-orange-600 text-xs bg-orange-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
-                                                                ตรวจสอบห้องเรียน
+                    {(onClose) => {
+                        const isAllSelected = selectedImportKeys === "all";
+                        const selectedCount = isAllSelected
+                            ? importPreviewData.filter(item => !item.isDuplicate && item.is_valid_class).length
+                            : selectedImportKeys.size;
+
+                        return (
+                            <>
+                                <ModalHeader>ยืนยันการนำเข้าข้อมูล (เลือก {selectedCount} จาก {importPreviewData.length} รายการ)</ModalHeader>
+                                <ModalBody>
+                                    <div className="overflow-x-auto w-full">
+                                        <Table
+                                            aria-label="Import Preview"
+                                            selectionMode="multiple"
+                                            selectedKeys={selectedImportKeys}
+                                            onSelectionChange={setSelectedImportKeys}
+                                            disabledKeys={importPreviewData.filter(item => item.isDuplicate || !item.is_valid_class).map(item => String(item.id))}
+                                            color="primary"
+                                            classNames={{ wrapper: "min-w-fit" }}
+                                        >
+                                            <TableHeader>
+                                                <TableColumn>รหัสนักเรียน</TableColumn>
+                                                <TableColumn>ชื่อ-นามสกุล</TableColumn>
+                                                <TableColumn>ระดับชั้น/ห้อง</TableColumn>
+                                                <TableColumn>อีเมล</TableColumn>
+                                                <TableColumn>สถานะ</TableColumn>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {importPreviewData.map((stu) => (
+                                                    <TableRow key={stu.id}>
+                                                        <TableCell>{stu.students_id}</TableCell>
+                                                        <TableCell>
+                                                            <div className="whitespace-nowrap">
+                                                                {stu.prefix_name ? `${stu.prefix_name}${stu.firstname}` : stu.firstname} {stu.lastname}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${stu.is_valid_class ? 'bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1] border' : 'bg-orange-100 text-orange-700'}`}>
+                                                                {stu.classroom_status}
                                                             </span>
-                                                            {stu.suggestion && (
-                                                                <Tooltip content={stu.suggestion} color="warning" className="text-white">
-                                                                    <span className="cursor-help text-orange-400 hover:text-orange-600">
-                                                                        <HelpCircle size={16} />
+                                                        </TableCell>
+                                                        <TableCell>{stu.email}</TableCell>
+                                                        <TableCell>
+                                                            {stu.isDuplicate ? (
+                                                                <span className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
+                                                                    มีรหัสนักเรียนนี้แล้ว
+                                                                </span>
+                                                            ) : !stu.is_valid_class ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-orange-600 text-xs bg-orange-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
+                                                                        ตรวจสอบห้องเรียน
                                                                     </span>
-                                                                </Tooltip>
+                                                                    {stu.suggestion && (
+                                                                        <Tooltip content={stu.suggestion} color="warning" className="text-white">
+                                                                            <span className="cursor-help text-orange-400 hover:text-orange-600">
+                                                                                <HelpCircle size={16} />
+                                                                            </span>
+                                                                        </Tooltip>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
+                                                                    พร้อมนำเข้า
+                                                                </span>
                                                             )}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
-                                                            พร้อมนำเข้า
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
-                                <Button
-                                    className="bg-sage text-white shadow-sm rounded-full"
-                                    onPress={confirmImport}
-                                    isLoading={isLoadingImport}
-                                >
-                                    ยืนยันนำเข้า
-                                </Button>
-                            </ModalFooter>
-                        </>
-                    )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </ModalBody>
+                                <ModalFooter>
+                                    <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
+                                    <Button
+                                        className="bg-sage text-white shadow-sm rounded-full"
+                                        onPress={confirmImport}
+                                        isLoading={isLoadingImport}
+                                    >
+                                        ยืนยันนำเข้า
+                                    </Button>
+                                </ModalFooter>
+                            </>
+                        );
+                    }}
                 </ModalContent>
             </Modal>
 

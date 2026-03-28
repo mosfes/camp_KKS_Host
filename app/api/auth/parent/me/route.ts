@@ -18,6 +18,12 @@ export async function GET() {
     const sessionData = JSON.parse(sessionCookie.value);
     const studentId = sessionData.students_id;
 
+    // ตรวจสอบว่ามีข้อมูลผู้ปกครองแล้วหรือยัง
+    const parentRecord = await prisma.parents.findFirst({
+      where: { username_student_id: studentId },
+      select: { parents_id: true, firstname: true, lastname: true, tel: true },
+    });
+
     const student = await prisma.students.findFirst({
       where: {
         students_id: studentId,
@@ -28,6 +34,7 @@ export async function GET() {
         prefix_name: true,
         firstname: true,
         lastname: true,
+        tel: true,
         classroom_students: {
           orderBy: {
             classroom: {
@@ -141,7 +148,11 @@ export async function GET() {
       return NextResponse.json({ error: "ไม่พบข้อมูลนักเรียน" }, { status: 404 });
     }
 
-    return NextResponse.json({ student });
+    return NextResponse.json({
+      student,
+      hasParentProfile: !!(parentRecord && parentRecord.firstname !== "รอระบุ"),
+      parentProfile: parentRecord ?? null,
+    });
   } catch (error) {
     console.error("Parent me error:", error);
     return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });

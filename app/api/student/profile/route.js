@@ -38,7 +38,7 @@ export async function PUT(req) {
             food_allergy: body.food_allergy || null,
             birthday: body.birthday ? new Date(body.birthday) : null,
             remark: body.remark || null,
-            tel: body.parent_tel || null, // Assuming tel in students table stores the contact number
+            tel: body.student_tel || null, 
         };
         
         const updatedStudent = await prisma.students.update({
@@ -46,15 +46,30 @@ export async function PUT(req) {
             data: updateData
         });
         
-        // Update parent phone if parent exists
+        // Update parent phone if parent exists, if not, create a placeholder record
         if (body.parent_tel) {
-            const parents = await prisma.parents.findMany({
+            const existingParent = await prisma.parents.findFirst({
                 where: { username_student_id: Number(studentSession.students_id) }
             });
-            if (parents.length > 0) {
+            
+            const parentTelDigits = body.parent_tel.replace(/\D/g, "");
+            
+            if (existingParent) {
                 await prisma.parents.update({
-                    where: { parents_id: parents[0].parents_id },
-                    data: { tel: body.parent_tel }
+                    where: { parents_id: existingParent.parents_id },
+                    data: { tel: parentTelDigits }
+                });
+            } else {
+                // Create a placeholder parent record so the tel is saved for when they log in
+                // We'll use "รอระบุ" (To be specified) as placeholder name
+                await prisma.parents.create({
+                    data: {
+                        firstname: "รอระบุ", 
+                        lastname: "รอระบุ",
+                        tel: parentTelDigits,
+                        password: `kks${studentSession.students_id}`, // Default password
+                        username_student_id: Number(studentSession.students_id)
+                    }
                 });
             }
         }
