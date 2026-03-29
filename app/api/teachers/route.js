@@ -25,6 +25,16 @@ export async function GET(req) {
       const [teachers, totalCount] = await Promise.all([
         prisma.teachers.findMany({
           where: whereClause,
+          include: {
+            classrooms: {
+              where: { deletedAt: null },
+              select: { classroom_id: true }
+            },
+            camp: {
+              where: { deletedAt: null },
+              select: { camp_id: true }
+            }
+          },
           orderBy: { teachers_id: 'asc' },
           skip: skip,
           take: limit
@@ -45,6 +55,16 @@ export async function GET(req) {
 
     const teachers = await prisma.teachers.findMany({
       where: whereClause,
+      include: {
+        classrooms: {
+          where: { deletedAt: null },
+          select: { classroom_id: true }
+        },
+        camp: {
+          where: { deletedAt: null },
+          select: { camp_id: true }
+        }
+      },
       orderBy: { teachers_id: 'asc' }
     });
     return NextResponse.json(teachers);

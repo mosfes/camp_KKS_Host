@@ -358,7 +358,7 @@ const TeacherManager = () => {
             setPage(1);
             fetchTeachers(1);
 
-            showSuccess("สำเร็จ", `เพิ่มข้อมูลครูสำเร็จทั้งหมด ${result.count || payloadArray.length} รายการ (ข้ามรายการที่ซ้ำกัน)`);
+            showSuccess("สำเร็จ", `เพิ่มข้อมูลครูสำเร็จทั้งหมด ${result.count || payloadArray.length} รายการ `);
         } catch (error) {
             setIsLoadingImport(false);
             showError("เกิดข้อผิดพลาด", "การนำเข้าข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือตรวจสอบไฟล์ของคุณ");
@@ -471,7 +471,14 @@ const TeacherManager = () => {
                                                         : "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
                                                 }`}
                                             >
-                                                {t.role?.toUpperCase() === "ADMIN" ? "ผู้ดูแลระบบ" : t.role?.toUpperCase() === "TEACHER" ? "ครูประจำชั้น" : t.role || "ครู"}
+                                                {t.role?.toUpperCase() === "ADMIN" 
+                                                    ? "ผู้ดูแลระบบ" 
+                                                    : (t.classrooms && t.classrooms.length > 0) 
+                                                        ? "ครูประจำชั้น" 
+                                                        : (t.camp && t.camp.length > 0)
+                                                            ? "ครูหัวหน้าค่าย"
+                                                            : "ครู"
+                                                }
                                             </Chip>
                                         </TableCell>
                                         <TableCell>

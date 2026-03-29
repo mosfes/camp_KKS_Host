@@ -38,6 +38,8 @@ const ClassroomManager = () => {
     const [teachers, setTeachers] = useState([]);
     const [years, setYears] = useState([]);
     const [selectedYear, setSelectedYear] = useState("all");
+    const [selectedGrade, setSelectedGrade] = useState("all");
+    const [selectedRoomType, setSelectedRoomType] = useState("all");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [totalClassrooms, setTotalClassrooms] = useState(0);
@@ -414,7 +416,7 @@ const ClassroomManager = () => {
                                     className="max-w-xs"
                                     size="sm"
                                     selectedKeys={new Set([selectedYear])}
-                                    onChange={(e) => setSelectedYear(e.target.value)}
+                                    onChange={(e) => { setSelectedYear(e.target.value); setSelectedGrade("all"); setSelectedRoomType("all"); }}
                                 >
                                     <SelectItem key="all" textValue="ปีการศึกษา: ทั้งหมด">ทั้งหมด</SelectItem>
                                     {years.map((y) => (
@@ -422,6 +424,42 @@ const ClassroomManager = () => {
                                             {parseInt(y.year) + 543}
                                         </SelectItem>
                                     ))}
+                                </Select>
+                            </div>
+                            <div className="flex items-center gap-2 min-w-[110px] max-w-[130px] md:min-w-[140px] md:max-w-none flex-1">
+                                <Select
+                                    aria-label="Select Grade"
+                                    placeholder="ระดับชั้น"
+                                    className="max-w-xs"
+                                    size="sm"
+                                    selectedKeys={new Set([selectedGrade])}
+                                    onChange={(e) => setSelectedGrade(e.target.value)}
+                                >
+                                    <SelectItem key="all" textValue="ระดับชั้น: ทั้งหมด">ทั้งหมด</SelectItem>
+                                    {gradeOptions.map((g) => (
+                                        <SelectItem key={g.key} textValue={g.label}>{g.label}</SelectItem>
+                                    ))}
+                                </Select>
+                            </div>
+                            <div className="flex items-center gap-2 min-w-[110px] max-w-[130px] md:min-w-[150px] md:max-w-none flex-1">
+                                <Select
+                                    aria-label="Select Room Type"
+                                    placeholder="ประเภทห้อง"
+                                    className="max-w-xs"
+                                    size="sm"
+                                    selectedKeys={new Set([selectedRoomType])}
+                                    onChange={(e) => setSelectedRoomType(e.target.value)}
+                                >
+                                    <SelectItem key="all" textValue="ประเภทห้อง: ทั้งหมด">ทั้งหมด</SelectItem>
+                                    {Array.from(new Set(classrooms.map(c => c.type_classroom).filter(Boolean)))
+                                        .map(typeId => {
+                                            const found = classroomTypes.find(t => t.classroom_type_id.toString() === typeId.toString());
+                                            return { key: typeId.toString(), label: found ? found.name : typeId.toString() };
+                                        })
+                                        .map((opt) => (
+                                            <SelectItem key={opt.key} textValue={`ประเภท: ${opt.label}`}>{opt.label}</SelectItem>
+                                        ))
+                                    }
                                 </Select>
                             </div>
                             <Button
@@ -475,16 +513,21 @@ const ClassroomManager = () => {
                                     </div>
                                 }
                             >
-                                {classrooms.map((room) => (
+                                {classrooms
+                                    .filter(room =>
+                                        (selectedGrade === "all" || room.grade === selectedGrade) &&
+                                        (selectedRoomType === "all" || room.type_classroom?.toString() === selectedRoomType)
+                                    )
+                                    .map((room) => (
                                     <TableRow key={room.classroom_id}>
                                         <TableCell>{gradeOptions.find(g => g.key === room.grade)?.label || room.grade}</TableCell>
                                         <TableCell>{displayRoomName(room.type_classroom)}</TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span>{room.teacher?.firstname} {room.teacher?.lastname}</span>
+                                                <span>{room.teacher?.prefix_name || ''}{room.teacher?.firstname} {room.teacher?.lastname}</span>
                                                 {room.classroom_teacher && room.classroom_teacher.length > 0 && (
                                                     <span className="text-sm text-gray-500">
-                                                        {room.classroom_teacher[0].teacher?.firstname} {room.classroom_teacher[0].teacher?.lastname}
+                                                        {room.classroom_teacher[0].teacher?.prefix_name || ''}{room.classroom_teacher[0].teacher?.firstname} {room.classroom_teacher[0].teacher?.lastname}
                                                     </span>
                                                 )}
                                             </div>
@@ -701,9 +744,9 @@ const ClassroomManager = () => {
                                                 <SelectItem
                                                     key={idStr}
                                                     value={idStr}
-                                                    textValue={`${t.firstname} ${t.lastname}`}
+                                                    textValue={`${t.prefix_name || ''}${t.firstname} ${t.lastname}`}
                                                 >
-                                                    {t.firstname} {t.lastname}
+                                                    {t.prefix_name || ''}{t.firstname} {t.lastname}
                                                 </SelectItem>
                                             );
                                         })}
@@ -727,9 +770,9 @@ const ClassroomManager = () => {
                                                     <SelectItem
                                                         key={idStr}
                                                         value={idStr}
-                                                        textValue={`${t.firstname} ${t.lastname}`}
+                                                        textValue={`${t.prefix_name || ''}${t.firstname} ${t.lastname}`}
                                                     >
-                                                        {t.firstname} {t.lastname}
+                                                        {t.prefix_name || ''}{t.firstname} {t.lastname}
                                                     </SelectItem>
                                                 );
                                             })}

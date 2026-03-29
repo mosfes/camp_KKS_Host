@@ -664,6 +664,7 @@ const CampManager = () => {
                                                 className="w-full h-[56px]"
                                                 errorMessage={dateErrors.registration}
                                                 isInvalid={!!dateErrors.registration}
+                                                formatOptions={{ day: "2-digit", month: "2-digit", year: "numeric" }}
                                                 value={formData.start_regis_date && formData.end_regis_date ? {
                                                     start: parseDate(formData.start_regis_date.split('T')[0]),
                                                     end: parseDate(formData.end_regis_date.split('T')[0])
@@ -688,6 +689,7 @@ const CampManager = () => {
                                                 className="w-full h-[56px]"
                                                 errorMessage={dateErrors.camp}
                                                 isInvalid={!!dateErrors.camp}
+                                                formatOptions={{ day: "2-digit", month: "2-digit", year: "numeric" }}
                                                 value={formData.start_date && formData.end_date ? {
                                                     start: parseDate(formData.start_date.split('T')[0]),
                                                     end: parseDate(formData.end_date.split('T')[0])

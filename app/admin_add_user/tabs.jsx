@@ -10,11 +10,6 @@ import VulgarWordsManager from "./components/VulgarWordsManager";
 export default function App() {
     let tabs = [
         {
-            id: "Student",
-            label: "นักเรียน",
-            content: <StudentManager />,
-        },
-        {
             id: "Teacher",
             label: "ครู",
             content: <TeacherManager />,
@@ -23,6 +18,11 @@ export default function App() {
             id: "Classroom",
             label: "ห้องเรียน",
             content: <ClassroomManager />,
+        },
+        {
+            id: "Student",
+            label: "นักเรียน",
+            content: <StudentManager />,
         },
         {
             id: "Camp",

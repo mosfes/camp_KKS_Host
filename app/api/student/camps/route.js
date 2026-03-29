@@ -43,7 +43,20 @@ export async function GET() {
                 }
             },
             include: {
-                student_enrollment: true,
+                student_enrollment: {
+                    include: {
+                        mission_result: {
+                            include: {
+                                mission_answer: {
+                                    include: {
+                                        answer_text: true,
+                                        answer_mcq: true,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 camp_classroom: {
                     include: {
                         classroom: {

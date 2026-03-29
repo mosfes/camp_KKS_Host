@@ -948,65 +948,64 @@ export default function StudentDashboard() {
                     </div>
 
                     <CardBody className="p-6 flex flex-col">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <h3 className="text-2xl font-bold mb-2 text-[#2d3748]">
+                      <div className="flex justify-between items-start mb-3 gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-bold mb-1 text-[#2d3748] leading-snug line-clamp-2">
                             {camp.title}
                           </h3>
-                          <p className="mb-4 text-[#718096]">
+                          <p className="mb-3 text-[#718096] text-sm line-clamp-2 leading-relaxed">
                             {camp.description}
                           </p>
                         </div>
-                        <div className="flex flex-col items-end gap-2">
+                        <div className="flex flex-col items-end gap-1.5 flex-shrink-0 ml-2">
                           <Chip
                             className={`
                               ${STATUS_STYLES[camp.status]?.bg ?? "bg-gray-100"}
                               ${STATUS_STYLES[camp.status]?.text ?? "text-gray-600"}
                             `}
+                            size="sm"
                             variant="shadow"
                           >
                             {camp.status}
                           </Chip>
                           {camp.isOwner ? (
-                            <Chip
-                              className="bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
-                              size="sm"
-                              variant="flat"
+                            <span
+                              className="inline-block max-w-[130px] truncate text-xs px-2 py-0.5 rounded-full bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
+                              title={`เจ้าของค่าย: ${camp.ownerName}`}
                             >
-                              เจ้าของค่าย: {camp.ownerName}
-                            </Chip>
+                              เจ้าของ: {camp.ownerName}
+                            </span>
                           ) : camp.ownerName ? (
-                            <Chip
-                              className="bg-gray-100 text-gray-600 border border-gray-200"
-                              size="sm"
-                              variant="flat"
+                            <span
+                              className="inline-block max-w-[130px] truncate text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                              title={`ผู้สร้าง: ${camp.ownerName}`}
                             >
                               ผู้สร้าง: {camp.ownerName}
-                            </Chip>
+                            </span>
                           ) : null}
                         </div>
                       </div>
 
                       {/* Location */}
-                      <div className="flex items-center gap-2 mb-2 text-[#718096]">
-                        <MapPin size={20} className="flex-shrink-0" />
+                      <div className="flex items-center gap-2 mb-1.5 text-[#718096] text-sm">
+                        <MapPin size={16} className="flex-shrink-0" />
                         <span className="truncate" title={camp.location}>{camp.location}</span>
                       </div>
 
                       {/* Grades */}
                       {camp.gradeDisplay && (
-                        <div className="flex items-start gap-2 mb-4 text-[#718096]">
-                          <GraduationCap size={20} className="flex-shrink-0 mt-0.5" />
-                          <span title={`ระดับชั้น: ${camp.gradeDisplay}`}>
+                        <div className="flex items-start gap-2 mb-2 text-[#718096] text-sm">
+                          <GraduationCap size={16} className="flex-shrink-0 mt-0.5" />
+                          <span className="line-clamp-1" title={`ระดับชั้น: ${camp.gradeDisplay}`}>
                             ระดับชั้น: {camp.gradeDisplay}
                           </span>
                         </div>
                       )}
 
                       {/* Date */}
-                      <div className="flex items-center gap-2 mb-4 text-[#718096]">
-                        <Calendar size={20} />
-                        <span>
+                      <div className="flex items-center gap-2 mb-3 text-[#718096] text-sm">
+                        <Calendar size={16} className="flex-shrink-0" />
+                        <span className="truncate">
                           {camp.startDate} - {camp.endDate}
                         </span>
                       </div>
