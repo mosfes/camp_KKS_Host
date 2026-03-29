@@ -21,7 +21,7 @@ export async function GET(req) {
         if (!email) {
             return NextResponse.redirect(new URL("/", req.url));
         }
-
+ต
         const response = NextResponse.redirect(new URL(to, req.url));
 
         // หา teacher

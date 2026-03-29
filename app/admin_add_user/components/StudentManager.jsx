@@ -939,7 +939,7 @@ const StudentManager = () => {
                                             {uniqueAdvisors.length > 0 ? (
                                                 <ul className="list-disc list-inside text-sm text-green-900 grid grid-cols-2 gap-x-4">
                                                     {uniqueAdvisors.map(t => (
-                                                        <li key={t.teachers_id}>{t.firstname} {t.lastname}</li>
+                                                        <li key={t.teachers_id}>{t.prefix_name || ''}{t.firstname} {t.lastname}</li>
                                                     ))}
                                                 </ul>
                                             ) : (
@@ -1083,7 +1083,7 @@ const StudentManager = () => {
                                             {uniqueAdvisors.length > 0 ? (
                                                 <ul className="list-disc list-inside text-sm text-green-900 grid grid-cols-2 gap-x-4">
                                                     {uniqueAdvisors.map(t => (
-                                                        <li key={t.teachers_id}>{t.firstname} {t.lastname}</li>
+                                                        <li key={t.teachers_id}>{t.prefix_name || ''}{t.firstname} {t.lastname}</li>
                                                     ))}
                                                 </ul>
                                             ) : (

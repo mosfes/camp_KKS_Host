@@ -111,7 +111,14 @@ const TrashManager = ({ type, onBack }) => {
                             : "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
                         }`}
                 >
-                    {item.role?.toUpperCase() === "ADMIN" ? "ผู้ดูแลระบบ" : item.role?.toUpperCase() === "TEACHER" ? "ครูประจำชั้น" : item.role || "ครู"}
+                    {item.role?.toUpperCase() === "ADMIN" 
+                        ? "ผู้ดูแลระบบ" 
+                        : (item.classrooms && item.classrooms.length > 0) 
+                            ? "ครูประจำชั้น" 
+                            : (item.camp && item.camp.length > 0)
+                                ? "ครูหัวหน้าค่าย"
+                                : "ครู"
+                    }
                 </Chip>,
             ],
         },
