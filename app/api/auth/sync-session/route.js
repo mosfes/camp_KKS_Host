@@ -21,10 +21,10 @@ export async function GET(req) {
         if (!email) {
             return NextResponse.redirect(new URL("/", req.url));
         }
-
+ต
         const response = NextResponse.redirect(new URL(to, req.url));
 
-        // ลองหา teacher ก่อน
+        // หา teacher
         const teacher = await prisma.teachers.findFirst({
             where: { email, deletedAt: null },
             select: { teachers_id: true, firstname: true, lastname: true, email: true, role: true },
@@ -41,7 +41,7 @@ export async function GET(req) {
             return response;
         }
 
-        // ลองหา student
+        // หา student
         const student = await prisma.students.findFirst({
             where: { email, deletedAt: null },
             select: { students_id: true, firstname: true, lastname: true, email: true },

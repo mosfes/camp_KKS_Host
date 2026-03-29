@@ -327,12 +327,12 @@ const TrashManager = ({ type, onBack }) => {
                         </Table>
                     </div>
 
-                    <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4 px-4 pb-4">
-                        <div className="text-sm text-gray-500 order-2 md:order-1">
+                    <div className="flex flex-col md:flex-row items-center mt-6 gap-4 px-4 pb-4 relative w-full">
+                        <div className="text-sm text-gray-500 order-2 md:order-1 md:absolute md:left-4">
                             แสดง {items.length} จาก {total} รายการ
                         </div>
+                        <div className="flex-1 flex justify-center order-1 md:order-2 w-full">
                         {totalPages > 1 && (
-                            <div className="order-1 md:order-2">
                                 <Pagination
                                     isCompact
                                     showControls
@@ -348,8 +348,8 @@ const TrashManager = ({ type, onBack }) => {
                                         cursor: "bg-sage text-white",
                                     }}
                                 />
-                            </div>
                         )}
+                        </div>
                     </div>
                 </CardBody>
             </Card>

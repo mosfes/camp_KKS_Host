@@ -513,12 +513,12 @@ const ClassroomManager = () => {
                         </Table>
                     </div>
 
-                    <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4 px-2">
-                        <div className="text-sm text-gray-500 order-2 md:order-1">
+                    <div className="flex flex-col md:flex-row items-center mt-6 gap-4 px-2 w-full relative">
+                        <div className="text-sm text-gray-500 order-2 md:order-1 md:absolute md:left-2">
                             แสดง {classrooms.length} จาก {totalClassrooms} รายการ
                         </div>
+                        <div className="flex-1 flex justify-center order-1 md:order-2 w-full">
                         {totalPages > 1 && (
-                            <div className="order-1 md:order-2">
                                 <Pagination
                                     isCompact
                                     showControls
@@ -534,8 +534,8 @@ const ClassroomManager = () => {
                                         cursor: "bg-[#5d7c6f] text-white",
                                     }}
                                 />
-                            </div>
                         )}
+                        </div>
                     </div>
                 </CardBody>
             </Card>

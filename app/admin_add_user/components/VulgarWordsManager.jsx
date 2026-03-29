@@ -15,6 +15,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure
 import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Select, SelectItem } from "@heroui/select";
+import { Pagination } from "@heroui/react";
 import { Trash2, SquarePen, Search } from "lucide-react";
 import { useStatusModal } from "@/components/StatusModalProvider";
 import { PlusIcon } from "./Icons";
@@ -26,6 +27,8 @@ export default function VulgarWordsManager() {
   const [words, setWords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 20;
   
   // Modal states
   const [isEditing, setIsEditing] = useState(false);
@@ -54,6 +57,10 @@ export default function VulgarWordsManager() {
   useEffect(() => {
     fetchWords();
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filterSource]);
 
   const handleOpenAddModal = () => {
     setIsEditing(false);
@@ -144,6 +151,15 @@ export default function VulgarWordsManager() {
     return matchesSearch && matchesSource;
   });
 
+  const pages = Math.ceil(filteredWords.length / rowsPerPage);
+
+  const items = React.useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+
+    return filteredWords.slice(start, end);
+  }, [page, filteredWords]);
+
   return (
     <div className="flex flex-col gap-6 w-full pt-4">
       <Card className="border border-[#EFECE5] shadow-sm rounded-lg bg-white" radius="sm">
@@ -226,7 +242,7 @@ export default function VulgarWordsManager() {
                     <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
                   </div>
                 }
-                items={filteredWords}
+                items={items}
               >
                 {(item) => (
                   <TableRow key={item.vulgar_word_id} className="last:border-b-0 hover:bg-gray-50">
@@ -266,6 +282,30 @@ export default function VulgarWordsManager() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          <div className="flex flex-col md:flex-row items-center mt-6 gap-4 px-2 w-full relative">
+            <div className="text-sm text-gray-500 order-2 md:order-1 md:absolute md:left-2">
+              แสดง {items.length} จาก {filteredWords.length} รายการ
+            </div>
+            <div className="flex-1 flex justify-center order-1 md:order-2 w-full">
+            {pages > 1 && (
+                <Pagination
+                  isCompact
+                  showControls
+                  total={pages}
+                  page={page}
+                  onChange={(newPage) => {
+                      setPage(newPage);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="overflow-x-auto"
+                  classNames={{
+                      cursor: "bg-[#5d7c6f] text-white",
+                  }}
+                />
+            )}
+            </div>
           </div>
         </CardBody>
       </Card>

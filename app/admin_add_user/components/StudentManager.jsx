@@ -758,10 +758,11 @@ const StudentManager = () => {
                             </Table>
                         </div>
 
-                        <div className="flex flex-col md:flex-row justify-between items-center mt-6 w-full px-2 gap-4">
-                            <p className="text-sm text-gray-500">
+                        <div className="flex flex-col md:flex-row items-center mt-6 w-full px-2 gap-4 relative">
+                            <p className="text-sm text-gray-500 order-2 md:order-1 md:absolute md:left-2">
                                 แสดง {students.length} จาก {totalStudents} รายการ
                             </p>
+                            <div className="flex-1 flex justify-center order-1 md:order-2 w-full">
                             {totalPages > 1 && (
                                 <Pagination
                                     isCompact
@@ -780,6 +781,7 @@ const StudentManager = () => {
                                     }}
                                 />
                             )}
+                            </div>
                         </div>
                     </div>
                 </CardBody>
