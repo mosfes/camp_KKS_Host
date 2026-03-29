@@ -45,6 +45,7 @@ interface Props {
   templateData?: any;
   isLoading?: boolean;
 }
+
 function dateValueToString(date: DateValue) {
   return `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
 }

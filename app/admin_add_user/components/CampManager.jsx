@@ -32,6 +32,8 @@ import { useState, useEffect } from "react";
 import { Search, MapPin, Users, Calendar, GraduationCap, SquarePen, Trash2, RotateCcw, Trash, Archive, AlertTriangle, ArrowLeft, X } from 'lucide-react';
 import adminService from "@/app/service/adminService";
 
+
+
 const CampManager = () => {
     const { showError, showSuccess, showConfirm } = useStatusModal();
 
