@@ -682,9 +682,10 @@ export default function CampDetailPage() {
 
               <Button
                 className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
-                startContent={<BarChart3 size={18} />}
+                startContent={<Users size={18} />}
+                onPress={() => router.push(`/headteacher/dashboard/camp/${campId}/students`)}
               >
-                ดูสถิติ
+                ดูข้อมูลนักเรียน
               </Button>
             </div>
           </div>

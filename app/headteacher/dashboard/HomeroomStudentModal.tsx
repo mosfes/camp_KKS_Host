@@ -13,7 +13,7 @@ export default function HomeroomStudentModal({ isOpen, onClose, student }: { isO
       backdrop="blur"
       size="md"
       classNames={{
-        base: "bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-teal-50",
+        base: "bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-[#6b857a]/10",
       }}
     >
       <ModalContent>
@@ -21,9 +21,9 @@ export default function HomeroomStudentModal({ isOpen, onClose, student }: { isO
           <>
             <ModalHeader className="flex flex-col gap-1 px-8 pt-8 pb-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-teal-400 to-emerald-400 p-0.5 shadow-md">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#5d7c6f] to-[#6b857a] p-0.5 shadow-md">
                   <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                    <User size={32} className="text-teal-500" />
+                    <User size={32} className="text-[#6b857a]" />
                   </div>
                 </div>
                 <div>
@@ -51,11 +51,11 @@ export default function HomeroomStudentModal({ isOpen, onClose, student }: { isO
                   </div>
                 </div>
               ) : (
-                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex gap-3">
-                  <HeartPulse className="text-emerald-500 flex-shrink-0" size={20} />
+                <div className="bg-[#f1ede6] border border-[#d4c5b0] rounded-xl p-4 flex gap-3">
+                  <HeartPulse className="text-[#6b857a] flex-shrink-0" size={20} />
                   <div>
-                    <h4 className="text-emerald-800 font-bold text-sm">ข้อมูลสุขภาพปกติ</h4>
-                    <p className="text-emerald-600/80 text-xs">นักเรียนไม่มีประวัติโรคประจำตัวหรืออาการแพ้ที่รุนแรง</p>
+                    <h4 className="text-[#2d3748] font-bold text-sm">ข้อมูลสุขภาพปกติ</h4>
+                    <p className="text-gray-500 text-xs">นักเรียนไม่มีประวัติโรคประจำตัวหรืออาการแพ้ที่รุนแรง</p>
                   </div>
                 </div>
               )}

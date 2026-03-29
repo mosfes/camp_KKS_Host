@@ -6,6 +6,7 @@ import { Chip } from "@heroui/chip";
 import { Button } from "@heroui/button";
 import { Tabs, Tab } from "@heroui/tabs";
 import { Select, SelectItem } from "@heroui/react";
+import { Pagination } from "@heroui/pagination";
 import {
   MapPin,
   Calendar,
@@ -92,12 +93,36 @@ export default function StudentDashboard() {
   const [loadingHomeroom, setLoadingHomeroom] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [homeroomSearch, setHomeroomSearch] = useState("");
+  const [homeroomFilter, setHomeroomFilter] = useState("all");
+  const [homeroomPage, setHomeroomPage] = useState(1);
+  const itemsPerPage = 10;
 
-  const filteredHomeroomStudents = homeroomData?.students?.filter((s: any) => {
+  useEffect(() => {
+    setHomeroomPage(1);
+  }, [homeroomSearch, homeroomFilter]);
+
+  const allHomeroomStudents = homeroomData?.students?.filter((s: any) => {
     const searchLower = homeroomSearch.toLowerCase();
     const fullName = `${s.prefix || ""}${s.firstname} ${s.lastname}`.toLowerCase();
-    return s.id.toString().includes(searchLower) || fullName.includes(searchLower);
+    const matchesSearch = s.id.toString().includes(searchLower) || fullName.includes(searchLower);
+    
+    let matchesFilter = true;
+    if (homeroomFilter === "allergy") {
+      matchesFilter = s.foodAllergy && s.foodAllergy !== "-" && s.foodAllergy !== "ไม่มี";
+    } else if (homeroomFilter === "disease") {
+      matchesFilter = s.chronicDisease && s.chronicDisease !== "-" && s.chronicDisease !== "ไม่มี";
+    } else if (homeroomFilter === "remark") {
+      matchesFilter = s.remark && s.remark !== "-" && s.remark !== "ไม่มี";
+    }
+
+    return matchesSearch && matchesFilter;
   }) || [];
+
+  const homeroomTotalPages = Math.ceil(allHomeroomStudents.length / itemsPerPage) || 1;
+  const filteredHomeroomStudents = allHomeroomStudents.slice(
+    (homeroomPage - 1) * itemsPerPage,
+    homeroomPage * itemsPerPage
+  );
 
   const goToCampDetail = (campId: number) => {
     if (navigatingTo !== null) return;
@@ -623,19 +648,19 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-100 rounded-2xl px-6 py-5 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#5d7c6f] border border-[#4a6358] rounded-2xl px-6 py-5 shadow-sm">
                   <div>
-                    <h2 className="text-xl font-bold text-teal-900 flex items-center gap-2">
-                      <Users className="text-teal-600" size={24} />
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Users className="text-emerald-100" size={24} />
                       นักเรียนประจำชั้น {homeroomData.classroomName}
                     </h2>
-                    <p className="text-sm text-teal-700/80 mt-1">
+                    <p className="text-sm text-emerald-50/80 mt-1">
                       มีนักเรียนทั้งหมด {homeroomData.students?.length || 0} คน
                     </p>
                   </div>
                   
                   {/* Special Care summary box */}
-                  <div className="bg-white/60 backdrop-blur-sm px-4 py-3 rounded-xl border border-teal-100/50 flex items-center gap-3">
+                  <div className="bg-[#F5F1E8] backdrop-blur-sm px-4 py-3 rounded-xl border border-white/10 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
                       <HeartPulse className="text-rose-500" size={20} />
                     </div>
@@ -648,41 +673,62 @@ export default function StudentDashboard() {
                   </div>
                 </div>
 
-                <div className="relative w-full max-w-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
+                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                  <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 w-full">
+                    <h3 className="text-xl font-semibold text-gray-900 w-full sm:w-auto">รายชื่อนักเรียน</h3>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <div className="w-[200px]">
+                        <Select
+                          aria-label="ตัวกรอง"
+                          placeholder="ตัวกรองทั้งหมด"
+                          className="w-full"
+                          size="sm"
+                          selectedKeys={[homeroomFilter]}
+                          onChange={(e) => setHomeroomFilter(e.target.value)}
+                          classNames={{ trigger: "bg-white border border-gray-100 text-gray-700 font-medium h-10" }}
+                        >
+                          <SelectItem key="all" textValue="แสดงทั้งหมด">แสดงทั้งหมด</SelectItem>
+                          <SelectItem key="allergy" textValue="แพ้อาหาร">แพ้อาหาร</SelectItem>
+                          <SelectItem key="disease" textValue="โรคประจำตัว">โรคประจำตัว</SelectItem>
+                          <SelectItem key="remark" textValue="หมายเหตุอื่นๆ">หมายเหตุอื่นๆ</SelectItem>
+                        </Select>
+                      </div>
+                      <div className="relative w-full sm:w-72">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Search className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          className="block w-full pl-10 pr-3 h-10 border border-gray-100 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-[#6b857a] focus:border-[#6b857a] transition-colors text-sm"
+                          placeholder="ค้นหาชื่อ, นามสกุล หรือเลขประจำตัว..."
+                          value={homeroomSearch}
+                          onChange={(e) => setHomeroomSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <input
-                    type="text"
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-teal-500 focus:border-teal-500 transition-colors"
-                    placeholder="ค้นหาชื่อ, นามสกุล หรือเลขประจำตัว..."
-                    value={homeroomSearch}
-                    onChange={(e) => setHomeroomSearch(e.target.value)}
-                  />
-                </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-gray-50 border-b border-gray-100">
-                          <th className="py-4 px-6 font-semibold text-gray-600 text-sm">รหัส นร.</th>
-                          <th className="py-4 px-6 font-semibold text-gray-600 text-sm">ชื่อ-นามสกุล</th>
-                          <th className="py-4 px-6 font-semibold text-gray-600 text-sm">โรคประจำตัว</th>
-                          <th className="py-4 px-6 font-semibold text-gray-600 text-sm">อาหารที่แพ้</th>
-                          <th className="py-4 px-6 font-semibold text-gray-600 text-sm w-1/4">หมายเหตุ</th>
+                        <tr className="bg-gray-50 text-gray-600 text-sm border-y border-gray-100">
+                          <th className="p-4 font-semibold rounded-tl-lg">รหัสนักเรียน</th>
+                          <th className="p-4 font-semibold">ชื่อ-นามสกุล</th>
+                          <th className="p-4 font-semibold">โรคประจำตัว</th>
+                          <th className="p-4 font-semibold">อาหารที่แพ้</th>
+                          <th className="p-4 font-semibold rounded-tr-lg w-1/4">หมายเหตุ</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-50">
+                      <tbody>
                         {loadingHomeroom ? (
                           <tr>
-                            <td colSpan={5} className="py-8 text-center text-gray-400">
+                            <td colSpan={5} className="p-8 text-center text-gray-400">
                               กำลังโหลดข้อมูล...
                             </td>
                           </tr>
                         ) : filteredHomeroomStudents.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="py-12 text-center text-gray-400">
+                            <td colSpan={5} className="p-12 text-center text-gray-400">
                               {homeroomSearch ? "ไม่พบนักเรียนที่ค้นหา" : "ยังไม่มีนักเรียนในห้องนี้"}
                             </td>
                           </tr>
@@ -690,13 +736,13 @@ export default function StudentDashboard() {
                           filteredHomeroomStudents.map((student: any) => (
                             <tr 
                               key={student.id} 
-                              className={`cursor-pointer hover:bg-teal-50/50 transition-colors ${student.isSpecialCare ? "bg-rose-50/20" : ""}`}
+                              className={`border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${student.isSpecialCare ? "bg-rose-50/20" : ""}`}
                               onClick={() => setSelectedStudent(student)}
                             >
-                              <td className="py-4 px-6 text-sm text-gray-600">{student.id}</td>
-                              <td className="py-4 px-6">
+                              <td className="p-4 text-sm text-gray-900 font-medium">{student.id}</td>
+                              <td className="p-4 text-gray-900">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium text-gray-900">
+                                  <span>
                                     {student.prefix}{student.firstname} {student.lastname}
                                   </span>
                                   {student.isSpecialCare && (
@@ -706,23 +752,23 @@ export default function StudentDashboard() {
                                   )}
                                 </div>
                               </td>
-                              <td className="py-4 px-6">
-                                {student.chronicDisease && student.chronicDisease !== "-" ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              <td className="p-4">
+                                {student.chronicDisease && student.chronicDisease !== "-" && student.chronicDisease !== "ไม่มี" ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
                                     {student.chronicDisease}
                                   </span>
                                 ) : <span className="text-gray-400">-</span>}
                               </td>
-                              <td className="py-4 px-6">
-                                {student.foodAllergy && student.foodAllergy !== "-" ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              <td className="p-4">
+                                {student.foodAllergy && student.foodAllergy !== "-" && student.foodAllergy !== "ไม่มี" ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
                                     {student.foodAllergy}
                                   </span>
                                 ) : <span className="text-gray-400">-</span>}
                               </td>
-                              <td className="py-4 px-6">
-                                {student.remark && student.remark !== "-" ? (
-                                  <span className="text-sm text-gray-600">{student.remark}</span>
+                              <td className="p-4">
+                                {student.remark && student.remark !== "-" && student.remark !== "ไม่มี" ? (
+                                  <span className="text-sm text-blue-700 font-medium">{student.remark}</span>
                                 ) : <span className="text-gray-400">-</span>}
                               </td>
                             </tr>
@@ -731,6 +777,22 @@ export default function StudentDashboard() {
                       </tbody>
                     </table>
                   </div>
+
+                  {!loadingHomeroom && homeroomTotalPages > 1 && (
+                    <div className="flex justify-center items-center mt-6">
+                      <Pagination
+                        isCompact
+                        showControls
+                        color="default"
+                        page={homeroomPage}
+                        total={homeroomTotalPages}
+                        onChange={setHomeroomPage}
+                        classNames={{
+                          cursor: "bg-[#5d7c6f] text-white font-bold",
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               </>
             )}
