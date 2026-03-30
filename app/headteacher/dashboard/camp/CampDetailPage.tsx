@@ -655,13 +655,15 @@ export default function CampDetailPage() {
                 </>
               )}
 
-              <Button
-                className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
-                startContent={<FileText size={18} />}
-                onPress={() => setIsSurveyResultsModalOpen(true)}
-              >
-                ดูผลการประเมิน
-              </Button>
+              {camp.isOwner && (
+                <Button
+                  className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
+                  startContent={<FileText size={18} />}
+                  onPress={() => setIsSurveyResultsModalOpen(true)}
+                >
+                  ดูผลการประเมิน
+                </Button>
+              )}
 
               <Button
                 className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"

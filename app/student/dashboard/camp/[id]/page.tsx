@@ -16,6 +16,9 @@ import {
   LayoutDashboard,
   ClipboardList,
   ImageOff,
+  Users,
+  FileText,
+  CalendarCheck,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -215,27 +218,81 @@ export default function StudentCampDetailPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 -mt-20 relative z-10">
-        <div className="bg-white rounded-3xl shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-[#2d3748] mb-2">{camp.title}</h1>
-              <p className="text-gray-500 text-sm mb-4 line-clamp-2">{camp.description}</p>
-              <div className="space-y-2 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} />
-                  <span>{formatDate(camp.rawStartDate)} - {formatDate(camp.rawEndDate)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin size={16} />
-                  <span>{camp.location}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Ticket size={16} />
-                  <span>{camp.totalEnrolled}/{camp.totalCapacity} ลงทะเบียนแล้ว</span>
-                </div>
+        {/* Main Info Card */}
+        <div className="bg-white rounded-3xl shadow-lg p-6 mb-4">
+          <h1 className="text-2xl font-bold text-[#2d3748] mb-3 leading-snug">{camp.title}</h1>
+
+          {/* Info Pills */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {camp.isRegistered && !camp.isEnded && (
+              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">
+                <CheckCircle2 size={12} /> ลงทะเบียนแล้ว
+              </span>
+            )}
+            {camp.isEnded && (
+              <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 text-xs font-semibold px-3 py-1 rounded-full">
+                <Flag size={12} /> ค่ายจบแล้ว
+              </span>
+            )}
+          </div>
+
+          {/* Description */}
+          {camp.description && (
+            <div className="mb-5">
+              <div className="flex items-center gap-1.5 mb-2">
+                <FileText size={15} className="text-[#5d7c6f]" />
+                <span className="text-sm font-semibold text-gray-700">รายละเอียดค่าย</span>
+              </div>
+              <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{camp.description}</p>
+            </div>
+          )}
+
+          {/* Info Grid */}
+          <div className="grid grid-cols-1 gap-3 text-sm">
+            <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
+              <MapPin size={16} className="text-[#5d7c6f] mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[11px] text-gray-400 mb-0.5">สถานที่จัดค่าย</p>
+                <p className="text-gray-700 font-medium">{camp.location}</p>
               </div>
             </div>
+            <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
+              <Calendar size={16} className="text-[#5d7c6f] mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[11px] text-gray-400 mb-0.5">วันจัดค่าย</p>
+                <p className="text-gray-700 font-medium">{formatDate(camp.rawStartDate)} – {formatDate(camp.rawEndDate)}</p>
+              </div>
+            </div>
+            {camp.startRegisDate && (
+              <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
+                <CalendarCheck size={16} className="text-[#5d7c6f] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[11px] text-gray-400 mb-0.5">ช่วงเวลารับสมัคร</p>
+                  <p className="text-gray-700 font-medium">{formatDate(camp.startRegisDate)} – {formatDate(camp.endRegisDate)}</p>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Enrollment Progress */}
+          {camp.totalCapacity > 0 && (
+            <div className="mt-4 bg-gray-50 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users size={15} className="text-[#5d7c6f]" />
+                <span className="text-sm font-semibold text-gray-700">จำนวนผู้ลงทะเบียน</span>
+                <span className="ml-auto text-sm font-bold text-[#5d7c6f]">{camp.totalEnrolled} / {camp.totalCapacity} คน</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-[#5d7c6f] h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (camp.totalEnrolled / camp.totalCapacity) * 100)}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1.5">
+                
+              </p>
+            </div>
+          )}
         </div>
 
         {camp.camp_daily_schedule && camp.camp_daily_schedule.length > 0 && (
