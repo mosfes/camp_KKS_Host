@@ -176,9 +176,9 @@ export default function StudentDashboard() {
         <Tabs
           aria-label="Camp Options"
           classNames={{
-            tabList: "gap-3 sm:gap-6 w-full relative rounded-none p-0 border-b border-divider overflow-x-auto overflow-y-hidden scrollbar-hide",
+            tabList: "gap-0 w-full relative rounded-none p-0 border-b border-divider",
             cursor: "w-full bg-[#5d7c6f]",
-            tab: "max-w-fit px-0 h-12",
+            tab: "flex-1 max-w-none px-2 h-12 justify-center",
             tabContent: "group-data-[selected=true]:text-[#5d7c6f] font-bold",
           }}
           color="primary"
