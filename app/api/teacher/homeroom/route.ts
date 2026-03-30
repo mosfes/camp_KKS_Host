@@ -45,9 +45,9 @@ export async function GET() {
 
     const activeStudents = rawStudents.filter(s => !s.deletedAt).map(s => {
       // Determine if they need special care
-      const hasAllergy = s.food_allergy && s.food_allergy.trim() !== "" && s.food_allergy.trim() !== "-";
-      const hasDisease = s.chronic_disease && s.chronic_disease.trim() !== "" && s.chronic_disease.trim() !== "-";
-      const hasRemark = s.remark && s.remark.trim() !== "" && s.remark.trim() !== "-";
+      const hasAllergy = s.food_allergy && s.food_allergy.trim() !== "" && s.food_allergy.trim() !== "-" && s.food_allergy.trim() !== "ไม่มี";
+      const hasDisease = s.chronic_disease && s.chronic_disease.trim() !== "" && s.chronic_disease.trim() !== "-" && s.chronic_disease.trim() !== "ไม่มี";
+      const hasRemark = s.remark && s.remark.trim() !== "" && s.remark.trim() !== "-" && s.remark.trim() !== "ไม่มี";
       
       const isSpecialCare = hasAllergy || hasDisease || hasRemark;
 
@@ -64,7 +64,7 @@ export async function GET() {
     });
 
     // Sort by integer id
-    activeStudents.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+    activeStudents.sort((a, b) => parseInt(String(a.id)) - parseInt(String(b.id)));
 
     return NextResponse.json({
       hasHomeroom: true,
