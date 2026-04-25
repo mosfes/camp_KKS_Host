@@ -11,6 +11,7 @@ import {
 } from "@heroui/react";
 
 
+
 const page = () => {
     return (
         <>
@@ -34,3 +35,5 @@ const page = () => {
     )
 }
 export default page
+
+
