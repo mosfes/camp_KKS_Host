@@ -109,9 +109,9 @@ export default function SurveyResultsModal({
   const campAverage =
     scaleQuestions.length > 0
       ? (
-          scaleQuestions.reduce((sum, q) => sum + (q.average || 0), 0) /
-          scaleQuestions.length
-        ).toFixed(2)
+        scaleQuestions.reduce((sum, q) => sum + (q.average || 0), 0) /
+        scaleQuestions.length
+      ).toFixed(2)
       : null;
 
   return (
@@ -197,10 +197,10 @@ export default function SurveyResultsModal({
                               </li>
                             )
                           ) || (
-                            <li className="text-sm text-gray-400 italic">
-                              ไม่มีข้อมูล
-                            </li>
-                          )}
+                              <li className="text-sm text-gray-400 italic">
+                                ไม่มีข้อมูล
+                              </li>
+                            )}
                         </ul>
                       </div>
                       <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
@@ -219,10 +219,10 @@ export default function SurveyResultsModal({
                               </li>
                             )
                           ) || (
-                            <li className="text-sm text-gray-400 italic">
-                              ไม่มีข้อมูล
-                            </li>
-                          )}
+                              <li className="text-sm text-gray-400 italic">
+                                ไม่มีข้อมูล
+                              </li>
+                            )}
                         </ul>
                       </div>
                     </div>
@@ -295,138 +295,138 @@ export default function SurveyResultsModal({
                     </div>
                   )}
 
-                    {(() => {
-                      let qNum = 0;
-                      return data.questions.map((q) => {
-                        if (q.type === "header") {
-                          return (
-                            <div
-                              key={q.id}
-                              className="bg-indigo-50 border border-indigo-100 shadow-sm rounded-2xl px-6 py-4 my-2"
-                            >
-                              <h3 className="font-bold text-indigo-900 text-base leading-snug whitespace-normal break-words relative flex items-center gap-2">
-                                <span className="w-1.5 h-5 bg-indigo-500 rounded-full inline-block" />
-                                {q.text}
-                              </h3>
-                            </div>
-                          );
-                        }
-
-                        qNum++;
-
+                  {(() => {
+                    let qNum = 0;
+                    return data.questions.map((q) => {
+                      if (q.type === "header") {
                         return (
-                          <Accordion 
+                          <div
                             key={q.id}
-                            variant="splitted"
-                            className="px-0"
-                            selectionMode="multiple"
+                            className="bg-indigo-50 border border-indigo-100 shadow-sm rounded-2xl px-6 py-4 my-2"
                           >
-                            <AccordionItem
-                              key={q.id}
-                              aria-label={q.text}
-                              classNames={{
-                                base: "bg-white !shadow-sm border border-gray-100 rounded-2xl overflow-hidden",
-                                title: "w-full",
-                                trigger: "py-4 px-5",
-                                content: "pt-0 pb-5 px-5",
-                              }}
-                              indicator={({ isOpen }) => (
-                                <div className={`p-1 rounded-full transition-colors ${isOpen ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}`}>
-                                  <ChevronDown size={18} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                            <h3 className="font-bold text-indigo-900 text-base leading-snug whitespace-normal break-words relative flex items-center gap-2">
+                              <span className="w-1.5 h-5 bg-indigo-500 rounded-full inline-block" />
+                              {q.text}
+                            </h3>
+                          </div>
+                        );
+                      }
+
+                      qNum++;
+
+                      return (
+                        <Accordion
+                          key={q.id}
+                          variant="splitted"
+                          className="px-0"
+                          selectionMode="multiple"
+                        >
+                          <AccordionItem
+                            key={q.id}
+                            aria-label={q.text}
+                            classNames={{
+                              base: "bg-white !shadow-sm border border-gray-100 rounded-2xl overflow-hidden",
+                              title: "w-full",
+                              trigger: "py-4 px-5",
+                              content: "pt-0 pb-5 px-5",
+                            }}
+                            indicator={({ isOpen }) => (
+                              <div className={`p-1 rounded-full transition-colors ${isOpen ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}`}>
+                                <ChevronDown size={18} className={`transition-transform duration-0 ${isOpen ? 'rotate-270' : ''}`} />
+                              </div>
+                            )}
+                            title={
+                              <div className="flex items-center justify-between w-full pr-2">
+                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold mt-0.5">
+                                    {qNum}
+                                  </span>
+                                  <h3 className="flex-1 min-w-0 font-semibold text-gray-900 text-base leading-snug whitespace-normal break-words pt-0.5 text-left">
+                                    {q.text}
+                                  </h3>
                                 </div>
-                              )}
-                              title={
-                                <div className="flex items-center justify-between w-full pr-2">
-                                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold mt-0.5">
-                                      {qNum}
+                                {q.type === "scale" && q.average != null && (
+                                  <div className="flex-shrink-0 flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 ml-4">
+                                    <Star className="text-amber-400 fill-amber-400" size={13} />
+                                    <span className="text-amber-700 font-bold text-sm leading-none">
+                                      {q.average}
                                     </span>
-                                    <h3 className="flex-1 min-w-0 font-semibold text-gray-900 text-base leading-snug whitespace-normal break-words pt-0.5 text-left">
-                                      {q.text}
-                                    </h3>
                                   </div>
-                                  {q.type === "scale" && q.average != null && (
-                                    <div className="flex-shrink-0 flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 ml-4">
-                                      <Star className="text-amber-400 fill-amber-400" size={13} />
-                                      <span className="text-amber-700 font-bold text-sm leading-none">
-                                        {q.average}
+                                )}
+                              </div>
+                            }
+                          >
+                            <div className="divider h-px bg-gray-50 w-full mb-5 ml-0" />
+
+                            {/* Scale distribution */}
+                            {q.type === "scale" && q.distribution && (
+                              <div className="ml-10 flex flex-col gap-2.5">
+                                {[5, 4, 3, 2, 1].map((star) => {
+                                  const count = q.distribution![star] || 0;
+                                  const percentage =
+                                    q.total > 0 ? (count / q.total) * 100 : 0;
+                                  return (
+                                    <div
+                                      key={star}
+                                      className="flex items-center gap-3"
+                                    >
+                                      <span className="w-7 text-xs font-medium text-gray-500 flex items-center gap-1 flex-shrink-0">
+                                        {star}{" "}
+                                        <Star
+                                          size={10}
+                                          className="text-gray-400 fill-gray-400"
+                                        />
+                                      </span>
+                                      <Progress
+                                        className="flex-1"
+                                        classNames={{
+                                          indicator: "bg-amber-400",
+                                          track: "bg-gray-100",
+                                        }}
+                                        size="sm"
+                                        value={percentage}
+                                      />
+                                      <span className="w-7 text-xs text-gray-500 text-right flex-shrink-0">
+                                        {count}
                                       </span>
                                     </div>
-                                  )}
-                                </div>
-                              }
-                            >
-                              <div className="divider h-px bg-gray-50 w-full mb-5 ml-0" />
-                              
-                              {/* Scale distribution */}
-                              {q.type === "scale" && q.distribution && (
-                                <div className="ml-10 flex flex-col gap-2.5">
-                                  {[5, 4, 3, 2, 1].map((star) => {
-                                    const count = q.distribution![star] || 0;
-                                    const percentage =
-                                      q.total > 0 ? (count / q.total) * 100 : 0;
-                                    return (
-                                      <div
-                                        key={star}
-                                        className="flex items-center gap-3"
-                                      >
-                                        <span className="w-7 text-xs font-medium text-gray-500 flex items-center gap-1 flex-shrink-0">
-                                          {star}{" "}
-                                          <Star
-                                            size={10}
-                                            className="text-gray-400 fill-gray-400"
-                                          />
-                                        </span>
-                                        <Progress
-                                          className="flex-1"
-                                          classNames={{
-                                            indicator: "bg-amber-400",
-                                            track: "bg-gray-100",
-                                          }}
-                                          size="sm"
-                                          value={percentage}
-                                        />
-                                        <span className="w-7 text-xs text-gray-500 text-right flex-shrink-0">
-                                          {count}
-                                        </span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
+                                  );
+                                })}
+                              </div>
+                            )}
 
-                              {/* Text answers */}
-                              {q.type === "text" && q.answers && (
-                                <div className="ml-10 space-y-2.5">
-                                  {q.answers.length > 0 ? (
-                                    q.answers.map((ans, idx) => (
-                                      <div
-                                        key={idx}
-                                        className="bg-gray-50 p-3 rounded-xl text-gray-700 text-sm border border-gray-100 relative pr-8"
-                                      >
-                                        <MessageSquare
-                                          className="absolute top-3 right-3 text-gray-300"
-                                          size={14}
-                                        />
-                                        {ans}
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="text-center py-5 bg-gray-50 rounded-xl border border-gray-100 border-dashed">
-                                      <p className="text-gray-400 text-sm">
-                                        ไม่มีข้อเสนอแนะ
-                                      </p>
+                            {/* Text answers */}
+                            {q.type === "text" && q.answers && (
+                              <div className="ml-10 space-y-2.5">
+                                {q.answers.length > 0 ? (
+                                  q.answers.map((ans, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="bg-gray-50 p-3 rounded-xl text-gray-700 text-sm border border-gray-100 relative pr-8"
+                                    >
+                                      <MessageSquare
+                                        className="absolute top-3 right-3 text-gray-300"
+                                        size={14}
+                                      />
+                                      {ans}
                                     </div>
-                                  )}
-                                </div>
-                              )}
-                            </AccordionItem>
-                          </Accordion>
-                        );
-                      });
-                    })()}
-              </>
-            )}
+                                  ))
+                                ) : (
+                                  <div className="text-center py-5 bg-gray-50 rounded-xl border border-gray-100 border-dashed">
+                                    <p className="text-gray-400 text-sm">
+                                      ไม่มีข้อเสนอแนะ
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </AccordionItem>
+                        </Accordion>
+                      );
+                    });
+                  })()}
+                </>
+              )}
             </ModalBody>
 
             <ModalFooter className="px-8 py-5 border-t border-gray-100">

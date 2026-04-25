@@ -105,6 +105,7 @@ export default function CreateMissionModal({
         if (!textQuestions[i].text.trim()) { showError("ข้อผิดพลาด", `คำถามที่ ${i + 1} ยังว่างอยู่`); return; }
       }
     }
+    // QR_CODE_SCANNING: no questions needed
 
     try {
       setLoading(true);
@@ -113,7 +114,9 @@ export default function CreateMissionModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title, type, description,
-          questions: type === "MULTIPLE_CHOICE_QUIZ" ? mcqQuestions : ((type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION") ? textQuestions : undefined),
+          questions: type === "MULTIPLE_CHOICE_QUIZ" ? mcqQuestions
+            : (type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION") ? textQuestions
+            : undefined,
           stationId: baseId,
         }),
       });
@@ -212,6 +215,26 @@ export default function CreateMissionModal({
                   >
                     <Plus size={14} /> เพิ่มคำถาม
                   </button>
+                </div>
+              )}
+
+              {/* สแกน QR Code */}
+              {type === "QR_CODE_SCANNING" && (
+                <div className="p-4 bg-[#6b857a]/5 border border-[#6b857a]/20 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-[#6b857a]/10 rounded-lg text-[#6b857a] shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <path d="M14 14h3v3m0 0h3m-3 0v3"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#6b857a] text-sm mb-1">ภารกิจสแกน QR Code</p>
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        ระบบจะสร้าง QR Code ให้อัตโนมัติ ครูสามารถแสดง QR Code ได้จากหน้า &ldquo;ดูคำตอบนักเรียน&rdquo; นักเรียนเพียงแสกน QR Code ด้วยกล้องมือถือเพื่อบันทึกการผ่านภารกิจ
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 
