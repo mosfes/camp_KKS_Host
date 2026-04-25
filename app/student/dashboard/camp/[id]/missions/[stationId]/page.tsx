@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Textarea } from "@heroui/input";
@@ -12,8 +12,11 @@ import {
   ModalFooter,
   useDisclosure,
 } from "@heroui/modal";
-import { ChevronLeft, FileText, CheckCircle2, Circle, Camera, Image as ImageIcon, Upload, Loader2, X } from "lucide-react";
+import { ChevronLeft, CheckCircle2, Circle, Camera, Loader2, X, QrCode, ScanLine } from "lucide-react";
 import { toast } from "react-hot-toast";
+import dynamic from "next/dynamic";
+
+const QrScanner = dynamic(() => import("@/components/QrScanner"), { ssr: false });
 
 export default function StudentStationDetailPage() {
   const params = useParams();
@@ -30,6 +33,15 @@ export default function StudentStationDetailPage() {
   const [answers, setAnswers] = useState<any>({}); // { questionId: value }
   const [submitting, setSubmitting] = useState(false);
   const [uploadingQid, setUploadingQid] = useState<number | null>(null);
+
+  // QR Scan State
+  const [qrScanActive, setQrScanActive] = useState(false);
+  const [qrScanResult, setQrScanResult] = useState<'success' | 'alreadyDone' | 'error' | null>(null);
+  const [qrScanMessage, setQrScanMessage] = useState('');
+  const qrProcessingRef = useRef(false);
+  const [showPinInput, setShowPinInput] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinSubmitting, setPinSubmitting] = useState(false);
 
   const fetchCamp = async () => {
     try {
@@ -86,6 +98,14 @@ export default function StudentStationDetailPage() {
 
   const openMission = (mission: any) => {
     setSelectedMission(mission);
+
+    // Reset QR state
+    setQrScanActive(false);
+    setQrScanResult(null);
+    setQrScanMessage('');
+    setShowPinInput(false);
+    setPinInput('');
+    qrProcessingRef.current = false;
     
     const existingResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === mission.mission_id);
     const initialAnswers: any = {};
@@ -104,6 +124,109 @@ export default function StudentStationDetailPage() {
     
     setAnswers(initialAnswers);
     onOpen();
+  };
+
+  const handleQrScan = async (payload: string) => {
+    if (qrProcessingRef.current) return;
+    qrProcessingRef.current = true;
+    setQrScanActive(false); // Stop scanner
+
+    try {
+      const res = await fetch('/api/student/mission/qr-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qrPayload: payload }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setQrScanResult(data.alreadyCompleted ? 'alreadyDone' : 'success');
+        setQrScanMessage(data.message);
+        if (!data.alreadyCompleted) {
+          await fetchCamp();
+        }
+      } else {
+        setQrScanResult('error');
+        setQrScanMessage(data.error || 'QR Code ไม่ถูกต้อง');
+        qrProcessingRef.current = false; // Allow retry
+      }
+    } catch {
+      setQrScanResult('error');
+      setQrScanMessage('เกิดข้อผิดพลาดในการแสกน');
+      qrProcessingRef.current = false;
+    }
+  };
+
+  const resetQrScan = () => {
+    setQrScanResult(null);
+    setQrScanMessage('');
+    setPinInput('');
+    qrProcessingRef.current = false;
+    if (showPinInput) {
+      // ถ้าอยู่ใน PIN mode ให้คงอยู่ใน PIN mode
+    } else {
+      requestCameraAndStartScan();
+    }
+  };
+
+  const handlePinSubmit = async () => {
+    if (!pinInput.trim() || !selectedMission) return;
+    setPinSubmitting(true);
+    try {
+      const res = await fetch('/api/student/mission/qr-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pinInput.trim(), missionId: selectedMission.mission_id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setQrScanResult(data.alreadyCompleted ? 'alreadyDone' : 'success');
+        setQrScanMessage(data.message);
+        if (!data.alreadyCompleted) await fetchCamp();
+      } else {
+        setQrScanResult('error');
+        setQrScanMessage(data.error || 'รหัส PIN ไม่ถูกต้อง');
+      }
+    } catch {
+      setQrScanResult('error');
+      setQrScanMessage('เกิดข้อผิดพลาด กรุณาลองใหม่');
+    } finally {
+      setPinSubmitting(false);
+    }
+  };
+
+  const requestCameraAndStartScan = async () => {
+    // ลอง constraint จากเข้มไปหยาบ เพื่อรองรับทุกอุปกรณ์
+    const constraints = [
+      { video: { facingMode: { ideal: 'environment' } } }, // กล้องหลัง (preferred)
+      { video: { facingMode: 'user' } },                   // กล้องหน้า (fallback)
+      { video: true },                                      // ใดก็ได้ (last resort)
+    ];
+
+    let lastError: any = null;
+    for (const constraint of constraints) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraint);
+        // Permission ผ่านแล้ว — ปิด stream ทันที QrScanner จะเปิดเอง
+        stream.getTracks().forEach(track => track.stop());
+        setQrScanActive(true);
+        return;
+      } catch (err: any) {
+        lastError = err;
+        // ถ้าถูกปฏิเสธ permission ไม่ต้องลองต่อ
+        if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') break;
+        // ถ้าเป็น constraint ไม่รองรับ ลอง fallback ต่อไป
+      }
+    }
+
+    // ทุก fallback ล้มเหลว
+    const isDenied = lastError?.name === 'NotAllowedError' || lastError?.name === 'PermissionDeniedError';
+    setQrScanResult('error');
+    setQrScanMessage(
+      isDenied
+        ? 'ไม่ได้รับอนุญาตเข้าถึงกล้อง กรุณาอนุญาตในการตั้งค่าเบราว์เซอร์แล้วลองใหม่'
+        : 'ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบว่าอุปกรณ์มีกล้องและเบราว์เซอร์รองรับ'
+    );
   };
 
   const handleAnswerChange = (questionId: number, value: any) => {
@@ -286,17 +409,23 @@ export default function StudentStationDetailPage() {
         isOpen={isOpen}
         scrollBehavior="inside"
         size="2xl"
-        onOpenChange={onOpenChange}
+        onOpenChange={(open) => {
+          if (!open) {
+            setQrScanActive(false);
+            setQrScanResult(null);
+            qrProcessingRef.current = false;
+          }
+          onOpenChange(open);
+        }}
       >
         <ModalContent>
           {(onClose) => (
             <>
               <ModalHeader className="flex flex-col gap-1">
-                <span className="text-sm font-normal text-gray-500">
-                  ทำภารกิจ
-                </span>
+                <span className="text-sm font-normal text-gray-500">ทำภารกิจ</span>
                 <h2 className="text-xl font-bold">{selectedMission?.title}</h2>
               </ModalHeader>
+
               <ModalBody className="py-6 space-y-6">
                 {/* Mission Description */}
                 {selectedMission?.description && (
@@ -306,7 +435,163 @@ export default function StudentStationDetailPage() {
                   </div>
                 )}
 
-                {/* Questions */}
+                {/* QR CODE SCANNING */}
+                {selectedMission?.type === 'QR_CODE_SCANNING' && (() => {
+                  const currentResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === selectedMission?.mission_id);
+                  const isCompleted = currentResult?.status === 'completed';
+
+                  if (isCompleted) {
+                    return (
+                      <div className="flex flex-col items-center py-8 gap-3">
+                        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                          <CheckCircle2 size={44} className="text-green-500" />
+                        </div>
+                        <p className="text-lg font-bold text-green-700">สแกนสำเร็จแล้ว!</p>
+                        <p className="text-sm text-gray-500">คุณได้ทำภารกิจนี้เรียบร้อยแล้ว</p>
+                      </div>
+                    );
+                  }
+
+                  if (qrScanResult === 'success') {
+                    return (
+                      <div className="flex flex-col items-center py-8 gap-3">
+                        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                          <CheckCircle2 size={44} className="text-green-500" />
+                        </div>
+                        <p className="text-lg font-bold text-green-700">สำเร็จ!</p>
+                        <p className="text-sm text-gray-600">{qrScanMessage}</p>
+                      </div>
+                    );
+                  }
+
+                  if (qrScanResult === 'error') {
+                    return (
+                      <div className="flex flex-col items-center py-6 gap-4 w-full">
+                        <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center">
+                          <X size={40} className="text-red-400" />
+                        </div>
+                        <p className="text-base font-semibold text-red-600 text-center">{qrScanMessage}</p>
+                        <div className="flex flex-col w-full gap-2">
+                          {!showPinInput && (
+                            <Button
+                              className="w-full bg-[#5d7c6f] text-white font-semibold"
+                              onPress={resetQrScan}
+                              startContent={<ScanLine size={18} />}
+                            >
+                              ลองสแกนอีกครั้ง
+                            </Button>
+                          )}
+                          <Button
+                            className="w-full bg-gray-100 text-gray-700 font-medium"
+                            variant="flat"
+                            onPress={() => { setQrScanResult(null); setQrScanMessage(''); setPinInput(''); setShowPinInput(true); }}
+                          >
+                            กรอกรหัส PIN แทน
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // PIN input mode
+                  if (showPinInput) {
+                    return (
+                      <div className="flex flex-col items-center py-4 gap-5 w-full">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-16 h-16 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center mb-1">
+                            <span className="text-3xl">🔢</span>
+                          </div>
+                          <p className="font-bold text-gray-800">กรอกรหัส PIN</p>
+                          <p className="text-xs text-gray-400 text-center">ขอรหัส PIN จากครูผู้สอนที่ฐาน</p>
+                        </div>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          placeholder="000000"
+                          className="w-40 text-center text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50"
+                          value={pinInput}
+                          onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && pinInput.length === 6) handlePinSubmit(); }}
+                        />
+                        <div className="flex flex-col w-full gap-2">
+                          <Button
+                            className="w-full bg-[#5d7c6f] text-white font-bold"
+                            size="lg"
+                            isDisabled={pinInput.length !== 6}
+                            isLoading={pinSubmitting}
+                            onPress={handlePinSubmit}
+                          >
+                            ยืนยันรหัส PIN
+                          </Button>
+                          <Button
+                            className="w-full text-gray-500"
+                            variant="light"
+                            onPress={() => { setShowPinInput(false); setPinInput(''); }}
+                            startContent={<ScanLine size={16} />}
+                          >
+                            กลับไปแสกน QR
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Scanner initial UI
+                  return (
+                    <div className="flex flex-col items-center gap-4">
+                      {qrScanActive ? (
+                        <div className="w-full max-w-sm mx-auto">
+                          <QrScanner
+                            active={qrScanActive}
+                            onScan={handleQrScan}
+                            onError={(err) => {
+                              setQrScanResult('error');
+                              setQrScanMessage(err);
+                              setQrScanActive(false);
+                            }}
+                          />
+                          <p className="text-center text-xs text-gray-400 mt-2">จัดกล้องให้ตรง QR Code ของครู</p>
+                          <Button
+                            className="w-full mt-3 bg-gray-100 text-gray-600"
+                            variant="flat"
+                            onPress={() => setQrScanActive(false)}
+                          >
+                            ยกเลิก
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center py-4 gap-4 w-full">
+                          <div className="w-24 h-24 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center">
+                            <QrCode size={52} className="text-[#5d7c6f]" />
+                          </div>
+                          <p className="text-base text-gray-600 text-center">
+                            กดปุ่มด้านล่างเพื่อเปิดกล้องแสกน<br/>
+                            <span className="text-sm text-gray-400">QR Code ที่ครูแสดง</span>
+                          </p>
+                          <Button
+                            className="bg-[#5d7c6f] text-white font-bold px-8"
+                            size="lg"
+                            startContent={<ScanLine size={20} />}
+                            onPress={requestCameraAndStartScan}
+                          >
+                            เปิดกล้องแสกน QR
+                          </Button>
+                          <button
+                            className="text-sm text-gray-400 underline underline-offset-2 hover:text-[#5d7c6f] transition-colors"
+                            onClick={() => setShowPinInput(true)}
+                          >
+                            หรือกรอกรหัส PIN แทน
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Questions (for non-QR missions) */}
+                {selectedMission?.type !== 'QR_CODE_SCANNING' && (
                 <div className="space-y-6">
                   {(() => {
                     const currentResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === selectedMission?.mission_id);
@@ -335,8 +620,7 @@ export default function StudentStationDetailPage() {
                         {q.question_type === "MCQ" && (
                           <div className="space-y-2">
                             {q.choices?.map((c: any, choiceIdx: number) => {
-                              const choiceLetter = String.fromCharCode(65 + choiceIdx); // 0=A, 1=B, 2=C...
-                              
+                              const choiceLetter = String.fromCharCode(65 + choiceIdx);
                               return (
                                 <div
                                   key={c.choice_id}
@@ -423,11 +707,24 @@ export default function StudentStationDetailPage() {
                     );
                   })()}
                 </div>
+                )}
               </ModalBody>
+
               <ModalFooter>
                 {(() => {
                   const currentResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === selectedMission?.mission_id);
                   const isSubmitted = currentResult?.status === "completed";
+                  const isQr = selectedMission?.type === 'QR_CODE_SCANNING';
+
+                  // QR mission: only show close button
+                  if (isQr) {
+                    return (
+                      <Button className="bg-gray-100 text-gray-700" onPress={onClose}>
+                        ปิดหน้าต่าง
+                      </Button>
+                    );
+                  }
+
                   const allAnswered = selectedMission?.mission_question?.every(
                     (q: any) => answers[q.question_id] && String(answers[q.question_id]).trim() !== ""
                   );
