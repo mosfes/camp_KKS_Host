@@ -51,6 +51,7 @@ export async function GET() {
                                     include: {
                                         answer_text: true,
                                         answer_mcq: true,
+                                        answer_photo: true,
                                     }
                                 }
                             }

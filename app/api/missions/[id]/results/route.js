@@ -67,6 +67,8 @@ export async function GET(request, { params }) {
                             isCorrect = matchedChoice.is_correct;
                         }
                     }
+                } else if (qType === 'PHOTO' && ans.answer_photo && ans.answer_photo.length > 0) {
+                    answerText = ans.answer_photo[0].img_url;
                 }
 
                 return {

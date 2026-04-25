@@ -100,6 +100,35 @@ export async function PUT(request, { params }) {
                     }
                 }
             }
+        } else if (type === 'PHOTO_SUBMISSION') {
+            const questionsToUpdate = questions || [];
+            if (questionsToUpdate.length === 0 && question) {
+                questionsToUpdate.push({ text: question });
+            }
+
+            if (questionsToUpdate.length > 0) {
+                const oldQuestions = await prisma.mission_question.findMany({
+                    where: { mission_mission_id: parseInt(id) }
+                });
+                const oldQIds = oldQuestions.map(q => q.question_id);
+
+                await prisma.mission_question_choice.deleteMany({
+                    where: { mission_question_question_id: { in: oldQIds } }
+                });
+
+                await prisma.mission_question.deleteMany({
+                    where: { mission_mission_id: parseInt(id) }
+                });
+
+                for (const q of questionsToUpdate) {
+                    if (q.text) {
+                        await prisma.$executeRawUnsafe(
+                            'INSERT INTO mission_question (question_text, question_type, mission_mission_id) VALUES (?, ?, ?)',
+                            q.text, 'PHOTO', parseInt(id)
+                        );
+                    }
+                }
+            }
         }
 
         return NextResponse.json(updatedMission);

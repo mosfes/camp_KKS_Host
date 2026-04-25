@@ -229,8 +229,18 @@ export default function MonitorMissionModal({
                                   </div>
                                 )}
 
-                                {ans.type !== "TEXT" && ans.type !== "MCQ" && (
-                                  <span className="text-gray-400 italic">รูปแบบคำตอบไม่รองรับการแสดงผล: {ans.type || "ไม่ระบุ"}</span>
+                                {ans.type === "PHOTO" && (
+                                  <div className="space-y-2">
+                                    <div className="relative group">
+                                      <img 
+                                        src={ans.answerText} 
+                                        alt="Student submission" 
+                                        className="w-full max-w-md rounded-lg shadow-sm border border-gray-200 cursor-zoom-in hover:opacity-90 transition-opacity"
+                                        onClick={() => window.open(ans.answerText, '_blank')}
+                                      />
+                                      <p className="text-[10px] text-gray-400 mt-1">คลิกที่รูปเพื่อดูขนาดใหญ่</p>
+                                    </div>
+                                  </div>
                                 )}
                               </div>
                             </div>

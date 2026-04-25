@@ -93,6 +93,13 @@ export async function POST(req) {
                         question_text: ans.value
                     }
                 });
+            } else if (ans.type === "PHOTO") {
+                await prisma.mission_answer_photo.create({
+                    data: {
+                        mission_answer_id: missionAnswer.answer_id,
+                        img_url: ans.value
+                    }
+                });
             }
         }
 

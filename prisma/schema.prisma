@@ -360,6 +360,7 @@ model mission_question {
 enum mission_question_type {
   MCQ
   TEXT
+  PHOTO
 }
 
 model mission_question_choice {

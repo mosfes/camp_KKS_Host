@@ -100,7 +100,7 @@ export default function CreateMissionModal({
         if (q.choices.some((c) => !c.text.trim())) { showError("ข้อผิดพลาด", `กรุณากรอกตัวเลือกในคำถามที่ ${i + 1} ให้ครบ`); return; }
         if (!q.choices.some((c) => c.isCorrect)) { showError("ข้อผิดพลาด", `กรุณาเลือกคำตอบที่ถูกต้องสำหรับคำถามที่ ${i + 1}`); return; }
       }
-    } else if (type === "QUESTION_ANSWERING") {
+    } else if (type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION") {
       for (let i = 0; i < textQuestions.length; i++) {
         if (!textQuestions[i].text.trim()) { showError("ข้อผิดพลาด", `คำถามที่ ${i + 1} ยังว่างอยู่`); return; }
       }
@@ -113,7 +113,7 @@ export default function CreateMissionModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title, type, description,
-          questions: type === "MULTIPLE_CHOICE_QUIZ" ? mcqQuestions : (type === "QUESTION_ANSWERING" ? textQuestions : undefined),
+          questions: type === "MULTIPLE_CHOICE_QUIZ" ? mcqQuestions : ((type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION") ? textQuestions : undefined),
           stationId: baseId,
         }),
       });
@@ -176,8 +176,8 @@ export default function CreateMissionModal({
                 <textarea className={`${inputCls} resize-none`} placeholder="อธิบายภารกิจนี้โดยย่อ" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
 
-              {/* ตอบคำถาม */}
-              {type === "QUESTION_ANSWERING" && (
+              {/* ตอบคำถาม / ส่งรูปภาพ */}
+              {(type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION") && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-5 bg-[#6b857a] rounded-full" />
