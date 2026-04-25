@@ -42,6 +42,7 @@ export default function StudentStationDetailPage() {
   const [showPinInput, setShowPinInput] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinSubmitting, setPinSubmitting] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const fetchCamp = async () => {
     try {
@@ -105,6 +106,7 @@ export default function StudentStationDetailPage() {
     setQrScanMessage('');
     setShowPinInput(false);
     setPinInput('');
+    setCameraError(null);
     qrProcessingRef.current = false;
     
     const existingResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === mission.mission_id);
@@ -196,37 +198,59 @@ export default function StudentStationDetailPage() {
   };
 
   const requestCameraAndStartScan = async () => {
-    // ลอง constraint จากเข้มไปหยาบ เพื่อรองรับทุกอุปกรณ์
+    setCameraError(null); // clear ก่อนลอง
+
+    // ตรวจสอบว่า browser รองรับ camera API หรือไม่
+    const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+    if (!isSecure) {
+      setCameraError('เบราว์เซอร์นี้ไม่รองรับการเปิดกล้องบนการเชื่อมต่อ HTTP กรุณาใช้ HTTPS หรือกรอก PIN แทน');
+      setShowPinInput(true);
+      return;
+    }
+
+    if (!hasMediaDevices) {
+      setCameraError('เบราว์เซอร์หรืออุปกรณ์นี้ไม่รองรับการเข้าถึงกล้อง กรุณากรอก PIN แทน');
+      setShowPinInput(true);
+      return;
+    }
+
+    // ลอง constraint จากเข้มไปหยาบ
     const constraints = [
-      { video: { facingMode: { ideal: 'environment' } } }, // กล้องหลัง (preferred)
-      { video: { facingMode: 'user' } },                   // กล้องหน้า (fallback)
-      { video: true },                                      // ใดก็ได้ (last resort)
+      { video: { facingMode: { ideal: 'environment' } } },
+      { video: { facingMode: 'user' } },
+      { video: true },
     ];
 
     let lastError: any = null;
     for (const constraint of constraints) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia(constraint);
-        // Permission ผ่านแล้ว — ปิด stream ทันที QrScanner จะเปิดเอง
         stream.getTracks().forEach(track => track.stop());
         setQrScanActive(true);
         return;
       } catch (err: any) {
         lastError = err;
-        // ถ้าถูกปฏิเสธ permission ไม่ต้องลองต่อ
         if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') break;
-        // ถ้าเป็น constraint ไม่รองรับ ลอง fallback ต่อไป
       }
     }
 
-    // ทุก fallback ล้มเหลว
+    // แสดงสาเหตุที่เฉพาะเจาะจง
     const isDenied = lastError?.name === 'NotAllowedError' || lastError?.name === 'PermissionDeniedError';
-    setQrScanResult('error');
-    setQrScanMessage(
-      isDenied
-        ? 'ไม่ได้รับอนุญาตเข้าถึงกล้อง กรุณาอนุญาตในการตั้งค่าเบราว์เซอร์แล้วลองใหม่'
-        : 'ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบว่าอุปกรณ์มีกล้องและเบราว์เซอร์รองรับ'
-    );
+    const isNotFound = lastError?.name === 'NotFoundError' || lastError?.name === 'DevicesNotFoundError';
+
+    if (isDenied) {
+      setCameraError('ไม่ได้รับอนุญาตเข้าถึงกล้อง กรุณากด "อนุญาต" ในการตั้งค่าเบราว์เซอร์ แล้วลองใหม่');
+      setQrScanResult('error');
+      setQrScanMessage('ไม่ได้รับอนุญาตเข้าถึงกล้อง กรุณาอนุญาตในการตั้งค่าเบราว์เซอร์ หรือกรอก PIN แทน');
+    } else if (isNotFound) {
+      setCameraError('ไม่พบกล้องในอุปกรณ์นี้ กรุณากรอก PIN แทน');
+      setShowPinInput(true);
+    } else {
+      setCameraError('ไม่สามารถเปิดกล้องได้ กรุณากรอก PIN แทน');
+      setShowPinInput(true);
+    }
   };
 
   const handleAnswerChange = (questionId: number, value: any) => {
@@ -497,6 +521,13 @@ export default function StudentStationDetailPage() {
                   if (showPinInput) {
                     return (
                       <div className="flex flex-col items-center py-4 gap-5 w-full">
+                        {/* Camera error banner */}
+                        {cameraError && (
+                          <div className="w-full flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                            <span className="text-amber-500 text-lg shrink-0">⚠️</span>
+                            <p className="text-xs text-amber-800 leading-relaxed">{cameraError}</p>
+                          </div>
+                        )}
                         <div className="flex flex-col items-center gap-1">
                           <div className="w-16 h-16 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center mb-1">
                             <span className="text-3xl">🔢</span>

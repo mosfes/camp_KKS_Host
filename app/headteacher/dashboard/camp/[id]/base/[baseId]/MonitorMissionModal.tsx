@@ -37,8 +37,10 @@ export default function MonitorMissionModal({
   // QR Code for QR_CODE_SCANNING missions
   const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [qrPin, setQrPin] = useState<string | null>(null);
+  const [qrGeneratedAt, setQrGeneratedAt] = useState<Date | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [pinCopied, setPinCopied] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     if (isOpen && missionData?.mission_id) {
@@ -72,10 +74,28 @@ export default function MonitorMissionModal({
       const data = await res.json();
       setQrPayload(data.qrPayload);
       setQrPin(data.pin ?? null);
+      setQrGeneratedAt(data.generatedAt ? new Date(data.generatedAt) : null);
     } catch (error) {
       console.error(error);
     } finally {
       setQrLoading(false);
+    }
+  };
+
+  const regenerateQr = async () => {
+    try {
+      setRegenerating(true);
+      const res = await fetch(`/api/missions/${missionData.mission_id}/qr`, { method: 'POST' });
+      if (!res.ok) throw new Error("Failed to regenerate");
+      const data = await res.json();
+      setQrPayload(data.qrPayload);
+      setQrPin(data.pin ?? null);
+      setQrGeneratedAt(data.generatedAt ? new Date(data.generatedAt) : null);
+      setPinCopied(false);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setRegenerating(false);
     }
   };
 
@@ -143,13 +163,20 @@ export default function MonitorMissionModal({
                         <QrCode size={20} className="text-[#6b857a]" />
                         <h3 className="font-bold text-gray-900">QR Code สำหรับภารกิจนี้</h3>
                         <button
-                          onClick={fetchQrPayload}
-                          className="ml-auto p-1.5 rounded-lg text-gray-400 hover:text-[#6b857a] hover:bg-gray-100 transition-colors"
-                          title="รีเฟรช QR"
+                          onClick={regenerateQr}
+                          disabled={regenerating}
+                          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-[#6b857a] bg-[#6b857a]/10 hover:bg-[#6b857a]/20 transition-colors disabled:opacity-50"
+                          title="สุ่ม QR + PIN ใหม่"
                         >
-                          <RefreshCw size={16} className={qrLoading ? "animate-spin" : ""} />
+                          <RefreshCw size={13} className={regenerating ? "animate-spin" : ""} />
+                          สุ่มรหัสใหม่
                         </button>
                       </div>
+                      {qrGeneratedAt && (
+                        <p className="text-[10px] text-gray-400 text-right -mt-3 mb-2">
+                          สร้างเมื่อ {qrGeneratedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </p>
+                      )}
                       <div className="flex flex-col items-center gap-3">
                         {qrLoading ? (
                           <div className="w-52 h-52 bg-gray-100 rounded-2xl flex items-center justify-center">

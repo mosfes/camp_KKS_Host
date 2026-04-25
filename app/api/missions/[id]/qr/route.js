@@ -1,40 +1,66 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-function getMissionSecret(missionId, campId) {
-    const base = process.env.QR_SECRET || 'CAMP_QR_SECRET_2024';
-    return Buffer.from(`${base}:${missionId}:${campId}`).toString('base64').slice(0, 12);
+// ─── Shared in-memory store (via globalThis to persist across hot reload) ───
+// missionId → { pin, nonce, generatedAt }
+const qrStore = globalThis._campQrStore ?? (globalThis._campQrStore = new Map());
+
+function generatePin() {
+    return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-export function generateQRPayload(missionId, campId) {
-    const secret = getMissionSecret(missionId, campId);
-    return `CAMP_MISSION:${missionId}:${campId}:${secret}`;
+function generateNonce() {
+    return Math.random().toString(36).slice(2, 12);
 }
 
-// PIN: 6-digit numeric derived from secret (deterministic)
-export function generatePin(missionId, campId) {
-    const secret = getMissionSecret(missionId, campId);
-    let num = 0;
-    for (let i = 0; i < secret.length; i++) {
-        num = (num * 31 + secret.charCodeAt(i)) % 1000000;
+function getOrCreate(missionId) {
+    if (!qrStore.has(missionId)) {
+        qrStore.set(missionId, {
+            pin: generatePin(),
+            nonce: generateNonce(),
+            generatedAt: new Date()
+        });
     }
-    return String(num).padStart(6, '0');
+    return qrStore.get(missionId);
 }
 
+function regenerate(missionId) {
+    const data = {
+        pin: generatePin(),
+        nonce: generateNonce(),
+        generatedAt: new Date()
+    };
+    qrStore.set(missionId, data);
+    return data;
+}
+
+function buildPayload(missionId, campId, nonce) {
+    return `CAMP_MISSION:${missionId}:${campId}:${nonce}`;
+}
+
+// ─── Export helpers for qr-scan route ────────────────────────────
 export function verifyQRPayload(payload) {
     try {
+        if (!payload || typeof payload !== 'string') return null;
         const parts = payload.split(':');
         if (parts.length !== 4 || parts[0] !== 'CAMP_MISSION') return null;
-        const [, missionId, campId, secret] = parts;
-        const expectedSecret = getMissionSecret(parseInt(missionId), parseInt(campId));
-        if (secret !== expectedSecret) return null;
-        return { missionId: parseInt(missionId), campId: parseInt(campId) };
+        const [, missionId, campId, nonce] = parts;
+        const mid = parseInt(missionId);
+        const stored = qrStore.get(mid);
+        if (!stored || stored.nonce !== nonce) return null;
+        return { missionId: mid, campId: parseInt(campId) };
     } catch {
         return null;
     }
 }
 
-// GET /api/missions/[id]/qr
+export function verifyPin(missionId, pin) {
+    const stored = qrStore.get(missionId);
+    if (!stored) return false;
+    return String(pin).trim() === stored.pin;
+}
+
+// ─── GET: ดึง QR+PIN ปัจจุบัน (สร้างใหม่ถ้าไม่มี) ───────────────
 export async function GET(request, { params }) {
     try {
         const { id } = await params;
@@ -45,27 +71,55 @@ export async function GET(request, { params }) {
             include: { station: true }
         });
 
-        if (!mission) {
-            return NextResponse.json({ error: 'Mission not found' }, { status: 404 });
-        }
-
-        if (mission.type !== 'QR_CODE_SCANNING') {
-            return NextResponse.json({ error: 'Mission is not QR type' }, { status: 400 });
-        }
+        if (!mission) return NextResponse.json({ error: 'Mission not found' }, { status: 404 });
+        if (mission.type !== 'QR_CODE_SCANNING') return NextResponse.json({ error: 'Not a QR mission' }, { status: 400 });
 
         const campId = mission.station.camp_camp_id;
-        const qrPayload = generateQRPayload(missionId, campId);
-        const pin = generatePin(missionId, campId);
+        const data = getOrCreate(missionId);
+        const qrPayload = buildPayload(missionId, campId, data.nonce);
 
         return NextResponse.json({
             missionId,
             campId,
             missionTitle: mission.title,
             qrPayload,
-            pin
+            pin: data.pin,
+            generatedAt: data.generatedAt
         });
     } catch (error) {
         console.error('QR GET error:', error);
-        return NextResponse.json({ error: 'Failed to generate QR' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to get QR' }, { status: 500 });
+    }
+}
+
+// ─── POST: สุ่ม QR + PIN ใหม่ ────────────────────────────────────
+export async function POST(request, { params }) {
+    try {
+        const { id } = await params;
+        const missionId = parseInt(id);
+
+        const mission = await prisma.mission.findUnique({
+            where: { mission_id: missionId },
+            include: { station: true }
+        });
+
+        if (!mission) return NextResponse.json({ error: 'Mission not found' }, { status: 404 });
+        if (mission.type !== 'QR_CODE_SCANNING') return NextResponse.json({ error: 'Not a QR mission' }, { status: 400 });
+
+        const campId = mission.station.camp_camp_id;
+        const data = regenerate(missionId);
+        const qrPayload = buildPayload(missionId, campId, data.nonce);
+
+        return NextResponse.json({
+            missionId,
+            campId,
+            missionTitle: mission.title,
+            qrPayload,
+            pin: data.pin,
+            generatedAt: data.generatedAt
+        });
+    } catch (error) {
+        console.error('QR POST error:', error);
+        return NextResponse.json({ error: 'Failed to regenerate QR' }, { status: 500 });
     }
 }

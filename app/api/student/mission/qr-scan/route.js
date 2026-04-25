@@ -2,36 +2,32 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireStudent } from '@/lib/auth';
 
-function getMissionSecret(missionId, campId) {
-    const base = process.env.QR_SECRET || 'CAMP_QR_SECRET_2024';
-    return Buffer.from(`${base}:${missionId}:${campId}`).toString('base64').slice(0, 12);
-}
-
-function generatePin(missionId, campId) {
-    const secret = getMissionSecret(missionId, campId);
-    let num = 0;
-    for (let i = 0; i < secret.length; i++) {
-        num = (num * 31 + secret.charCodeAt(i)) % 1000000;
-    }
-    return String(num).padStart(6, '0');
-}
+// ─── Re-implement store helpers inline ───────────────────────────
+// (Next.js route isolation means we can't import from sibling routes directly)
+const qrStore = globalThis._campQrStore ?? (globalThis._campQrStore = new Map());
 
 function verifyQRPayload(payload) {
     try {
         if (!payload || typeof payload !== 'string') return null;
         const parts = payload.split(':');
         if (parts.length !== 4 || parts[0] !== 'CAMP_MISSION') return null;
-        const [, missionId, campId, secret] = parts;
-        const expectedSecret = getMissionSecret(parseInt(missionId), parseInt(campId));
-        if (secret !== expectedSecret) return null;
-        return { missionId: parseInt(missionId), campId: parseInt(campId) };
+        const [, missionId, campId, nonce] = parts;
+        const mid = parseInt(missionId);
+        const stored = qrStore.get(mid);
+        if (!stored || stored.nonce !== nonce) return null;
+        return { missionId: mid, campId: parseInt(campId) };
     } catch {
         return null;
     }
 }
 
+function verifyPin(missionId, pin) {
+    const stored = qrStore.get(missionId);
+    if (!stored) return false;
+    return String(pin).trim() === stored.pin;
+}
+
 async function recordCompletion(studentId, missionId, campId) {
-    // Find enrollment
     const enrollment = await prisma.student_enrollment.findFirst({
         where: {
             student_students_id: studentId,
@@ -42,7 +38,6 @@ async function recordCompletion(studentId, missionId, campId) {
 
     if (!enrollment) return { error: 'ยังไม่ได้ลงทะเบียนเข้าร่วมค่าย', status: 403 };
 
-    // Check if already completed
     const existing = await prisma.mission_result.findFirst({
         where: {
             student_enrollment_id: enrollment.student_enrollment_id,
@@ -51,9 +46,7 @@ async function recordCompletion(studentId, missionId, campId) {
         }
     });
 
-    if (existing) {
-        return { success: true, alreadyCompleted: true, message: 'คุณได้ทำภารกิจนี้แล้ว' };
-    }
+    if (existing) return { success: true, alreadyCompleted: true, message: 'คุณได้ทำภารกิจนี้แล้ว' };
 
     await prisma.mission_result.create({
         data: {
@@ -86,12 +79,16 @@ export async function POST(req) {
         if (qrPayload) {
             decoded = verifyQRPayload(qrPayload);
             if (!decoded) {
-                return NextResponse.json({ error: 'QR Code ไม่ถูกต้องหรือหมดอายุ' }, { status: 400 });
+                return NextResponse.json({ error: 'QR Code ไม่ถูกต้องหรือหมดอายุ กรุณาให้ครูสุ่มรหัสใหม่' }, { status: 400 });
             }
         }
         // --- Mode 2: PIN ---
         else if (pin && pinMissionId) {
             const missionId = parseInt(pinMissionId);
+            if (!verifyPin(missionId, pin)) {
+                return NextResponse.json({ error: 'รหัส PIN ไม่ถูกต้อง' }, { status: 400 });
+            }
+
             const mission = await prisma.mission.findUnique({
                 where: { mission_id: missionId, deletedAt: null },
                 include: { station: true }
@@ -101,21 +98,14 @@ export async function POST(req) {
                 return NextResponse.json({ error: 'ไม่พบภารกิจ' }, { status: 404 });
             }
 
-            const campId = mission.station.camp_camp_id;
-            const expectedPin = generatePin(missionId, campId);
-
-            if (String(pin).trim() !== expectedPin) {
-                return NextResponse.json({ error: 'รหัส PIN ไม่ถูกต้อง' }, { status: 400 });
-            }
-
-            decoded = { missionId, campId };
+            decoded = { missionId, campId: mission.station.camp_camp_id };
         } else {
             return NextResponse.json({ error: 'กรุณาแสกน QR Code หรือกรอก PIN' }, { status: 400 });
         }
 
         const { missionId, campId } = decoded;
 
-        // Verify mission
+        // Verify mission exists and is QR type
         const mission = await prisma.mission.findUnique({
             where: { mission_id: missionId, deletedAt: null },
             include: { station: true }
@@ -130,10 +120,7 @@ export async function POST(req) {
         }
 
         const result = await recordCompletion(studentId, missionId, campId);
-
-        if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: result.status || 400 });
-        }
+        if (result.error) return NextResponse.json({ error: result.error }, { status: result.status || 400 });
 
         return NextResponse.json(result);
 
