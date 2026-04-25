@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -21,10 +21,15 @@ import {
   CalendarCheck,
   CalendarDays,
   X,
+  ScanLine,
+  QrCode,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import dynamic from "next/dynamic";
 
 import TakeSurveyModal from "../TakeSurveyModal";
+
+const QrScanner = dynamic(() => import("@/components/QrScanner"), { ssr: false });
 
 const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
 
@@ -89,6 +94,20 @@ export default function StudentCampDetailPage() {
   // Schedule Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
+  // Attendance State
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+  const [attendanceCheckedIn, setAttendanceCheckedIn] = useState(false);
+  const [attendanceCheckedAt, setAttendanceCheckedAt] = useState<string | null>(null);
+  const [qrScanActive, setQrScanActive] = useState(false);
+  const [qrScanResult, setQrScanResult] = useState<'success' | 'alreadyDone' | 'error' | null>(null);
+  const [qrScanMessage, setQrScanMessage] = useState('');
+  const qrProcessingRef = useRef(false);
+  const [showPinInput, setShowPinInput] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinSubmitting, setPinSubmitting] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+
   const fetchCamp = async () => {
     try {
       const res = await fetch("/api/student/camps", {
@@ -125,6 +144,12 @@ export default function StudentCampDetailPage() {
     fetchSurvey();
   }, [id]);
 
+  useEffect(() => {
+    if (camp?.isRegistered && id) {
+      checkAttendanceStatus();
+    }
+  }, [camp?.isRegistered, id]);
+
   const fetchSurvey = async () => {
     try {
       const res = await fetch(`/api/student/surveys?campId=${id}`);
@@ -142,6 +167,119 @@ export default function StudentCampDetailPage() {
 
   const handleSurveyCompleted = () => {
     setSurveyCompleted(true);
+  };
+
+  const checkAttendanceStatus = async () => {
+    try {
+      const res = await fetch(`/api/student/attendance/checkin?campId=${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAttendanceCheckedIn(data.isCheckedIn);
+        setAttendanceCheckedAt(data.checkedAt);
+      }
+    } catch (err) {
+      console.error('Failed to check attendance status', err);
+    }
+  };
+
+  const handleQrScan = async (payload: string) => {
+    if (qrProcessingRef.current) return;
+    qrProcessingRef.current = true;
+    setQrScanActive(false);
+    setAttendanceLoading(true);
+    try {
+      const res = await fetch('/api/student/attendance/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qrPayload: payload }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setQrScanResult(data.alreadyCheckedIn ? 'alreadyDone' : 'success');
+        setQrScanMessage(data.message);
+        setAttendanceCheckedIn(true);
+        setAttendanceCheckedAt(data.checkedAt);
+      } else {
+        setQrScanResult('error');
+        setQrScanMessage(data.error || 'QR Code ไม่ถูกต้อง');
+        qrProcessingRef.current = false;
+      }
+    } catch {
+      setQrScanResult('error');
+      setQrScanMessage('เกิดข้อผิดพลาดในการแสกน');
+      qrProcessingRef.current = false;
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const handlePinSubmit = async () => {
+    if (!pinInput.trim() || !id) return;
+    setPinSubmitting(true);
+    try {
+      const res = await fetch('/api/student/attendance/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pinInput.trim(), campId: Number(id) }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setQrScanResult(data.alreadyCheckedIn ? 'alreadyDone' : 'success');
+        setQrScanMessage(data.message);
+        setAttendanceCheckedIn(true);
+        setAttendanceCheckedAt(data.checkedAt);
+      } else {
+        setQrScanResult('error');
+        setQrScanMessage(data.error || 'รหัส PIN ไม่ถูกต้อง');
+      }
+    } catch {
+      setQrScanResult('error');
+      setQrScanMessage('เกิดข้อผิดพลาด กรุณาลองใหม่');
+    } finally {
+      setPinSubmitting(false);
+    }
+  };
+
+  const requestCameraAndStartScan = async () => {
+    setCameraError(null);
+    const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (!isSecure) {
+      setCameraError('เบราว์เซอร์นี้ไม่รองรับการเปิดกล้องบน HTTP กรุณาใช้ HTTPS หรือกรอก PIN แทน');
+      setShowPinInput(true);
+      return;
+    }
+    const hasMedia = !!(navigator.mediaDevices?.getUserMedia);
+    if (!hasMedia) {
+      setCameraError('อุปกรณ์นี้ไม่รองรับกล้อง กรุณากรอก PIN แทน');
+      setShowPinInput(true);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+      stream.getTracks().forEach(t => t.stop());
+      setQrScanActive(true);
+    } catch (err: any) {
+      const isDenied = err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError';
+      if (isDenied) {
+        setCameraError('ไม่ได้รับอนุญาตเข้าถึงกล้อง กรุณาอนุญาตในการตั้งค่าเบราว์เซอร์');
+        setQrScanResult('error');
+        setQrScanMessage('ไม่ได้รับอนุญาตเข้าถึงกล้อง หรือกรอก PIN แทน');
+      } else {
+        setCameraError('ไม่สามารถเปิดกล้องได้ กรุณากรอก PIN แทน');
+        setShowPinInput(true);
+      }
+    }
+  };
+
+  const openAttendanceModal = () => {
+    setQrScanActive(false);
+    setQrScanResult(null);
+    setQrScanMessage('');
+    setShowPinInput(false);
+    setPinInput('');
+    setCameraError(null);
+    qrProcessingRef.current = false;
+    setIsAttendanceModalOpen(true);
   };
 
   const handleRegister = async () => {
@@ -483,11 +621,16 @@ export default function StudentCampDetailPage() {
                         เกียรติบัตร (กำลังพัฒนา)
                       </Button>
                       <Button
-                        className="bg-gray-100 text-gray-400 border-gray-200 font-medium cursor-not-allowed opacity-80"
-                        startContent={<CheckCircle2 size={18} />}
-                        isDisabled
+                        className={`font-medium ${
+                          attendanceCheckedIn
+                            ? "bg-green-100 text-green-700 border border-green-200"
+                            : "bg-[#6b857a]/10 text-[#6b857a] border border-[#6b857a]/20 hover:bg-[#6b857a]/20"
+                        }`}
+                        startContent={attendanceCheckedIn ? <CheckCircle2 size={18} /> : <QrCode size={18} />}
+                        isDisabled={!!campNotStarted}
+                        onPress={openAttendanceModal}
                       >
-                        เช็คชื่อ (กำลังพัฒนา)
+                        {attendanceCheckedIn ? "เช็คชื่อแล้ว" : "เช็คชื่อ"}
                       </Button>
                     </div>
                   </>
@@ -556,6 +699,178 @@ export default function StudentCampDetailPage() {
             <div className="px-6 py-4 border-t border-gray-100">
               <Button fullWidth className="bg-[#5d7c6f] text-white font-semibold" onPress={() => setIsScheduleModalOpen(false)}>
                 ปิด
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attendance Modal */}
+      {isAttendanceModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <QrCode size={20} className="text-[#5d7c6f]" />
+                <h2 className="text-lg font-bold text-gray-800">เช็คชื่อ</h2>
+              </div>
+              <button
+                onClick={() => setIsAttendanceModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-500"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto px-6 py-6 flex flex-col items-center gap-5">
+              {attendanceCheckedIn ? (
+                // Already checked in
+                <div className="flex flex-col items-center gap-3 py-8">
+                  <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
+                    <CheckCircle2 size={52} className="text-green-500" />
+                  </div>
+                  <p className="text-xl font-bold text-green-700">เช็คชื่อสำเร็จแล้ว!</p>
+                  {attendanceCheckedAt && (
+                    <p className="text-sm text-gray-500">เวลา: {new Date(attendanceCheckedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</p>
+                  )}
+                </div>
+              ) : qrScanResult === 'success' || qrScanResult === 'alreadyDone' ? (
+                // Just checked in successfully
+                <div className="flex flex-col items-center gap-3 py-8">
+                  <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
+                    <CheckCircle2 size={52} className="text-green-500" />
+                  </div>
+                  <p className="text-xl font-bold text-green-700">{qrScanResult === 'alreadyDone' ? 'เช็คชื่อไปแล้ว' : 'เช็คชื่อสำเร็จ!'}</p>
+                  <p className="text-sm text-gray-500">{qrScanMessage}</p>
+                </div>
+              ) : qrScanResult === 'error' ? (
+                // Error state
+                <div className="flex flex-col items-center gap-4 w-full py-4">
+                  <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center">
+                    <X size={40} className="text-red-400" />
+                  </div>
+                  <p className="text-base font-semibold text-red-600 text-center">{qrScanMessage}</p>
+                  <div className="flex flex-col w-full gap-2">
+                    {!showPinInput && (
+                      <Button
+                        className="w-full bg-[#5d7c6f] text-white font-semibold"
+                        startContent={<ScanLine size={18} />}
+                        onPress={() => { setQrScanResult(null); setQrScanMessage(''); qrProcessingRef.current = false; requestCameraAndStartScan(); }}
+                      >
+                        ลองสแกนอีกครั้ง
+                      </Button>
+                    )}
+                    <Button
+                      className="w-full bg-gray-100 text-gray-700 font-medium"
+                      variant="flat"
+                      onPress={() => { setQrScanResult(null); setQrScanMessage(''); setPinInput(''); setShowPinInput(true); }}
+                    >
+                      กรอกรหัส PIN แทน
+                    </Button>
+                  </div>
+                </div>
+              ) : showPinInput ? (
+                // PIN input mode
+                <div className="flex flex-col items-center gap-5 w-full">
+                  {cameraError && (
+                    <div className="w-full flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                      <span className="text-amber-500 text-lg shrink-0">⚠️</span>
+                      <p className="text-xs text-amber-800 leading-relaxed">{cameraError}</p>
+                    </div>
+                  )}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-16 h-16 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center mb-1">
+                      <span className="text-3xl">🔢</span>
+                    </div>
+                    <p className="font-bold text-gray-800">กรอกรหัส PIN</p>
+                    <p className="text-xs text-gray-400 text-center">ขอรหัส PIN จากครูผู้ดูแลที่ค่าย</p>
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    placeholder="000000"
+                    className="w-40 text-center text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50"
+                    value={pinInput}
+                    onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && pinInput.length === 6) handlePinSubmit(); }}
+                  />
+                  <div className="flex flex-col w-full gap-2">
+                    <Button
+                      className="w-full bg-[#5d7c6f] text-white font-bold"
+                      size="lg"
+                      isDisabled={pinInput.length !== 6}
+                      isLoading={pinSubmitting}
+                      onPress={handlePinSubmit}
+                    >
+                      ยืนยันรหัส PIN
+                    </Button>
+                    <Button
+                      className="w-full text-gray-500"
+                      variant="light"
+                      startContent={<ScanLine size={16} />}
+                      onPress={() => { setShowPinInput(false); setPinInput(''); }}
+                    >
+                      กลับไปแสกน QR
+                    </Button>
+                  </div>
+                </div>
+              ) : qrScanActive ? (
+                // QR Scanner active
+                <div className="w-full max-w-sm mx-auto">
+                  <QrScanner
+                    active={qrScanActive}
+                    onScan={handleQrScan}
+                    onError={(err: string) => {
+                      setQrScanResult('error');
+                      setQrScanMessage(err);
+                      setQrScanActive(false);
+                    }}
+                  />
+                  <p className="text-center text-xs text-gray-400 mt-2">จัดกล้องให้ตรง QR Code ของครู</p>
+                  <Button
+                    className="w-full mt-3 bg-gray-100 text-gray-600"
+                    variant="flat"
+                    onPress={() => setQrScanActive(false)}
+                  >
+                    ยกเลิก
+                  </Button>
+                </div>
+              ) : (
+                // Initial state
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <div className="w-24 h-24 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center">
+                    <QrCode size={52} className="text-[#5d7c6f]" />
+                  </div>
+                  <p className="text-base text-gray-600 text-center">
+                    กดปุ่มด้านล่างเพื่อเปิดกล้องแสกน<br/>
+                    <span className="text-sm text-gray-400">QR Code ที่ครูแสดง</span>
+                  </p>
+                  <Button
+                    className="bg-[#5d7c6f] text-white font-bold px-8"
+                    size="lg"
+                    startContent={<ScanLine size={20} />}
+                    onPress={requestCameraAndStartScan}
+                  >
+                    เปิดกล้องแสกน QR
+                  </Button>
+                  <button
+                    className="text-sm text-gray-400 underline underline-offset-2 hover:text-[#5d7c6f] transition-colors"
+                    onClick={() => setShowPinInput(true)}
+                  >
+                    หรือกรอกรหัส PIN แทน
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100">
+              <Button fullWidth className="bg-gray-100 text-gray-700 font-semibold" onPress={() => setIsAttendanceModalOpen(false)}>
+                ปิดหน้าต่าง
               </Button>
             </div>
           </div>

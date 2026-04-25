@@ -187,7 +187,7 @@ export default function CreateMissionModal({
                     <label className="text-sm font-semibold text-gray-700">คำถาม</label>
                   </div>
                   {textQuestions.map((q, i) => (
-                    <div key={i} className="flex gap-2">
+                    <div key={i} className="flex gap-2 group">
                       <div className="flex-1 relative">
                         <span className="absolute left-3 top-2 text-xs text-gray-400 font-bold">
                           {i + 1}
@@ -201,7 +201,7 @@ export default function CreateMissionModal({
                       </div>
                       {textQuestions.length > 1 && (
                         <button
-                          className="p-2 text-[#E84A5F] opacity-0 group-hover:opacity-70 hover:!opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded-lg transition-all"
+                          className="p-2 text-[#E84A5F] opacity-40 group-hover:opacity-80 hover:!opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded-lg transition-all"
                           onClick={() => removeTextQuestion(i)}
                         >
                           <Trash2 size={18} />
