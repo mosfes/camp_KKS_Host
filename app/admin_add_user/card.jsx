@@ -1,4 +1,4 @@
-"use client"; // จำเป็นต้องใส่บรรทัดนี้เพราะมีการใช้ useState และ useEffect
+"use client"; 
 
 import React, { useState, useEffect } from "react";
 import { Card, CardBody, CardFooter } from "@heroui/react";

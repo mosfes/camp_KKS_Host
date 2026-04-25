@@ -38,13 +38,15 @@ export async function GET() {
         if (classroom) {
             const teacherMap = new Map();
             if (classroom.teacher) {
-                teacherMap.set(classroom.teacher.teachers_id,
-                    `${classroom.teacher.firstname} ${classroom.teacher.lastname}`);
+                const t = classroom.teacher;
+                teacherMap.set(t.teachers_id,
+                    `${t.prefix_name || ""}${t.firstname} ${t.lastname}`.trim());
             }
             for (const ct of classroom.classroom_teacher ?? []) {
                 if (ct.teacher) {
-                    teacherMap.set(ct.teacher.teachers_id,
-                        `${ct.teacher.firstname} ${ct.teacher.lastname}`);
+                    const t = ct.teacher;
+                    teacherMap.set(t.teachers_id,
+                        `${t.prefix_name || ""}${t.firstname} ${t.lastname}`.trim());
                 }
             }
             homeroomTeachers = teacherMap.size > 0 ? [...teacherMap.values()].join(", ") : null;

@@ -743,8 +743,8 @@ export default function CampDetailPage() {
           </div>
         </div>
 
-        {/* Bases Section */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        {/* Bases Section - แสดงเฉพาะเจ้าของค่าย */}
+        {camp.isOwner && <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="font-semibold text-gray-900 text-lg">
@@ -833,10 +833,10 @@ export default function CampDetailPage() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
-        {/* Survey Section */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm mt-8">
+        {/* Survey Section - แสดงเฉพาะเจ้าของค่าย */}
+        {camp.isOwner && <div className="bg-white rounded-2xl p-6 shadow-sm mt-8">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="font-semibold text-gray-900 text-lg">แบบสอบถาม</h3>
@@ -929,7 +929,7 @@ export default function CampDetailPage() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
       </div>
 
       <EditCampModal
