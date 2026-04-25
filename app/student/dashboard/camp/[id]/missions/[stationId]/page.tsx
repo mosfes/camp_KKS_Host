@@ -12,7 +12,7 @@ import {
   ModalFooter,
   useDisclosure,
 } from "@heroui/modal";
-import { ChevronLeft, FileText, CheckCircle2, Circle } from "lucide-react";
+import { ChevronLeft, FileText, CheckCircle2, Circle, Camera, Image as ImageIcon, Upload, Loader2, X } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export default function StudentStationDetailPage() {
@@ -29,6 +29,7 @@ export default function StudentStationDetailPage() {
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [answers, setAnswers] = useState<any>({}); // { questionId: value }
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingQid, setUploadingQid] = useState<number | null>(null);
 
   const fetchCamp = async () => {
     try {
@@ -95,6 +96,8 @@ export default function StudentStationDetailPage() {
           initialAnswers[qid] = ans.answer_text[0].answer_text;
         } else if (ans.answer_mcq && ans.answer_mcq.length > 0) {
           initialAnswers[qid] = ans.answer_mcq[0].question_text;
+        } else if (ans.answer_photo && ans.answer_photo.length > 0) {
+          initialAnswers[qid] = ans.answer_photo[0].img_url;
         }
       });
     }
@@ -105,6 +108,31 @@ export default function StudentStationDetailPage() {
 
   const handleAnswerChange = (questionId: number, value: any) => {
     setAnswers((prev: any) => ({ ...prev, [questionId]: value }));
+  };
+
+  const handleImageUpload = async (questionId: number, file: File) => {
+    if (!file) return;
+    setUploadingQid(questionId);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        handleAnswerChange(questionId, data.url);
+        toast.success("อัปโหลดรูปภาพสำเร็จ");
+      } else {
+        toast.error("อัปโหลดล้มเหลว");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("เกิดข้อผิดพลาดในการอัปโหลด");
+    } finally {
+      setUploadingQid(null);
+    }
   };
 
   const submitMission = async () => {
@@ -336,6 +364,58 @@ export default function StudentStationDetailPage() {
                                 </div>
                               );
                             })}
+                          </div>
+                        )}
+                        
+                        {q.question_type === "PHOTO" && (
+                          <div className="space-y-3">
+                            {answers[q.question_id] ? (
+                              <div className="relative group w-full max-w-sm">
+                                <img
+                                  src={answers[q.question_id]}
+                                  alt="Uploaded"
+                                  className="w-full h-48 object-cover rounded-xl border border-gray-200"
+                                />
+                                {!isSubmitted && (
+                                  <button
+                                    onClick={() => handleAnswerChange(q.question_id, "")}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-3">
+                                <input
+                                  type="file"
+                                  id={`file-${q.question_id}`}
+                                  className="hidden"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleImageUpload(q.question_id, file);
+                                  }}
+                                />
+                                <div className="flex gap-3">
+                                  <Button
+                                    isDisabled={isSubmitted || uploadingQid === q.question_id}
+                                    onPress={() => document.getElementById(`file-${q.question_id}`)?.click()}
+                                    className="flex-1 bg-white border-2 border-dashed border-gray-300 hover:border-[#5d7c6f] hover:text-[#5d7c6f] h-24 rounded-xl transition-all flex flex-col gap-1"
+                                    isLoading={uploadingQid === q.question_id}
+                                  >
+                                    {uploadingQid === q.question_id ? (
+                                      <Loader2 className="animate-spin" size={24} />
+                                    ) : (
+                                      <>
+                                        <Camera size={24} />
+                                        <span className="text-xs font-semibold">ถ่ายรูป / เลือกรูป</span>
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                         </div>

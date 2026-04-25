@@ -310,7 +310,7 @@ const CampManager = () => {
     };
 
     return (
-        <I18nProvider locale="th-TH">
+        <I18nProvider locale="en-GB">
         <div className="flex flex-col gap-6 w-full pt-4 pb-10">
             <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-4 md:p-6">

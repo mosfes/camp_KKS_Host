@@ -73,6 +73,20 @@ export async function POST(request) {
                     }
                 }
             }
+        } else if (type === 'PHOTO_SUBMISSION') {
+            const questionsToCreate = questions || [];
+            if (questionsToCreate.length === 0 && question) {
+                questionsToCreate.push({ text: question });
+            }
+
+            for (const q of questionsToCreate) {
+                if (q.text) {
+                    await prisma.$executeRawUnsafe(
+                        'INSERT INTO mission_question (question_text, question_type, mission_mission_id) VALUES (?, ?, ?)',
+                        q.text, 'PHOTO', newMission.mission_id
+                    );
+                }
+            }
         }
 
         return NextResponse.json(newMission, { status: 201 });

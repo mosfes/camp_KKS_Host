@@ -160,7 +160,7 @@ export default function BaseDetailPage() {
                     <p className="text-sm text-gray-600 mb-1">
                       {mission.description}
                     </p>
-                    {mission.type === "QUESTION_ANSWERING" &&
+                    {(mission.type === "QUESTION_ANSWERING" || mission.type === "PHOTO_SUBMISSION") &&
                       mission.mission_question?.[0] && (
                         <div className="mt-2 bg-[#6b857a]/5 p-2 rounded-lg border border-[#6b857a]/10">
                           <p className="text-sm text-[#6b857a] font-medium">

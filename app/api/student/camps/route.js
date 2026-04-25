@@ -51,6 +51,7 @@ export async function GET() {
                                     include: {
                                         answer_text: true,
                                         answer_mcq: true,
+                                        answer_photo: true,
                                     }
                                 }
                             }
@@ -68,7 +69,10 @@ export async function GET() {
                         }
                     }
                 },
-                camp_daily_schedule: true,
+                camp_daily_schedule: {
+                    include: { time_slots: true },
+                    orderBy: { day: 'asc' },
+                },
                 station: {
                     where: { deletedAt: null },
                     include: {
@@ -127,6 +131,18 @@ export async function GET() {
                 totalCapacity,
                 totalEnrolled,
                 academicYear: camp.camp_classroom[0]?.classroom?.academic_years_years_id,
+                camp_daily_schedule: camp.camp_daily_schedule
+                    ? camp.camp_daily_schedule.map(s => ({
+                          daily_schedule_id: s.daily_schedule_id,
+                          day: s.day,
+                          time_slots: (s.time_slots || []).map(slot => ({
+                              time_slot_id: slot.time_slot_id,
+                              startTime: slot.startTime,
+                              endTime: slot.endTime,
+                              activity: slot.activity,
+                          })),
+                      }))
+                    : [],
             };
         });
 

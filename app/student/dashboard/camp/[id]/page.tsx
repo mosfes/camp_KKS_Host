@@ -19,6 +19,8 @@ import {
   Users,
   FileText,
   CalendarCheck,
+  CalendarDays,
+  X,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -83,6 +85,9 @@ export default function StudentCampDetailPage() {
   const [surveyData, setSurveyData] = useState<any>(null);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
+
+  // Schedule Modal State
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   const fetchCamp = async () => {
     try {
@@ -295,31 +300,24 @@ export default function StudentCampDetailPage() {
           )}
         </div>
 
+        {/* Schedule Button Card */}
         {camp.camp_daily_schedule && camp.camp_daily_schedule.length > 0 && (
-          <div className="bg-white rounded-3xl shadow-sm p-6 mb-6">
-            <h2 className="text-lg font-bold text-[#2d3748] mb-4">ตารางกิจกรรม</h2>
-            <div className="space-y-3">
-              {camp.camp_daily_schedule.map((day: any) => (
-                <div key={day.daily_schedule_id} className="bg-gray-50 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock className="text-gray-400" size={16} />
-                    <span className="font-semibold text-gray-700">วันที่ {day.day}</span>
-                  </div>
-                  {day.time_slots && day.time_slots.length > 0 ? (
-                    <div className="space-y-1 pl-6 border-l-2 border-gray-200 ml-2">
-                      {day.time_slots.map((slot: any) => (
-                        <div key={slot.time_slot_id} className="text-sm text-gray-600">
-                          <span className="font-mono text-gray-400 mr-2">{slot.startTime} - {slot.endTime}</span>
-                          {slot.activity}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-400 ml-8">ไม่มีกิจกรรม</p>
-                  )}
+          <div className="bg-white rounded-3xl shadow-sm p-4 mb-4">
+            <button
+              onClick={() => setIsScheduleModalOpen(true)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-[#edf4f1] hover:bg-[#dceee8] transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-[#5d7c6f] rounded-xl flex items-center justify-center flex-shrink-0">
+                  <CalendarDays size={18} className="text-white" />
                 </div>
-              ))}
-            </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-800 text-sm">ดูกำหนดการค่าย</p>
+                  <p className="text-xs text-gray-500">{camp.camp_daily_schedule.length} วัน · กดเพื่อดูตารางเวลา</p>
+                </div>
+              </div>
+              <ChevronLeft size={18} className="text-gray-400 rotate-180 group-hover:translate-x-0.5 transition-transform" />
+            </button>
           </div>
         )}
 
@@ -501,6 +499,68 @@ export default function StudentCampDetailPage() {
       </div>
 
       <TakeSurveyModal isOpen={isSurveyModalOpen} onClose={() => setIsSurveyModalOpen(false)} survey={surveyData} campId={Number(id)} onCompleted={handleSurveyCompleted} />
+
+      {/* Schedule Modal */}
+      {isScheduleModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <CalendarDays size={20} className="text-[#5d7c6f]" />
+                <h2 className="text-lg font-bold text-gray-800">กำหนดการค่าย</h2>
+              </div>
+              <button
+                onClick={() => setIsScheduleModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-500"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto px-6 py-4 space-y-4">
+              {camp.camp_daily_schedule.map((day: any, dayIdx: number) => (
+                <div key={day.daily_schedule_id ?? dayIdx} className="rounded-2xl border border-gray-100 overflow-hidden">
+                  {/* Day Header */}
+                  <div className="bg-[#5d7c6f] px-4 py-2.5 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                      {day.day}
+                    </div>
+                    <span className="text-white font-semibold text-sm">วันที่ {day.day}</span>
+                  </div>
+
+                  {/* Time Slots */}
+                  {day.time_slots && day.time_slots.length > 0 ? (
+                    <div className="divide-y divide-gray-50">
+                      {day.time_slots.map((slot: any, slotIdx: number) => (
+                        <div key={slot.time_slot_id ?? slotIdx} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-center gap-1 text-[#5d7c6f] min-w-[110px] mt-0.5">
+                            <Clock size={13} className="flex-shrink-0" />
+                            <span className="text-xs font-mono font-semibold">
+                              {slot.startTime?.slice(0,5)} – {slot.endTime?.slice(0,5)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 flex-1 leading-relaxed">{slot.activity}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 px-4 py-3">ไม่มีกิจกรรม</p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100">
+              <Button fullWidth className="bg-[#5d7c6f] text-white font-semibold" onPress={() => setIsScheduleModalOpen(false)}>
+                ปิด
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
