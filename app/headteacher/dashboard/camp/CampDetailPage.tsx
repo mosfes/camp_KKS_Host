@@ -20,6 +20,7 @@ import {
   Star,
   Users,
   GraduationCap,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -677,7 +678,7 @@ export default function CampDetailPage() {
 
               <Button
                 className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
-                startContent={<ClipboardList size={18} />}
+                startContent={<UserCheck size={18} />}
                 onPress={() => setIsAttendanceModalOpen(true)}
               >
                 เช็คชื่อนักเรียน
@@ -1002,12 +1003,14 @@ export default function CampDetailPage() {
         />
       )}
 
-      <AttendanceModal
-        isOpen={isAttendanceModalOpen}
-        onClose={() => setIsAttendanceModalOpen(false)}
-        campId={Number(campId)}
-        campName={camp?.name || ""}
-      />
+      {camp && (
+        <AttendanceModal
+          isOpen={isAttendanceModalOpen}
+          onClose={() => setIsAttendanceModalOpen(false)}
+          campId={camp.camp_id}
+          campName={camp.name}
+        />
+      )}
     </div>
   );
 }

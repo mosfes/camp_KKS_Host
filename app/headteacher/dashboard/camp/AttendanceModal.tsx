@@ -1,362 +1,501 @@
 "use client";
 
+import {
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Button, Select, SelectItem,
+} from "@heroui/react";
 import { useState, useEffect, useMemo } from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  Pagination,
-} from "@heroui/react";
-import {
-  Search,
-  CheckCircle2,
-  Circle,
-  Users,
-  UserCheck,
-  UserX,
-  ClipboardCheck,
+  UserCheck, QrCode, RefreshCw, Copy, Check, Users, Search,
+  CheckCircle2, XCircle, Clock, User, Trash2, Plus, CheckSquare,
 } from "lucide-react";
+import { useStatusModal } from "@/components/StatusModalProvider";
+import QRCode from "react-qr-code";
 
-interface Student {
-  studentId: number;
-  name: string;
-  enrollmentId: number | null;
-  checkedIn: boolean;
-  checkedInAt: string | null;
-}
-
-interface AttendanceData {
-  campId: number;
-  totalStudents: number;
-  checkedInCount: number;
-  students: Student[];
+interface RoundInfo {
+  roundId: string;
+  roundNumber: number;
+  description: string;
+  createdAt: string;
+  expiresAt: string;
+  isClosed: boolean;
+  closedAt: string | null;
 }
 
 interface AttendanceModalProps {
   isOpen: boolean;
   onClose: () => void;
   campId: number;
-  campName: string;
+  campName?: string;
 }
 
-export default function AttendanceModal({
-  isOpen,
-  onClose,
-  campId,
-  campName,
-}: AttendanceModalProps) {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<AttendanceData | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "checked" | "unchecked">("all");
-  const [page, setPage] = useState(1);
-  const [togglingId, setTogglingId] = useState<number | null>(null);
-  const ITEMS_PER_PAGE = 12;
+export default function AttendanceModal({ isOpen, onClose, campId, campName }: AttendanceModalProps) {
+  const { showError, showConfirm, close } = useStatusModal();
 
+  // QR / PIN state
+  const [qrPayload, setQrPayload] = useState<string | null>(null);
+  const [qrPin, setQrPin] = useState<string | null>(null);
+  const [qrExpiresAt, setQrExpiresAt] = useState<Date | null>(null);
+  const [durationMinutes, setDurationMinutes] = useState("60");
+  const [roundDescription, setRoundDescription] = useState("");
+  const [qrLoading, setQrLoading] = useState(false);
+  const [pinCopied, setPinCopied] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+
+  // Rounds state
+  const [rounds, setRounds] = useState<RoundInfo[]>([]);
+  const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
+  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
+
+  // Student list state
+  const [results, setResults] = useState<any[]>([]);
+  const [totalCheckedIn, setTotalCheckedIn] = useState(0);
+  const [resultsLoading, setResultsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // ─── Fetch helpers ────────────────────────────────────────────────────────
+
+  const fetchResults = async (roundId?: string | null) => {
+    try {
+      setResultsLoading(true);
+      const rid = roundId !== undefined ? roundId : selectedRoundId;
+      const url = rid
+        ? `/api/attendance/${campId}/results?roundId=${rid}`
+        : `/api/attendance/${campId}/results`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setResults(data.results ?? []);
+      setTotalCheckedIn(data.totalCheckedIn ?? 0);
+    } catch { } finally { setResultsLoading(false); }
+  };
+
+  const fetchQr = async (): Promise<{ roundId: string | null; rounds: RoundInfo[] }> => {
+    try {
+      setQrLoading(true);
+      const res = await fetch(`/api/attendance/${campId}/qr`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const fetchedRounds: RoundInfo[] = data.rounds ?? [];
+      setRounds(fetchedRounds);
+      if (data.active) {
+        setQrPayload(data.qrPayload);
+        setQrPin(data.pin ?? null);
+        setQrExpiresAt(data.expiresAt ? new Date(data.expiresAt) : null);
+        setActiveRoundId(data.roundId);
+        return { roundId: data.roundId, rounds: fetchedRounds };
+      } else {
+        setQrPayload(null); setQrPin(null); setQrExpiresAt(null); setActiveRoundId(null);
+        const lastRound = fetchedRounds[fetchedRounds.length - 1] ?? null;
+        return { roundId: lastRound?.roundId ?? null, rounds: fetchedRounds };
+      }
+    } catch { return { roundId: null, rounds: [] }; }
+    finally { setQrLoading(false); }
+  };
+
+  // โหลดครั้งแรกเมื่อเปิด modal
   useEffect(() => {
-    if (isOpen && campId) {
-      fetchAttendance();
-      setSearchQuery("");
-      setFilterStatus("all");
-      setPage(1);
-    }
+    if (!isOpen || !campId) return;
+    (async () => {
+      const { roundId } = await fetchQr();
+      setSelectedRoundId(roundId);
+      await fetchResults(roundId);
+    })();
   }, [isOpen, campId]);
 
+  // Auto-refresh ทุก 10 วินาที
   useEffect(() => {
-    setPage(1);
-  }, [searchQuery, filterStatus]);
+    if (!isOpen || !autoRefresh) return;
+    const interval = setInterval(() => fetchResults(), 10000);
+    return () => clearInterval(interval);
+  }, [isOpen, autoRefresh, selectedRoundId]);
 
-  const fetchAttendance = async () => {
-    try {
-      setLoading(true);
-      setData(null);
-      const res = await fetch(`/api/camps/${campId}/attendance`);
-      if (res.ok) {
-        setData(await res.json());
-      }
-    } catch (err) {
-      console.error("Failed to fetch attendance:", err);
-    } finally {
-      setLoading(false);
-    }
+  // เมื่อเลือกรอบอื่น
+  const handleSelectRound = (roundId: string) => {
+    setSelectedRoundId(roundId);
+    fetchResults(roundId);
+    setSearchQuery("");
+    setSelectedStatus("all");
   };
 
-  const toggleCheckin = async (student: Student) => {
-    if (!student.enrollmentId) return;
-    setTogglingId(student.studentId);
+  const regenerateQr = async () => {
     try {
-      const res = await fetch(`/api/camps/${campId}/attendance`, {
-        method: "PATCH",
+      setRegenerating(true);
+      const res = await fetch(`/api/attendance/${campId}/qr`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          enrollmentId: student.enrollmentId,
-          checkedIn: !student.checkedIn,
-        }),
+        body: JSON.stringify({ durationMinutes, description: roundDescription }),
       });
-      if (res.ok) {
-        const updated = await res.json();
-        // อัปเดต state ใน place ไม่ต้อง refetch ทั้งหมด
-        setData((prev) => {
-          if (!prev) return prev;
-          const newStudents = prev.students.map((s) =>
-            s.studentId === student.studentId
-              ? { ...s, checkedIn: !s.checkedIn, checkedInAt: updated.enrolled_at }
-              : s
-          );
-          return {
-            ...prev,
-            students: newStudents,
-            checkedInCount: newStudents.filter((s) => s.checkedIn).length,
-          };
-        });
-      }
-    } catch (err) {
-      console.error("Toggle checkin failed:", err);
-    } finally {
-      setTogglingId(null);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setQrPayload(data.qrPayload);
+      setQrPin(data.pin ?? null);
+      setQrExpiresAt(data.expiresAt ? new Date(data.expiresAt) : null);
+      setActiveRoundId(data.roundId);
+      setRounds(data.rounds ?? []);
+      setSelectedRoundId(data.roundId);
+      setPinCopied(false);
+      setRoundDescription("");
+      await fetchResults(data.roundId);
+    } catch { } finally { setRegenerating(false); }
+  };
+
+  const handleCloseSession = () => {
+    showConfirm("ปิดรับเช็คชื่อ", "คุณแน่ใจหรือไม่? นักเรียนจะไม่สามารถเช็คชื่อในรอบนี้ได้อีก",
+      async () => {
+        const res = await fetch(`/api/attendance/${campId}/qr`, { method: "DELETE" });
+        if (!res.ok) return;
+        const data = await res.json();
+        setQrPayload(null); setQrPin(null); setQrExpiresAt(null); setActiveRoundId(null);
+        setRounds(data.rounds ?? []);
+        close();
+      }, "ปิดรับเช็คชื่อ");
+  };
+
+  const handleClearRound = () => {
+    const label = selectedRoundId === activeRoundId ? "รอบนี้" : `รอบที่ ${rounds.find(r => r.roundId === selectedRoundId)?.roundNumber ?? ""}`;
+    showConfirm("ล้างข้อมูลเช็คชื่อ", `คุณแน่ใจหรือไม่? ข้อมูลการเช็คชื่อ${label}จะถูกล้าง`,
+      async () => {
+        await fetch(`/api/attendance/${campId}/results?roundId=${selectedRoundId}`, { method: "DELETE" });
+        fetchResults(selectedRoundId);
+        close();
+      }, "ล้างข้อมูล");
+  };
+
+  const handleClearAll = () => {
+    showConfirm("ล้างข้อมูลทั้งหมด", "คุณแน่ใจหรือไม่? ข้อมูลเช็คชื่อทุกรอบและประวัติรอบจะถูกล้างทั้งหมด",
+      async () => {
+        await fetch(`/api/attendance/${campId}/results`, { method: "DELETE" });
+        setRounds([]); setSelectedRoundId(null); setActiveRoundId(null);
+        setQrPayload(null); setQrPin(null); setQrExpiresAt(null);
+        fetchResults(null);
+        close();
+      }, "ล้างทั้งหมด");
+  };
+
+  const handleToggleCheckin = async (studentId: number, enrollmentId: number, isCheckedIn: boolean, studentName: string) => {
+    if (!selectedRoundId) {
+      showError("ไม่สามารถเช็คชื่อได้", "กรุณาสร้างรอบการเช็คชื่อก่อน หรือเลือกรอบที่ต้องการเช็คชื่อ");
+      return;
     }
+
+    const title = isCheckedIn ? "ยกเลิกการเช็คชื่อ" : "ยืนยันการเช็คชื่อ";
+    const message = isCheckedIn 
+      ? `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการเช็คชื่อของ "${studentName}" (รหัส: ${studentId}) ?` 
+      : `คุณต้องการเช็คชื่อให้ "${studentName}" (รหัส: ${studentId}) ใช่หรือไม่?`;
+    const confirmText = isCheckedIn ? "ยกเลิกเช็คชื่อ" : "ยืนยันเช็คชื่อ";
+
+    showConfirm(title, message, async () => {
+      try {
+        const res = await fetch(`/api/attendance/${campId}/manual-checkin`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roundId: selectedRoundId,
+            studentId,
+            enrollmentId,
+            action: isCheckedIn ? "uncheck" : "checkin"
+          }),
+        });
+        if (res.ok) fetchResults(selectedRoundId);
+        close();
+      } catch { }
+    }, confirmText);
   };
 
-  const filteredStudents = useMemo(() => {
-    if (!data) return [];
-    return data.students.filter((s) => {
-      // filter สถานะ
-      if (filterStatus === "checked" && !s.checkedIn) return false;
-      if (filterStatus === "unchecked" && s.checkedIn) return false;
-      // ค้นหาชื่อหรือรหัส
-      const q = searchQuery.trim().toLowerCase();
-      if (q) {
-        const matchName = s.name.toLowerCase().includes(q);
-        const matchId = String(s.studentId).includes(q);
-        if (!matchName && !matchId) return false;
-      }
-      return true;
-    });
-  }, [data, searchQuery, filterStatus]);
-
-  const pages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE);
-  const paginatedStudents = useMemo(() => {
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    return filteredStudents.slice(start, start + ITEMS_PER_PAGE);
-  }, [page, filteredStudents]);
-
-  const formatTime = (dateString: string | null) => {
-    if (!dateString) return "";
-    const d = new Date(dateString);
-    return d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+  const formatTime = (d: string | Date) => {
+    const s = typeof d === "string" ? (d.endsWith("Z") ? d.slice(0, -1) : d) : d.toISOString();
+    return new Date(s).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
   };
 
-  const checkedCount = data?.checkedInCount ?? 0;
-  const total = data?.totalStudents ?? 0;
-  const percent = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
+  const filteredResults = useMemo(() => results.filter(r => {
+    if (selectedStatus === "checked" && !r.isCheckedIn) return false;
+    if (selectedStatus === "unchecked" && r.isCheckedIn) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      if (!r.studentName?.toLowerCase().includes(q) && !String(r.studentId).includes(q)) return false;
+    }
+    return true;
+  }), [results, selectedStatus, searchQuery]);
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <Modal
-      backdrop="blur"
-      classNames={{
-        base: "bg-white rounded-3xl shadow-xl",
-        backdrop: "bg-black/40 backdrop-blur-sm",
-      }}
-      isOpen={isOpen}
-      scrollBehavior="inside"
-      size="2xl"
-      onOpenChange={onClose}
-    >
+    <Modal backdrop="blur" classNames={{ base: "bg-white rounded-2xl shadow-xl max-h-[90vh]", backdrop: "bg-black/60 backdrop-blur-sm" }}
+      isOpen={isOpen} scrollBehavior="inside" size="3xl" onOpenChange={onClose}>
       <ModalContent>
-        {() => (
+        {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1 px-6 pt-6 pb-4 border-b border-gray-100">
-              {/* Title */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#eaf1ee] flex items-center justify-center text-[#5d7c6f] shrink-0">
-                  <ClipboardCheck size={20} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 leading-tight">
-                    เช็คชื่อนักเรียน
-                  </h2>
-                  <p className="text-sm font-normal text-gray-500 mt-0.5 truncate max-w-[300px]">
-                    {campName}
-                  </p>
-                </div>
+            {/* Header */}
+            <ModalHeader className="flex flex-col gap-1 p-6 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2 text-[#6b857a]">
+                <UserCheck size={24} />
+                <h2 className="text-2xl font-bold text-gray-900">เช็คชื่อนักเรียน</h2>
               </div>
-
-              {/* Stats bar */}
-              {data && (
-                <div className="mt-4 space-y-3">
-                  {/* Progress */}
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="text-gray-500 font-medium">ความคืบหน้า</span>
-                    <span className="font-bold text-[#5d7c6f]">
-                      {checkedCount} / {total} คน ({percent}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="bg-[#5d7c6f] h-2.5 rounded-full transition-all duration-500"
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
-
-                  {/* Mini stats */}
-                  <div className="flex gap-3 mt-2">
-                    <button
-                      onClick={() => setFilterStatus("all")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                        filterStatus === "all"
-                          ? "bg-gray-900 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      <Users size={14} />
-                      ทั้งหมด {total}
-                    </button>
-                    <button
-                      onClick={() => setFilterStatus("checked")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                        filterStatus === "checked"
-                          ? "bg-[#5d7c6f] text-white"
-                          : "bg-green-50 text-green-700 hover:bg-green-100"
-                      }`}
-                    >
-                      <UserCheck size={14} />
-                      มาแล้ว {checkedCount}
-                    </button>
-                    <button
-                      onClick={() => setFilterStatus("unchecked")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                        filterStatus === "unchecked"
-                          ? "bg-red-500 text-white"
-                          : "bg-red-50 text-red-600 hover:bg-red-100"
-                      }`}
-                    >
-                      <UserX size={14} />
-                      ยังไม่มา {total - checkedCount}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Search */}
-              <div className="mt-3 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search size={16} className="text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="พิมพ์ชื่อหรือรหัสนักเรียน..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/20 focus:border-[#5d7c6f] transition-all bg-gray-50/50"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+              {campName && <p className="text-sm text-gray-500 font-normal">ค่าย: {campName}</p>}
             </ModalHeader>
 
-            <ModalBody className="px-6 py-4 bg-gray-50/30">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
-                  <p className="mt-4 text-sm text-gray-500">กำลังโหลดข้อมูล...</p>
-                </div>
-              ) : !data ? (
-                <p className="text-center text-gray-400 py-8">ไม่สามารถโหลดข้อมูลได้</p>
-              ) : filteredStudents.length === 0 ? (
-                <div className="text-center py-10 text-gray-400">
-                  <Search className="mx-auto mb-2 opacity-30" size={32} />
-                  <p className="text-sm">ไม่พบนักเรียนที่ค้นหา</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {paginatedStudents.map((student) => {
-                    const isToggling = togglingId === student.studentId;
-                    return (
-                      <div
-                        key={student.studentId}
-                        onClick={() => !isToggling && toggleCheckin(student)}
-                        className={`flex items-center gap-4 bg-white border rounded-xl px-4 py-3 shadow-sm cursor-pointer transition-all hover:shadow-md ${
-                          student.checkedIn
-                            ? "border-[#5d7c6f]/40 bg-[#f0f7f4]"
-                            : "border-gray-100 hover:border-gray-200"
-                        } ${isToggling ? "opacity-60 pointer-events-none" : ""}`}
-                      >
-                        {/* Checkbox icon */}
-                        <div className="shrink-0">
-                          {isToggling ? (
-                            <div className="w-6 h-6 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
-                          ) : student.checkedIn ? (
-                            <CheckCircle2 size={24} className="text-[#5d7c6f]" />
-                          ) : (
-                            <Circle size={24} className="text-gray-300" />
-                          )}
-                        </div>
+            {/* Body */}
+            <ModalBody className="py-6 px-6 bg-[#F5F1E8]/30">
+              <div className="space-y-4">
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`font-semibold text-sm truncate ${
-                              student.checkedIn ? "text-[#3d5c52]" : "text-gray-800"
-                            }`}
-                          >
-                            {student.name}
-                          </p>
-                          <p className="text-xs text-gray-400">รหัส: {student.studentId}</p>
-                        </div>
+                {/* ─── QR Section ─── */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <QrCode size={20} className="text-[#6b857a]" />
+                    <h3 className="font-bold text-gray-900">QR Code สำหรับเช็คชื่อ</h3>
+                    {qrPayload && (
+                      <div className="ml-auto flex items-center gap-2">
+                        <button onClick={regenerateQr} disabled={regenerating}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-[#6b857a] bg-[#6b857a]/10 hover:bg-[#6b857a]/20 transition-colors disabled:opacity-50">
+                          <RefreshCw size={13} className={regenerating ? "animate-spin" : ""} />
+                          สุ่มรหัสใหม่
+                        </button>
+                        <button onClick={handleCloseSession}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
+                          <XCircle size={13} />ปิดรับเช็คชื่อ
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-                        {/* Status badge */}
-                        {student.checkedIn ? (
-                          <div className="shrink-0 text-right">
-                            <span className="inline-flex items-center gap-1 bg-[#5d7c6f]/10 text-[#5d7c6f] text-xs font-semibold px-2.5 py-1 rounded-full">
-                              <CheckCircle2 size={11} />
-                              มาแล้ว
-                            </span>
-                            {student.checkedInAt && (
-                              <p className="text-[10px] text-gray-400 mt-0.5 text-right">
-                                {formatTime(student.checkedInAt)}
-                              </p>
-                            )}
+                  {qrExpiresAt && qrPayload && (
+                    <p className="text-[12px] text-red-500 text-right -mt-3 mb-2 font-semibold">
+                      หมดเวลาเช็คชื่อ: {qrExpiresAt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  )}
+
+                  <div className="flex flex-col items-center gap-3">
+                    {qrLoading ? (
+                      <div className="w-52 h-52 bg-gray-100 rounded-2xl flex items-center justify-center">
+                        <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : qrPayload ? (
+                      <>
+                        <div className="p-4 bg-white border-4 border-[#6b857a]/20 rounded-2xl shadow-inner">
+                          <QRCode value={qrPayload} size={200} fgColor="#2d3748" bgColor="#ffffff" />
+                        </div>
+                        <p className="text-xs text-gray-400 text-center">แสดง QR Code นี้ให้นักเรียนแสกนเพื่อเช็คชื่อ</p>
+                        {qrPin && (
+                          <div className="w-full mt-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="w-1 h-4 bg-[#6b857a] rounded-full" />
+                              <p className="text-xs font-semibold text-gray-600">รหัส PIN สำรอง</p>
+                              <span className="text-[10px] text-gray-400">(สำหรับนักเรียนที่แสกนไม่ได้)</span>
+                            </div>
+                            <div className="flex items-center gap-3 bg-[#6b857a]/5 border-2 border-[#6b857a]/25 rounded-2xl px-5 py-4">
+                              <div className="flex-1 flex gap-2 items-center justify-center">
+                                {qrPin.split("").map((digit, i) => (
+                                  <span key={i} className="w-10 h-12 bg-white border-2 border-[#6b857a]/30 rounded-xl flex items-center justify-center text-2xl font-black text-[#3d5c52] font-mono shadow-sm">{digit}</span>
+                                ))}
+                              </div>
+                              <button onClick={() => { navigator.clipboard.writeText(qrPin); setPinCopied(true); setTimeout(() => setPinCopied(false), 2000); }}
+                                className="p-2 rounded-lg text-gray-400 hover:text-[#6b857a] hover:bg-white transition-all border border-transparent hover:border-[#6b857a]/20">
+                                {pinCopied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+                              </button>
+                            </div>
                           </div>
-                        ) : (
-                          <span className="shrink-0 inline-flex items-center gap-1 bg-gray-100 text-gray-400 text-xs font-medium px-2.5 py-1 rounded-full">
-                            <Circle size={11} />
-                            ยังไม่มา
-                          </span>
+                        )}
+                      </>
+                    ) : (
+                      /* ─── Create New Round ─── */
+                      <div className="flex flex-col items-center gap-4 py-4 w-full">
+                        <div className="w-14 h-14 bg-[#6b857a]/10 rounded-full flex items-center justify-center text-[#6b857a]">
+                          <Clock size={28} />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-gray-900 font-bold">สร้างรอบการเช็คชื่อใหม่</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {rounds.length > 0 ? `รอบที่ ${rounds.length + 1} — ค่ายนี้เช็คชื่อแล้ว ${rounds.length} รอบ` : "กำหนดเวลาที่ให้นักเรียนเช็คชื่อได้"}
+                          </p>
+                        </div>
+                        <div className="w-full max-w-xs space-y-3 mt-1">
+                          <input
+                            type="text"
+                            placeholder={`ชื่อรอบ (เช่น รอบเช้า, รอบที่ ${rounds.length + 1})`}
+                            value={roundDescription}
+                            onChange={e => setRoundDescription(e.target.value)}
+                            className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#6b857a] bg-white"
+                          />
+                          <Select label="ระยะเวลาเช็คชื่อ" placeholder="เลือกระยะเวลา"
+                            selectedKeys={[durationMinutes]}
+                            onSelectionChange={keys => setDurationMinutes(Array.from(keys)[0] as string)}
+                            variant="bordered" classNames={{ trigger: "bg-white" }}>
+                            <SelectItem key="10" textValue="10 นาที">10 นาที</SelectItem>
+                            <SelectItem key="15" textValue="15 นาที">15 นาที</SelectItem>
+                            <SelectItem key="30" textValue="30 นาที">30 นาที</SelectItem>
+                            <SelectItem key="60" textValue="1 ชั่วโมง">1 ชั่วโมง</SelectItem>
+                            <SelectItem key="120" textValue="2 ชั่วโมง">2 ชั่วโมง</SelectItem>
+                            <SelectItem key="240" textValue="4 ชั่วโมง">4 ชั่วโมง</SelectItem>
+                          </Select>
+                          <Button color="primary" className="w-full bg-[#6b857a] font-medium"
+                            onPress={regenerateQr} isLoading={regenerating}
+                            startContent={!regenerating && <Plus size={16} />}>
+                            เริ่มรอบเช็คชื่อ
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ─── Round Selector ─── */}
+                {rounds.length > 0 && (
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckSquare size={16} className="text-[#6b857a]" />
+                      <p className="text-sm font-semibold text-gray-700">รอบการเช็คชื่อ</p>
+                      <span className="ml-auto text-xs text-gray-400">{rounds.length} รอบ</span>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {rounds.map(round => {
+                        const isActive = round.roundId === activeRoundId;
+                        const isSelected = round.roundId === selectedRoundId;
+                        return (
+                          <button key={round.roundId}
+                            onClick={() => handleSelectRound(round.roundId)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                              isSelected
+                                ? "bg-[#6b857a] text-white border-[#6b857a]"
+                                : isActive
+                                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                                : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                            }`}>
+                            {isActive && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />}
+                            {round.description}
+                            {isActive && <span className="text-[10px] opacity-75">● กำลังเปิด</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedRoundId && rounds.find(r => r.roundId === selectedRoundId) && (
+                      <p className="text-[11px] text-gray-400 mt-2">
+                        เริ่ม: {formatTime(rounds.find(r => r.roundId === selectedRoundId)!.createdAt)}
+                        {" · "}หมดเวลา: {formatTime(rounds.find(r => r.roundId === selectedRoundId)!.expiresAt)}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* ─── Stats + Filter ─── */}
+                <div className="flex flex-col gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-[#6b857a]/10 rounded-lg text-[#6b857a]"><Users size={18} /></div>
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          เช็คชื่อแล้ว <strong className="text-gray-900 text-xl">{totalCheckedIn}</strong> / {results.length} คน
+                        </p>
+                        {results.length > 0 && (
+                          <div className="w-48 h-2 bg-gray-100 rounded-full mt-1.5 overflow-hidden">
+                            <div className="h-full bg-[#6b857a] rounded-full transition-all duration-500"
+                              style={{ width: `${(totalCheckedIn / results.length) * 100}%` }} />
+                          </div>
                         )}
                       </div>
-                    );
-                  })}
-
-                  {pages > 1 && (
-                    <div className="pt-4 flex justify-center pb-2">
-                      <Pagination
-                        isCompact
-                        showControls
-                        showShadow
-                        className="bg-transparent"
-                        classNames={{
-                          cursor: "bg-[#5d7c6f] text-white font-medium",
-                        }}
-                        page={page}
-                        total={pages}
-                        onChange={setPage}
-                      />
                     </div>
-                  )}
+                    <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
+                      <div className="relative w-full sm:w-48">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="text" placeholder="ค้นหานักเรียน..."
+                          className="pl-9 pr-4 py-1.5 text-sm h-[32px] border border-gray-200 rounded-lg focus:outline-none focus:border-[#6b857a] w-full bg-gray-50"
+                          value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                      </div>
+                      <div className="w-full sm:w-44">
+                        <Select aria-label="Filter status" size="sm" variant="bordered"
+                          selectedKeys={[selectedStatus]}
+                          onSelectionChange={keys => setSelectedStatus(Array.from(keys)[0] as string || "all")}
+                          classNames={{ trigger: "border-gray-200 bg-gray-50 min-h-[32px] h-[32px]", value: "text-gray-700 font-medium text-sm" }}>
+                          <SelectItem key="all" textValue="นักเรียนทุกคน">นักเรียนทุกคน</SelectItem>
+                          <SelectItem key="checked" textValue="เช็คชื่อแล้ว">เช็คชื่อแล้ว</SelectItem>
+                          <SelectItem key="unchecked" textValue="ยังไม่เช็คชื่อ">ยังไม่เช็คชื่อ</SelectItem>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Refresh Button moved below */}
+                  <div className="flex justify-end border-t border-gray-100 pt-3">
+                    <button onClick={() => fetchResults()} disabled={resultsLoading}
+                      className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 w-full sm:w-auto">
+                      <RefreshCw size={14} className={resultsLoading ? "animate-spin" : ""} />รีเฟรชข้อมูล
+                    </button>
+                  </div>
                 </div>
-              )}
+
+                {/* ─── Student list ─── */}
+                {resultsLoading && results.length === 0 ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : results.length === 0 ? (
+                  <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400"><Users size={32} /></div>
+                    <p className="text-gray-500 font-medium">ยังไม่มีนักเรียนในค่ายนี้</p>
+                    <p className="text-xs text-gray-400 mt-1">(นักเรียนต้องลงทะเบียนก่อน)</p>
+                  </div>
+                ) : filteredResults.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">ไม่พบนักเรียนที่คุณค้นหา</div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredResults.map(result => (
+                      <div key={result.enrollmentId}
+                        className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4 hover:border-[#6b857a] hover:shadow-md transition-all cursor-pointer group"
+                        onClick={() => handleToggleCheckin(result.studentId, result.enrollmentId, result.isCheckedIn, result.studentName)}
+                      >
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${result.isCheckedIn ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400 group-hover:bg-[#6b857a]/10 group-hover:text-[#6b857a]"}`}>
+                          <User size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 truncate group-hover:text-[#6b857a] transition-colors">{result.studentName}</p>
+                          <p className="text-xs text-gray-500">รหัส: {result.studentId}</p>
+                        </div>
+                        {result.isCheckedIn ? (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-100 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm">
+                              <CheckCircle2 size={14} />เช็คชื่อแล้ว
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-gray-400">
+                              <Clock size={12} />{formatTime(result.checkedAt)}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 bg-gray-100 text-gray-500 px-3 py-1.5 rounded-full text-xs font-medium shrink-0 group-hover:bg-gray-200 transition-colors">
+                            คลิกเพื่อเช็คชื่อ
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </ModalBody>
 
-            <ModalFooter className="px-6 py-4 bg-white border-t border-gray-100 rounded-b-3xl flex justify-between items-center">
-              <p className="text-sm text-gray-500">
-                กดที่รายชื่อเพื่อเช็ค / ยกเลิกเช็คชื่อ
-              </p>
-              <Button
-                variant="flat"
-                className="font-medium"
-                onPress={onClose}
-              >
+            {/* Footer */}
+            <ModalFooter className="p-4 border-t border-gray-100 flex justify-between">
+              <div className="flex gap-2">
+                {selectedRoundId && (
+                  <button onClick={handleClearRound}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-orange-500 hover:bg-orange-50 rounded-lg transition-colors">
+                    <Trash2 size={16} />ล้างรอบนี้
+                  </button>
+                )}
+                {rounds.length > 1 && (
+                  <button onClick={handleClearAll}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                    <Trash2 size={16} />ล้างทั้งหมด
+                  </button>
+                )}
+                {rounds.length === 0 && (
+                  <button onClick={handleClearAll}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                    <Trash2 size={16} />ล้างข้อมูลเช็คชื่อ
+                  </button>
+                )}
+              </div>
+              <Button className="bg-gray-100 text-gray-700 font-medium hover:bg-gray-200" size="lg" onPress={onClose}>
                 ปิดหน้าต่าง
               </Button>
             </ModalFooter>
