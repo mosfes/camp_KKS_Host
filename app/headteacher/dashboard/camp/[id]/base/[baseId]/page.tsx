@@ -169,7 +169,7 @@ export default function BaseDetailPage() {
                           </p>
                         </div>
                       )}
-                    {mission.type === "MULTIPLE_CHOICE_QUIZ" &&
+                    {(mission.type === "MULTIPLE_CHOICE_QUIZ" || mission.type === "PRE_TEST" || mission.type === "POST_TEST") &&
                       mission.mission_question &&
                       mission.mission_question.length > 0 && (
                         <div className="mt-2 space-y-1">

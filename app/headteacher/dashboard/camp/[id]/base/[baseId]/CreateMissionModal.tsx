@@ -26,6 +26,7 @@ const MISSION_TYPES = [
   { key: "PHOTO_SUBMISSION", label: "ส่งรูปภาพ" },
   { key: "QR_CODE_SCANNING", label: "สแกน QR Code" },
   { key: "MULTIPLE_CHOICE_QUIZ", label: "แบบทดสอบหลายตัวเลือก" },
+  { key: "PRE_TEST", label: "แบบทดสอบก่อนเรียน/หลังเรียน" },
 ];
 
 const inputCls = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors text-sm";
@@ -93,7 +94,7 @@ export default function CreateMissionModal({
   const handleSubmit = async () => {
     if (!title.trim()) { showError("ข้อผิดพลาด", "กรุณากรอกชื่อภารกิจ"); return; }
 
-    if (type === "MULTIPLE_CHOICE_QUIZ") {
+    if (type === "MULTIPLE_CHOICE_QUIZ" || type === "PRE_TEST") {
       for (let i = 0; i < mcqQuestions.length; i++) {
         const q = mcqQuestions[i];
         if (!q.text.trim()) { showError("ข้อผิดพลาด", `คำถามที่ ${i + 1} ยังว่างอยู่`); return; }
@@ -114,7 +115,7 @@ export default function CreateMissionModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title, type, description,
-          questions: type === "MULTIPLE_CHOICE_QUIZ" ? mcqQuestions
+          questions: (type === "MULTIPLE_CHOICE_QUIZ" || type === "PRE_TEST") ? mcqQuestions
             : (type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION") ? textQuestions
             : undefined,
           stationId: baseId,
@@ -238,8 +239,8 @@ export default function CreateMissionModal({
                 </div>
               )}
 
-              {/* แบบทดสอบหลายตัวเลือก */}
-              {type === "MULTIPLE_CHOICE_QUIZ" && (
+              {/* แบบทดสอบหลายตัวเลือก / ก่อนเรียน-หลังเรียน */}
+              {(type === "MULTIPLE_CHOICE_QUIZ" || type === "PRE_TEST") && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-5 bg-[#6b857a] rounded-full" />

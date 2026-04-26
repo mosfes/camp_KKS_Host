@@ -583,6 +583,20 @@ export default function StudentCampDetailPage() {
              )
           ) : (
             <div className="relative">
+              {(() => {
+                const hasPostTest = camp?.station?.some((s: any) => s.mission?.some((m: any) => m.type === 'POST_TEST'));
+                const isPostTestCompleted = camp?.station?.some((s: any) => 
+                  s.mission?.some((m: any) => 
+                    m.type === 'POST_TEST' && 
+                    camp.missionResults?.some((r: any) => r.mission_mission_id === m.mission_id && r.status === "completed")
+                  )
+                );
+                
+                const certText = (hasPostTest && !isPostTestCompleted) ? "เกียรติบัตร (ต้องทำแบบทดสอบหลังเรียน)" : "เกียรติบัตร (กำลังพัฒนา)";
+                const certTextEnded = (hasPostTest && !isPostTestCompleted) ? "ดาวน์โหลดเกียรติบัตร (ต้องทำแบบทดสอบหลังเรียนก่อน)" : "ดาวน์โหลดเกียรติบัตร (กำลังพัฒนา)";
+
+                return (
+                  <>
               {/* Overlay เมื่อค่ายยังไม่เริ่ม */}
               {campNotStarted && (
                 <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-10 rounded-xl flex flex-col items-center justify-center gap-1">
@@ -603,7 +617,7 @@ export default function StudentCampDetailPage() {
                       startContent={<Ticket size={20} />} 
                       isDisabled
                     >
-                      ดาวน์โหลดเกียรติบัตร (กำลังพัฒนา)
+                      {certTextEnded}
                     </Button>
                   </>
                 ) : (
@@ -618,7 +632,7 @@ export default function StudentCampDetailPage() {
                         startContent={<Ticket size={18} />} 
                         isDisabled
                       >
-                        เกียรติบัตร (กำลังพัฒนา)
+                        {certText}
                       </Button>
                       <Button
                         className={`font-medium ${
@@ -636,8 +650,11 @@ export default function StudentCampDetailPage() {
                   </>
                 )}
               </div>
-            </div>
-          )}
+            </>
+          );
+        })()}
+      </div>
+    )}
         </div>
       </div>
 

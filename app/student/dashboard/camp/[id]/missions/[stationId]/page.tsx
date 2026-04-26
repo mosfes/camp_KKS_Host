@@ -343,6 +343,26 @@ export default function StudentStationDetailPage() {
     );
   };
 
+  const isAllOtherMissionsCompleted = () => {
+    if (!camp || !camp.station) return false;
+    let allCompleted = true;
+    for (const s of camp.station) {
+      if (!s.mission) continue;
+      for (const m of s.mission) {
+        if (m.type === 'POST_TEST') continue;
+        const isCompleted = camp.missionResults?.some(
+          (r: any) => r.mission_mission_id === m.mission_id && r.status === "completed"
+        );
+        if (!isCompleted) {
+          allCompleted = false;
+          break;
+        }
+      }
+      if (!allCompleted) break;
+    }
+    return allCompleted;
+  };
+
   if (loading)
     return (
       <div className="p-8 text-center bg-[#F5F1E8] min-h-screen">
@@ -380,15 +400,25 @@ export default function StudentStationDetailPage() {
 
         {station.mission?.map((mission: any) => {
           const completed = isMissionCompleted(mission.mission_id);
+          const isPostTest = mission.type === 'POST_TEST';
+          const canDoPostTest = isAllOtherMissionsCompleted();
+          const isLocked = isPostTest && !canDoPostTest && !completed;
 
           return (
             <div
               key={mission.mission_id}
               className={`
-                                bg-white p-5 rounded-2xl shadow-sm border transition-all cursor-pointer
-                                ${completed ? "border-green-200 bg-green-50 hover:border-green-300" : "border-transparent hover:border-[#5d7c6f]"}
+                                bg-white p-5 rounded-2xl shadow-sm border transition-all 
+                                ${isLocked ? "opacity-60 cursor-not-allowed border-gray-200" :
+                                completed ? "border-green-200 bg-green-50 hover:border-green-300 cursor-pointer" : "border-transparent hover:border-[#5d7c6f] cursor-pointer"}
                             `}
-              onClick={() => openMission(mission)}
+              onClick={() => {
+                if (isLocked) {
+                  toast.error("คุณต้องทำภารกิจอื่นในค่ายให้ครบทั้งหมดก่อน จึงจะทำแบบทดสอบหลังเรียนได้");
+                  return;
+                }
+                openMission(mission);
+              }}
             >
               <div className="flex justify-between items-start">
                 <div className="flex items-start gap-3">

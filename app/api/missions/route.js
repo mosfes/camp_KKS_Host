@@ -42,7 +42,7 @@ export async function POST(request) {
                     });
                 }
             }
-        } else if (type === 'MULTIPLE_CHOICE_QUIZ') {
+        } else if (type === 'MULTIPLE_CHOICE_QUIZ' || type === 'PRE_TEST') {
             // Support multiple questions from 'questions' array
             // Structure: questions: [{ text, choices: [{ text, isCorrect }] }]
             // Fallback to legacy single question/choices if 'questions' not present (backward compat if needed, but we can just require 'questions' for new UI)
@@ -88,6 +88,44 @@ export async function POST(request) {
                             mission_mission_id: newMission.mission_id
                         }
                     });
+                }
+            }
+        }
+
+        // If PRE_TEST, automatically create a POST_TEST version
+        if (type === 'PRE_TEST') {
+            const postTestTitle = title.replace(/ก่อนเรียน/g, 'หลังเรียน');
+            const newPostMission = await prisma.mission.create({
+                data: {
+                    title: postTestTitle !== title ? postTestTitle : `${title} (หลังเรียน)`,
+                    description,
+                    type: 'POST_TEST',
+                    station_station_id: parseInt(stationId),
+                },
+            });
+
+            const questionsToCreate = questions || [];
+            if (questionsToCreate.length === 0 && question && choices) {
+                questionsToCreate.push({ text: question, choices: choices });
+            }
+
+            if (questionsToCreate.length > 0) {
+                for (const q of questionsToCreate) {
+                    if (q.text && q.choices && q.choices.length > 0) {
+                        await prisma.mission_question.create({
+                            data: {
+                                question_text: q.text,
+                                question_type: 'MCQ',
+                                mission_mission_id: newPostMission.mission_id,
+                                choices: {
+                                    create: q.choices.map((c) => ({
+                                        choice_text: c.text,
+                                        is_correct: c.isCorrect
+                                    }))
+                                }
+                            }
+                        });
+                    }
                 }
             }
         }

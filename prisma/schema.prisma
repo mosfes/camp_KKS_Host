@@ -295,6 +295,8 @@ enum MissionType {
   PHOTO_SUBMISSION
   QR_CODE_SCANNING
   MULTIPLE_CHOICE_QUIZ
+  PRE_TEST
+  POST_TEST
 }
 
 model mission {
