@@ -21,6 +21,7 @@ import {
   Users,
   GraduationCap,
   UserCheck,
+  BarChart2,
 } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -33,6 +34,7 @@ import SurveyResultsModal from "./SurveyResultsModal";
 import TrackingModal from "./TrackingModal";
 import ShirtTrackingModal from "./ShirtTrackingModal";
 import AttendanceModal from "./AttendanceModal";
+import PrePostTestModal from "./PrePostTestModal";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 import { toast } from "react-hot-toast";
@@ -102,6 +104,7 @@ export default function CampDetailPage() {
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
   const [isShirtModalOpen, setIsShirtModalOpen] = useState(false);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+  const [isPrePostTestModalOpen, setIsPrePostTestModalOpen] = useState(false);
 
   useEffect(() => {
     if (campId) {
@@ -659,13 +662,22 @@ export default function CampDetailPage() {
               )}
 
               {camp.isOwner && (
-                <Button
-                  className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
-                  startContent={<FileText size={18} />}
-                  onPress={() => setIsSurveyResultsModalOpen(true)}
-                >
-                  ดูผลการประเมิน
-                </Button>
+                <>
+                  <Button
+                    className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
+                    startContent={<FileText size={18} />}
+                    onPress={() => setIsSurveyResultsModalOpen(true)}
+                  >
+                    ดูผลการประเมิน
+                  </Button>
+                  <Button
+                    className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
+                    startContent={<BarChart2 size={18} />}
+                    onPress={() => setIsPrePostTestModalOpen(true)}
+                  >
+                    เปรียบเทียบคะแนนก่อน-หลังเรียน
+                  </Button>
+                </>
               )}
 
               <Button
@@ -1011,6 +1023,12 @@ export default function CampDetailPage() {
           campName={camp.name}
         />
       )}
+      <PrePostTestModal
+        isOpen={isPrePostTestModalOpen}
+        onClose={() => setIsPrePostTestModalOpen(false)}
+        campId={Number(campId)}
+      />
+
     </div>
   );
 }

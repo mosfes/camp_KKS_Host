@@ -123,6 +123,8 @@ export default function MonitorMissionModal({
   }, [results, selectedStatus, searchQuery]);
 
   const isQrMission = missionData?.type === "QR_CODE_SCANNING";
+  const isMcqMission = missionData?.type === "MULTIPLE_CHOICE_QUIZ" || missionData?.type === "PRE_TEST" || missionData?.type === "POST_TEST";
+  const totalMcqQuestions = missionData?.mission_question?.length || 0;
 
   return (
     <Modal
@@ -358,15 +360,22 @@ export default function MonitorMissionModal({
                                   <p className="text-xs text-gray-500 mt-0.5">รหัส: {result.studentId}</p>
                                 </div>
                               </div>
-                              <div className="hidden sm:flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full">
-                                {result.isSubmitted ? (
-                                  <>
-                                    <Clock size={12} className="text-green-600" />
-                                    <span className="text-green-700">{formatDate(result.submittedAt)}</span>
-                                  </>
-                                ) : (
-                                  <span className="text-gray-500">ยังไม่ส่งงาน</span>
+                              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full">
+                                {isMcqMission && result.isSubmitted && (
+                                  <div className="sm:mr-2 flex items-center gap-1.5 bg-[#6b857a]/10 text-[#6b857a] px-3 py-1 rounded-full border border-[#6b857a]/20">
+                                    <span className="font-bold">คะแนน: {result.answers?.filter((ans: any) => ans.isCorrect === true).length || 0} / {totalMcqQuestions}</span>
+                                  </div>
                                 )}
+                                <div className="flex items-center gap-1.5">
+                                  {result.isSubmitted ? (
+                                    <>
+                                      <Clock size={12} className="text-green-600" />
+                                      <span className="text-green-700">{formatDate(result.submittedAt)}</span>
+                                    </>
+                                  ) : (
+                                    <span className="text-gray-500">ยังไม่ส่งงาน</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           }
