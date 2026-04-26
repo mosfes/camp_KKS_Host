@@ -81,10 +81,13 @@ export async function POST(request) {
 
             for (const q of questionsToCreate) {
                 if (q.text) {
-                    await prisma.$executeRawUnsafe(
-                        'INSERT INTO mission_question (question_text, question_type, mission_mission_id) VALUES (?, ?, ?)',
-                        q.text, 'PHOTO', newMission.mission_id
-                    );
+                    await prisma.mission_question.create({
+                        data: {
+                            question_text: q.text,
+                            question_type: 'PHOTO',
+                            mission_mission_id: newMission.mission_id
+                        }
+                    });
                 }
             }
         }

@@ -73,9 +73,13 @@ export default function TrackingModal({
     }
   };
 
-  const filteredStudents = data?.students.filter((student) =>
-    student.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredStudents = data?.students.filter((student) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+    const matchName = student.name.toLowerCase().includes(query);
+    const matchId = String(student.studentId).includes(query);
+    return matchName || matchId;
+  });
 
   const pages = Math.ceil((filteredStudents?.length || 0) / ITEMS_PER_PAGE);
 
@@ -122,7 +126,7 @@ export default function TrackingModal({
                 </div>
                 <input
                   type="text"
-                  placeholder="ค้นหารายชื่อนักเรียน..."
+                  placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/20 focus:border-[#5d7c6f] transition-all bg-gray-50/50"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

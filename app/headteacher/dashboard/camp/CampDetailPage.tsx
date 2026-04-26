@@ -31,6 +31,7 @@ import CreateSurveyModal from "./CreateSurveyModal";
 import SurveyResultsModal from "./SurveyResultsModal";
 import TrackingModal from "./TrackingModal";
 import ShirtTrackingModal from "./ShirtTrackingModal";
+import AttendanceModal from "./AttendanceModal";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 import { toast } from "react-hot-toast";
@@ -99,6 +100,7 @@ export default function CampDetailPage() {
   const [isSurveyResultsModalOpen, setIsSurveyResultsModalOpen] = useState(false);
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
   const [isShirtModalOpen, setIsShirtModalOpen] = useState(false);
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
 
   useEffect(() => {
     if (campId) {
@@ -673,6 +675,14 @@ export default function CampDetailPage() {
                 ติดตามนักเรียน
               </Button>
 
+              <Button
+                className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
+                startContent={<ClipboardList size={18} />}
+                onPress={() => setIsAttendanceModalOpen(true)}
+              >
+                เช็คชื่อนักเรียน
+              </Button>
+
               {camp.isOwner && (
                 <Button
                   className="w-full justify-start bg-transparent hover:bg-gray-100 text-gray-700"
@@ -991,6 +1001,13 @@ export default function CampDetailPage() {
           campName={camp.name}
         />
       )}
+
+      <AttendanceModal
+        isOpen={isAttendanceModalOpen}
+        onClose={() => setIsAttendanceModalOpen(false)}
+        campId={Number(campId)}
+        campName={camp?.name || ""}
+      />
     </div>
   );
 }
