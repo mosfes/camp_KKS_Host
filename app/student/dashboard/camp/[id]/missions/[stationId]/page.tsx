@@ -12,7 +12,7 @@ import {
   ModalFooter,
   useDisclosure,
 } from "@heroui/modal";
-import { ChevronLeft, CheckCircle2, Circle, Camera, Loader2, X, QrCode, ScanLine } from "lucide-react";
+import { ChevronLeft, CheckCircle2, Circle, Camera, X, QrCode, ScanLine } from "lucide-react";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
 
@@ -259,6 +259,14 @@ export default function StudentStationDetailPage() {
 
   const handleImageUpload = async (questionId: number, file: File) => {
     if (!file) return;
+
+    // Check file size (5MB limit)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("ขนาดไฟล์รูปภาพต้องไม่เกิน 5MB");
+      return;
+    }
+
     setUploadingQid(questionId);
     try {
       const formData = new FormData();
@@ -746,16 +754,17 @@ export default function StudentStationDetailPage() {
                                   <Button
                                     isDisabled={isSubmitted || uploadingQid === q.question_id}
                                     onPress={() => document.getElementById(`file-${q.question_id}`)?.click()}
-                                    className="flex-1 bg-white border-2 border-dashed border-gray-300 hover:border-[#5d7c6f] hover:text-[#5d7c6f] h-24 rounded-xl transition-all flex flex-col gap-1"
+                                    className="flex-1 bg-white border-2 border-dashed border-gray-300 hover:border-[#5d7c6f] hover:text-[#5d7c6f] py-4 h-auto rounded-xl transition-all flex flex-col gap-1"
                                     isLoading={uploadingQid === q.question_id}
                                   >
                                     {uploadingQid === q.question_id ? (
-                                      <Loader2 className="animate-spin" size={24} />
+                                      <span className="text-sm font-semibold ml-2">กำลังอัปโหลด...</span>
                                     ) : (
-                                      <>
+                                      <div className="flex flex-col items-center gap-1">
                                         <Camera size={24} />
-                                        <span className="text-xs font-semibold">ถ่ายรูป / เลือกรูป</span>
-                                      </>
+                                        <span className="text-sm font-semibold">ถ่ายรูป / เลือกรูป</span>
+                                        <span className="text-[10px] text-gray-400 font-normal">ขนาดไฟล์รูปภาพสูงสุด 5MB</span>
+                                      </div>
                                     )}
                                   </Button>
                                 </div>
