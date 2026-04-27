@@ -47,7 +47,6 @@ export default function App() {
     },
   ];
 
-
   return (
     <div className="gap-2 grid grid-cols-1 sm:grid-cols-3">
       {list.map((item, index) => (
