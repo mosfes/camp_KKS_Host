@@ -7,8 +7,7 @@ import {
   ModalFooter,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
-import { BarChart2, Download, Search } from "lucide-react";
-import * as XLSX from "xlsx";
+import { BarChart2, Search } from "lucide-react";
 
 export default function PrePostTestModal({ isOpen, onClose, campId }: any) {
   const [loading, setLoading] = useState(true);
@@ -36,27 +35,7 @@ export default function PrePostTestModal({ isOpen, onClose, campId }: any) {
     }
   };
 
-  const handleExport = () => {
-    if (!data || data.length === 0) return;
 
-    const wb = XLSX.utils.book_new();
-
-    data.forEach((pair: any, index: number) => {
-      const exportData = pair.studentScores.map((s: any) => ({
-        "รหัสนักเรียน": s.studentId,
-        "ชื่อ-นามสกุล": s.studentName,
-        "คะแนนก่อนเรียน": s.preScore !== null ? s.preScore : "ยังไม่ทำ",
-        "คะแนนหลังเรียน": s.postScore !== null ? s.postScore : "ยังไม่ทำ",
-        "ความก้าวหน้า (+/-)": s.diff !== null ? (s.diff > 0 ? `+${s.diff}` : s.diff) : "-",
-        "คิดเป็นเปอร์เซ็นต์ (%)": s.diff !== null && pair.postTest.total > 0 ? `${s.diff > 0 ? '+' : ''}${Math.round((s.diff / pair.postTest.total) * 100)}%` : "-",
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      XLSX.utils.book_append_sheet(wb, ws, `ฐาน ${pair.stationName}`.substring(0, 31));
-    });
-
-    XLSX.writeFile(wb, `pre-post-test-results.xlsx`);
-  };
 
   return (
     <Modal
@@ -115,10 +94,10 @@ export default function PrePostTestModal({ isOpen, onClose, campId }: any) {
                       onChange={(e) => setScoreFilter(e.target.value)}
                     >
                       <option value="all">คะแนนหลังเรียนทั้งหมด</option>
-                      <option value="70">≥ 70% (ดีเยี่ยม)</option>
-                      <option value="50">≥ 50% (ผ่านเกณฑ์)</option>
-                      <option value="30">≥ 30% (ปรับปรุง)</option>
-                      <option value="0">&lt; 30% (ไม่ผ่าน)</option>
+                      <option value="70">ดีเยี่ยม (70% ขึ้นไป)</option>
+                      <option value="50">ผ่านเกณฑ์ (50% - 69%)</option>
+                      <option value="30">ปรับปรุง (30% - 49%)</option>
+                      <option value="0">ไม่ผ่าน (ต่ำกว่า 30%)</option>
                     </select>
                   </div>
 
@@ -134,8 +113,8 @@ export default function PrePostTestModal({ isOpen, onClose, campId }: any) {
                         if (s.postScore === null) return false;
                         const percent = (s.postScore / postTotal) * 100;
                         if (scoreFilter === "70" && percent < 70) return false;
-                        if (scoreFilter === "50" && (percent < 50 || percent >= 100)) return false;
-                        if (scoreFilter === "30" && (percent < 30 || percent >= 100)) return false;
+                        if (scoreFilter === "50" && (percent < 50 || percent >= 70)) return false;
+                        if (scoreFilter === "30" && (percent < 30 || percent >= 50)) return false;
                         if (scoreFilter === "0" && percent >= 30) return false;
                       }
 
@@ -216,15 +195,7 @@ export default function PrePostTestModal({ isOpen, onClose, campId }: any) {
                 </div>
               )}
             </ModalBody>
-            <ModalFooter className="p-4 border-t border-gray-100 flex justify-between">
-              <Button
-                className="bg-[#5d7c6f] text-white font-medium"
-                startContent={<Download size={18} />}
-                isDisabled={!data || data.length === 0}
-                onPress={handleExport}
-              >
-                ดาวน์โหลด Excel
-              </Button>
+            <ModalFooter className="p-4 border-t border-gray-100 flex justify-end">
               <Button className="bg-gray-100 text-gray-700 font-medium hover:bg-gray-200" onPress={onClose}>
                 ปิดหน้าต่าง
               </Button>

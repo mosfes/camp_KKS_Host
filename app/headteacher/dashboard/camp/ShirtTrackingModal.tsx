@@ -104,7 +104,7 @@ export default function ShirtTrackingModal({
           <>
             <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600">
+                <div className="w-10 h-10 rounded-xl bg-[#f0f4f2] flex items-center justify-center text-[#6b857a]">
                   <Shirt size={20} />
                 </div>
                 <div>
@@ -135,13 +135,13 @@ export default function ShirtTrackingModal({
               ) : data ? (
                 <div className="space-y-6">
                   {/* Summary Section */}
-                  <div className="bg-orange-50/50 rounded-2xl p-5 border border-orange-100">
-                    <h3 className="text-sm font-semibold text-orange-900 mb-3 flex items-center gap-2">
+                  <div className="bg-[#f0f4f2]/50 rounded-2xl p-5 border border-[#d1e0d9]">
+                    <h3 className="text-sm font-semibold text-[#5d7c6f] mb-3 flex items-center gap-2">
                       <Shirt size={16} /> สรุปยอดจองเสื้อ (รวม {data.totalShirts} ตัว)
                     </h3>
                     
                     {data.totalShirts === 0 ? (
-                      <div className="bg-white border border-orange-200 p-4 rounded-xl text-center">
+                      <div className="bg-white border border-[#d1e0d9] p-4 rounded-xl text-center">
                         <p className="text-sm font-medium text-gray-600">ยังไม่มีผู้จองเสื้อ</p>
                         {data.totalStudents > 0 && (
                           <p className="text-xs text-gray-400 mt-1">
@@ -155,13 +155,13 @@ export default function ShirtTrackingModal({
                           <div
                             key={size}
                             className={`bg-white border px-4 py-2 rounded-xl flex items-center justify-between min-w-[100px] ${
-                              size === "รอระบุไซส์" ? "border-gray-200" : "border-orange-200"
+                              size === "รอระบุไซส์" ? "border-gray-200" : "border-[#d1e0d9]"
                             }`}
                           >
                             <span className={`font-medium ${size === "รอระบุไซส์" ? "text-gray-500" : "text-gray-700"}`}>
                               {size}
                             </span>
-                            <span className={`font-bold ml-3 ${size === "รอระบุไซส์" ? "text-gray-600" : "text-orange-600"}`}>
+                            <span className={`font-bold ml-3 ${size === "รอระบุไซส์" ? "text-gray-600" : "text-[#6b857a]"}`}>
                               {count}
                             </span>
                           </div>

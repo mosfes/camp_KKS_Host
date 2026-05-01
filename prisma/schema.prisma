@@ -34,6 +34,8 @@ model teachers {
   camp               camp[]
   teacher_enrollment teacher_enrollment[]
   survey_template    survey_template[]
+
+  @@index([deletedAt])
 }
 
 model students {
@@ -52,6 +54,8 @@ model students {
   parents            parents[]
   classroom_students classroom_students[]
   student_enrollment student_enrollment[]
+
+  @@index([deletedAt])
 }
 
 model parents {
@@ -89,6 +93,8 @@ model classrooms {
   classroom_teacher  classroom_teacher[]
   classroom_students classroom_students[]
   camp_classroom     camp_classroom[]
+
+  @@index([deletedAt])
 }
 
 model classroom_types {
@@ -157,6 +163,9 @@ model camp {
   station             station[]
   camp_daily_schedule camp_daily_schedule[]
   survey              survey[]
+
+  @@index([deletedAt])
+  @@index([created_by_teacher_id])
 }
 
 enum camp_status {
@@ -237,6 +246,9 @@ model student_enrollment {
   certificate         certificate[]
   mission_result      mission_result[]
   survey_response     survey_response[]
+
+  @@unique([student_students_id, camp_camp_id])
+  @@index([camp_camp_id])
 }
 
 model attendance_record_student {
@@ -251,7 +263,7 @@ model attendance_record_student {
 model attendance_teachers {
   session_id                               Int                        @id @default(autoincrement())
   description                              String                     @db.Text
-  methed                                   attendance_teachers_methed
+  method                                   attendance_teachers_method
   created_at                               DateTime                   @default(now())
   camp_camp_id                             Int
   camp                                     camp                       @relation(fields: [camp_camp_id], references: [camp_id])
@@ -261,7 +273,7 @@ model attendance_teachers {
   attendance_record_student attendance_record_student[]
 }
 
-enum attendance_teachers_methed {
+enum attendance_teachers_method {
   QR
   NFC
   Image
@@ -288,6 +300,8 @@ model station {
 
   mission   mission[]
   deletedAt DateTime?
+
+  @@index([deletedAt])
 }
 
 enum MissionType {
@@ -312,6 +326,8 @@ model mission {
   mission_result   mission_result[]
   mission_question mission_question[]
   deletedAt        DateTime?
+
+  @@index([deletedAt])
 }
 
 model mission_result {
@@ -326,6 +342,8 @@ model mission_result {
   mission               mission            @relation(fields: [mission_mission_id], references: [mission_id])
 
   mission_answer mission_answer[]
+
+  @@index([student_enrollment_id, mission_mission_id])
 }
 
 enum mission_result_method {
@@ -338,7 +356,6 @@ enum mission_result_method {
 
 enum mission_result_status {
   pending
-  comple
   completed
 }
 

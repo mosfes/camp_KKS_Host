@@ -23,10 +23,10 @@ interface CreateMissionModalProps {
 // ประเภทภารกิจ (ตรงกับ MissionType enum ใน schema)
 const MISSION_TYPES = [
   { key: "QUESTION_ANSWERING", label: "ตอบคำถาม" },
-  { key: "PHOTO_SUBMISSION", label: "ส่งรูปภาพ" },
-  { key: "QR_CODE_SCANNING", label: "สแกน QR Code" },
   { key: "MULTIPLE_CHOICE_QUIZ", label: "แบบทดสอบหลายตัวเลือก" },
   { key: "PRE_TEST", label: "แบบทดสอบก่อนเรียน/หลังเรียน" },
+  { key: "PHOTO_SUBMISSION", label: "ส่งรูปภาพ" },
+  { key: "QR_CODE_SCANNING", label: "สแกน QR Code" },
 ];
 
 const inputCls = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors text-sm";

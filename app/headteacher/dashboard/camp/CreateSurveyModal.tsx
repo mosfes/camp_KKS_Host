@@ -357,7 +357,7 @@ export default function CreateSurveyModal({
               </div>
 
               {/* การตั้งค่าคะแนนสูงสุด (Global) */}
-              <div className="bg-orange-50/50 border border-orange-100 p-4 rounded-xl">
+              <div className="bg-[#f0f4f2]/50 border border-[#d1e0d9] p-4 rounded-xl">
                 <label className="block text-sm font-semibold text-gray-800 mb-3">
                   คะแนนสูงสุดสำหรับแบบประเมิน
                   <span className="block text-xs font-normal text-gray-500 mt-0.5">
@@ -370,14 +370,14 @@ export default function CreateSurveyModal({
                       key={score}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer border transition-colors ${
                         globalScaleMax === score
-                          ? "bg-orange-100 border-orange-300 text-orange-800"
+                          ? "bg-[#f0f4f2] border-[#6b857a] text-[#2d3748]"
                           : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                       }`}
                     >
                       <input
                         type="radio"
                         name="globalScaleMax"
-                        className="w-4 h-4 text-orange-600 focus:ring-orange-500"
+                        className="w-4 h-4 text-[#6b857a] focus:ring-[#6b857a]"
                         checked={globalScaleMax === score}
                         onChange={() => setGlobalScaleMax(score)}
                       />

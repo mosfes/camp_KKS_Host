@@ -23,6 +23,7 @@ import {
   X,
   ScanLine,
   QrCode,
+  KeyRound,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
@@ -107,6 +108,7 @@ export default function StudentCampDetailPage() {
   const [pinSubmitting, setPinSubmitting] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const fetchCamp = async () => {
     try {
@@ -140,6 +142,7 @@ export default function StudentCampDetailPage() {
   };
 
   useEffect(() => {
+    window.scrollTo(0, 0); // เลื่อนขึ้นไปบนสุดทุกครั้งที่เข้าหน้าค่าย
     fetchCamp();
     fetchSurvey();
   }, [id]);
@@ -294,6 +297,7 @@ export default function StudentCampDetailPage() {
       if (res.ok) {
         toast.success("ลงทะเบียนสำเร็จ!");
         fetchCamp();
+        fetchSurvey();
       } else {
         toast.error("ลงทะเบียนล้มเหลว");
       }
@@ -363,7 +367,7 @@ export default function StudentCampDetailPage() {
       <div className="max-w-4xl mx-auto px-4 -mt-20 relative z-10">
         {/* Main Info Card */}
         <div className="bg-white rounded-3xl shadow-lg p-6 mb-4">
-          <h1 className="text-2xl font-bold text-[#2d3748] mb-3 leading-snug">{camp.title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3 leading-snug">{camp.title}</h1>
 
           {/* Info Pills */}
           <div className="flex flex-wrap gap-2 mb-4">
@@ -386,7 +390,7 @@ export default function StudentCampDetailPage() {
                 <FileText size={15} className="text-[#5d7c6f]" />
                 <span className="text-sm font-semibold text-gray-700">รายละเอียดค่าย</span>
               </div>
-              <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{camp.description}</p>
+              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{camp.description}</p>
             </div>
           )}
 
@@ -395,23 +399,23 @@ export default function StudentCampDetailPage() {
             <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
               <MapPin size={16} className="text-[#5d7c6f] mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-[11px] text-gray-400 mb-0.5">สถานที่จัดค่าย</p>
-                <p className="text-gray-700 font-medium">{camp.location}</p>
+                <p className="text-[11px] text-gray-600 mb-0.5">สถานที่จัดค่าย</p>
+                <p className="text-gray-800 font-medium">{camp.location}</p>
               </div>
             </div>
             <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
               <Calendar size={16} className="text-[#5d7c6f] mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-[11px] text-gray-400 mb-0.5">วันจัดค่าย</p>
-                <p className="text-gray-700 font-medium">{formatDate(camp.rawStartDate)} – {formatDate(camp.rawEndDate)}</p>
+                <p className="text-[11px] text-gray-600 mb-0.5">วันจัดค่าย</p>
+                <p className="text-gray-800 font-medium">{formatDate(camp.rawStartDate)} – {formatDate(camp.rawEndDate)}</p>
               </div>
             </div>
             {camp.startRegisDate && (
               <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
                 <CalendarCheck size={16} className="text-[#5d7c6f] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-[11px] text-gray-400 mb-0.5">ช่วงเวลารับสมัคร</p>
-                  <p className="text-gray-700 font-medium">{formatDate(camp.startRegisDate)} – {formatDate(camp.endRegisDate)}</p>
+                  <p className="text-[11px] text-gray-600 mb-0.5">ช่วงเวลารับสมัคร</p>
+                  <p className="text-gray-800 font-medium">{formatDate(camp.startRegisDate)} – {formatDate(camp.endRegisDate)}</p>
                 </div>
               </div>
             )}
@@ -475,13 +479,13 @@ export default function StudentCampDetailPage() {
               </p>
             </div>
           )}
-          <h2 className="text-lg font-bold text-[#2d3748] mb-4">ความคืบหน้า</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">ความคืบหน้า</h2>
           <div className="space-y-4">
-            <div className="flex justify-between text-sm text-gray-600">
+            <div className="flex justify-between text-sm text-gray-700">
               <div className="flex items-center gap-2"><CheckCircle2 size={16} /><span>ฐานที่ทำเสร็จ</span></div>
               <span>0/{camp.station?.length || 0}</span>
             </div>
-            <div className="flex justify-between text-sm text-gray-600">
+            <div className="flex justify-between text-sm text-gray-700">
               <div className="flex items-center gap-2"><Flag size={16} /><span>ภารกิจทั้งหมด</span></div>
               <span>{completedMissions} สำเร็จ</span>
             </div>
@@ -512,8 +516,8 @@ export default function StudentCampDetailPage() {
             {shirtSize && !isEditingShirt ? (
               <div className="bg-gray-50/50 rounded-2xl p-4 flex flex-col items-center justify-center border border-gray-100/50">
                 <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-[#5d7c6f] font-bold text-xl mb-2">{shirtSize}</div>
-                <p className="text-gray-600 text-sm font-medium">จองเสื้อไซส์ {shirtSize} เรียบร้อยแล้ว</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{shirtPeriodActive ? "แก้ไขได้ภายในกำหนดเวลา" : "หมดเขตการแก้ไขแล้ว"}</p>
+                <p className="text-gray-700 text-sm font-medium">จองเสื้อไซส์ {shirtSize} เรียบร้อยแล้ว</p>
+                <p className="text-[10px] text-gray-600 mt-0.5">{shirtPeriodActive ? "แก้ไขได้ภายในกำหนดเวลา" : "หมดเขตการแก้ไขแล้ว"}</p>
               </div>
             ) : (!shirtSize && !shirtPeriodActive) ? (
               <div className="bg-orange-50/50 rounded-2xl p-4 flex flex-col items-center justify-center border border-orange-100/50">
@@ -545,7 +549,7 @@ export default function StudentCampDetailPage() {
                           {shirtUrls.map((url, idx) => (
                             <div key={idx} className="bg-gray-100 rounded-xl overflow-hidden aspect-square border border-gray-200 shadow-sm relative group">
                               <img src={url} alt="Shirt" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => window.open(url, '_blank')}>
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => setSelectedImage(url)}>
                                 <span className="text-white text-sm font-medium">ดูรูปขนาดเต็ม</span>
                               </div>
                             </div>
@@ -798,8 +802,8 @@ export default function StudentCampDetailPage() {
                     </div>
                   )}
                   <div className="flex flex-col items-center gap-1">
-                    <div className="w-16 h-16 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center mb-1">
-                      <span className="text-3xl">🔢</span>
+                    <div className="w-16 h-16 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center mb-1 text-[#5d7c6f]">
+                      <KeyRound size={32} strokeWidth={2.5} />
                     </div>
                     <p className="font-bold text-gray-800">กรอกรหัส PIN</p>
                     <p className="text-xs text-gray-400 text-center">ขอรหัส PIN จากครูผู้ดูแลที่ค่าย</p>
@@ -809,8 +813,8 @@ export default function StudentCampDetailPage() {
                     inputMode="numeric"
                     pattern="[0-9]*"
                     maxLength={6}
-                    placeholder="000000"
-                    className="w-40 text-center text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50"
+                    placeholder="------"
+                    className="w-40 text-center text-gray-900 text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50 placeholder:text-gray-300"
                     value={pinInput}
                     onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     onKeyDown={(e) => { if (e.key === 'Enter' && pinInput.length === 6) handlePinSubmit(); }}
@@ -890,6 +894,31 @@ export default function StudentCampDetailPage() {
                 ปิดหน้าต่าง
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
+            <button
+              className="absolute top-4 right-4 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors z-10"
+              onClick={() => setSelectedImage(null)}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <img
+              src={selectedImage}
+              alt="Expanded view"
+              className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         </div>
       )}

@@ -581,16 +581,61 @@ const StudentManager = () => {
         <div className="flex flex-col gap-6 w-full pt-4">
             <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-4 md:p-6">
-                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-4">
-                        <div>
-                            <h3 className="text-gray-800 font-semibold">
-                                การจัดการนักเรียน ({totalStudents})
-                            </h3>
-                            <p className="text-sm text-gray-500 mt-1">เพิ่มและจัดการข้อมูลนักเรียน</p>
+                    <div className="flex flex-col gap-4 mb-6">
+                        {/* Top Row: Title & Actions */}
+                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                            <div>
+                                <h3 className="text-gray-800 font-semibold">
+                                    การจัดการนักเรียน ({totalStudents})
+                                </h3>
+                                <p className="text-sm text-gray-500 mt-1">เพิ่มและจัดการข้อมูลนักเรียน</p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-start xl:justify-end">
+                                <Button
+                                    size="sm"
+                                    variant="bordered"
+                                    className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
+                                    onPress={handlePromoteClick}
+                                    isDisabled
+                                >
+                                    <ArrowUp size={16} />
+                                    <span className="ml-1 font-medium hidden sm:inline">เลื่อนชั้นเรียน</span>
+                                </Button>
+
+                                <Button
+                                    size="sm"
+                                    variant="bordered"
+                                    className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
+                                    onPress={openPasteModal}
+                                >
+                                    <ClipboardPaste size={16} />
+                                    <span className="ml-1 font-medium hidden sm:inline">นำเข้ารายชื่อ</span>
+                                </Button>
+
+                                <Button
+                                    onPress={openAddModal}
+                                    size="sm"
+                                    className="bg-[#5d7c6f] text-white hover:bg-[#4a6358] shadow-sm rounded-full"
+                                >
+                                    <PlusIcon />
+                                    <span className="ml-1 hidden sm:inline">เพิ่มนักเรียนใหม่</span>
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="bordered"
+                                    className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
+                                    onPress={() => setShowTrash(true)}
+                                >
+                                    <Archive size={16} />
+                                    <span className="ml-1 font-medium hidden sm:inline">รายการที่ลบ</span>
+                                </Button>
+                            </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-                            <div className="flex items-center gap-2 min-w-[180px] flex-1">
+                        {/* Bottom Row: Search & Filters */}
+                        <div className="flex flex-wrap items-center gap-3 w-full">
+                            <div className="flex-1 min-w-[200px]">
                                 <Input
                                     aria-label="Search students"
                                     placeholder="ค้นหา..."
@@ -605,7 +650,7 @@ const StudentManager = () => {
                                     classNames={{ inputWrapper: "bg-white border-gray-200" }}
                                 />
                             </div>
-                            <div className="flex items-center gap-2 min-w-[120px] lg:min-w-[160px] flex-1">
+                            <div className="flex-[0.5] min-w-[130px]">
                                 <Select
                                     aria-label="Select Academic Year"
                                     placeholder="ปีการศึกษา"
@@ -620,7 +665,7 @@ const StudentManager = () => {
                                     ))}
                                 </Select>
                             </div>
-                            <div className="flex items-center gap-2 min-w-[100px] lg:min-w-[130px] flex-1">
+                            <div className="flex-[0.5] min-w-[130px]">
                                 <Select
                                     aria-label="Select Grade"
                                     placeholder="ระดับชั้น"
@@ -636,7 +681,7 @@ const StudentManager = () => {
                                     ))}
                                 </Select>
                             </div>
-                            <div className="flex items-center gap-2 min-w-[120px] lg:min-w-[170px] flex-1">
+                            <div className="flex-[0.5] min-w-[130px]">
                                 <Select
                                     aria-label="Select Room Type"
                                     placeholder="ประเภทห้อง"
@@ -651,46 +696,6 @@ const StudentManager = () => {
                                         </SelectItem>
                                     ))}
                                 </Select>
-                            </div>
-                            <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end mt-2 lg:mt-0">
-                                <Button
-                                    size="sm"
-                                    variant="bordered"
-                                    className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
-                                    onPress={handlePromoteClick}
-                                    isDisabled
-                                >
-                                    <ArrowUp size={16} />
-                                    <span className="ml-1 font-medium hidden sm:inline">เลื่อนชั้นเรียน (กําลังพัฒนา)</span>
-                                </Button>
-
-                                <Button
-                                    size="sm"
-                                    variant="bordered"
-                                    className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
-                                    onPress={openPasteModal}
-                                >
-                                    <ClipboardPaste size={16} />
-                                    <span className="ml-1 font-medium hidden sm:inline">นำเข้ารายชื่อ (วางข้อมูล)</span>
-                                </Button>
-
-                                <Button
-                                    onPress={openAddModal}
-                                    size="sm"
-                                    className="bg-sage text-white hover:bg-sage-dark shadow-sm rounded-full"
-                                >
-                                    <PlusIcon />
-                                    <span className="ml-1 hidden sm:inline">เพิ่มนักเรียนใหม่</span>
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="bordered"
-                                    className="bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm rounded-full"
-                                    onPress={() => setShowTrash(true)}
-                                >
-                                    <Archive size={16} />
-                                    <span className="ml-1 font-medium hidden sm:inline">รายการที่ลบ</span>
-                                </Button>
                             </div>
                         </div>
                     </div>

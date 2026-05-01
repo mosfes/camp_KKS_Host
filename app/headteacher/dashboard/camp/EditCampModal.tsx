@@ -3,7 +3,7 @@
 import type { DateValue } from "@internationalized/date";
 
 import React, { useState, useEffect } from "react";
-import { ChevronRight, ImageOff, X, Trash2, FileText } from "lucide-react";
+import { ChevronRight, ImageOff, X, Trash2, FileText, Shirt } from "lucide-react";
 import { Select, SelectItem } from "@heroui/react";
 import { DateRangePicker } from "@heroui/react";
 import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
@@ -990,7 +990,7 @@ export default function EditCampModal({
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
               <div className="flex gap-3">
                 <div className="p-2 bg-white rounded-lg shadow-sm">
-                  <ImageOff className="text-[#6b857a]" size={20} />
+                  <Shirt className="text-[#6b857a]" size={20} />
                 </div>
                 <div>
                   <h4 className="font-bold text-sm">การจองเสื้อ</h4>
@@ -1059,7 +1059,7 @@ export default function EditCampModal({
                               onChange={handleShirtImageChange(index)}
                             />
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all aspect-square flex flex-col items-center justify-center">
-                              <ImageOff className="text-gray-400 mb-1" size={24} />
+                              <Shirt className="text-gray-400 mb-1" size={24} />
                               <p className="text-xs text-gray-400">รูปที่ {index + 1}</p>
                             </div>
                           </label>

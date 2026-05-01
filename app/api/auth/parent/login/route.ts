@@ -25,9 +25,45 @@ export async function POST(req: Request) {
       );
     }
 
-    // ตรวจสอบรหัสผ่าน: ต้องเป็น "kks" + รหัสนักเรียน
-    const expectedPassword = `kks${studentId}`;
-    if (password !== expectedPassword) {
+    // ตรวจสอบรหัสผ่าน: ค้นหา parent จาก DB และใช้ bcrypt
+    const parent = await prisma.parents.findFirst({
+      where: { username_student_id: studentId }
+    });
+
+    let isValid = false;
+    const bcrypt = await import("bcryptjs");
+
+    if (parent) {
+      // ตรวจสอบแบบ hash
+      isValid = await bcrypt.compare(password, parent.password);
+
+      // ถ้า hash ไม่ตรง ให้ตรวจสอบแบบ plain text เผื่อว่าเป็นรหัสผ่านเก่าที่ยังไม่ถูกเข้ารหัส
+      if (!isValid && parent.password === password) {
+        isValid = true;
+        // ทำการ hash และอัปเดตลงฐานข้อมูล
+        await prisma.parents.update({
+          where: { parents_id: parent.parents_id },
+          data: { password: await bcrypt.hash(password, 10) }
+        });
+      }
+    } else {
+      // Lazy migration: ถอนรหัสเดิม "kks" + รหัสนักเรียน ถ้าล็อกอินด้วยรหัสนี้ ให้สร้าง parent record (จำลองข้อมูล)
+      if (password === `kks${studentId}`) {
+        isValid = true;
+        // สร้างข้อมูล placeholder ใน parents ให้เข้ารหัส
+        await prisma.parents.create({
+          data: {
+            firstname: "รอระบุ",
+            lastname: "รอระบุ",
+            tel: "0000000000",
+            password: await bcrypt.hash(password, 10),
+            username_student_id: studentId
+          }
+        });
+      }
+    }
+
+    if (!isValid) {
       return NextResponse.json(
         { error: "รหัสนักเรียนหรือรหัสผ่านไม่ถูกต้อง" },
         { status: 401 }
@@ -123,7 +159,15 @@ export async function POST(req: Request) {
       student: sessionData,
     });
 
-    response.cookies.set("parent_session", JSON.stringify(sessionData), {
+    const { SignJWT } = await import("jose");
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+
+    const token = await new SignJWT(sessionData)
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('7d')
+      .sign(secret);
+
+    response.cookies.set("parent_session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

@@ -15,7 +15,9 @@ export async function GET() {
       return NextResponse.json({ error: "ไม่ได้เข้าสู่ระบบ" }, { status: 401 });
     }
 
-    const sessionData = JSON.parse(sessionCookie.value);
+    const { jwtVerify } = await import('jose');
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const { payload: sessionData } = await jwtVerify(sessionCookie.value, secret);
     const studentId = sessionData.students_id;
 
     // 1. Find classrooms for the student

@@ -12,7 +12,7 @@ import {
   ModalFooter,
   useDisclosure,
 } from "@heroui/modal";
-import { ChevronLeft, CheckCircle2, Circle, Camera, X, QrCode, ScanLine } from "lucide-react";
+import { ChevronLeft, CheckCircle2, Circle, Camera, X, QrCode, ScanLine, KeyRound } from "lucide-react";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
 
@@ -94,6 +94,7 @@ export default function StudentStationDetailPage() {
   };
 
   useEffect(() => {
+    window.scrollTo(0, 0); // เลื่อนขึ้นไปบนสุดทุกครั้งที่เข้าหน้าภารกิจ
     fetchCamp();
   }, [id, stationId]);
 
@@ -257,20 +258,32 @@ export default function StudentStationDetailPage() {
     setAnswers((prev: any) => ({ ...prev, [questionId]: value }));
   };
 
+  const compressImage = async (file: File) => {
+    if (!file || !file.type.startsWith("image/")) return file;
+    try {
+      const imageCompression = (await import("browser-image-compression")).default;
+      return await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true });
+    } catch (e) {
+      console.error("Compression error:", e);
+      return file;
+    }
+  };
+
   const handleImageUpload = async (questionId: number, file: File) => {
     if (!file) return;
 
-    // Check file size (5MB limit)
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    // Check file size (20MB limit)
+    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
     if (file.size > MAX_FILE_SIZE) {
-      toast.error("ขนาดไฟล์รูปภาพต้องไม่เกิน 5MB");
+      toast.error("ขนาดไฟล์รูปภาพต้องไม่เกิน 20MB");
       return;
     }
 
     setUploadingQid(questionId);
     try {
+      const compressedFile = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressedFile);
       const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
@@ -351,24 +364,35 @@ export default function StudentStationDetailPage() {
     );
   };
 
-  const isAllOtherMissionsCompleted = () => {
+  const isPreTestCompleted = () => {
     if (!camp || !camp.station) return false;
-    let allCompleted = true;
+    
+    let preTestMissions: any[] = [];
     for (const s of camp.station) {
       if (!s.mission) continue;
       for (const m of s.mission) {
-        if (m.type === 'POST_TEST') continue;
-        const isCompleted = camp.missionResults?.some(
-          (r: any) => r.mission_mission_id === m.mission_id && r.status === "completed"
-        );
-        if (!isCompleted) {
-          allCompleted = false;
-          break;
+        if (m.type === 'PRE_TEST') {
+          preTestMissions.push(m);
         }
       }
-      if (!allCompleted) break;
     }
-    return allCompleted;
+
+    // ถ้าไม่มีแบบทดสอบก่อนเรียนในค่ายเลย ให้ทำหลังเรียนได้เลย
+    if (preTestMissions.length === 0) return true;
+
+    // ตรวจสอบว่าแบบทดสอบก่อนเรียนทั้งหมดทำเสร็จหรือยัง
+    let allPreTestsCompleted = true;
+    for (const m of preTestMissions) {
+      const isCompleted = camp.missionResults?.some(
+        (r: any) => r.mission_mission_id === m.mission_id && r.status === "completed"
+      );
+      if (!isCompleted) {
+        allPreTestsCompleted = false;
+        break;
+      }
+    }
+    
+    return allPreTestsCompleted;
   };
 
   if (loading)
@@ -392,16 +416,16 @@ export default function StudentStationDetailPage() {
           <ChevronLeft className="text-gray-600" size={24} />
         </Button>
         <div>
-          <h1 className="text-lg font-bold text-[#2d3748]">{station.name}</h1>
-          <p className="text-sm text-gray-500">{camp.title}</p>
+          <h1 className="text-lg font-bold text-gray-900">{station.name}</h1>
+          <p className="text-sm text-gray-600">{camp.title}</p>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
-        <p className="text-gray-600 mb-6">{station.description}</p>
+        <p className="text-gray-700 mb-6">{station.description}</p>
 
         {station.mission?.length === 0 && (
-          <div className="text-center text-gray-400 py-10">
+          <div className="text-center text-gray-600 py-10">
             ยังไม่มีภารกิจในฐานนี้
           </div>
         )}
@@ -409,7 +433,7 @@ export default function StudentStationDetailPage() {
         {station.mission?.map((mission: any) => {
           const completed = isMissionCompleted(mission.mission_id);
           const isPostTest = mission.type === 'POST_TEST';
-          const canDoPostTest = isAllOtherMissionsCompleted();
+          const canDoPostTest = isPreTestCompleted();
           const isLocked = isPostTest && !canDoPostTest && !completed;
 
           return (
@@ -422,7 +446,7 @@ export default function StudentStationDetailPage() {
                             `}
               onClick={() => {
                 if (isLocked) {
-                  toast.error("คุณต้องทำภารกิจอื่นในค่ายให้ครบทั้งหมดก่อน จึงจะทำแบบทดสอบหลังเรียนได้");
+                  toast.error("คุณต้องทำแบบทดสอบก่อนเรียน (Pre-test) ให้เสร็จก่อน จึงจะทำแบบทดสอบหลังเรียนได้");
                   return;
                 }
                 openMission(mission);
@@ -431,7 +455,7 @@ export default function StudentStationDetailPage() {
               <div className="flex justify-between items-start">
                 <div className="flex items-start gap-3">
                   <div
-                    className={`mt-1 ${completed ? "text-green-600" : "text-gray-400"}`}
+                    className={`mt-1 ${completed ? "text-green-600" : "text-gray-500"}`}
                   >
                     {completed ? (
                       <CheckCircle2 size={20} />
@@ -441,11 +465,12 @@ export default function StudentStationDetailPage() {
                   </div>
                   <div>
                     <h3
-                      className={`font-bold ${completed ? "text-green-800" : "text-gray-800"}`}
+                      className={`font-bold ${completed ? "text-green-800" : "text-gray-900"}`}
                     >
                       {mission.title || "ภารกิจ"}
+                      {mission.type === 'PRE_TEST' && !(mission.title || "").includes("ก่อนเรียน") && " (ก่อนเรียน)"}
                     </h3>
-                    <p className="text-sm text-gray-500 line-clamp-2">
+                    <p className="text-sm text-gray-600 line-clamp-2">
                       {mission.description}
                     </p>
                   </div>
@@ -484,8 +509,11 @@ export default function StudentStationDetailPage() {
           {(onClose) => (
             <>
               <ModalHeader className="flex flex-col gap-1">
-                <span className="text-sm font-normal text-gray-500">ทำภารกิจ</span>
-                <h2 className="text-xl font-bold">{selectedMission?.title}</h2>
+                <span className="text-sm font-normal text-gray-600">ทำภารกิจ</span>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {selectedMission?.title}
+                  {selectedMission?.type === 'PRE_TEST' && !(selectedMission?.title || "").includes("ก่อนเรียน") && " (ก่อนเรียน)"}
+                </h2>
               </ModalHeader>
 
               <ModalBody className="py-6 space-y-6">
@@ -567,19 +595,19 @@ export default function StudentStationDetailPage() {
                           </div>
                         )}
                         <div className="flex flex-col items-center gap-1">
-                          <div className="w-16 h-16 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center mb-1">
-                            <span className="text-3xl">🔢</span>
+                          <div className="w-16 h-16 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center mb-1 text-[#5d7c6f]">
+                            <KeyRound size={32} strokeWidth={2.5} />
                           </div>
-                          <p className="font-bold text-gray-800">กรอกรหัส PIN</p>
-                          <p className="text-xs text-gray-400 text-center">ขอรหัส PIN จากครูผู้สอนที่ฐาน</p>
+                          <p className="font-bold text-gray-900">กรอกรหัส PIN</p>
+                          <p className="text-xs text-gray-600 text-center">ขอรหัส PIN จากครูผู้สอนที่ฐาน</p>
                         </div>
                         <input
                           type="text"
                           inputMode="numeric"
                           pattern="[0-9]*"
                           maxLength={6}
-                          placeholder="000000"
-                          className="w-40 text-center text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50"
+                          placeholder="------"
+                          className="w-40 text-center text-gray-900 text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50 placeholder:text-gray-300"
                           value={pinInput}
                           onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                           onKeyDown={(e) => { if (e.key === 'Enter' && pinInput.length === 6) handlePinSubmit(); }}
@@ -621,7 +649,7 @@ export default function StudentStationDetailPage() {
                               setQrScanActive(false);
                             }}
                           />
-                          <p className="text-center text-xs text-gray-400 mt-2">จัดกล้องให้ตรง QR Code ของครู</p>
+                          <p className="text-center text-xs text-gray-600 mt-2">จัดกล้องให้ตรง QR Code ของครู</p>
                           <Button
                             className="w-full mt-3 bg-gray-100 text-gray-600"
                             variant="flat"
@@ -635,9 +663,9 @@ export default function StudentStationDetailPage() {
                           <div className="w-24 h-24 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center">
                             <QrCode size={52} className="text-[#5d7c6f]" />
                           </div>
-                          <p className="text-base text-gray-600 text-center">
+                          <p className="text-base text-gray-700 text-center">
                             กดปุ่มด้านล่างเพื่อเปิดกล้องแสกน<br/>
-                            <span className="text-sm text-gray-400">QR Code ที่ครูแสดง</span>
+                            <span className="text-sm text-gray-600">QR Code ที่ครูแสดง</span>
                           </p>
                           <Button
                             className="bg-[#5d7c6f] text-white font-bold px-8"
@@ -648,7 +676,7 @@ export default function StudentStationDetailPage() {
                             เปิดกล้องแสกน QR
                           </Button>
                           <button
-                            className="text-sm text-gray-400 underline underline-offset-2 hover:text-[#5d7c6f] transition-colors"
+                            className="text-sm text-gray-600 underline underline-offset-2 hover:text-[#5d7c6f] transition-colors"
                             onClick={() => setShowPinInput(true)}
                           >
                             หรือกรอกรหัส PIN แทน
@@ -763,7 +791,7 @@ export default function StudentStationDetailPage() {
                                       <div className="flex flex-col items-center gap-1">
                                         <Camera size={24} />
                                         <span className="text-sm font-semibold">ถ่ายรูป / เลือกรูป</span>
-                                        <span className="text-[10px] text-gray-400 font-normal">ขนาดไฟล์รูปภาพสูงสุด 5MB</span>
+                                        <span className="text-[10px] text-gray-600 font-normal">ขนาดไฟล์รูปภาพสูงสุด 20MB</span>
                                       </div>
                                     )}
                                   </Button>

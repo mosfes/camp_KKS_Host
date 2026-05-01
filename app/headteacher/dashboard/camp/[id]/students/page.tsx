@@ -127,21 +127,21 @@ export default function CampStudentsPage() {
               <p className="text-2xl font-bold text-gray-900 mb-2">{summary.allergiesCount} <span className="text-sm font-normal text-gray-500">คน</span></p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {summary.allergies.slice(0, 3).map((a, i) => (
-                  <Chip key={i} size="sm" className="bg-red-50 text-red-700">{a.text}</Chip>
+                  <Chip key={i} size="sm" className="bg-red-50 text-red-700 max-w-full" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.text}</Chip>
                 ))}
                 {summary.allergiesCount > 3 && <span className="text-xs text-gray-500 mt-1">+{summary.allergiesCount - 3}</span>}
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-orange-100">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center gap-2 mb-3">
-                <Activity className="text-orange-500" size={24} />
+                <Activity className="text-[#6b857a]" size={24} />
                 <h3 className="font-semibold text-gray-900">โรคประจำตัว</h3>
               </div>
               <p className="text-2xl font-bold text-gray-900 mb-2">{summary.chronicDiseasesCount} <span className="text-sm font-normal text-gray-500">คน</span></p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {summary.chronicDiseases.slice(0, 3).map((d, i) => (
-                  <Chip key={i} size="sm" className="bg-orange-50 text-orange-700">{d.text}</Chip>
+                  <Chip key={i} size="sm" className="bg-[#f0f4f2] text-[#5d7c6f] border border-[#d1e0d9] max-w-full" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.text}</Chip>
                 ))}
                 {summary.chronicDiseasesCount > 3 && <span className="text-xs text-gray-500 mt-1">+{summary.chronicDiseasesCount - 3}</span>}
               </div>
@@ -237,7 +237,7 @@ export default function CampStudentsPage() {
                       </td>
                       <td className="p-4">
                         {row.student.chronic_disease && row.student.chronic_disease !== '-' && row.student.chronic_disease !== 'ไม่มี' ? (
-                          <Chip size="sm" className="bg-orange-50 text-orange-700 border border-orange-100">{row.student.chronic_disease}</Chip>
+                          <Chip size="sm" className="bg-[#f0f4f2] text-[#5d7c6f] border border-[#d1e0d9]">{row.student.chronic_disease}</Chip>
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}

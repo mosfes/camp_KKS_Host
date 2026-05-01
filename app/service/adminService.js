@@ -437,7 +437,23 @@ const getClassroomsPaginated = async (yearId, page = 1, limit = 20) => {
   }
 };
 
+const getOverviewStats = async (yearId) => {
+  try {
+    let url = `/api/overview`;
+    if (yearId && yearId !== "all") {
+        url += `?yearId=${yearId}`;
+    }
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to fetch overview stats');
+    return await res.json();
+  } catch (error) {
+    console.error("Error getting overview stats:", error);
+    return null;
+  }
+};
+
 export default {
+  getOverviewStats,
   getCampsPaginated,
   updateCamp,
   restoreCamp,

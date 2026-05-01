@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import useSWR from "swr";
 import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Button } from "@heroui/button";
@@ -50,11 +51,32 @@ function DefaultCampImage() {
 // ... imports
 import { useStatusModal } from "@/components/StatusModalProvider";
 
+const fetcher = (url: string) => fetch(url).then((res) => {
+  if (res.status === 401) throw new Error("Unauthorized");
+  return res.json();
+});
+
 export default function StudentDashboard() {
   const { showSuccess, showError, showConfirm, setIsLoading } = useStatusModal();
   const router = useRouter();
-  const [camps, setCamps] = useState<any[]>([]);
-  const [stats, setStats] = useState({
+
+  const compressImage = async (file: File) => {
+    if (!file || !file.type.startsWith("image/")) return file;
+    try {
+      const imageCompression = (await import("browser-image-compression")).default;
+      return await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true });
+    } catch (e) {
+      console.error("Compression error:", e);
+      return file;
+    }
+  };
+  const { data: rawCamps, mutate: mutateCamps } = useSWR("/api/camps", fetcher);
+  const { data: statsData, mutate: mutateStats } = useSWR("/api/camps/stats", fetcher);
+  const { data: teacherInfo } = useSWR("/api/auth/me", fetcher);
+  const { data: dbAcademicYears } = useSWR("/api/academic_years", fetcher);
+  const { data: homeroomData, isLoading: loadingHomeroom } = useSWR("/api/teacher/homeroom", fetcher);
+
+  const stats = statsData || {
     totalCamps: 0,
     activeCamps: 0,
     totalStudents: 0,
@@ -64,10 +86,9 @@ export default function StudentDashboard() {
     avgSatisfaction: 0,
     avgScore: 0,
     surveyResponseRate: 0,
-  });
-  const [teacherInfo, setTeacherInfo] = useState<any>(null);
-  const [dbAcademicYears, setDbAcademicYears] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  };
+
+  const loading = !rawCamps || !statsData || !teacherInfo || !dbAcademicYears;
   const [selectedTab, setSelectedTab] = useState("overview");
   const [isSelectTypeOpen, setIsSelectTypeOpen] = useState(false);
   const [isCreateCampOpen, setIsCreateCampOpen] = useState(false);
@@ -89,10 +110,8 @@ export default function StudentDashboard() {
   const [enrollmentCampName, setEnrollmentCampName] = useState("");
 
   // Homeroom State
-  const [homeroomData, setHomeroomData] = useState<any>(null);
-  const [loadingHomeroom, setLoadingHomeroom] = useState(true);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [homeroomSearch, setHomeroomSearch] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [homeroomFilter, setHomeroomFilter] = useState("all");
   const [homeroomPage, setHomeroomPage] = useState(1);
   const itemsPerPage = 10;
@@ -130,128 +149,53 @@ export default function StudentDashboard() {
     router.push(`/headteacher/dashboard/camp/${campId}`);
   };
 
-  const fetchCamps = async () => {
-    try {
-      const response = await fetch("/api/camps");
-      const data = await response.json();
+  const camps = useMemo(() => {
+    if (!rawCamps) return [];
+    return rawCamps.map((camp: any) => {
+      // Determine status label
+      let statusLabel = "ยังไม่เริ่ม";
+      const now = new Date();
+      const start = new Date(camp.start_date);
+      const end = new Date(camp.end_date);
 
-      // Map API data to UI structure
-      const formattedCamps = data.map((camp: any) => {
-        // Determine status label
-        let statusLabel = "ยังไม่เริ่ม";
-        const now = new Date();
-        const start = new Date(camp.start_date);
-        const end = new Date(camp.end_date);
-
-        if (now > end) {
-          statusLabel = "เสร็จสิ้น";
-        } else if (now >= start && now <= end) {
-          statusLabel = "กำลังจัด";
-        }
-
-        return {
-          id: camp.camp_id,
-          title: camp.name,
-          description: camp.description,
-          status: statusLabel,
-          location: camp.location,
-          startDate: start.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" }),
-          endDate: end.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" }),
-          enrolled: camp._count?.student_enrollment || 0,
-          totalStudents: (camp.camp_classroom || []).reduce((sum: number, cc: any) => sum + (cc.classroom?._count?.classroom_students ?? 0), 0),
-          image: camp.img_camp_url || null,
-          isOwner: camp.isOwner,
-          ownerName: camp.created_by ? `${camp.created_by.firstname} ${camp.created_by.lastname}`.trim() : "",
-          grades: camp.grades || [],
-          gradeDisplay: camp.gradeDisplay || "",
-          academicYear: camp.academicYear || "",
-        };
-      });
-
-      setCamps(formattedCamps);
-    } catch (error) {
-      console.error("Failed to fetch camps:", error);
-      showError("Error", "Failed to load camps");
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch("/api/camps/stats");
-
-      if (response.status === 401) {
-        router.push("/");   // Clerk login อยู่ที่ /
-        return;
+      if (now > end) {
+        statusLabel = "เสร็จสิ้น";
+      } else if (now >= start && now <= end) {
+        statusLabel = "กำลังจัด";
       }
 
-      if (!response.ok) return;
+      return {
+        id: camp.camp_id,
+        title: camp.name,
+        description: camp.description,
+        status: statusLabel,
+        location: camp.location,
+        startDate: start.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" }),
+        endDate: end.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" }),
+        enrolled: camp._count?.student_enrollment || 0,
+        totalStudents: (camp.camp_classroom || []).reduce((sum: number, cc: any) => sum + (cc.classroom?._count?.classroom_students ?? 0), 0),
+        image: camp.img_camp_url || null,
+        isOwner: camp.isOwner,
+        ownerName: camp.created_by ? `${camp.created_by.firstname} ${camp.created_by.lastname}`.trim() : "",
+        grades: camp.grades || [],
+        gradeDisplay: camp.gradeDisplay || "",
+        academicYear: camp.academicYear || "",
+      };
+    });
+  }, [rawCamps]);
 
-      const data = await response.json();
-      setStats(data);
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
-    }
-  };
-
-
-  const fetchTeacher = async () => {
-    try {
-      const res = await fetch("/api/auth/me");
-      if (res.ok) {
-        setTeacherInfo(await res.json());
-      }
-    } catch (err) {
-      console.error("Failed to fetch teacher:", err);
-    }
-  };
-
-  const fetchAcademicYears = async () => {
-    try {
-      const res = await fetch("/api/academic_years");
-      if (res.ok) {
-        const data = await res.json();
-        setDbAcademicYears(data);
-        const activeYear = data.find((y: any) => 
-          y.status === "แอคทีฟ" || y.status === "Active" || y.status === "ใช้งาน"
-        );
-        if (activeYear) {
-          setCampAcademicYearFilter(activeYear.year.toString());
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch academic years:", err);
-    }
-  };
-
-  const fetchHomeroom = async () => {
-    try {
-      setLoadingHomeroom(true);
-      const res = await fetch("/api/teacher/homeroom");
-      if (res.ok) {
-        setHomeroomData(await res.json());
-      }
-    } catch (err) {
-      console.error("Failed to fetch homeroom data:", err);
-    } finally {
-      setLoadingHomeroom(false);
-    }
-  };
+  // Handled by SWR
 
   useEffect(() => {
-    const initData = async () => {
-      setLoading(true);
-      await Promise.all([
-        fetchCamps(), 
-        fetchStats(), 
-        fetchTeacher(), 
-        fetchAcademicYears(),
-        fetchHomeroom()
-      ]);
-      setLoading(false);
-    };
-
-    initData();
-  }, []);
+    if (dbAcademicYears) {
+      const activeYear = dbAcademicYears.find((y: any) => 
+        y.status === "แอคทีฟ" || y.status === "Active" || y.status === "ใช้งาน"
+      );
+      if (activeYear) {
+        setCampAcademicYearFilter(activeYear.year.toString());
+      }
+    }
+  }, [dbAcademicYears]);
 
   useEffect(() => {
     if (!loading && teacherInfo) {
@@ -292,8 +236,8 @@ export default function StudentDashboard() {
 
           if (response.ok) {
             showSuccess("สำเร็จ", "ลบค่ายสำเร็จ!");
-            await fetchCamps();
-            await fetchStats();
+            mutateCamps();
+            mutateStats();
           } else {
             showError("ผลการดำเนินงาน", `ลบค่ายไม่สำเร็จ: ${result.error}`);
           }
@@ -320,8 +264,9 @@ export default function StudentDashboard() {
       // Upload camp image to Cloudinary if it exists
       if (data.campImageFile) {
         try {
+          const compressedFile = await compressImage(data.campImageFile);
           const formData = new FormData();
-          formData.append("file", data.campImageFile);
+          formData.append("file", compressedFile);
 
           const uploadRes = await fetch("/api/upload", {
             method: "POST",
@@ -348,8 +293,9 @@ export default function StudentDashboard() {
         for (const file of data.shirtImageFiles) {
           if (file) {
             try {
+              const compressedFile = await compressImage(file);
               const formData = new FormData();
-              formData.append("file", file);
+              formData.append("file", compressedFile);
               const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
               if (uploadRes.ok) {
                 const uploadData = await uploadRes.json();
@@ -399,9 +345,8 @@ export default function StudentDashboard() {
       if (response.ok) {
         console.log("Camp created successfully");
         showSuccess("สำเร็จ", "สร้างค่ายสำเร็จ!");
-        // Refresh camps list
-        await fetchCamps();
-        await fetchStats();
+        mutateCamps();
+        mutateStats();
         setIsCreateCampOpen(false); // Close modal on success
         setSelectedProjectType(null);
       } else {
@@ -453,8 +398,9 @@ export default function StudentDashboard() {
           const file = formData.shirtImageFiles[i];
           if (file) {
             try {
+              const compressedFile = await compressImage(file);
               const uploadForm = new FormData();
-              uploadForm.append("file", file);
+              uploadForm.append("file", compressedFile);
               const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
               if (uploadRes.ok) {
                 const uploadData = await uploadRes.json();
@@ -470,8 +416,9 @@ export default function StudentDashboard() {
 
       if (formData.campImageFile) {
         try {
+          const compressedFile = await compressImage(formData.campImageFile);
           const uploadForm = new FormData();
-          uploadForm.append("file", formData.campImageFile);
+          uploadForm.append("file", compressedFile);
           const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
@@ -500,7 +447,7 @@ export default function StudentDashboard() {
       showSuccess("สำเร็จ", "อัปเดตข้อมูลค่ายเรียบร้อยแล้ว");
       setIsEditModalOpen(false);
       setEditingCampData(null);
-      await fetchCamps();
+      mutateCamps();
     } catch (error: any) {
       console.error("Error editing camp:", error);
       showError("ข้อผิดพลาด", error.message || "ไม่สามารถอัปเดตข้อมูลค่ายได้");

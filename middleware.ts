@@ -5,6 +5,16 @@ const isAdminRoute = createRouteMatcher(["/admin_add_user(.*)"]);
 const isTeacherRoute = createRouteMatcher(["/headteacher(.*)"]);
 const isStudentRoute = createRouteMatcher(["/student(.*)"]);
 
+const isProtectedApiRoute = createRouteMatcher([
+  "/api/teachers(.*)",
+  "/api/students(.*)",
+  "/api/surveys(.*)",
+  "/api/upload(.*)",
+  "/api/classrooms(.*)",
+  "/api/vulgar-words(.*)",
+  "/api/camps(.*)"
+]);
+
 export default clerkMiddleware(async (auth, req) => {
   const authObject = await auth();
 
@@ -15,27 +25,53 @@ export default clerkMiddleware(async (auth, req) => {
     await auth.protect();
   }
 
-  if (authObject.userId) {
-    let role: string | undefined = undefined;
+  let role: string | undefined = undefined;
 
-    const teacherCookie = req.cookies.get("teacher_session")?.value;
-    const studentCookie = req.cookies.get("student_session")?.value;
+  const teacherCookie = req.cookies.get("teacher_session")?.value;
+  const studentCookie = req.cookies.get("student_session")?.value;
+  const parentCookie = req.cookies.get("parent_session")?.value;
 
-    if (teacherCookie) {
-      try {
-        const parsed = JSON.parse(teacherCookie);
-        role = parsed.role?.toLowerCase() || "teacher";
-      } catch (e) {
-        console.error("Failed to parse teacher_session cookie", e);
-      }
-    } else if (studentCookie) {
+  if (teacherCookie) {
+    try {
+      const { jwtVerify } = await import('jose');
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+      const { payload } = await jwtVerify(teacherCookie, secret);
+      role = (payload.role as string)?.toLowerCase() || "teacher";
+    } catch (e) {
+      console.error("Failed to verify teacher_session cookie", e);
+    }
+  } else if (studentCookie) {
+    try {
+      const { jwtVerify } = await import('jose');
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+      await jwtVerify(studentCookie, secret);
       role = "student";
+    } catch (e) {
+      console.error("Failed to verify student_session cookie", e);
     }
-
-    if (!role) {
-      role = ((authObject.sessionClaims?.metadata as any)?.role as string | undefined)?.toLowerCase();
+  } else if (parentCookie) {
+    try {
+      const { jwtVerify } = await import('jose');
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+      await jwtVerify(parentCookie, secret);
+      role = "parent";
+    } catch (e) {
+      console.error("Failed to verify parent_session cookie", e);
     }
+  }
 
+  if (!role && authObject.userId) {
+    role = ((authObject.sessionClaims?.metadata as any)?.role as string | undefined)?.toLowerCase();
+  }
+
+  // API Route Protection
+  if (isProtectedApiRoute(req)) {
+    if (!role || (role !== "admin" && role !== "teacher")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
+  if (authObject.userId) {
     if (isAdminRoute(req) && role !== "admin") {
       if (role === "teacher") {
         return NextResponse.redirect(new URL("/headteacher/dashboard", req.url));

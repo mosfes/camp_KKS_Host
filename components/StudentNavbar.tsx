@@ -24,8 +24,11 @@ export function AppNavbar() {
     email: string;
   } | null>(null);
 
+  const [mounted, setMounted] = useState(false);
+
   // ดึงข้อมูลนักเรียนจาก session cookie
   useEffect(() => {
+    setMounted(true);
     fetch("/api/auth/student/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (data) setStudent(data); })
@@ -57,61 +60,67 @@ export function AppNavbar() {
           <GraduationCap size={20} />
         </div>
         <div className="flex flex-col leading-tight">
-          <span className="font-semibold text-sm">KKS Camp</span>
-          <span className="text-xs text-gray-500">ค่ายของฉัน</span>
+          <span className="font-bold text-sm text-black">KKS Camp</span>
+          <span className="text-xs text-gray-700 font-medium">ค่ายของฉัน</span>
         </div>
       </NavbarBrand>
 
       {/* RIGHT */}
       <NavbarContent className="gap-3" justify="end">
         <NavbarItem>
-          <Dropdown placement="bottom-end">
-            <DropdownTrigger>
-              <div className="flex items-center gap-2 cursor-pointer">
-                {student && (
-                  <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]">
-                    นักเรียน
-                  </span>
-                )}
-                <Avatar
-                  as="button"
-                  className="bg-[#5d7c6f] text-white transition-transform"
-                  name={initials}
-                  size="sm"
-                />
-              </div>
-            </DropdownTrigger>
-
-            <DropdownMenu aria-label="Profile Actions" variant="flat">
-              <DropdownItem key="profile" className="h-14 gap-2">
-                <div>
-                  <p className="font-semibold">{displayName}</p>
-                  <p className="text-xs text-gray-500">{displayEmail}</p>
+          {mounted ? (
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <div className="flex items-center gap-2 cursor-pointer" suppressHydrationWarning>
+                  {student && (
+                    <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]">
+                      นักเรียน
+                    </span>
+                  )}
+                  <Avatar
+                    as="button"
+                    className="bg-[#5d7c6f] text-white transition-transform"
+                    name={initials}
+                    size="sm"
+                  />
                 </div>
-              </DropdownItem>
+              </DropdownTrigger>
 
-              <DropdownItem
-                key="settings"
-                startContent={navigating ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" /> : <Settings size={16} />}
-                onClick={() => {
-                  if (navigating) return;
-                  setNavigating(true);
-                  router.push("/student/profile");
-                }}
-              >
-                ตั้งค่าโปรไฟล์
-              </DropdownItem>
+              <DropdownMenu aria-label="Profile Actions" variant="flat">
+                <DropdownItem key="profile" className="h-14 gap-2">
+                  <div>
+                    <p className="font-semibold">{displayName}</p>
+                    <p className="text-xs text-gray-500">{displayEmail}</p>
+                  </div>
+                </DropdownItem>
 
-              <DropdownItem
-                key="logout"
-                color="danger"
-                startContent={<LogOut size={16} />}
-                onClick={handleLogout}
-              >
-                ออกจากระบบ
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
+                <DropdownItem
+                  key="settings"
+                  startContent={navigating ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" /> : <Settings size={16} />}
+                  onClick={() => {
+                    if (navigating) return;
+                    setNavigating(true);
+                    router.push("/student/profile");
+                  }}
+                >
+                  ตั้งค่าโปรไฟล์
+                </DropdownItem>
+
+                <DropdownItem
+                  key="logout"
+                  color="danger"
+                  startContent={<LogOut size={16} />}
+                  onClick={handleLogout}
+                >
+                  ออกจากระบบ
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Avatar size="sm" className="bg-gray-200" />
+            </div>
+          )}
         </NavbarItem>
       </NavbarContent>
     </Navbar>

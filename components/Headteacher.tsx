@@ -7,12 +7,12 @@ import {
   DropdownItem,
 } from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
-import { GraduationCap, LogOut, Settings } from "lucide-react";
+import { GraduationCap, LogOut, Settings, Menu, UserCircle } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 
-export function HeadteacherNavbar() {
+export function HeadteacherNavbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const { signOut } = useClerk();
@@ -26,6 +26,16 @@ export function HeadteacherNavbar() {
   } | null>(null);
 
   const [isNavigating, setIsNavigating] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // เมื่อเปลี่ยนหน้า ให้ปิด overlay โหลด
+  useEffect(() => {
+    setIsNavigating(false);
+  }, [pathname]);
 
   // ดึงข้อมูลครูจาก session cookie
   useEffect(() => {
@@ -58,6 +68,14 @@ export function HeadteacherNavbar() {
       >
         {/* LEFT */}
         <NavbarBrand className="gap-3">
+          {onMenuClick && (
+            <button 
+              onClick={onMenuClick}
+              className="md:hidden p-1 -ml-1 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              <Menu size={24} />
+            </button>
+          )}
           <div className="w-10 h-10 rounded-full bg-[#5d7c6f] flex items-center justify-center text-white">
             <GraduationCap size={20} />
           </div>
@@ -73,7 +91,7 @@ export function HeadteacherNavbar() {
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <div className="flex items-center gap-2 cursor-pointer">
-                  {(teacher?.roles ?? (teacher?.role ? [teacher.role] : [])).map((r) => (
+                  {mounted && (teacher?.roles ?? (teacher?.role ? [teacher.role] : [])).map((r) => (
                     <span
                       key={r}
                       className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
@@ -100,6 +118,19 @@ export function HeadteacherNavbar() {
                     <p className="font-semibold">{displayName}</p>
                     <p className="text-xs text-gray-500">{displayEmail}</p>
                   </div>
+                </DropdownItem>
+
+                {/* ── โปรไฟล์ของฉัน ── */}
+                <DropdownItem
+                  key="my_profile"
+                  startContent={<UserCircle size={16} />}
+                  onClick={() => {
+                    setIsNavigating(true);
+                    const isAdmin = teacher?.roles?.includes("ADMIN") || teacher?.role === "ADMIN";
+                    router.push(isAdmin ? "/admin_add_user/profile" : "/headteacher/profile");
+                  }}
+                >
+                  โปรไฟล์ของฉัน
                 </DropdownItem>
 
                 {(teacher?.roles?.includes("ADMIN") || teacher?.role === "ADMIN") ? (
@@ -163,7 +194,7 @@ export function HeadteacherNavbar() {
         <div className="fixed inset-0 z-[9999] bg-white/50 backdrop-blur-sm flex items-center justify-center">
           <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
             <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
-            <p className="text-[#5d7c6f] font-medium text-sm">กำลังสลับโหมด...</p>
+            <p className="text-[#5d7c6f] font-medium text-sm">กำลังโหลดข้อมูล...</p>
           </div>
         </div>
       )}

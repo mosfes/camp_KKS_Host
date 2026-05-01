@@ -243,18 +243,20 @@ export default function AttendanceModal({ isOpen, onClose, campId, campName }: A
 
                 {/* ─── QR Section ─── */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <QrCode size={20} className="text-[#6b857a]" />
-                    <h3 className="font-bold text-gray-900">QR Code สำหรับเช็คชื่อ</h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <QrCode size={20} className="text-[#6b857a] shrink-0" />
+                      <h3 className="font-bold text-gray-900">QR Code สำหรับเช็คชื่อ</h3>
+                    </div>
                     {qrPayload && (
-                      <div className="ml-auto flex items-center gap-2">
+                      <div className="sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
                         <button onClick={regenerateQr} disabled={regenerating}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-[#6b857a] bg-[#6b857a]/10 hover:bg-[#6b857a]/20 transition-colors disabled:opacity-50">
+                          className="flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-lg text-[#6b857a] bg-[#6b857a]/10 hover:bg-[#6b857a]/20 transition-colors disabled:opacity-50 whitespace-nowrap">
                           <RefreshCw size={13} className={regenerating ? "animate-spin" : ""} />
                           สุ่มรหัสใหม่
                         </button>
                         <button onClick={handleCloseSession}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
+                          className="flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors whitespace-nowrap">
                           <XCircle size={13} />ปิดรับเช็คชื่อ
                         </button>
                       </div>
@@ -262,7 +264,7 @@ export default function AttendanceModal({ isOpen, onClose, campId, campName }: A
                   </div>
 
                   {qrExpiresAt && qrPayload && (
-                    <p className="text-[12px] text-red-500 text-right -mt-3 mb-2 font-semibold">
+                    <p className="text-[12px] text-red-500 sm:text-right mb-3 sm:-mt-3 font-semibold text-center sm:text-right">
                       หมดเวลาเช็คชื่อ: {qrExpiresAt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   )}
@@ -281,18 +283,18 @@ export default function AttendanceModal({ isOpen, onClose, campId, campName }: A
                         {qrPin && (
                           <div className="w-full mt-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="w-1 h-4 bg-[#6b857a] rounded-full" />
-                              <p className="text-xs font-semibold text-gray-600">รหัส PIN สำรอง</p>
-                              <span className="text-[10px] text-gray-400">(สำหรับนักเรียนที่แสกนไม่ได้)</span>
+                              <span className="w-1 h-4 bg-[#6b857a] rounded-full shrink-0" />
+                              <p className="text-xs font-semibold text-gray-600 whitespace-nowrap">รหัส PIN สำรอง</p>
+                              <span className="text-[10px] text-gray-400 truncate">(สำหรับนักเรียนที่แสกนไม่ได้)</span>
                             </div>
-                            <div className="flex items-center gap-3 bg-[#6b857a]/5 border-2 border-[#6b857a]/25 rounded-2xl px-5 py-4">
-                              <div className="flex-1 flex gap-2 items-center justify-center">
+                            <div className="flex items-center gap-2 sm:gap-3 bg-[#6b857a]/5 border-2 border-[#6b857a]/25 rounded-2xl px-3 sm:px-5 py-3 sm:py-4 w-full">
+                              <div className="flex-1 flex gap-1 sm:gap-2 items-center justify-center">
                                 {qrPin.split("").map((digit, i) => (
-                                  <span key={i} className="w-10 h-12 bg-white border-2 border-[#6b857a]/30 rounded-xl flex items-center justify-center text-2xl font-black text-[#3d5c52] font-mono shadow-sm">{digit}</span>
+                                  <span key={i} className="w-8 h-10 sm:w-10 sm:h-12 bg-white border-2 border-[#6b857a]/30 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-black text-[#3d5c52] font-mono shadow-sm">{digit}</span>
                                 ))}
                               </div>
                               <button onClick={() => { navigator.clipboard.writeText(qrPin); setPinCopied(true); setTimeout(() => setPinCopied(false), 2000); }}
-                                className="p-2 rounded-lg text-gray-400 hover:text-[#6b857a] hover:bg-white transition-all border border-transparent hover:border-[#6b857a]/20">
+                                className="p-2 shrink-0 rounded-lg text-gray-400 hover:text-[#6b857a] hover:bg-white transition-all border border-transparent hover:border-[#6b857a]/20">
                                 {pinCopied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
                               </button>
                             </div>
@@ -478,7 +480,7 @@ export default function AttendanceModal({ isOpen, onClose, campId, campName }: A
               <div className="flex gap-2">
                 {selectedRoundId && (
                   <button onClick={handleClearRound}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-orange-500 hover:bg-orange-50 rounded-lg transition-colors">
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#6b857a] hover:bg-[#f0f4f2] rounded-lg transition-colors">
                     <Trash2 size={16} />ล้างรอบนี้
                   </button>
                 )}
