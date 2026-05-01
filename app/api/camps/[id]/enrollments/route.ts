@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
 
@@ -9,6 +10,7 @@ import { requireTeacher } from "@/lib/auth";
 // notEnrolled = นักเรียนในห้องที่เชื่อมกับค่ายนี้ที่ยังไม่ได้ enroll
 export async function GET(request, context) {
   const { teacher, error: authError } = await requireTeacher();
+
   if (authError) return authError;
 
   try {
@@ -22,20 +24,28 @@ export async function GET(request, context) {
         deletedAt: null,
         OR: [
           { created_by_teacher_id: teacher.teachers_id },
-          { teacher_enrollment: { some: { teacher_teachers_id: teacher.teachers_id } } },
+          {
+            teacher_enrollment: {
+              some: { teacher_teachers_id: teacher.teachers_id },
+            },
+          },
           {
             camp_classroom: {
-              some: { classroom: { teachers_teachers_id: teacher.teachers_id } }
-            }
+              some: {
+                classroom: { teachers_teachers_id: teacher.teachers_id },
+              },
+            },
           },
           {
             camp_classroom: {
               some: {
                 classroom: {
-                  classroom_teacher: { some: { teacher_teachers_id: teacher.teachers_id } }
-                }
-              }
-            }
+                  classroom_teacher: {
+                    some: { teacher_teachers_id: teacher.teachers_id },
+                  },
+                },
+              },
+            },
           },
         ],
       },
@@ -43,7 +53,10 @@ export async function GET(request, context) {
     });
 
     if (!camp) {
-      return NextResponse.json({ error: "ไม่พบค่าย หรือไม่มีสิทธิ์เข้าถึง" }, { status: 403 });
+      return NextResponse.json(
+        { error: "ไม่พบค่าย หรือไม่มีสิทธิ์เข้าถึง" },
+        { status: 403 },
+      );
     }
 
     // ดึงนักเรียนทั้งหมดในห้องที่เชื่อมกับค่ายนี้ (distinct)
@@ -71,9 +84,11 @@ export async function GET(request, context) {
 
     // รวมนักเรียนทั้งหมด (deduplicate by students_id)
     const studentMap = new Map();
+
     for (const cc of campClassrooms) {
       for (const cs of cc.classroom.classroom_students) {
         const s = cs.student;
+
         if (!studentMap.has(s.students_id)) {
           studentMap.set(s.students_id, {
             students_id: s.students_id,
@@ -94,7 +109,7 @@ export async function GET(request, context) {
     });
 
     const enrolledMap = new Map(
-      enrollments.map((e) => [e.student_students_id, e])
+      enrollments.map((e) => [e.student_students_id, e]),
     );
 
     const enrolled = [];
@@ -102,6 +117,7 @@ export async function GET(request, context) {
 
     for (const [id, student] of studentMap) {
       const enr = enrolledMap.get(id);
+
       if (enr && enr.enrolled_at) {
         enrolled.push({
           ...student,

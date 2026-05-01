@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     if (!username || !password) {
       return NextResponse.json(
         { error: "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -21,13 +21,13 @@ export async function POST(req: Request) {
     if (isNaN(studentId)) {
       return NextResponse.json(
         { error: "รหัสนักเรียนต้องเป็นตัวเลข" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // ตรวจสอบรหัสผ่าน: ค้นหา parent จาก DB และใช้ bcrypt
     const parent = await prisma.parents.findFirst({
-      where: { username_student_id: studentId }
+      where: { username_student_id: studentId },
     });
 
     let isValid = false;
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
         // ทำการ hash และอัปเดตลงฐานข้อมูล
         await prisma.parents.update({
           where: { parents_id: parent.parents_id },
-          data: { password: await bcrypt.hash(password, 10) }
+          data: { password: await bcrypt.hash(password, 10) },
         });
       }
     } else {
@@ -57,8 +57,8 @@ export async function POST(req: Request) {
             lastname: "รอระบุ",
             tel: "0000000000",
             password: await bcrypt.hash(password, 10),
-            username_student_id: studentId
-          }
+            username_student_id: studentId,
+          },
         });
       }
     }
@@ -163,8 +163,8 @@ export async function POST(req: Request) {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
     const token = await new SignJWT(sessionData)
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('7d')
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("7d")
       .sign(secret);
 
     response.cookies.set("parent_session", token, {
@@ -180,7 +180,7 @@ export async function POST(req: Request) {
     console.error("Parent login error:", error);
     return NextResponse.json(
       { error: "เกิดข้อผิดพลาด กรุณาลองใหม่" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
