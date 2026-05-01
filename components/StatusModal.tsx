@@ -8,7 +8,13 @@ import {
   ModalFooter,
   Button,
 } from "@heroui/react";
-import { CheckCircle, AlertOctagon, AlertCircle, Info, Trash2 } from "lucide-react";
+import {
+  CheckCircle,
+  AlertOctagon,
+  AlertCircle,
+  Info,
+  Trash2,
+} from "lucide-react";
 
 export type ModalType = "success" | "error" | "warning" | "info";
 
@@ -34,8 +40,7 @@ export default function StatusModal({
   isLoading = false,
 }: StatusModalProps) {
   const isDeleteAction =
-    type === "warning" &&
-    (title.includes("ลบ") || confirmText.includes("ลบ"));
+    type === "warning" && (title.includes("ลบ") || confirmText.includes("ลบ"));
 
   const getIcon = () => {
     if (isDeleteAction) {

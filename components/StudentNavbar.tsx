@@ -31,8 +31,10 @@ export function AppNavbar() {
     setMounted(true);
     fetch("/api/auth/student/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data) setStudent(data); })
-      .catch(() => { });
+      .then((data) => {
+        if (data) setStudent(data);
+      })
+      .catch(() => {});
   }, []);
 
   const handleLogout = async () => {
@@ -71,7 +73,10 @@ export function AppNavbar() {
           {mounted ? (
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
-                <div className="flex items-center gap-2 cursor-pointer" suppressHydrationWarning>
+                <div
+                  suppressHydrationWarning
+                  className="flex items-center gap-2 cursor-pointer"
+                >
                   {student && (
                     <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]">
                       นักเรียน
@@ -96,7 +101,13 @@ export function AppNavbar() {
 
                 <DropdownItem
                   key="settings"
-                  startContent={navigating ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" /> : <Settings size={16} />}
+                  startContent={
+                    navigating ? (
+                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Settings size={16} />
+                    )
+                  }
                   onClick={() => {
                     if (navigating) return;
                     setNavigating(true);
@@ -118,7 +129,7 @@ export function AppNavbar() {
             </Dropdown>
           ) : (
             <div className="flex items-center gap-2">
-              <Avatar size="sm" className="bg-gray-200" />
+              <Avatar className="bg-gray-200" size="sm" />
             </div>
           )}
         </NavbarItem>

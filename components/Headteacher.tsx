@@ -7,12 +7,22 @@ import {
   DropdownItem,
 } from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
-import { GraduationCap, LogOut, Settings, Menu, UserCircle } from "lucide-react";
+import {
+  GraduationCap,
+  LogOut,
+  Settings,
+  Menu,
+  UserCircle,
+} from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 
-export function HeadteacherNavbar({ onMenuClick }: { onMenuClick?: () => void }) {
+export function HeadteacherNavbar({
+  onMenuClick,
+}: {
+  onMenuClick?: () => void;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { signOut } = useClerk();
@@ -41,8 +51,10 @@ export function HeadteacherNavbar({ onMenuClick }: { onMenuClick?: () => void })
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data) setTeacher(data); })
-      .catch(() => { });
+      .then((data) => {
+        if (data) setTeacher(data);
+      })
+      .catch(() => {});
   }, []);
 
   const handleLogout = async () => {
@@ -69,9 +81,9 @@ export function HeadteacherNavbar({ onMenuClick }: { onMenuClick?: () => void })
         {/* LEFT */}
         <NavbarBrand className="gap-3">
           {onMenuClick && (
-            <button 
-              onClick={onMenuClick}
+            <button
               className="md:hidden p-1 -ml-1 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              onClick={onMenuClick}
             >
               <Menu size={24} />
             </button>
@@ -91,18 +103,27 @@ export function HeadteacherNavbar({ onMenuClick }: { onMenuClick?: () => void })
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <div className="flex items-center gap-2 cursor-pointer">
-                  {mounted && (teacher?.roles ?? (teacher?.role ? [teacher.role] : [])).map((r) => (
-                    <span
-                      key={r}
-                      className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                        r === "ADMIN"
-                          ? "bg-[#f7f2fa] text-[#8e6ba8] border-[#e9dff2]"
-                          : "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
-                      }`}
-                    >
-                      {r === "ADMIN" ? "ผู้ดูแลระบบ" : r === "HEADTEACHER" ? "ครูหัวหน้าค่าย" : r === "TEACHER" ? "ครูประจำชั้น" : r}
-                    </span>
-                  ))}
+                  {mounted &&
+                    (
+                      teacher?.roles ?? (teacher?.role ? [teacher.role] : [])
+                    ).map((r) => (
+                      <span
+                        key={r}
+                        className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                          r === "ADMIN"
+                            ? "bg-[#f7f2fa] text-[#8e6ba8] border-[#e9dff2]"
+                            : "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
+                        }`}
+                      >
+                        {r === "ADMIN"
+                          ? "ผู้ดูแลระบบ"
+                          : r === "HEADTEACHER"
+                            ? "ครูหัวหน้าค่าย"
+                            : r === "TEACHER"
+                              ? "ครูประจำชั้น"
+                              : r}
+                      </span>
+                    ))}
                   <Avatar
                     as="button"
                     className="bg-[#5d7c6f] text-white transition-transform"
@@ -126,14 +147,22 @@ export function HeadteacherNavbar({ onMenuClick }: { onMenuClick?: () => void })
                   startContent={<UserCircle size={16} />}
                   onClick={() => {
                     setIsNavigating(true);
-                    const isAdmin = teacher?.roles?.includes("ADMIN") || teacher?.role === "ADMIN";
-                    router.push(isAdmin ? "/admin_add_user/profile" : "/headteacher/profile");
+                    const isAdmin =
+                      teacher?.roles?.includes("ADMIN") ||
+                      teacher?.role === "ADMIN";
+
+                    router.push(
+                      isAdmin
+                        ? "/admin_add_user/profile"
+                        : "/headteacher/profile",
+                    );
                   }}
                 >
                   โปรไฟล์ของฉัน
                 </DropdownItem>
 
-                {(teacher?.roles?.includes("ADMIN") || teacher?.role === "ADMIN") ? (
+                {teacher?.roles?.includes("ADMIN") ||
+                teacher?.role === "ADMIN" ? (
                   <>
                     {!pathname.startsWith("/admin_add_user") ? (
                       <DropdownItem
@@ -160,20 +189,18 @@ export function HeadteacherNavbar({ onMenuClick }: { onMenuClick?: () => void })
                       </DropdownItem>
                     ) : null}
                   </>
-                ) : (
-                  !pathname.startsWith("/headteacher") ? (
-                    <DropdownItem
-                      key="settings"
-                      startContent={<Settings size={16} />}
-                      onClick={() => {
-                        setIsNavigating(true);
-                        router.push("/headteacher/dashboard");
-                      }}
-                    >
-                      หน้าหลัก
-                    </DropdownItem>
-                  ) : null
-                )}
+                ) : !pathname.startsWith("/headteacher") ? (
+                  <DropdownItem
+                    key="settings"
+                    startContent={<Settings size={16} />}
+                    onClick={() => {
+                      setIsNavigating(true);
+                      router.push("/headteacher/dashboard");
+                    }}
+                  >
+                    หน้าหลัก
+                  </DropdownItem>
+                ) : null}
 
                 <DropdownItem
                   key="logout"
@@ -194,7 +221,9 @@ export function HeadteacherNavbar({ onMenuClick }: { onMenuClick?: () => void })
         <div className="fixed inset-0 z-[9999] bg-white/50 backdrop-blur-sm flex items-center justify-center">
           <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
             <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
-            <p className="text-[#5d7c6f] font-medium text-sm">กำลังโหลดข้อมูล...</p>
+            <p className="text-[#5d7c6f] font-medium text-sm">
+              กำลังโหลดข้อมูล...
+            </p>
           </div>
         </div>
       )}

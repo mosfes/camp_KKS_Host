@@ -10,6 +10,7 @@ export default function AutoLogout({ email }: { email: string }) {
   useEffect(() => {
     if (countdown <= 0) return;
     const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+
     return () => clearTimeout(timer);
   }, [countdown]);
 
@@ -73,10 +74,26 @@ export default function AutoLogout({ email }: { email: string }) {
             border: "3px solid #b7cec5",
           }}
         >
-          <span style={{ fontSize: "32px", fontWeight: "800", color: "#3d5a50", lineHeight: 1 }}>
+          <span
+            style={{
+              fontSize: "32px",
+              fontWeight: "800",
+              color: "#3d5a50",
+              lineHeight: 1,
+            }}
+          >
             {countdown}
           </span>
-          <span style={{ fontSize: "10px", color: "#5d7c6f", fontWeight: "600", marginTop: "2px" }}>วินาที</span>
+          <span
+            style={{
+              fontSize: "10px",
+              color: "#5d7c6f",
+              fontWeight: "600",
+              marginTop: "2px",
+            }}
+          >
+            วินาที
+          </span>
         </div>
 
         {/* Title */}
@@ -93,9 +110,15 @@ export default function AutoLogout({ email }: { email: string }) {
         </h1>
 
         {/* Subtitle */}
-        <p style={{ fontSize: "15px", color: "#6b7f76", margin: "0 0 24px", lineHeight: 1.6 }}>
+        <p
+          style={{
+            fontSize: "15px",
+            color: "#6b7f76",
+            margin: "0 0 24px",
+            lineHeight: 1.6,
+          }}
+        >
           อีเมลนี้ยังไม่ได้ลงทะเบียนในระบบ
-          
         </p>
 
         {/* Email badge */}
@@ -125,16 +148,13 @@ export default function AutoLogout({ email }: { email: string }) {
           </span>
         </div>
 
-
         {/* Logout hint */}
         <p style={{ fontSize: "13px", color: "#9ab0a6", marginBottom: "24px" }}>
           ระบบจะออกจากระบบอัตโนมัติเมื่อนับถอยหลังครบ
         </p>
 
-
         {/* Manual sign-out button */}
         <button
-          onClick={() => signOut({ redirectUrl: "/" })}
           style={{
             width: "100%",
             padding: "13px",
@@ -149,8 +169,10 @@ export default function AutoLogout({ email }: { email: string }) {
             boxShadow: "0 4px 14px rgba(93,124,111,0.35)",
             letterSpacing: "0.2px",
           }}
+          onClick={() => signOut({ redirectUrl: "/" })}
           onMouseEnter={(e) => {
-            (e.target as HTMLButtonElement).style.transform = "translateY(-1px)";
+            (e.target as HTMLButtonElement).style.transform =
+              "translateY(-1px)";
             (e.target as HTMLButtonElement).style.boxShadow =
               "0 6px 20px rgba(93,124,111,0.45)";
           }}

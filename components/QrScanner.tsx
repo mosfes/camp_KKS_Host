@@ -17,6 +17,7 @@ export default function QrScanner({ onScan, onError, active }: QrScannerProps) {
   useEffect(() => {
     if (!active) {
       stopScanner();
+
       return;
     }
 
@@ -29,6 +30,7 @@ export default function QrScanner({ onScan, onError, active }: QrScannerProps) {
         if (!isMounted) return;
 
         const html5QrCode = new Html5Qrcode(elementId);
+
         scannerRef.current = html5QrCode;
 
         await html5QrCode.start(
@@ -37,7 +39,7 @@ export default function QrScanner({ onScan, onError, active }: QrScannerProps) {
           (decodedText) => {
             if (isMounted) onScan(decodedText);
           },
-          undefined
+          undefined,
         );
         if (isMounted) setStarted(true);
       } catch (err: any) {
@@ -60,6 +62,7 @@ export default function QrScanner({ onScan, onError, active }: QrScannerProps) {
     if (scannerRef.current) {
       try {
         const state = scannerRef.current.getState();
+
         // state 2 = SCANNING, state 3 = PAUSED
         if (state === 2 || state === 3) {
           await scannerRef.current.stop();
@@ -73,8 +76,8 @@ export default function QrScanner({ onScan, onError, active }: QrScannerProps) {
   return (
     <div className="relative w-full">
       <div
-        id={elementId}
         className="w-full rounded-2xl overflow-hidden"
+        id={elementId}
         style={{ minHeight: 280 }}
       />
       {!started && active && (

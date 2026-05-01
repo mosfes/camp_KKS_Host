@@ -106,16 +106,24 @@ export function StatusModalProvider({ children }: { children: ReactNode }) {
 
   return (
     <StatusModalContext.Provider
-      value={{ showSuccess, showError, showWarning, showInfo, showConfirm, setIsLoading, close }}
+      value={{
+        showSuccess,
+        showError,
+        showWarning,
+        showInfo,
+        showConfirm,
+        setIsLoading,
+        close,
+      }}
     >
       {children}
       <StatusModal
         confirmText={config.confirmText}
+        isLoading={isLoading}
         isOpen={isOpen}
         message={config.message}
         title={config.title}
         type={config.type}
-        isLoading={isLoading}
         onClose={close}
         onConfirm={config.onConfirm}
       />
