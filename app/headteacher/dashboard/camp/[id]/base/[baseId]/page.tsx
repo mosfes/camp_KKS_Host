@@ -27,6 +27,7 @@ export default function BaseDetailPage() {
 
   const [isMonitorModalOpen, setIsMonitorModalOpen] = useState(false);
   const [monitorMissionData, setMonitorMissionData] = useState<any>(null);
+  const [navigating, setNavigating] = useState(false);
 
   useEffect(() => {
     if (baseId) {
@@ -95,7 +96,7 @@ export default function BaseDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f5f2] flex items-center justify-center">
         <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -104,12 +105,16 @@ export default function BaseDetailPage() {
   if (!base) return null;
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
+    <div className="min-h-screen bg-[#f5f5f2]">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <button
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6"
-          onClick={() => router.back()}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 disabled:opacity-50"
+          disabled={navigating}
+          onClick={() => {
+            setNavigating(true);
+            router.back();
+          }}
         >
           <ChevronLeft size={20} />
           <span>กลับไปหน้ารายละเอียดค่าย</span>
@@ -147,85 +152,94 @@ export default function BaseDetailPage() {
               {base.mission.map((mission: any) => (
                 <div
                   key={mission.mission_id}
-                  className="border border-gray-100 rounded-xl p-4 hover:border-gray-200 transition-colors flex justify-between items-center bg-gray-50 mb-2"
+                  className="border border-gray-100 rounded-xl p-4 hover:border-gray-200 transition-colors bg-gray-50 mb-2"
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-gray-900">
+                  {/* Header row: title + badge + action buttons */}
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                      <span className="font-semibold text-gray-900 break-words">
                         {mission.title || "ภารกิจไม่มีชื่อ"}
                       </span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">
-                        {mission.type?.replace(/_/g, " ")}
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 shrink-0">
+                        {mission.type === "MULTIPLE_CHOICE_QUIZ" ? "แบบเลือกตอบ" : 
+                         mission.type === "QUESTION_ANSWERING" ? "ตอบคำถาม" :
+                         mission.type === "PHOTO_SUBMISSION" ? "ส่งรูปภาพ" :
+                         mission.type === "QR_CODE_SCANNING" ? "สแกน QR Code" :
+                         mission.type === "PRE_TEST" ? "แบบทดสอบก่อนเรียน" :
+                         mission.type === "POST_TEST" ? "แบบทดสอบหลังเรียน" :
+                         mission.type?.replace(/_/g, " ")}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mb-1">
-                      {mission.description}
-                    </p>
-                    {(mission.type === "QUESTION_ANSWERING" ||
-                      mission.type === "PHOTO_SUBMISSION") &&
-                      mission.mission_question?.[0] && (
-                        <div className="mt-2 bg-[#6b857a]/5 p-2 rounded-lg border border-[#6b857a]/10">
-                          <p className="text-sm text-[#6b857a] font-medium">
-                            <span className="mr-2">คำถาม:</span>
-                            {mission.mission_question[0].question_text}
-                          </p>
-                        </div>
-                      )}
-                    {(mission.type === "MULTIPLE_CHOICE_QUIZ" ||
-                      mission.type === "PRE_TEST" ||
-                      mission.type === "POST_TEST") &&
-                      mission.mission_question &&
-                      mission.mission_question.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {mission.mission_question.map(
-                            (q: any, idx: number) => (
-                              <div
-                                key={q.question_id}
-                                className="bg-[#6b857a]/5 p-2 rounded-lg border border-[#6b857a]/10"
-                              >
-                                <p className="text-sm text-[#6b857a] font-medium">
-                                  <span className="mr-2 font-bold">
-                                    {idx + 1}.
-                                  </span>
-                                  {q.question_text}
-                                </p>
-                              </div>
-                            ),
-                          )}
-                        </div>
-                      )}
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        isIconOnly
+                        className="text-gray-400 hover:text-green-500"
+                        size="sm"
+                        variant="light"
+                        onClick={(e) => handleMonitorMission(mission, e)}
+                      >
+                        <Eye size={18} />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        className="text-gray-400 hover:text-blue-500"
+                        size="sm"
+                        variant="light"
+                        onClick={(e) => handleEditMission(mission, e)}
+                      >
+                        <Pencil size={18} />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 hover:text-[#FF847C]"
+                        size="sm"
+                        variant="light"
+                        onClick={(e) =>
+                          handleDeleteMission(mission.mission_id, e)
+                        }
+                      >
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-1 ml-4 self-start">
-                    <Button
-                      isIconOnly
-                      className="text-gray-400 hover:text-green-500"
-                      size="sm"
-                      variant="light"
-                      onClick={(e) => handleMonitorMission(mission, e)}
-                    >
-                      <Eye size={18} />
-                    </Button>
-                    <Button
-                      isIconOnly
-                      className="text-gray-400 hover:text-blue-500"
-                      size="sm"
-                      variant="light"
-                      onClick={(e) => handleEditMission(mission, e)}
-                    >
-                      <Pencil size={18} />
-                    </Button>
-                    <Button
-                      isIconOnly
-                      className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 hover:text-[#FF847C]"
-                      size="sm"
-                      variant="light"
-                      onClick={(e) =>
-                        handleDeleteMission(mission.mission_id, e)
-                      }
-                    >
-                      <Trash2 size={18} />
-                    </Button>
-                  </div>
+
+                  {/* Description + questions — full width */}
+                  <p className="text-sm text-gray-600 mb-1 break-words">
+                    {mission.description}
+                  </p>
+                  {(mission.type === "QUESTION_ANSWERING" ||
+                    mission.type === "PHOTO_SUBMISSION") &&
+                    mission.mission_question?.[0] && (
+                      <div className="mt-2 bg-[#6b857a]/5 p-2 rounded-lg border border-[#6b857a]/10 w-full">
+                        <p className="text-sm text-[#6b857a] font-medium break-words">
+                          <span className="mr-2">คำถาม:</span>
+                          {mission.mission_question[0].question_text}
+                        </p>
+                      </div>
+                    )}
+                  {(mission.type === "MULTIPLE_CHOICE_QUIZ" ||
+                    mission.type === "PRE_TEST" ||
+                    mission.type === "POST_TEST") &&
+                    mission.mission_question &&
+                    mission.mission_question.length > 0 && (
+                      <div className="mt-2 space-y-1 w-full">
+                        {mission.mission_question.map(
+                          (q: any, idx: number) => (
+                            <div
+                              key={q.question_id}
+                              className="bg-[#6b857a]/5 p-2 rounded-lg border border-[#6b857a]/10 w-full"
+                            >
+                              <p className="text-sm text-[#6b857a] font-medium break-words">
+                                <span className="mr-2 font-bold">
+                                  {idx + 1}.
+                                </span>
+                                {q.question_text}
+                              </p>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    )}
                 </div>
               ))}
             </div>

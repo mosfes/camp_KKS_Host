@@ -36,6 +36,7 @@ export function HeadteacherNavbar({
   } | null>(null);
 
   const [isNavigating, setIsNavigating] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("กำลังโหลดข้อมูล...");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -58,6 +59,8 @@ export function HeadteacherNavbar({
   }, []);
 
   const handleLogout = async () => {
+    setLoadingMessage("กำลังออกจากระบบ...");
+    setIsNavigating(true);
     // clear cookie ของเรา + signOut จาก Clerk พร้อมกัน
     await fetch("/api/auth/logout", { method: "POST" });
     await signOut({ redirectUrl: "/" });
@@ -146,6 +149,7 @@ export function HeadteacherNavbar({
                   key="my_profile"
                   startContent={<UserCircle size={16} />}
                   onClick={() => {
+                    setLoadingMessage("กำลังโหลดข้อมูล...");
                     setIsNavigating(true);
                     const isAdmin =
                       teacher?.roles?.includes("ADMIN") ||
@@ -169,6 +173,7 @@ export function HeadteacherNavbar({
                         key="admin_dashboard"
                         startContent={<Settings size={16} />}
                         onClick={() => {
+                          setLoadingMessage("กำลังโหลดข้อมูล...");
                           setIsNavigating(true);
                           router.push("/admin_add_user");
                         }}
@@ -181,6 +186,7 @@ export function HeadteacherNavbar({
                         key="headteacher_dashboard"
                         startContent={<GraduationCap size={16} />}
                         onClick={() => {
+                          setLoadingMessage("กำลังโหลดข้อมูล...");
                           setIsNavigating(true);
                           router.push("/headteacher/dashboard");
                         }}
@@ -194,6 +200,7 @@ export function HeadteacherNavbar({
                     key="settings"
                     startContent={<Settings size={16} />}
                     onClick={() => {
+                      setLoadingMessage("กำลังโหลดข้อมูล...");
                       setIsNavigating(true);
                       router.push("/headteacher/dashboard");
                     }}
@@ -222,7 +229,7 @@ export function HeadteacherNavbar({
           <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
             <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
             <p className="text-[#5d7c6f] font-medium text-sm">
-              กำลังโหลดข้อมูล...
+              {loadingMessage}
             </p>
           </div>
         </div>

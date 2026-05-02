@@ -69,16 +69,24 @@ export default clerkMiddleware(async (auth, req) => {
     )?.toLowerCase();
   }
 
-  // API Route Protection
+  // Helper: ตรวจสอบว่า role นี้เป็น "ครู" หรือไม่ (รองรับทุก role ของครู)
+  const isTeacherRole = (r: string | undefined) =>
+    r === "admin" ||
+    r === "teacher" ||
+    r === "camp_leader" ||
+    r === "head_teacher" ||
+    r === "headteacher";
+
+  // API Route Protection — อนุญาตเฉพาะ role ที่เป็นครู
   if (isProtectedApiRoute(req)) {
-    if (!role || (role !== "admin" && role !== "teacher")) {
+    if (!isTeacherRole(role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }
 
   if (authObject.userId) {
     if (isAdminRoute(req) && role !== "admin") {
-      if (role === "teacher") {
+      if (isTeacherRole(role)) {
         return NextResponse.redirect(
           new URL("/headteacher/dashboard", req.url),
         );
@@ -87,7 +95,8 @@ export default clerkMiddleware(async (auth, req) => {
       }
     }
 
-    if (isTeacherRoute(req) && role !== "admin" && role !== "teacher") {
+    // อนุญาตทุก role ของครูให้เข้า /headteacher ได้
+    if (isTeacherRoute(req) && !isTeacherRole(role)) {
       return NextResponse.redirect(new URL("/student/dashboard", req.url));
     }
   }

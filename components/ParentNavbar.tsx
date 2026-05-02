@@ -21,6 +21,7 @@ interface ParentStudent {
 export function ParentNavbar() {
   const router = useRouter();
   const [student, setStudent] = useState<ParentStudent | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/parent/me")
@@ -32,6 +33,7 @@ export function ParentNavbar() {
   }, []);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     await fetch("/api/auth/parent/logout", { method: "POST" });
     router.push("/");
   };
@@ -102,6 +104,17 @@ export function ParentNavbar() {
           </Dropdown>
         </NavbarItem>
       </NavbarContent>
+      {/* Loading Overlay for Logout */}
+      {isLoggingOut && (
+        <div className="fixed inset-0 z-[9999] bg-white/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+            <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+            <p className="text-[#5d7c6f] font-medium text-sm">
+              กำลังออกจากระบบ...
+            </p>
+          </div>
+        </div>
+      )}
     </Navbar>
   );
 }

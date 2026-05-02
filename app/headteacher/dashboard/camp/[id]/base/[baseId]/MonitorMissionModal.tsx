@@ -185,7 +185,7 @@ export default function MonitorMissionModal({
               </p>
             </ModalHeader>
 
-            <ModalBody className="py-6 px-6 bg-[#F5F1E8]/30">
+            <ModalBody className="py-6 px-6 bg-[#f5f5f2]/30">
               {loading ? (
                 <div className="flex justify-center items-center py-12">
                   <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />

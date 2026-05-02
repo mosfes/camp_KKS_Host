@@ -16,6 +16,7 @@ export function AppNavbar() {
   const router = useRouter();
   const { signOut } = useClerk();
   const [navigating, setNavigating] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const [student, setStudent] = useState<{
     students_id: number;
@@ -38,6 +39,7 @@ export function AppNavbar() {
   }, []);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     await fetch("/api/auth/student/logout", { method: "POST" });
     await signOut({ redirectUrl: "/" });
   };
@@ -134,6 +136,17 @@ export function AppNavbar() {
           )}
         </NavbarItem>
       </NavbarContent>
+      {/* Loading Overlay for Logout */}
+      {isLoggingOut && (
+        <div className="fixed inset-0 z-[9999] bg-white/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+            <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+            <p className="text-[#5d7c6f] font-medium text-sm">
+              กำลังออกจากระบบ...
+            </p>
+          </div>
+        </div>
+      )}
     </Navbar>
   );
 }

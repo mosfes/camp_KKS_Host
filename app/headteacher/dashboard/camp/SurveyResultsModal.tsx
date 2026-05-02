@@ -134,40 +134,42 @@ export default function SurveyResultsModal({
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex flex-col gap-1 px-8 pt-8 pb-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                  <FileText size={20} />
+            <ModalHeader className="flex flex-col gap-1 px-6 sm:px-8 pt-6 sm:pt-8 pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                    <FileText size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 break-words">
+                      {data ? data.title : "ผลการประเมินความพึงพอใจ"}
+                    </h2>
+                    <p className="text-sm font-normal text-gray-500 flex items-center gap-1 mt-1">
+                      <Users size={14} /> ผู้ตอบแบบประเมินทั้งหมด{" "}
+                      {data?.totalResponses || 0} คน
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {data ? data.title : "ผลการประเมินความพึงพอใจ"}
-                  </h2>
-                  <p className="text-sm font-normal text-gray-500 flex items-center gap-1 mt-1">
-                    <Users size={14} /> ผู้ตอบแบบประเมินทั้งหมด{" "}
-                    {data?.totalResponses || 0} คน
-                  </p>
-                </div>
+                {data && data.totalResponses > 0 && !aiSummary && (
+                  <div className="flex-shrink-0">
+                    <Button
+                      className="w-full sm:w-auto bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium transition-colors"
+                      isLoading={isAiLoading}
+                      startContent={<Sparkles size={16} />}
+                      variant="flat"
+                      onPress={fetchAiSummary}
+                    >
+                      สรุปผลด้วย AI
+                    </Button>
+                  </div>
+                )}
               </div>
-              {data && data.totalResponses > 0 && !aiSummary && (
-                <div className="absolute right-8 top-8">
-                  <Button
-                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium transition-colors"
-                    isLoading={isAiLoading}
-                    startContent={<Sparkles size={16} />}
-                    variant="flat"
-                    onPress={fetchAiSummary}
-                  >
-                    สรุปผลด้วย AI
-                  </Button>
-                </div>
-              )}
             </ModalHeader>
 
-            <ModalBody className="px-8 py-4 pt-2 space-y-4">
+            <ModalBody className="px-5 sm:px-8 py-4 pt-2 space-y-4">
               {/* AI Summary */}
               {aiSummary && (
-                <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-6 shadow-sm">
+                <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 sm:p-6 shadow-sm">
                   <div className="flex items-center gap-2 mb-4 border-b border-indigo-100 pb-3">
                     <Sparkles className="text-indigo-600" size={20} />
                     <h3 className="font-bold text-indigo-900 text-lg">
@@ -265,9 +267,9 @@ export default function SurveyResultsModal({
                 <>
                   {/* Camp-wide average banner */}
                   {campAverage && (
-                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
                           <Star
                             className="text-amber-500 fill-amber-400"
                             size={20}
@@ -283,7 +285,7 @@ export default function SurveyResultsModal({
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-baseline gap-1.5 pr-2">
+                      <div className="flex items-baseline gap-1.5 sm:pr-2">
                         <span className="text-3xl font-extrabold text-amber-600">
                           {campAverage}
                         </span>
@@ -302,10 +304,10 @@ export default function SurveyResultsModal({
                         return (
                           <div
                             key={q.id}
-                            className="bg-indigo-50 border border-indigo-100 shadow-sm rounded-2xl px-6 py-4 my-2"
+                            className="bg-indigo-50 border border-indigo-100 shadow-sm rounded-2xl px-5 py-3 my-2"
                           >
-                            <h3 className="font-bold text-indigo-900 text-base leading-snug whitespace-normal break-words relative flex items-center gap-2">
-                              <span className="w-1.5 h-5 bg-indigo-500 rounded-full inline-block" />
+                            <h3 className="font-bold text-indigo-900 text-sm leading-snug whitespace-normal break-words relative flex items-center gap-2">
+                              <span className="w-1 h-4 bg-indigo-500 rounded-full inline-block" />
                               {q.text}
                             </h3>
                           </div>
@@ -343,20 +345,20 @@ export default function SurveyResultsModal({
                             title={
                               <div className="flex items-center justify-between w-full pr-2">
                                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold mt-0.5">
+                                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5">
                                     {qNum}
                                   </span>
-                                  <h3 className="flex-1 min-w-0 font-semibold text-gray-900 text-base leading-snug whitespace-normal break-words pt-0.5 text-left">
+                                  <h3 className="flex-1 min-w-0 font-semibold text-gray-900 text-sm leading-snug whitespace-normal break-words pt-0.5 text-left">
                                     {q.text}
                                   </h3>
                                 </div>
                                 {q.type === "scale" && q.average != null && (
-                                  <div className="flex-shrink-0 flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 ml-4">
+                                  <div className="flex-shrink-0 flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 ml-4">
                                     <Star
                                       className="text-amber-400 fill-amber-400"
-                                      size={13}
+                                      size={11}
                                     />
-                                    <span className="text-amber-700 font-bold text-sm leading-none">
+                                    <span className="text-amber-700 font-bold text-xs leading-none">
                                       {q.average}
                                     </span>
                                   </div>
@@ -438,7 +440,7 @@ export default function SurveyResultsModal({
               )}
             </ModalBody>
 
-            <ModalFooter className="px-8 py-5 border-t border-gray-100">
+            <ModalFooter className="px-6 sm:px-8 py-5 border-t border-gray-100">
               <Button
                 className="w-full sm:w-auto px-8 bg-gray-100 text-gray-700 font-medium hover:bg-gray-200"
                 variant="flat"

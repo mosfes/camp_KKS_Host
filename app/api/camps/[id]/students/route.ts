@@ -17,6 +17,7 @@ export async function GET(
     const limit = parseInt(searchParams.get("limit") || "10");
     const search = searchParams.get("search") || "";
     const filter = searchParams.get("filter") || "all";
+    const includeSummary = searchParams.get("summary") !== "false";
 
     const params = await context.params;
     const campId = Number(params.id);
@@ -39,42 +40,27 @@ export async function GET(
       : {};
 
     // Add filter condition if applicable
-    if (filter === "allergy") {
-      const allergyCondition = {
-        AND: [
-          { food_allergy: { not: null } },
-          { food_allergy: { not: "" } },
-          { food_allergy: { not: "-" } },
-          { food_allergy: { not: "ไม่มี" } },
-        ],
-      };
+    const notSignificant = (field: string) => ({
+      AND: [
+        { [field]: { not: null } },
+        { [field]: { not: "" } },
+        { [field]: { not: "-" } },
+        { [field]: { not: "ไม่มี" } },
+      ],
+    });
 
+    if (filter === "allergy") {
+      const allergyCondition = notSignificant("food_allergy");
       studentCondition = search
         ? { AND: [studentCondition, allergyCondition] }
         : allergyCondition;
     } else if (filter === "disease") {
-      const diseaseCondition = {
-        AND: [
-          { chronic_disease: { not: null } },
-          { chronic_disease: { not: "" } },
-          { chronic_disease: { not: "-" } },
-          { chronic_disease: { not: "ไม่มี" } },
-        ],
-      };
-
+      const diseaseCondition = notSignificant("chronic_disease");
       studentCondition = search
         ? { AND: [studentCondition, diseaseCondition] }
         : diseaseCondition;
     } else if (filter === "remark") {
-      const remarkCondition = {
-        AND: [
-          { remark: { not: null } },
-          { remark: { not: "" } },
-          { remark: { not: "-" } },
-          { remark: { not: "ไม่มี" } },
-        ],
-      };
-
+      const remarkCondition = notSignificant("remark");
       studentCondition = search
         ? { AND: [studentCondition, remarkCondition] }
         : remarkCondition;
@@ -87,75 +73,91 @@ export async function GET(
         : {}),
     };
 
-    // Get total count for pagination based on search
-    const totalRows = await prisma.student_enrollment.count({
-      where: whereClause,
-    });
-
-    // Get paginated data
-    const students = await prisma.student_enrollment.findMany({
-      where: whereClause,
-      skip: (page - 1) * limit,
-      take: limit,
-      include: {
-        student: {
-          select: {
-            students_id: true,
-            prefix_name: true,
-            firstname: true,
-            lastname: true,
-            food_allergy: true,
-            chronic_disease: true,
-            remark: true,
-            tel: true,
+    // Run paginated data + count in parallel (not sequential!)
+    const [totalRows, students] = await Promise.all([
+      prisma.student_enrollment.count({ where: whereClause }),
+      prisma.student_enrollment.findMany({
+        where: whereClause,
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          student: {
+            select: {
+              students_id: true,
+              prefix_name: true,
+              firstname: true,
+              lastname: true,
+              food_allergy: true,
+              chronic_disease: true,
+              remark: true,
+              tel: true,
+            },
           },
         },
-      },
-      orderBy: {
-        student: { firstname: "asc" },
-      },
-    });
-
-    // Summary Statistics (calculated over ALL students)
-    const allEnrollments = await prisma.student_enrollment.findMany({
-      where: { camp_camp_id: campId },
-      include: {
-        student: {
-          select: {
-            students_id: true,
-            food_allergy: true,
-            chronic_disease: true,
-            remark: true,
-          },
+        orderBy: {
+          student: { firstname: "asc" },
         },
-      },
-    });
+      }),
+    ]);
 
-    const totalStudents = allEnrollments.length;
+    // Summary: use DB-level aggregation (COUNT) instead of loading all records
+    let summary = null;
+    if (includeSummary) {
+      const significantWhere = (field: string) => ({
+        camp_camp_id: campId,
+        student: notSignificant(field),
+      });
 
-    const isSignificant = (text: string | null) =>
-      text &&
-      text.trim() !== "" &&
-      text.trim() !== "-" &&
-      text.trim() !== "ไม่มี";
+      const [
+        totalStudents,
+        allergiesCount,
+        chronicDiseasesCount,
+        remarksCount,
+        allergySamples,
+        diseaseSamples,
+        remarkSamples,
+      ] = await Promise.all([
+        prisma.student_enrollment.count({ where: { camp_camp_id: campId } }),
+        prisma.student_enrollment.count({ where: significantWhere("food_allergy") }),
+        prisma.student_enrollment.count({ where: significantWhere("chronic_disease") }),
+        prisma.student_enrollment.count({ where: significantWhere("remark") }),
+        // Only fetch 5 samples for display chips — not all records!
+        prisma.student_enrollment.findMany({
+          where: significantWhere("food_allergy"),
+          take: 5,
+          select: { student: { select: { students_id: true, food_allergy: true } } },
+        }),
+        prisma.student_enrollment.findMany({
+          where: significantWhere("chronic_disease"),
+          take: 5,
+          select: { student: { select: { students_id: true, chronic_disease: true } } },
+        }),
+        prisma.student_enrollment.findMany({
+          where: significantWhere("remark"),
+          take: 5,
+          select: { student: { select: { students_id: true, remark: true } } },
+        }),
+      ]);
 
-    const allergies = allEnrollments
-      .filter((e) => isSignificant(e.student.food_allergy))
-      .map((e) => ({
-        id: e.student.students_id,
-        text: e.student.food_allergy,
-      }));
-
-    const chronicDiseases = allEnrollments
-      .filter((e) => isSignificant(e.student.chronic_disease))
-      .map((e) => ({
-        id: e.student.students_id,
-        text: e.student.chronic_disease,
-      }));
-
-    const remarks = allEnrollments
-      .filter((e) => isSignificant(e.student.remark))
-      .map((e) => ({ id: e.student.students_id, text: e.student.remark }));
+      summary = {
+        totalStudents,
+        allergiesCount,
+        chronicDiseasesCount,
+        remarksCount,
+        allergies: allergySamples.map((e) => ({
+          id: e.student.students_id,
+          text: e.student.food_allergy,
+        })),
+        chronicDiseases: diseaseSamples.map((e) => ({
+          id: e.student.students_id,
+          text: e.student.chronic_disease,
+        })),
+        remarks: remarkSamples.map((e) => ({
+          id: e.student.students_id,
+          text: e.student.remark,
+        })),
+      };
+    }
 
     return NextResponse.json(
       {
@@ -166,21 +168,17 @@ export async function GET(
           currentPage: page,
           limit,
         },
-        summary: {
-          totalStudents,
-          allergiesCount: allergies.length,
-          chronicDiseasesCount: chronicDiseases.length,
-          remarksCount: remarks.length,
-          allergies,
-          chronicDiseases,
-          remarks,
+        summary,
+      },
+      {
+        status: 200,
+        headers: {
+          // Cache summary for 30s in browser, 60s in CDN
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30",
         },
       },
-      { status: 200 },
     );
   } catch {
-    //     console.error("Error fetching students:", error);
-
     return NextResponse.json(
       { _error: "Failed to fetch student data" },
       { status: 500 },

@@ -71,8 +71,10 @@ export default function CampStudentsPage() {
   const fetchStudents = async () => {
     setLoading(true);
     try {
+      // Only fetch summary on first load — skip on pagination/filter changes
+      const needSummary = !summary;
       const res = await fetch(
-        `/api/camps/${campId}/students?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&filter=${filter}`,
+        `/api/camps/${campId}/students?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&filter=${filter}&summary=${needSummary}`,
       );
 
       if (res.ok) {
@@ -92,7 +94,7 @@ export default function CampStudentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
+    <div className="min-h-screen bg-[#f5f5f2]">
       {/* Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
@@ -124,26 +126,34 @@ export default function CampStudentsPage() {
 
         {/* Summary Cards */}
         {summary && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="text-[#6b857a]" size={24} />
-                <h3 className="font-semibold text-gray-900">นักเรียนทั้งหมด</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-8">
+            <div className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-2 md:mb-3">
+                <Users className="text-[#6b857a] w-5 h-5 md:w-6 md:h-6" />
+                <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                  นักเรียนทั้งหมด
+                </h3>
               </div>
-              <p className="text-2xl font-bold text-gray-900 mb-2">
+              <p className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
                 {summary.totalStudents}{" "}
-                <span className="text-sm font-normal text-gray-500">คน</span>
+                <span className="text-xs md:text-sm font-normal text-gray-500">
+                  คน
+                </span>
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-red-100">
-              <div className="flex items-center gap-2 mb-3">
-                <AlertCircle className="text-red-500" size={24} />
-                <h3 className="font-semibold text-gray-900">แพ้อาหาร</h3>
+            <div className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-red-100">
+              <div className="flex items-center gap-2 mb-2 md:mb-3">
+                <AlertCircle className="text-red-500 w-5 h-5 md:w-6 md:h-6" />
+                <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                  แพ้อาหาร
+                </h3>
               </div>
-              <p className="text-2xl font-bold text-gray-900 mb-2">
+              <p className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
                 {summary.allergiesCount}{" "}
-                <span className="text-sm font-normal text-gray-500">คน</span>
+                <span className="text-xs md:text-sm font-normal text-gray-500">
+                  คน
+                </span>
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {summary.allergies.slice(0, 3).map((a, i) => (
@@ -168,14 +178,18 @@ export default function CampStudentsPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center gap-2 mb-3">
-                <Activity className="text-[#6b857a]" size={24} />
-                <h3 className="font-semibold text-gray-900">โรคประจำตัว</h3>
+            <div className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-2 mb-2 md:mb-3">
+                <Activity className="text-[#6b857a] w-5 h-5 md:w-6 md:h-6" />
+                <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                  โรคประจำตัว
+                </h3>
               </div>
-              <p className="text-2xl font-bold text-gray-900 mb-2">
+              <p className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
                 {summary.chronicDiseasesCount}{" "}
-                <span className="text-sm font-normal text-gray-500">คน</span>
+                <span className="text-xs md:text-sm font-normal text-gray-500">
+                  คน
+                </span>
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {summary.chronicDiseases.slice(0, 3).map((d, i) => (
@@ -200,14 +214,18 @@ export default function CampStudentsPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100">
-              <div className="flex items-center gap-2 mb-3">
-                <FileText className="text-blue-500" size={24} />
-                <h3 className="font-semibold text-gray-900">ข้อมูลอื่นๆ</h3>
+            <div className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-blue-100">
+              <div className="flex items-center gap-2 mb-2 md:mb-3">
+                <FileText className="text-blue-500 w-5 h-5 md:w-6 md:h-6" />
+                <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                  ข้อมูลอื่นๆ
+                </h3>
               </div>
-              <p className="text-2xl font-bold text-gray-900 mb-2">
+              <p className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
                 {summary.remarksCount}{" "}
-                <span className="text-sm font-normal text-gray-500">คน</span>
+                <span className="text-xs md:text-sm font-normal text-gray-500">
+                  คน
+                </span>
               </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {summary.remarks.slice(0, 3).map((r, i) => (

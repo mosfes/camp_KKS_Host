@@ -165,6 +165,7 @@ export default function StudentProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const [apiError, setApiError] = useState("");
   const [fieldError, setFieldError] = useState<Record<string, string>>({});
 
@@ -276,6 +277,7 @@ export default function StudentProfilePage() {
       }
 
       setSuccess(true);
+      setShowToast(true);
       // Refresh profile data
       const refreshed = await fetch("/api/student/profile").then((r) =>
         r.ok ? r.json() : null,
@@ -286,6 +288,9 @@ export default function StudentProfilePage() {
         setSuccess(false);
         setEditing(false);
       }, 1500);
+      setTimeout(() => {
+        setShowToast(false);
+      }, 3000);
     } catch {
       setApiError("เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
@@ -338,6 +343,7 @@ export default function StudentProfilePage() {
   const initials = `${profile.firstname[0]}${profile.lastname[0]}`;
 
   return (
+    <>
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
@@ -593,5 +599,30 @@ export default function StudentProfilePage() {
         )}
       </div>
     </div>
+
+      {/* ── Toast Notification ── */}
+      {showToast && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#2d6a4f] text-white px-5 py-3.5 rounded-2xl shadow-2xl"
+          style={{
+            animation:
+              "slideUpFadeIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards",
+          }}
+        >
+          <CheckCircle2 size={20} className="shrink-0" />
+          <div>
+            <p className="font-semibold text-sm">แก้ไขโปรไฟล์สำเร็จแล้ว!</p>
+            <p className="text-xs opacity-80">ข้อมูลของคุณถูกบันทึกเรียบร้อย</p>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideUpFadeIn {
+          from { opacity: 0; transform: translate(-50%, 20px); }
+          to   { opacity: 1; transform: translate(-50%, 0); }
+        }
+      `}</style>
+    </>
   );
 }

@@ -13,6 +13,10 @@ const nextConfig = {
       },
     ],
   },
+  // Keep Prisma Client working in serverless environments
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client'],
+  },
 };
 
 module.exports = nextConfig;

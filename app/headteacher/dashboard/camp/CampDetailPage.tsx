@@ -115,6 +115,7 @@ export default function CampDetailPage() {
   const [isEditBaseModalOpen, setIsEditBaseModalOpen] = useState(false);
   const [selectedBase, setSelectedBase] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [navigatingToBase, setNavigatingToBase] = useState<number | null>(null);
 
   // Survey state
   const [survey, setSurvey] = useState<any>(null);
@@ -221,13 +222,17 @@ export default function CampDetailPage() {
   };
 
   const fetchCampDetail = async () => {
-    // ... existing fetch logic
     try {
       setLoading(true);
       const response = await fetch(`/api/camps/${campId}`);
-      const data = await response.json();
 
-      // ... (keep existing data processing logic) ...
+      if (!response.ok) {
+        console.error("Failed to fetch camp detail, status:", response.status);
+        setCamp(null);
+        return;
+      }
+
+      const data = await response.json();
 
       // ดึง grade_level และ plan_type จาก camp_classroom
       const gradesSet = new Set<string>();
@@ -282,12 +287,14 @@ export default function CampDetailPage() {
 
   const handleEditBase = (base: any, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (navigatingToBase !== null) return;
     setSelectedBase(base);
     setIsEditBaseModalOpen(true);
   };
 
   const handleDeleteBase = (baseId: number, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (navigatingToBase !== null) return;
 
     showConfirm(
       "ยืนยันการลบ",
@@ -462,7 +469,7 @@ export default function CampDetailPage() {
   if (loading) {
     // ... existing loading state
     return (
-      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f5f2] flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500">กำลังโหลดข้อมูลค่าย...</p>
@@ -474,7 +481,7 @@ export default function CampDetailPage() {
   if (!camp) {
     // ... existing not found state
     return (
-      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f5f2] flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 text-lg">ไม่พบข้อมูลค่าย</p>
           <Button
@@ -491,7 +498,7 @@ export default function CampDetailPage() {
   // const totalActivities = ...
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
+    <div className="min-h-screen bg-[#f5f5f2]">
       {/* Header Banner */}
       <div className="max-w-7xl mx-auto px-4 pt-4 pb-2 z-10">
         <button
@@ -587,10 +594,10 @@ export default function CampDetailPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* ... existing detailed content ... */}
         {/* Stats Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-4 mb-8">
           {/* Participants Card */}
           <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-3xl font-bold text-[#6b857a] mb-0.5">
+            <p className="text-2xl md:text-3xl font-bold text-[#6b857a] mb-0.5">
               {camp?.student_enrollment?.length ?? 0}
               <span className="text-xl text-gray-300 mx-1">/</span>
               <span className="text-xl text-gray-400">
@@ -602,8 +609,8 @@ export default function CampDetailPage() {
           </div>
 
           {/* Shirt Reservations Card */}
-          <div className="bg-[#f0f4f2] border border-[#6b857a]/10 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-3xl font-bold text-[#6b857a] mb-0.5">
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-2xl md:text-3xl font-bold text-[#6b857a] mb-0.5">
               {shirtCount ?? 0}
             </p>
             <p className="text-gray-400 text-[10px] font-medium mb-1">คน</p>
@@ -612,7 +619,7 @@ export default function CampDetailPage() {
 
           {/* Activities Card */}
           <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-3xl font-bold text-[#6b857a] mb-0.5">
+            <p className="text-2xl md:text-3xl font-bold text-[#6b857a] mb-0.5">
               {camp?.station?.length ?? 0}
             </p>
             <p className="text-gray-400 text-[10px] font-medium mb-1">ฐาน</p>
@@ -1086,8 +1093,12 @@ export default function CampDetailPage() {
               {camp.isOwner && (
                 <Button
                   className="bg-[#6b857a] text-white"
+                  isDisabled={navigatingToBase !== null}
                   startContent={<Plus size={18} />}
-                  onPress={() => setIsCreateBaseModalOpen(true)}
+                  onPress={() => {
+                    if (navigatingToBase !== null) return;
+                    setIsCreateBaseModalOpen(true);
+                  }}
                 >
                   สร้างฐานกิจกรรม
                 </Button>
@@ -1100,12 +1111,19 @@ export default function CampDetailPage() {
                   <div
                     key={station.station_id}
                     className="p-4 rounded-xl border-2 border-gray-100 hover:border-[#6b857a] hover:bg-[#6b857a]/5 transition-all cursor-pointer group"
-                    onClick={() =>
+                    onClick={() => {
+                      if (navigatingToBase !== null) return;
+                      setNavigatingToBase(station.station_id);
                       router.push(
                         `/headteacher/dashboard/camp/${campId}/base/${station.station_id}`,
-                      )
-                    }
+                      );
+                    }}
                   >
+                    {navigatingToBase === station.station_id && (
+                      <div className="absolute inset-0 flex items-center justify-center z-20 bg-white/60 rounded-xl">
+                        <div className="w-8 h-8 border-3 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
                     <div className="flex items-start justify-between mb-2">
                       <div className="p-2 bg-white rounded-lg border border-gray-100 group-hover:border-[#6b857a]/20">
                         <Target className="text-[#6b857a]" size={24} />
@@ -1116,6 +1134,7 @@ export default function CampDetailPage() {
                           <Button
                             isIconOnly
                             className="text-gray-400 hover:text-blue-500"
+                            isDisabled={navigatingToBase !== null}
                             size="sm"
                             variant="light"
                             onClick={(e) => handleEditBase(station, e)}
@@ -1125,6 +1144,7 @@ export default function CampDetailPage() {
                           <Button
                             isIconOnly
                             className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 hover:text-[#FF847C]"
+                            isDisabled={navigatingToBase !== null}
                             size="sm"
                             variant="light"
                             onClick={(e) =>

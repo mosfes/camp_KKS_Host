@@ -369,7 +369,7 @@ export default function AttendanceModal({
             </ModalHeader>
 
             {/* Body */}
-            <ModalBody className="py-6 px-6 bg-[#F5F1E8]/30">
+            <ModalBody className="py-6 px-6 bg-[#f5f5f2]/30">
               <div className="space-y-4">
                 {/* ─── QR Section ─── */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">

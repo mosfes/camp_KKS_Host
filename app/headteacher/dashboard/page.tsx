@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useSearchParams, usePathname } from "next/navigation";
 import useSWR from "swr";
 import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Button } from "@heroui/button";
-import { Tabs, Tab } from "@heroui/tabs";
 import { Select, SelectItem } from "@heroui/react";
 import { Pagination } from "@heroui/pagination";
 import {
@@ -25,6 +25,8 @@ import {
   ShieldAlert,
   Info,
   Search,
+  Sparkles,
+  Flag,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -55,7 +57,7 @@ const fetcher = (url: string) =>
     return res.json();
   });
 
-export default function StudentDashboard() {
+function DashboardContent() {
   const { showSuccess, showError, showConfirm, setIsLoading } =
     useStatusModal();
   const router = useRouter();
@@ -102,7 +104,8 @@ export default function StudentDashboard() {
   };
 
   const loading = !rawCamps || !statsData || !teacherInfo || !dbAcademicYears;
-  const [selectedTab, setSelectedTab] = useState("overview");
+  const searchParams = useSearchParams();
+  const selectedTab = searchParams.get("tab") || "camp";
   const [isSelectTypeOpen, setIsSelectTypeOpen] = useState(false);
   const [isCreateCampOpen, setIsCreateCampOpen] = useState(false);
   const [selectedProjectType, setSelectedProjectType] = useState<string | null>(
@@ -164,6 +167,15 @@ export default function StudentDashboard() {
     (homeroomPage - 1) * itemsPerPage,
     homeroomPage * itemsPerPage,
   );
+
+  const pathname = usePathname();
+
+  // Reset navigatingTo เมื่อ pathname กลับมาที่หน้า dashboard (เช่น กด Back จากหน้าค่าย)
+  useEffect(() => {
+    if (pathname === "/headteacher/dashboard") {
+      setNavigatingTo(null);
+    }
+  }, [pathname]);
 
   const goToCampDetail = (campId: number) => {
     if (navigatingTo !== null) return;
@@ -238,22 +250,7 @@ export default function StudentDashboard() {
     }
   }, [dbAcademicYears]);
 
-  useEffect(() => {
-    if (!loading && teacherInfo) {
-      const isHeadteacher =
-        teacherInfo.roles?.includes("HEADTEACHER") ||
-        teacherInfo.role === "HEADTEACHER" ||
-        teacherInfo.role === "ADMIN";
-
-      if (!isHeadteacher && selectedTab === "overview") {
-        if (homeroomData?.hasHomeroom) {
-          setSelectedTab("homeroom");
-        } else {
-          setSelectedTab("camp");
-        }
-      }
-    }
-  }, [loading, teacherInfo, homeroomData, selectedTab]);
+  // Tab is now driven by URL searchParams via sidebar navigation
 
   const openCreateCampFlow = () => {
     setIsSelectTypeOpen(true);
@@ -572,7 +569,7 @@ export default function StudentDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
+    <div className="bg-[#f5f5f2] min-h-full">
       {/* Edit-fetch loading overlay */}
       {isEditFetching && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
@@ -589,47 +586,37 @@ export default function StudentDashboard() {
         </div>
       )}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 text-[#2d3748]">
-            ยินดีต้อนรับ, ครู{teacherInfo?.firstname || "หัวหน้าค่าย"}
-            {teacherInfo?.classroomName
-              ? ` ประจำชั้น ${teacherInfo.classroomName}`
-              : ""}
-          </h1>
-          <p className="text-lg text-gray-500">
-            จัดการค่ายและติดตามการเรียนรู้ของนักเรียน
-          </p>
-        </div>
+        {/* Greeting Card (Student Style) */}
+        <div className="bg-[#5d7c6f] rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden mb-8">
+          <div className="relative z-10">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
+              สวัสดีคุณครู{teacherInfo?.firstname || "หัวหน้าค่าย"}{" "}
+              <Sparkles className="text-white" size={28} />
+            </h1>
+            <p className="opacity-90 mb-6 text-sm sm:text-base">
+              ยินดีต้อนรับเข้าสู่ระบบ KKS Camp | จัดการค่ายและติดตามการเรียนรู้ของนักเรียน
+            </p>
 
-        {/* Tabs */}
-        <div className="mb-6 w-full">
-          <Tabs
-            classNames={{
-              base: "w-full",
-              tabList:
-                "w-full bg-[#EBE7DD] rounded-full p-1 flex overflow-x-auto md:overflow-visible scrollbar-hide",
-              tab: "flex-1 px-6 py-3 whitespace-nowrap flex-shrink-0 md:flex-1 justify-center",
-              cursor: "rounded-full",
-              tabContent: "font-semibold text-center",
-            }}
-            items={[
-              ...(teacherInfo?.roles?.includes("HEADTEACHER") ||
-              teacherInfo?.role === "HEADTEACHER" ||
-              teacherInfo?.role === "ADMIN"
-                ? [{ id: "overview", label: "ภาพรวมระบบ" }]
-                : []),
-              ...(homeroomData?.hasHomeroom
-                ? [{ id: "homeroom", label: "นักเรียนประจำชั้น" }]
-                : []),
-              { id: "camp", label: "ค่ายที่เกี่ยวข้อง" },
-            ]}
-            selectedKey={selectedTab}
-            size="lg"
-            onSelectionChange={(key) => setSelectedTab(String(key))}
-          >
-            {(item) => <Tab key={item.id} title={item.label} />}
-          </Tabs>
+            <div className="flex flex-wrap gap-2">
+              {teacherInfo?.classroomName && (
+                <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium border border-white/10">
+                  <Users size={14} />
+                  <span>ประจำชั้น:</span> {teacherInfo.classroomName}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium border border-white/10">
+                <Tent size={14} />
+                <span>สถานะ:</span> {teacherInfo?.classroomName ? "ครูประจำชั้น" : "ครูทั่วไป"}
+              </span>
+              <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium border border-white/10">
+                <Calendar size={14} />
+                <span>ปีการศึกษา:</span> {new Date().getFullYear() + 543}
+              </span>
+            </div>
+          </div>
+          <div className="absolute right-[-20px] bottom-[-20px] opacity-10">
+            <Flag size={160} />
+          </div>
         </div>
 
         {/* Cards */}
@@ -708,7 +695,7 @@ export default function StudentDashboard() {
                   </div>
 
                   {/* Special Care summary box */}
-                  <div className="bg-[#F5F1E8] backdrop-blur-sm px-4 py-3 rounded-xl border border-white/10 flex items-center gap-3">
+                  <div className="bg-[#f5f5f2] backdrop-blur-sm px-4 py-3 rounded-xl border border-white/10 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
                       <HeartPulse className="text-rose-500" size={20} />
                     </div>
@@ -917,9 +904,9 @@ export default function StudentDashboard() {
             </div>
 
             {/* ===== FILTER ===== */}
-            <div className="flex flex-col sm:flex-row justify-end gap-2 w-full mt-4 sm:mt-0">
+            <div className="grid grid-cols-3 sm:flex sm:flex-row sm:justify-end gap-2 w-full mt-4 sm:mt-0">
               {/* Academic Year Filter */}
-              <div className="w-full sm:w-[180px] min-w-[180px]">
+              <div className="col-span-1 sm:w-[180px] sm:min-w-[180px]">
                 <Select
                   aria-label="Select Academic Year"
                   className="w-full"
@@ -927,12 +914,12 @@ export default function StudentDashboard() {
                     trigger:
                       "bg-white border border-gray-100 text-gray-700 font-medium",
                   }}
-                  placeholder="ปีการศึกษา: ทั้งหมด"
+                  placeholder="ปีการศึกษา"
                   selectedKeys={[campAcademicYearFilter]}
                   size="sm"
                   onChange={(e) => setCampAcademicYearFilter(e.target.value)}
                 >
-                  {[{ year: "all" }, ...dbAcademicYears].map((item) => (
+                  {[{ year: "all" }, ...(dbAcademicYears || [])].map((item) => (
                     <SelectItem
                       key={String(item.year)}
                       textValue={
@@ -942,15 +929,15 @@ export default function StudentDashboard() {
                       }
                     >
                       {item.year === "all"
-                        ? "ปีการศึกษา: ทั้งหมด"
-                        : `ปีการศึกษา: ${parseInt(item.year) + 543}`}
+                        ? "ทั้งหมด"
+                        : `${parseInt(item.year) + 543}`}
                     </SelectItem>
                   ))}
                 </Select>
               </div>
 
               {/* Status Filter */}
-              <div className="w-full sm:w-[160px] min-w-[160px]">
+              <div className="col-span-1 sm:w-[160px] sm:min-w-[160px]">
                 <Select
                   aria-label="สถานะ"
                   className="w-full"
@@ -958,7 +945,7 @@ export default function StudentDashboard() {
                     trigger:
                       "bg-white border border-gray-100 text-gray-700 font-medium",
                   }}
-                  placeholder="สถานะ: ทั้งหมด"
+                  placeholder="สถานะ"
                   selectedKeys={[campStatusFilter]}
                   size="sm"
                   onChange={(e) => setCampStatusFilter(e.target.value)}
@@ -967,19 +954,19 @@ export default function StudentDashboard() {
                     สถานะ: ทั้งหมด
                   </SelectItem>
                   <SelectItem key="กำลังจัด" textValue="สถานะ: กำลังจัด">
-                    สถานะ: กำลังจัด
+                    กำลังจัด
                   </SelectItem>
                   <SelectItem key="ยังไม่เริ่ม" textValue="สถานะ: ยังไม่เริ่ม">
-                    สถานะ: ยังไม่เริ่ม
+                    ยังไม่เริ่ม
                   </SelectItem>
                   <SelectItem key="เสร็จสิ้น" textValue="สถานะ: เสร็จสิ้น">
-                    สถานะ: เสร็จสิ้น
+                    เสร็จสิ้น
                   </SelectItem>
                 </Select>
               </div>
 
               {/* Role Filter (Dropdown) */}
-              <div className="w-full sm:w-[210px] min-w-[210px]">
+              <div className="col-span-1 sm:w-[210px] sm:min-w-[210px]">
                 <Select
                   aria-label="ประเภท"
                   className="w-full"
@@ -987,7 +974,7 @@ export default function StudentDashboard() {
                     trigger:
                       "bg-white border border-gray-100 text-gray-700 font-medium",
                   }}
-                  placeholder="ประเภท: ทั้งหมด"
+                  placeholder="ประเภท"
                   selectedKeys={[campRoleFilter]}
                   size="sm"
                   onChange={(e) => setCampRoleFilter(e.target.value)}
@@ -996,13 +983,13 @@ export default function StudentDashboard() {
                     ประเภท: ทั้งหมด
                   </SelectItem>
                   <SelectItem key="owner" textValue="ประเภท: ค่ายที่สร้าง">
-                    ประเภท: ค่ายที่สร้าง
+                    ค่ายที่สร้าง
                   </SelectItem>
                   <SelectItem
                     key="related"
                     textValue="ประเภท: ค่ายที่เกี่ยวข้อง"
                   >
-                    ประเภท: ค่ายที่เกี่ยวข้อง
+                    ค่ายที่เกี่ยวข้อง
                   </SelectItem>
                 </Select>
               </div>
@@ -1022,72 +1009,63 @@ export default function StudentDashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {filteredMyCamps.map((camp: any) => (
-                  <Card
+                  <div
                     key={camp.id}
-                    className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow bg-white relative group"
+                    className="cursor-pointer"
+                    onClick={() => goToCampDetail(camp.id)}
                   >
-                    {/* Image / SVG (hidden on mobile) */}
-                    <div
-                      className={`relative h-48 overflow-hidden hidden sm:block cursor-pointer ${navigatingTo === camp.id ? "opacity-60" : ""}`}
-                      onClick={() => goToCampDetail(camp.id)}
-                    >
-                      {navigatingTo === camp.id && (
-                        <div className="absolute inset-0 flex items-center justify-center z-20 bg-white/40">
-                          <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      )}
-                      {/* Action Buttons - เฉพาะเจ้าของค่าย */}
-                      {camp.isOwner && (
-                        <div className="absolute top-2 right-2 z-10 flex flex-col gap-2">
-                          <button
-                            className="p-2 bg-[#5d7c6f] text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#4a6358] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
-                            disabled={loading || isSubmitting}
-                            title="แก้ไขค่าย"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (loading || isSubmitting) return;
-                              // Fetch full camp detail and open modal
-                              handleEditCampClick(camp.id);
-                            }}
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            className="p-2 bg-[#E84A5F] text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#FF847C] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
-                            disabled={loading}
-                            title="ลบค่าย"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (loading) return;
-                              handleDeleteCamp(camp.id, camp.title);
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      )}
-                      {camp.image ? (
-                        <img
-                          alt={camp.title}
-                          className="w-full h-full object-cover"
-                          src={camp.image}
-                        />
-                      ) : (
-                        <DefaultCampImage />
-                      )}
-                    </div>
+                    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all bg-white relative group h-full">
+                      {/* Image */}
+                      <div
+                        className={`relative h-48 overflow-hidden ${navigatingTo === camp.id ? "opacity-60" : ""}`}
+                      >
+                        {navigatingTo === camp.id && (
+                          <div className="absolute inset-0 flex items-center justify-center z-20 bg-white/40">
+                            <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                        {camp.isOwner && (
+                          <div className="absolute top-2 right-2 z-10 flex flex-col gap-2">
+                            <button
+                              className="p-2 bg-[#5d7c6f] text-white rounded-full opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#4a6358] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                              disabled={loading || isSubmitting}
+                              title="แก้ไขค่าย"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (loading || isSubmitting) return;
+                                handleEditCampClick(camp.id);
+                              }}
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              className="p-2 bg-[#E84A5F] text-white rounded-full opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#FF847C] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                              disabled={loading}
+                              title="ลบค่าย"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (loading) return;
+                                handleDeleteCamp(camp.id, camp.title);
+                              }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        )}
+                        {camp.image ? (
+                          <img
+                            alt={camp.title}
+                            className="w-full h-full object-cover"
+                            src={camp.image}
+                          />
+                        ) : (
+                          <DefaultCampImage />
+                        )}
+                      </div>
 
-                    <CardBody className="p-6 flex flex-col">
-                      <div className="flex justify-between items-start mb-3 gap-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-bold mb-1 text-[#2d3748] leading-snug line-clamp-2">
-                            {camp.title}
-                          </h3>
-                          <p className="mb-3 text-[#718096] text-sm line-clamp-2 leading-relaxed">
-                            {camp.description}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1.5 flex-shrink-0 ml-2">
+                      <CardBody className="p-4 sm:p-6 flex flex-col">
+                        {/* Status + Owner row */}
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <Chip
                             className={`
                               ${STATUS_STYLES[camp.status]?.bg ?? "bg-gray-100"}
@@ -1100,81 +1078,88 @@ export default function StudentDashboard() {
                           </Chip>
                           {camp.isOwner ? (
                             <span
-                              className="inline-block max-w-[130px] truncate text-xs px-2 py-0.5 rounded-full bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
+                              className="inline-block max-w-[160px] truncate text-xs px-2 py-0.5 rounded-full bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
                               title={`เจ้าของค่าย: ${camp.ownerName}`}
                             >
                               เจ้าของ: {camp.ownerName}
                             </span>
                           ) : camp.ownerName ? (
                             <span
-                              className="inline-block max-w-[130px] truncate text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                              className="inline-block max-w-[160px] truncate text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
                               title={`ผู้สร้าง: ${camp.ownerName}`}
                             >
-                              ผู้สร้าง: {camp.ownerName}
+                              เจ้าของ: {camp.ownerName}
                             </span>
                           ) : null}
                         </div>
-                      </div>
+                        <div className="mb-3">
+                          <h3 className="text-base sm:text-lg font-bold mb-1 text-[#2d3748] leading-snug line-clamp-2">
+                            {camp.title}
+                          </h3>
+                          <p className="mb-1 text-[#718096] text-sm line-clamp-2 leading-relaxed">
+                            {camp.description}
+                          </p>
+                        </div>
 
-                      {/* Location */}
-                      <div className="flex items-center gap-2 mb-1.5 text-[#718096] text-sm">
-                        <MapPin className="flex-shrink-0" size={16} />
-                        <span className="truncate" title={camp.location}>
-                          {camp.location}
-                        </span>
-                      </div>
-
-                      {/* Grades */}
-                      {camp.gradeDisplay && (
-                        <div className="flex items-start gap-2 mb-2 text-[#718096] text-sm">
-                          <GraduationCap
-                            className="flex-shrink-0 mt-0.5"
-                            size={16}
-                          />
-                          <span
-                            className="line-clamp-1"
-                            title={`ระดับชั้น: ${camp.gradeDisplay}`}
-                          >
-                            ระดับชั้น: {camp.gradeDisplay}
+                        {/* Location */}
+                        <div className="flex items-center gap-2 mb-1.5 text-[#718096] text-sm">
+                          <MapPin className="flex-shrink-0" size={16} />
+                          <span className="truncate" title={camp.location}>
+                            {camp.location}
                           </span>
                         </div>
-                      )}
 
-                      {/* Date */}
-                      <div className="flex items-center gap-2 mb-3 text-[#718096] text-sm">
-                        <Calendar className="flex-shrink-0" size={16} />
-                        <span className="truncate">
-                          {camp.startDate} - {camp.endDate}
-                        </span>
-                      </div>
+                        {/* Grades */}
+                        {camp.gradeDisplay && (
+                          <div className="flex items-start gap-2 mb-2 text-[#718096] text-sm">
+                            <GraduationCap
+                              className="flex-shrink-0 mt-0.5"
+                              size={16}
+                            />
+                            <span
+                              className="line-clamp-1"
+                              title={`ระดับชั้น: ${camp.gradeDisplay}`}
+                            >
+                              ระดับชั้น: {camp.gradeDisplay}
+                            </span>
+                          </div>
+                        )}
 
-                      {/* Footer */}
-                      <div className="flex justify-between items-center pt-4 border-t border-[#e2e8f0] mt-auto">
-                        <span className="text-[#718096] text-sm">
-                          ลงทะเบียนแล้ว {camp.enrolled}/{camp.totalStudents} คน
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            className="bg-transparent text-[#5d7c6f] font-semibold hover:opacity-70"
-                            endContent={
-                              navigatingTo === camp.id ? null : (
-                                <ChevronRight size={20} />
-                              )
-                            }
-                            isDisabled={navigatingTo !== null}
-                            isLoading={navigatingTo === camp.id}
-                            onPress={() => {
-                              setEnrollmentCampId(camp.id);
-                              setEnrollmentCampName(camp.title);
-                              setIsEnrollmentModalOpen(true);
-                            }}
-                          >
-                            ดูรายละเอียด
-                          </Button>
+                        {/* Date */}
+                        <div className="flex items-center gap-2 mb-3 text-[#718096] text-sm">
+                          <Calendar className="flex-shrink-0" size={16} />
+                          <span className="truncate">
+                            {camp.startDate} - {camp.endDate}
+                          </span>
                         </div>
-                      </div>
-                    </CardBody>
-                  </Card>
+
+                        {/* Footer */}
+                        <div className="flex justify-between items-center pt-4 border-t border-[#e2e8f0] mt-auto">
+                          <span className="text-[#718096] text-sm">
+                            ลงทะเบียนแล้ว {camp.enrolled}/{camp.totalStudents} คน
+                          </span>
+                          <div
+                            className="flex items-center gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button
+                              className="bg-transparent text-[#5d7c6f] font-semibold hover:opacity-70"
+                              endContent={
+                                navigatingTo === camp.id ? null : (
+                                  <ChevronRight size={20} />
+                                )
+                              }
+                              isDisabled={navigatingTo !== null}
+                              isLoading={navigatingTo === camp.id}
+                              onPress={() => goToCampDetail(camp.id)}
+                            >
+                              ดูรายละเอียด
+                            </Button>
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  </div>
                 ))}
               </div>
             )}
@@ -1226,5 +1211,19 @@ export default function StudentDashboard() {
         onClose={() => setSelectedStudent(null)}
       />
     </div>
+  );
+}
+
+export default function StudentDashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen bg-[#f5f5f2]">
+          <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }

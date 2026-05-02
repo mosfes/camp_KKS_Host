@@ -839,7 +839,7 @@ export default function StudentStationDetailPage() {
                       return selectedMission?.mission_question?.map(
                         (q: any, idx: number) => (
                           <div key={q.question_id} className="space-y-3">
-                            <label className="block font-semibold text-gray-700">
+                            <label className="block font-semibold text-gray-700 break-words leading-relaxed">
                               {idx + 1}. {q.question_text}
                             </label>
 
@@ -893,7 +893,7 @@ export default function StudentStationDetailPage() {
                                       >
                                         {choiceLetter}
                                       </div>
-                                      <span>{c.choice_text}</span>
+                                      <span className="min-w-0 break-words">{c.choice_text}</span>
                                     </div>
                                   );
                                 })}
