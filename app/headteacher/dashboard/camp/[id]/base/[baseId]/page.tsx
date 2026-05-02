@@ -18,12 +18,13 @@ export default function BaseDetailPage() {
 
   const [base, setBase] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { showError, showSuccess, showConfirm, setIsLoading } = useStatusModal();
+  const { showError, showSuccess, showConfirm, setIsLoading } =
+    useStatusModal();
   const [isCreateMissionModalOpen, setIsCreateMissionModalOpen] =
     useState(false);
   const [isEditMissionModalOpen, setIsEditMissionModalOpen] = useState(false);
   const [selectedMission, setSelectedMission] = useState<any>(null);
-  
+
   const [isMonitorModalOpen, setIsMonitorModalOpen] = useState(false);
   const [monitorMissionData, setMonitorMissionData] = useState<any>(null);
 
@@ -160,7 +161,8 @@ export default function BaseDetailPage() {
                     <p className="text-sm text-gray-600 mb-1">
                       {mission.description}
                     </p>
-                    {(mission.type === "QUESTION_ANSWERING" || mission.type === "PHOTO_SUBMISSION") &&
+                    {(mission.type === "QUESTION_ANSWERING" ||
+                      mission.type === "PHOTO_SUBMISSION") &&
                       mission.mission_question?.[0] && (
                         <div className="mt-2 bg-[#6b857a]/5 p-2 rounded-lg border border-[#6b857a]/10">
                           <p className="text-sm text-[#6b857a] font-medium">
@@ -169,7 +171,9 @@ export default function BaseDetailPage() {
                           </p>
                         </div>
                       )}
-                    {(mission.type === "MULTIPLE_CHOICE_QUIZ" || mission.type === "PRE_TEST" || mission.type === "POST_TEST") &&
+                    {(mission.type === "MULTIPLE_CHOICE_QUIZ" ||
+                      mission.type === "PRE_TEST" ||
+                      mission.type === "POST_TEST") &&
                       mission.mission_question &&
                       mission.mission_question.length > 0 && (
                         <div className="mt-2 space-y-1">

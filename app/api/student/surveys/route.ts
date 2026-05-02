@@ -1,26 +1,31 @@
 // @ts-nocheck
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { requireStudent } from '@/lib/auth';
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/db";
+import { requireStudent } from "@/lib/auth";
 
 // GET /api/student/surveys?campId=<id> — ดึงแบบสอบถามเพื่อให้นักเรียนทำ (และเช็คว่าทำไปแล้วหรือยัง)
 export async function GET(request) {
   const { student, error } = await requireStudent();
+
   if (error) return error;
 
   try {
     const { searchParams } = new URL(request.url);
-    const campId = searchParams.get('campId');
+    const campId = searchParams.get("campId");
 
     if (!campId) {
-      return NextResponse.json({ error: 'campId is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "campId is required" },
+        { status: 400 },
+      );
     }
 
     // หาแบบสอบถามของค่ายนี้
     const survey = await prisma.survey.findUnique({
       where: { camp_camp_id: parseInt(campId) },
       include: {
-        survey_question: { orderBy: { question_id: 'asc' } },
+        survey_question: { orderBy: { question_id: "asc" } },
       },
     });
 
@@ -33,12 +38,15 @@ export async function GET(request) {
       where: {
         student_students_id: student.students_id,
         camp_camp_id: parseInt(campId),
-        enrolled_at: { not: null }
+        enrolled_at: { not: null },
       },
     });
 
     if (!enrollment) {
-      return NextResponse.json({ error: 'Student not enrolled in this camp' }, { status: 403 });
+      return NextResponse.json(
+        { error: "Student not enrolled in this camp" },
+        { status: 403 },
+      );
     }
 
     // เช็คว่าทำแบบสอบถามไปแล้วหรือยัง
@@ -55,34 +63,46 @@ export async function GET(request) {
       survey,
       isCompleted: !!response,
     });
-  } catch (error) {
-    console.error('Error fetching student survey:', error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+  } catch {
+    //     console.error("Error fetching student survey:", error);
+
+    return NextResponse.json({ _error: "Failed" }, { status: 500 });
   }
 }
 
 // POST /api/student/surveys — ส่งคำตอบแบบสอบถาม
 export async function POST(request) {
   const { student, error } = await requireStudent();
+
   if (error) return error;
 
   try {
     const body = await request.json();
-    const { surveyId, answers, campId } = body; 
+    const { surveyId, answers, campId } = body;
 
-    if (surveyId === undefined || answers === undefined || campId === undefined) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (
+      surveyId === undefined ||
+      answers === undefined ||
+      campId === undefined
+    ) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     if (!Array.isArray(answers)) {
-      return NextResponse.json({ error: 'Invalid answers format' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid answers format" },
+        { status: 400 },
+      );
     }
 
     const sId = parseInt(surveyId);
     const cId = parseInt(campId);
 
-    if (isNaN(sId) || isNaN(cId)) {
-      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+    if (isNaN(sId) || isNaN(cId)) {
+      return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
     }
 
     const enrollment = await prisma.student_enrollment.findFirst({
@@ -93,23 +113,25 @@ export async function POST(request) {
     });
 
     if (!enrollment) {
-      return NextResponse.json({ error: 'Not enrolled' }, { status: 403 });
+      return NextResponse.json({ error: "Not enrolled" }, { status: 403 });
     }
 
     // --- Vulgar Word Filter ---
     const textAnswers = answers
-      .filter((ans) => ans.textAnswer && String(ans.textAnswer).trim() !== '')
+      .filter((ans) => ans.textAnswer && String(ans.textAnswer).trim() !== "")
       .map((ans) => String(ans.textAnswer).trim());
 
     if (textAnswers.length > 0) {
       const debugVulgarWordsList = await prisma.vulgar_words.findMany();
       const vulgarList = debugVulgarWordsList
         .map((v) => v.word.toLowerCase())
-        .filter((w) => w !== '');
+        .filter((w) => w !== "");
 
       let foundVulgarInDb = null;
+
       for (const text of textAnswers) {
         const lowerText = text.toLowerCase();
+
         for (const word of vulgarList) {
           if (word && lowerText.includes(word)) {
             foundVulgarInDb = word;
@@ -119,15 +141,15 @@ export async function POST(request) {
         if (foundVulgarInDb) break;
       }
 
-      if (foundVulgarInDb) {
+      if (foundVulgarInDb) {
         return NextResponse.json(
           { error: `กรุณางดใช้คำหยาบคาย: ${foundVulgarInDb}`, success: false },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       if (process.env.GEMINI_API_KEY) {
-        const combinedText = textAnswers.join(' | ');
+        const combinedText = textAnswers.join(" | ");
         const prompt = `ประเมินว่าข้อความเหล่านี้เป็นข้อความที่เหมาะสมหรือไม่ (ตรวจสอบคำหยาบ, คำด่า, ภาษาลับ, ภาษาวิบัติที่รุนแรง, ภาษาลู เป็นต้น) 
 ทั้งภาษาไทยและอังกฤษ รวมถึงการระบุคำที่ใช้คำแสลง หรือคำที่จงใจเขียนเลี่ยง (เช่น ใช้ "I" แทน "ไอ้" หรือเขียนสลับตัวอักษร) 
 
@@ -145,44 +167,60 @@ export async function POST(request) {
           const geminiResponse = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
             {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
               }),
-            }
+            },
           );
 
           if (geminiResponse.ok) {
             const geminiData = await geminiResponse.json();
-            const textResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            
+            const textResponse =
+              geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
             const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+
             if (jsonMatch) {
               let result = JSON.parse(jsonMatch[0]);
-              
+
               // บันทึกคำที่ตรวจพบลงใน DB
               if (result.detectedWords && result.detectedWords.length > 0) {
                 result.isVulgar = true;
               }
 
-              if (result.isVulgar && result.detectedWords && result.detectedWords.length > 0) {
+              if (
+                result.isVulgar &&
+                result.detectedWords &&
+                result.detectedWords.length > 0
+              ) {
                 // ... logic to add to DB ...
                 for (const word of result.detectedWords) {
-                  const existing = await prisma.vulgar_words.findFirst({ where: { word } });
-                  if (!existing) await prisma.vulgar_words.create({ data: { word, is_ai: true } });
+                  const existing = await prisma.vulgar_words.findFirst({
+                    where: { word },
+                  });
+
+                  if (!existing)
+                    await prisma.vulgar_words.create({
+                      data: { word, is_ai: true },
+                    });
                 }
+
                 return NextResponse.json(
-                  { error: `กรุณางดใช้คำหยาบคาย: ${result.detectedWords.join(', ')}`, success: false },
-                  { status: 400 }
+                  {
+                    error: `กรุณางดใช้คำหยาบคาย: ${result.detectedWords.join(", ")}`,
+                    success: false,
+                  },
+                  { status: 400 },
                 );
               }
-            } else {
+            } else {
             }
-          } else {
+          } else {
           }
-        } catch (err) {
-          console.error('Gemini processing error:', err);
+        } catch {
+          //           console.error("Gemini processing error:", err);
         }
       }
     }
@@ -203,15 +241,20 @@ export async function POST(request) {
           },
         },
       });
+
       return response;
     });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error('Error submitting survey:', error);
-    if (error.code === 'P2002') {
-      return NextResponse.json({ error: 'คุณทำแบบสอบถามนี้ไปแล้ว' }, { status: 409 });
+    //     console.error("Error submitting survey:", error);
+    if (error.code === "P2002") {
+      return NextResponse.json(
+        { error: "คุณทำแบบสอบถามนี้ไปแล้ว" },
+        { status: 409 },
+      );
     }
-    return NextResponse.json({ error: 'Failed to submit' }, { status: 500 });
+
+    return NextResponse.json({ error: "Failed to submit" }, { status: 500 });
   }
 }

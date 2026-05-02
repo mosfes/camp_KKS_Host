@@ -8,7 +8,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Alert,
 } from "@heroui/react";
 import { ClipboardList, Star, Heading } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -49,9 +48,13 @@ export default function TakeSurveyModal({
     if (errorMsg) {
       const timer = setTimeout(() => {
         if (errorRef.current) {
-          errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          errorRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+          });
         }
       }, 100);
+
       return () => clearTimeout(timer);
     }
   }, [errorMsg]);
@@ -66,13 +69,18 @@ export default function TakeSurveyModal({
   };
 
   const handleSubmit = async () => {
-    const validQuestions = survey.survey_question.filter(q => q.question_type !== "header");
-    
+    const validQuestions = survey.survey_question.filter(
+      (q) => q.question_type !== "header",
+    );
+
     // Validate
     for (const q of validQuestions) {
       if (q.question_type === "scale" && !answers[q.question_id]) {
         toast.error("กรุณาตอบคำถามให้ครบทุกข้อ");
-        setErrorMsg("กรุณาตอบคำถามที่มีเครื่องหมาย * ให้ครบทุกข้อก่อนส่งแบบสอบถาม");
+        setErrorMsg(
+          "กรุณาตอบคำถามที่มีเครื่องหมาย * ให้ครบทุกข้อก่อนส่งแบบสอบถาม",
+        );
+
         return;
       }
     }
@@ -80,7 +88,8 @@ export default function TakeSurveyModal({
     const formattedAnswers = validQuestions.map((q) => ({
       questionId: q.question_id,
       textAnswer: q.question_type === "text" ? answers[q.question_id] : null,
-      scaleValue: q.question_type === "scale" ? Number(answers[q.question_id]) : null,
+      scaleValue:
+        q.question_type === "scale" ? Number(answers[q.question_id]) : null,
     }));
 
     try {
@@ -99,17 +108,19 @@ export default function TakeSurveyModal({
       if (!res.ok) {
         const resClone = res.clone();
         let errorMessage = "Failed to submit survey";
-        
+
         try {
           const err = await res.json();
+
           console.warn("Survey submission failed (JSON):", err);
           errorMessage = err.error || errorMessage;
         } catch (e) {
           const text = await resClone.text();
+
           console.warn("Survey submission failed (Text):", text);
           errorMessage = text.slice(0, 100) || errorMessage;
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -144,7 +155,9 @@ export default function TakeSurveyModal({
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                   <ClipboardList size={20} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">{survey.title}</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {survey.title}
+                </h2>
               </div>
               {survey.description && (
                 <p className="text-sm text-gray-500 font-normal leading-relaxed">
@@ -156,10 +169,14 @@ export default function TakeSurveyModal({
             <ModalBody className="px-8 py-4 space-y-6">
               {(() => {
                 let qNumber = 1;
+
                 return survey.survey_question.map((q) => {
                   if (q.question_type === "header") {
                     return (
-                      <div key={q.question_id} className="bg-purple-50/50 rounded-2xl p-5 border border-purple-100 mt-2">
+                      <div
+                        key={q.question_id}
+                        className="bg-purple-50/50 rounded-2xl p-5 border border-purple-100 mt-2"
+                      >
                         <div className="flex gap-3 items-center">
                           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
                             <Heading size={16} />
@@ -173,68 +190,90 @@ export default function TakeSurveyModal({
                   }
 
                   const currentIndex = qNumber++;
+
                   return (
-                    <div key={q.question_id} className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                    <div
+                      key={q.question_id}
+                      className="bg-gray-50 rounded-2xl p-5 border border-gray-100"
+                    >
                       <div className="flex gap-3 mb-4">
                         <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
                           {currentIndex}
                         </span>
                         <p className="font-medium text-gray-800 leading-relaxed pt-0.5">
-                          {q.question_text} 
+                          {q.question_text}
                           {q.question_type === "scale" ? (
                             <span className="text-red-500 ml-1">*</span>
                           ) : (
-                            <span className="text-gray-400 font-normal ml-2 text-sm">(ไม่บังคับ)</span>
+                            <span className="text-gray-400 font-normal ml-2 text-sm">
+                              (ไม่บังคับ)
+                            </span>
                           )}
                         </p>
                       </div>
 
-                  <div className="pl-9">
-                    {q.question_type === "text" ? (
-                      <textarea
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#5d7c6f] focus:border-[#5d7c6f] outline-none transition-all text-sm resize-none bg-white"
-                        placeholder="พิมพ์คำตอบของคุณที่นี่..."
-                        rows={3}
-                        value={answers[q.question_id] || ""}
-                        onChange={(e) => handleAnswerChange(q.question_id, e.target.value)}
-                      />
-                    ) : (
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
-                            const val = i + 1;
-                            const filled = Number(answers[q.question_id]) >= val;
-                            return (
-                              <button
-                                key={val}
-                                type="button"
-                                onClick={() => handleAnswerChange(q.question_id, val)}
-                                className="flex flex-col items-center gap-0.5 group focus:outline-none flex-shrink-0"
-                                aria-label={`ให้คะแนน ${val}`}
-                              >
-                                <Star
-                                  size={32}
-                                  className={`transition-all duration-150 ${
-                                    filled
-                                      ? "fill-amber-400 text-amber-400"
-                                      : "fill-none text-gray-300 group-hover:text-amber-300"
-                                  }`}
-                                />
-                                <span className={`text-[10px] font-semibold leading-none ${filled ? "text-amber-500" : "text-gray-400"}`}>
-                                  {val}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <div className="flex justify-between text-[10px] text-gray-400 mt-1" style={{ width: `${(q.scale_max || 5) * 44}px`, maxWidth: '100%' }}>
-                          <span>น้อยที่สุด</span>
-                          <span>มากที่สุด</span>
-                        </div>
+                      <div className="pl-9">
+                        {q.question_type === "text" ? (
+                          <textarea
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#5d7c6f] focus:border-[#5d7c6f] outline-none transition-all text-sm resize-none bg-white"
+                            placeholder="พิมพ์คำตอบของคุณที่นี่..."
+                            rows={3}
+                            value={answers[q.question_id] || ""}
+                            onChange={(e) =>
+                              handleAnswerChange(q.question_id, e.target.value)
+                            }
+                          />
+                        ) : (
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              {Array.from({ length: q.scale_max || 5 }).map(
+                                (_, i) => {
+                                  const val = i + 1;
+                                  const filled =
+                                    Number(answers[q.question_id]) >= val;
+
+                                  return (
+                                    <button
+                                      key={val}
+                                      aria-label={`ให้คะแนน ${val}`}
+                                      className="flex flex-col items-center gap-0.5 group focus:outline-none flex-shrink-0"
+                                      type="button"
+                                      onClick={() =>
+                                        handleAnswerChange(q.question_id, val)
+                                      }
+                                    >
+                                      <Star
+                                        className={`transition-all duration-150 ${
+                                          filled
+                                            ? "fill-amber-400 text-amber-400"
+                                            : "fill-none text-gray-300 group-hover:text-amber-300"
+                                        }`}
+                                        size={32}
+                                      />
+                                      <span
+                                        className={`text-[10px] font-semibold leading-none ${filled ? "text-amber-500" : "text-gray-400"}`}
+                                      >
+                                        {val}
+                                      </span>
+                                    </button>
+                                  );
+                                },
+                              )}
+                            </div>
+                            <div
+                              className="flex justify-between text-[10px] text-gray-400 mt-1"
+                              style={{
+                                width: `${(q.scale_max || 5) * 44}px`,
+                                maxWidth: "100%",
+                              }}
+                            >
+                              <span>น้อยที่สุด</span>
+                              <span>มากที่สุด</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
                   );
                 });
               })()}
@@ -243,24 +282,47 @@ export default function TakeSurveyModal({
                 <div ref={errorRef} className="pt-2 pb-4">
                   <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
                     <div className="mt-0.5 flex-shrink-0">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-500">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      <svg
+                        className="text-rose-500"
+                        fill="none"
+                        height="20"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                        width="20"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" x2="12" y1="8" y2="12" />
+                        <line x1="12" x2="12.01" y1="16" y2="16" />
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-sm font-bold text-rose-800 mb-1">ไม่สามารถส่งแบบสอบถามได้</h3>
-                      <p className="text-sm text-rose-600 leading-relaxed">{errorMsg}</p>
+                      <h3 className="text-sm font-bold text-rose-800 mb-1">
+                        ไม่สามารถส่งแบบสอบถามได้
+                      </h3>
+                      <p className="text-sm text-rose-600 leading-relaxed">
+                        {errorMsg}
+                      </p>
                     </div>
-                    <button 
-                      type="button" 
-                      onClick={() => setErrorMsg(null)} 
+                    <button
                       className="text-rose-400 hover:text-rose-600 transition-colors flex-shrink-0"
+                      type="button"
+                      onClick={() => setErrorMsg(null)}
                     >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      <svg
+                        fill="none"
+                        height="18"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                        width="18"
+                      >
+                        <line x1="18" x2="6" y1="6" y2="18" />
+                        <line x1="6" x2="18" y1="6" y2="18" />
                       </svg>
                     </button>
                   </div>

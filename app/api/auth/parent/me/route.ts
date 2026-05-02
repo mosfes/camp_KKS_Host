@@ -1,5 +1,7 @@
+export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+
 import { prisma } from "@/lib/db";
 
 /**
@@ -15,10 +17,13 @@ export async function GET() {
       return NextResponse.json({ error: "ไม่ได้เข้าสู่ระบบ" }, { status: 401 });
     }
 
-    const { jwtVerify } = await import('jose');
+    const { jwtVerify } = await import("jose");
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload: sessionData } = await jwtVerify(sessionCookie.value, secret);
-    const studentId = sessionData.students_id;
+    const { payload: sessionData } = await jwtVerify(
+      sessionCookie.value,
+      secret,
+    );
+    const studentId = sessionData.students_id as number;
 
     // ตรวจสอบว่ามีข้อมูลผู้ปกครองแล้วหรือยัง
     const parentRecord = await prisma.parents.findFirst({
@@ -147,7 +152,10 @@ export async function GET() {
     });
 
     if (!student) {
-      return NextResponse.json({ error: "ไม่พบข้อมูลนักเรียน" }, { status: 404 });
+      return NextResponse.json(
+        { error: "ไม่พบข้อมูลนักเรียน" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({
@@ -155,8 +163,9 @@ export async function GET() {
       hasParentProfile: !!(parentRecord && parentRecord.firstname !== "รอระบุ"),
       parentProfile: parentRecord ?? null,
     });
-  } catch (error) {
-    console.error("Parent me error:", error);
-    return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
+  } catch {
+    //     console.error("Parent me error:", error);
+
+    return NextResponse.json({ _error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
 }

@@ -1,4 +1,6 @@
+export const runtime = "nodejs";
 import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/db";
 
 /**
@@ -18,6 +20,7 @@ export async function POST(req: Request) {
     }
 
     const studentId = parseInt(username);
+
     if (isNaN(studentId)) {
       return NextResponse.json(
         { error: "รหัสนักเรียนต้องเป็นตัวเลข" },
@@ -66,7 +69,7 @@ export async function POST(req: Request) {
     if (!isValid) {
       return NextResponse.json(
         { error: "รหัสนักเรียนหรือรหัสผ่านไม่ถูกต้อง" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -142,7 +145,7 @@ export async function POST(req: Request) {
     if (!student) {
       return NextResponse.json(
         { error: "รหัสนักเรียนหรือรหัสผ่านไม่ถูกต้อง" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -176,10 +179,11 @@ export async function POST(req: Request) {
     });
 
     return response;
-  } catch (error) {
-    console.error("Parent login error:", error);
+  } catch {
+    //     console.error("Parent login error:", error);
+
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาด กรุณาลองใหม่" },
+      { _error: "เกิดข้อผิดพลาด กรุณาลองใหม่" },
       { status: 500 },
     );
   }

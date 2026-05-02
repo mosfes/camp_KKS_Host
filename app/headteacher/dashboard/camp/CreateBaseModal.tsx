@@ -34,6 +34,7 @@ export default function CreateBaseModal({
   const handleSubmit = async () => {
     if (!name.trim()) {
       showError("ข้อผิดพลาด", "กรุณากรอกชื่อฐานกิจกรรม");
+
       return;
     }
 
@@ -48,9 +49,12 @@ export default function CreateBaseModal({
       if (!response.ok) throw new Error("Failed to create base");
 
       const newBase = await response.json();
+
       showSuccess("สำเร็จ", "สร้างฐานกิจกรรมสำเร็จ");
       onClose();
-      router.push(`/headteacher/dashboard/camp/${campId}/base/${newBase.station_id}`);
+      router.push(
+        `/headteacher/dashboard/camp/${campId}/base/${newBase.station_id}`,
+      );
     } catch (error) {
       console.error("Error creating base:", error);
       showError("ข้อผิดพลาด", "สร้างฐานกิจกรรมไม่สำเร็จ");
@@ -74,8 +78,12 @@ export default function CreateBaseModal({
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
-              <h2 className="text-2xl font-bold text-gray-900">สร้างฐานกิจกรรม</h2>
-              <p className="text-sm text-gray-500 font-normal">กรอกข้อมูลฐานกิจกรรม</p>
+              <h2 className="text-2xl font-bold text-gray-900">
+                สร้างฐานกิจกรรม
+              </h2>
+              <p className="text-sm text-gray-500 font-normal">
+                กรอกข้อมูลฐานกิจกรรม
+              </p>
             </ModalHeader>
 
             <ModalBody className="py-6 space-y-4 px-6">

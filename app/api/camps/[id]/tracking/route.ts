@@ -142,11 +142,11 @@ export async function GET(request, context) {
       totalMissions,
       students: studentsProgress,
     });
-  } catch (error) {
-    console.error("Tracking API Error:", error);
+  } catch {
+    //     console.error("Tracking API Error:", error);
 
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดในการดึงข้อมูล" },
+      { _error: "เกิดข้อผิดพลาดในการดึงข้อมูล" },
       { status: 500 },
     );
   }

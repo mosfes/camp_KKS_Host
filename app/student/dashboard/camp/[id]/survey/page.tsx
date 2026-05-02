@@ -21,15 +21,19 @@ export default function StudentSurveyPage() {
   const fetchSurvey = async () => {
     try {
       const res = await fetch(`/api/student/surveys?campId=${id}`, {
-        cache: 'no-store',
+        cache: "no-store",
       });
 
       if (res.ok) {
         const data = await res.json();
+
         if (data.isCompleted) {
           setIsCompleted(true);
           toast.success("คุณทำแบบประเมินนี้ไปแล้ว");
-          setTimeout(() => router.replace(`/student/dashboard/camp/${id}/missions`), 1500);
+          setTimeout(
+            () => router.replace(`/student/dashboard/camp/${id}/missions`),
+            1500,
+          );
         } else if (!data.survey) {
           toast.error("ไม่พบแบบประเมิน");
           router.replace(`/student/dashboard/camp/${id}/missions`);
@@ -52,9 +56,9 @@ export default function StudentSurveyPage() {
   }, [id]);
 
   const handleAnswerChange = (questionId: number, value: any) => {
-    setAnswers(prev => ({
+    setAnswers((prev) => ({
       ...prev,
-      [questionId]: value
+      [questionId]: value,
     }));
   };
 
@@ -64,13 +68,16 @@ export default function StudentSurveyPage() {
     // Validate that all questions are answered (except text-based feedback)
     const unanswered = survey.survey_question.some((q: any) => {
       const ans = answers[q.question_id];
-      if (q.question_type === 'scale' && !ans) return true;
+
+      if (q.question_type === "scale" && !ans) return true;
+
       // if (q.question_type === 'text' && (!ans || ans.trim() === '')) return true; // Now optional
       return false;
     });
 
     if (unanswered) {
       toast.error("กรุณาตอบคำถามให้ครบทุกข้อ");
+
       return;
     }
 
@@ -79,8 +86,9 @@ export default function StudentSurveyPage() {
     try {
       const formattedAnswers = survey.survey_question.map((q: any) => ({
         questionId: q.question_id,
-        scaleValue: q.question_type === 'scale' ? Number(answers[q.question_id]) : null,
-        textAnswer: q.question_type === 'text' ? answers[q.question_id] : null,
+        scaleValue:
+          q.question_type === "scale" ? Number(answers[q.question_id]) : null,
+        textAnswer: q.question_type === "text" ? answers[q.question_id] : null,
       }));
 
       const res = await fetch("/api/student/surveys", {
@@ -91,7 +99,7 @@ export default function StudentSurveyPage() {
         body: JSON.stringify({
           surveyId: survey.survey_id,
           campId: id,
-          answers: formattedAnswers
+          answers: formattedAnswers,
         }),
       });
 
@@ -100,6 +108,7 @@ export default function StudentSurveyPage() {
         router.replace(`/student/dashboard/camp/${id}/missions`);
       } else {
         const errorData = await res.json();
+
         toast.error(errorData.error || "บันทึกข้อมูลล้มเหลว");
       }
     } catch (error) {
@@ -113,7 +122,7 @@ export default function StudentSurveyPage() {
   if (loading || isCompleted) {
     return (
       <div className="p-8 text-center bg-[#F5F1E8] min-h-screen flex items-center justify-center">
-        {loading ? 'กำลังโหลดแบบประเมิน...' : 'กำลังพากลับหน้าภารกิจ...'}
+        {loading ? "กำลังโหลดแบบประเมิน..." : "กำลังพากลับหน้าภารกิจ..."}
       </div>
     );
   }
@@ -128,8 +137,12 @@ export default function StudentSurveyPage() {
           <ChevronLeft className="text-gray-600" size={24} />
         </Button>
         <div>
-          <h1 className="text-lg font-bold text-[#2d3748]">แบบประเมินความพึงพอใจ</h1>
-          <p className="text-sm text-gray-500">{survey.title || 'ค่ายกิจกรรม'}</p>
+          <h1 className="text-lg font-bold text-[#2d3748]">
+            แบบประเมินความพึงพอใจ
+          </h1>
+          <p className="text-sm text-gray-500">
+            {survey.title || "ค่ายกิจกรรม"}
+          </p>
         </div>
       </div>
 
@@ -143,69 +156,89 @@ export default function StudentSurveyPage() {
             <h2 className="text-xl font-bold text-[#2d3748]">{survey.title}</h2>
           </div>
           {survey.description && (
-            <p className="text-gray-600 whitespace-pre-wrap">{survey.description}</p>
+            <p className="text-gray-600 whitespace-pre-wrap">
+              {survey.description}
+            </p>
           )}
         </div>
 
         {/* Questions List */}
         <div className="space-y-6">
           {survey.survey_question?.map((q: any, index: number) => (
-            <div key={q.question_id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div
+              key={q.question_id}
+              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+            >
               <h3 className="text-gray-800 font-medium mb-4">
                 {index + 1}. {q.question_text}
-                {q.question_type === 'text' ? (
-                  <span className="text-gray-400 font-normal ml-2 text-sm">(ไม่บังคับ)</span>
+                {q.question_type === "text" ? (
+                  <span className="text-gray-400 font-normal ml-2 text-sm">
+                    (ไม่บังคับ)
+                  </span>
                 ) : (
                   <span className="text-red-500 ml-1">*</span>
                 )}
               </h3>
 
-              {q.question_type === 'scale' && (
+              {q.question_type === "scale" && (
                 <div className="mt-2">
                   <div className="flex items-center gap-2">
                     {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
                       const value = i + 1;
                       const selected = Number(answers[q.question_id]) >= value;
+
                       return (
                         <button
                           key={value}
-                          type="button"
-                          onClick={() => handleAnswerChange(q.question_id, value.toString())}
-                          className="flex flex-col items-center gap-1 group focus:outline-none"
                           aria-label={`ให้คะแนน ${value}`}
+                          className="flex flex-col items-center gap-1 group focus:outline-none"
+                          type="button"
+                          onClick={() =>
+                            handleAnswerChange(q.question_id, value.toString())
+                          }
                         >
                           <Star
-                            size={36}
                             className={`transition-all duration-150 ${
                               selected
                                 ? "fill-amber-400 text-amber-400 scale-110"
                                 : "fill-none text-gray-300 group-hover:text-amber-300 group-hover:scale-110"
                             }`}
+                            size={36}
                           />
-                          <span className={`text-xs font-medium transition-colors ${selected ? "text-amber-500" : "text-gray-400"}`}>
+                          <span
+                            className={`text-xs font-medium transition-colors ${selected ? "text-amber-500" : "text-gray-400"}`}
+                          >
                             {value}
                           </span>
                         </button>
                       );
                     })}
                   </div>
-                  <div className="flex justify-between text-xs text-gray-400 mt-1 px-1" style={{ width: `${(q.scale_max || 5) * 52}px`, maxWidth: '100%' }}>
+                  <div
+                    className="flex justify-between text-xs text-gray-400 mt-1 px-1"
+                    style={{
+                      width: `${(q.scale_max || 5) * 52}px`,
+                      maxWidth: "100%",
+                    }}
+                  >
                     <span>น้อยที่สุด</span>
                     <span>มากที่สุด</span>
                   </div>
                 </div>
               )}
 
-              {q.question_type === 'text' && (
+              {q.question_type === "text" && (
                 <Textarea
-                  placeholder="พิมพ์คำตอบของคุณที่นี่..."
-                  value={answers[q.question_id] || ''}
-                  onValueChange={(val) => handleAnswerChange(q.question_id, val)}
-                  minRows={3}
                   classNames={{
                     input: "text-gray-700 bg-gray-50",
-                    inputWrapper: "bg-gray-50 data-[hover=true]:bg-gray-100"
+                    inputWrapper: "bg-gray-50 data-[hover=true]:bg-gray-100",
                   }}
+                  minRows={3}
+                  placeholder="พิมพ์คำตอบของคุณที่นี่..."
+                  value={answers[q.question_id] || ""}
+                  onValueChange={(val) =>
+                    handleAnswerChange(q.question_id, val)
+                  }
                 />
               )}
             </div>
@@ -216,9 +249,9 @@ export default function StudentSurveyPage() {
         <div className="pt-4 pb-8 flex justify-center">
           <Button
             className="w-full md:w-auto md:min-w-[200px] bg-[#5d7c6f] text-white py-6 shadow-md hover:bg-[#4a6358] transition-colors"
-            size="lg"
-            radius="full"
             isLoading={submitting}
+            radius="full"
+            size="lg"
             onPress={handleSubmit}
           >
             ส่งแบบประเมิน

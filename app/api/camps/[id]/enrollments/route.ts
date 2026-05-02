@@ -138,8 +138,9 @@ export async function GET(request, context) {
       enrolled,
       notEnrolled,
     });
-  } catch (error) {
-    console.error("Error fetching enrollments:", error);
-    return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
+  } catch {
+    //     console.error("Error fetching enrollments:", error);
+
+    return NextResponse.json({ _error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
 }

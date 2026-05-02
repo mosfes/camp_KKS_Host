@@ -38,11 +38,11 @@ export async function POST(req) {
     });
 
     return NextResponse.json(newYear, { status: 201 });
-  } catch (error) {
-    console.error("Error adding academic year:", error);
+  } catch {
+    //     console.error("Error adding academic year:", error);
 
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดภายในระบบ" },
+      { _error: "เกิดข้อผิดพลาดภายในระบบ" },
       { status: 500 },
     );
   }
@@ -76,11 +76,11 @@ export async function DELETE(request) {
     });
 
     return NextResponse.json({ message: "Deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting academic year:", error);
+  } catch {
+    //     console.error("Error deleting academic year:", error);
 
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดภายในระบบ" },
+      { _error: "เกิดข้อผิดพลาดภายในระบบ" },
       { status: 500 },
     );
   }

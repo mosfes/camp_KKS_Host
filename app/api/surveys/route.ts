@@ -1,37 +1,47 @@
 // @ts-nocheck
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { requireTeacher } from '@/lib/auth';
-import { z } from 'zod';
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { prisma } from "@/lib/db";
+import { requireTeacher } from "@/lib/auth";
 
 const surveySchema = z.object({
-  campId: z.union([z.string(), z.number()]).transform(v => parseInt(v.toString())),
+  campId: z
+    .union([z.string(), z.number()])
+    .transform((v) => parseInt(v.toString())),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  questions: z.array(z.object({
-    text: z.string(),
-    type: z.enum(['text', 'scale', 'header']),
-    scaleMax: z.number().optional()
-  })).optional(),
+  questions: z
+    .array(
+      z.object({
+        text: z.string(),
+        type: z.enum(["text", "scale", "header"]),
+        scaleMax: z.number().optional(),
+      }),
+    )
+    .optional(),
   saveAsTemplate: z.boolean().optional(),
-  templateTitle: z.string().optional()
+  templateTitle: z.string().optional(),
 });
 
 // GET /api/surveys?campId=<id>
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const campId = searchParams.get('campId');
+    const campId = searchParams.get("campId");
 
     if (!campId) {
-      return NextResponse.json({ error: 'campId is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "campId is required" },
+        { status: 400 },
+      );
     }
 
     const survey = await prisma.survey.findUnique({
       where: { camp_camp_id: parseInt(campId) },
       include: {
         survey_question: {
-          orderBy: { question_id: 'asc' },
+          orderBy: { question_id: "asc" },
         },
         _count: {
           select: { survey_response: true },
@@ -40,9 +50,13 @@ export async function GET(request) {
     });
 
     return NextResponse.json(survey);
-  } catch (error) {
-    console.error('Error fetching survey:', error);
-    return NextResponse.json({ error: 'Failed to fetch survey' }, { status: 500 });
+  } catch {
+    //     console.error("Error fetching survey:", error);
+
+    return NextResponse.json(
+      { _error: "Failed to fetch survey" },
+      { status: 500 },
+    );
   }
 }
 
@@ -50,29 +64,45 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const { teacher, error: authError } = await requireTeacher();
+
     if (authError) return authError;
 
     const rawBody = await request.json();
+
     rawBody.teacherId = teacher.teachers_id; // force teacher id
     const body = surveySchema.parse(rawBody);
-    const { campId, title, description, questions, saveAsTemplate, templateTitle } = body;
+    const {
+      campId,
+      title,
+      description,
+      questions,
+      saveAsTemplate,
+      templateTitle,
+    } = body;
 
     // ตรวจสอบว่าค่ายนี้มีแบบสอบถามอยู่แล้วหรือไม่ และเช็ค ownership
     const camp = await prisma.camp.findUnique({
       where: { camp_id: campId },
-      include: { survey: true }
+      include: { survey: true },
     });
 
-    if (!camp) return NextResponse.json({ error: 'Camp not found' }, { status: 404 });
-    
-    if (camp.created_by_teacher_id !== teacher.teachers_id && teacher.role !== 'ADMIN') {
-        return NextResponse.json({ error: 'Unauthorized to add survey to this camp' }, { status: 403 });
+    if (!camp)
+      return NextResponse.json({ error: "Camp not found" }, { status: 404 });
+
+    if (
+      camp.created_by_teacher_id !== teacher.teachers_id &&
+      teacher.role !== "ADMIN"
+    ) {
+      return NextResponse.json(
+        { error: "Unauthorized to add survey to this camp" },
+        { status: 403 },
+      );
     }
 
     if (camp.survey.length > 0) {
       return NextResponse.json(
-        { error: 'ค่ายนี้มีแบบสอบถามอยู่แล้ว' },
-        { status: 409 }
+        { error: "ค่ายนี้มีแบบสอบถามอยู่แล้ว" },
+        { status: 409 },
       );
     }
 
@@ -86,7 +116,7 @@ export async function POST(request) {
           create: (questions || []).map((q) => ({
             question_text: q.text,
             question_type: q.type, // 'text' | 'scale'
-            scale_max: q.type === 'scale' ? (q.scaleMax || 5) : null,
+            scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
           })),
         },
       },
@@ -106,7 +136,7 @@ export async function POST(request) {
             create: (questions || []).map((q) => ({
               question_text: q.text,
               question_type: q.type,
-              scale_max: q.type === 'scale' ? (q.scaleMax || 5) : null,
+              scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
             })),
           },
         },
@@ -114,9 +144,13 @@ export async function POST(request) {
     }
 
     return NextResponse.json(survey, { status: 201 });
-  } catch (error) {
-    console.error('Error creating survey:', error);
-    return NextResponse.json({ error: 'Failed to create survey' }, { status: 500 });
+  } catch {
+    //     console.error("Error creating survey:", error);
+
+    return NextResponse.json(
+      { _error: "Failed to create survey" },
+      { status: 500 },
+    );
   }
 }
 
@@ -124,15 +158,24 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const { teacher, error: authError } = await requireTeacher();
+
     if (authError) return authError;
 
     const { searchParams } = new URL(request.url);
-    const rawCampId = searchParams.get('campId');
+    const rawCampId = searchParams.get("campId");
     const rawBody = await request.json();
+
     rawBody.campId = rawCampId; // combine for zod
-    
+
     const body = surveySchema.parse(rawBody);
-    const { campId: campIdNum, title, description, questions, saveAsTemplate, templateTitle } = body;
+    const {
+      campId: campIdNum,
+      title,
+      description,
+      questions,
+      saveAsTemplate,
+      templateTitle,
+    } = body;
 
     // เช็คว่ามีอยู่จริงหรือไม่ และเช็ค ownership
     const existing = await prisma.survey.findUnique({
@@ -141,24 +184,30 @@ export async function PUT(request) {
     });
 
     if (!existing) {
-      return NextResponse.json({ error: 'ไม่พบแบบสอบถาม' }, { status: 404 });
+      return NextResponse.json({ error: "ไม่พบแบบสอบถาม" }, { status: 404 });
     }
-    
-    if (existing.camp.created_by_teacher_id !== teacher.teachers_id && teacher.role !== 'ADMIN') {
-        return NextResponse.json({ error: 'Unauthorized to edit this survey' }, { status: 403 });
+
+    if (
+      existing.camp.created_by_teacher_id !== teacher.teachers_id &&
+      teacher.role !== "ADMIN"
+    ) {
+      return NextResponse.json(
+        { error: "Unauthorized to edit this survey" },
+        { status: 403 },
+      );
     }
 
     // อัปเดตข้อมูล survey และ questions (ลบของเก่าทิ้ง สร้างใหม่)
     const updatedSurvey = await prisma.$transaction(async (tx) => {
       // ลบข้อมูลที่ผูกอยู่ก่อน (responses, answers, suggestions) เพื่อไม่ให้ติด Foreign Key
       await tx.suggestion_analysis_summary.deleteMany({
-        where: { survey_response: { survey_survey_id: existing.survey_id } }
+        where: { survey_response: { survey_survey_id: existing.survey_id } },
       });
       await tx.survey_answer.deleteMany({
-        where: { survey_response: { survey_survey_id: existing.survey_id } }
+        where: { survey_response: { survey_survey_id: existing.survey_id } },
       });
       await tx.survey_response.deleteMany({
-        where: { survey_survey_id: existing.survey_id }
+        where: { survey_survey_id: existing.survey_id },
       });
 
       // 1. ลบคำถามเก่า
@@ -176,7 +225,7 @@ export async function PUT(request) {
             create: (questions || []).map((q) => ({
               question_text: q.text,
               question_type: q.type,
-              scale_max: q.type === 'scale' ? (q.scaleMax || 5) : null,
+              scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
             })),
           },
         },
@@ -197,7 +246,7 @@ export async function PUT(request) {
             create: (questions || []).map((q) => ({
               question_text: q.text,
               question_type: q.type,
-              scale_max: q.type === 'scale' ? (q.scaleMax || 5) : null,
+              scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
             })),
           },
         },
@@ -205,9 +254,13 @@ export async function PUT(request) {
     }
 
     return NextResponse.json(updatedSurvey, { status: 200 });
-  } catch (error) {
-    console.error('Error updating survey:', error);
-    return NextResponse.json({ error: 'Failed to update survey' }, { status: 500 });
+  } catch {
+    //     console.error("Error updating survey:", error);
+
+    return NextResponse.json(
+      { _error: "Failed to update survey" },
+      { status: 500 },
+    );
   }
 }
 
@@ -215,33 +268,48 @@ export async function PUT(request) {
 export async function DELETE(request) {
   try {
     const { teacher, error: authError } = await requireTeacher();
+
     if (authError) return authError;
 
     const { searchParams } = new URL(request.url);
-    const campId = searchParams.get('campId');
+    const campId = searchParams.get("campId");
 
     if (!campId) {
-      return NextResponse.json({ error: 'campId is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "campId is required" },
+        { status: 400 },
+      );
     }
-    
+
     const existing = await prisma.survey.findUnique({
       where: { camp_camp_id: parseInt(campId) },
-      include: { camp: true }
+      include: { camp: true },
     });
-    
-    if (!existing) return NextResponse.json({ error: 'Survey not found' }, { status: 404 });
-    
-    if (existing.camp.created_by_teacher_id !== teacher.teachers_id && teacher.role !== 'ADMIN') {
-        return NextResponse.json({ error: 'Unauthorized to delete this survey' }, { status: 403 });
+
+    if (!existing)
+      return NextResponse.json({ error: "Survey not found" }, { status: 404 });
+
+    if (
+      existing.camp.created_by_teacher_id !== teacher.teachers_id &&
+      teacher.role !== "ADMIN"
+    ) {
+      return NextResponse.json(
+        { error: "Unauthorized to delete this survey" },
+        { status: 403 },
+      );
     }
 
     await prisma.survey.delete({
       where: { camp_camp_id: parseInt(campId) },
     });
 
-    return NextResponse.json({ message: 'Survey deleted' });
-  } catch (error) {
-    console.error('Error deleting survey:', error);
-    return NextResponse.json({ error: 'Failed to delete survey' }, { status: 500 });
+    return NextResponse.json({ message: "Survey deleted" });
+  } catch {
+    //     console.error("Error deleting survey:", error);
+
+    return NextResponse.json(
+      { _error: "Failed to delete survey" },
+      { status: 500 },
+    );
   }
 }

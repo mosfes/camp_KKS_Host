@@ -70,8 +70,10 @@ export default function SurveyResultsModal({
       setErrorMsg(null);
       setAiSummary(null);
       const res = await fetch(`/api/surveys/results?campId=${campId}`);
+
       if (!res.ok) throw new Error("Failed to fetch results");
       const json = await res.json();
+
       setData(json.survey === null ? null : json);
     } catch (err: any) {
       setErrorMsg(err.message || "ไม่สามารถดึงข้อมูลผลแบบประเมินได้");
@@ -88,11 +90,14 @@ export default function SurveyResultsModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campId }),
       });
+
       if (!res.ok) {
         const errorData = await res.json();
+
         throw new Error(errorData.error || "เกิดข้อผิดพลาดในการสรุปผล");
       }
       const result = await res.json();
+
       if (result.error) throw new Error(result.error);
       setAiSummary(result);
       toast.success("สรุปผลด้วย AI สำเร็จแล้ว");
@@ -109,9 +114,9 @@ export default function SurveyResultsModal({
   const campAverage =
     scaleQuestions.length > 0
       ? (
-        scaleQuestions.reduce((sum, q) => sum + (q.average || 0), 0) /
-        scaleQuestions.length
-      ).toFixed(2)
+          scaleQuestions.reduce((sum, q) => sum + (q.average || 0), 0) /
+          scaleQuestions.length
+        ).toFixed(2)
       : null;
 
   return (
@@ -147,10 +152,10 @@ export default function SurveyResultsModal({
               {data && data.totalResponses > 0 && !aiSummary && (
                 <div className="absolute right-8 top-8">
                   <Button
-                    variant="flat"
                     className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium transition-colors"
-                    startContent={<Sparkles size={16} />}
                     isLoading={isAiLoading}
+                    startContent={<Sparkles size={16} />}
+                    variant="flat"
                     onPress={fetchAiSummary}
                   >
                     สรุปผลด้วย AI
@@ -195,12 +200,12 @@ export default function SurveyResultsModal({
                                 <span className="text-emerald-500">•</span>
                                 <span className="leading-relaxed">{item}</span>
                               </li>
-                            )
+                            ),
                           ) || (
-                              <li className="text-sm text-gray-400 italic">
-                                ไม่มีข้อมูล
-                              </li>
-                            )}
+                            <li className="text-sm text-gray-400 italic">
+                              ไม่มีข้อมูล
+                            </li>
+                          )}
                         </ul>
                       </div>
                       <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
@@ -217,12 +222,12 @@ export default function SurveyResultsModal({
                                 <span className="text-amber-500">•</span>
                                 <span className="leading-relaxed">{item}</span>
                               </li>
-                            )
+                            ),
                           ) || (
-                              <li className="text-sm text-gray-400 italic">
-                                ไม่มีข้อมูล
-                              </li>
-                            )}
+                            <li className="text-sm text-gray-400 italic">
+                              ไม่มีข้อมูล
+                            </li>
+                          )}
                         </ul>
                       </div>
                     </div>
@@ -241,10 +246,7 @@ export default function SurveyResultsModal({
                 </div>
               ) : !data ? (
                 <div className="text-center py-12 bg-gray-50 rounded-2xl border border-gray-100">
-                  <FileText
-                    className="mx-auto text-gray-300 mb-2"
-                    size={32}
-                  />
+                  <FileText className="mx-auto text-gray-300 mb-2" size={32} />
                   <p className="text-gray-500 font-medium">
                     ยังไม่มีแบบประเมิน
                   </p>
@@ -254,10 +256,7 @@ export default function SurveyResultsModal({
                 </div>
               ) : data.totalResponses === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-2xl border border-gray-100">
-                  <FileText
-                    className="mx-auto text-gray-300 mb-2"
-                    size={32}
-                  />
+                  <FileText className="mx-auto text-gray-300 mb-2" size={32} />
                   <p className="text-gray-500 font-medium">
                     ยังไม่มีผู้ตอบแบบประเมิน
                   </p>
@@ -297,6 +296,7 @@ export default function SurveyResultsModal({
 
                   {(() => {
                     let qNum = 0;
+
                     return data.questions.map((q) => {
                       if (q.type === "header") {
                         return (
@@ -317,9 +317,9 @@ export default function SurveyResultsModal({
                       return (
                         <Accordion
                           key={q.id}
-                          variant="splitted"
                           className="px-0"
                           selectionMode="multiple"
+                          variant="splitted"
                         >
                           <AccordionItem
                             key={q.id}
@@ -331,8 +331,13 @@ export default function SurveyResultsModal({
                               content: "pt-0 pb-5 px-5",
                             }}
                             indicator={({ isOpen }) => (
-                              <div className={`p-1 rounded-full transition-colors ${isOpen ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}`}>
-                                <ChevronDown size={18} className={`transition-transform duration-0 ${isOpen ? 'rotate-270' : ''}`} />
+                              <div
+                                className={`p-1 rounded-full transition-colors ${isOpen ? "bg-indigo-100 text-indigo-600" : "bg-gray-100 text-gray-400"}`}
+                              >
+                                <ChevronDown
+                                  className={`transition-transform duration-0 ${isOpen ? "rotate-270" : ""}`}
+                                  size={18}
+                                />
                               </div>
                             )}
                             title={
@@ -347,7 +352,10 @@ export default function SurveyResultsModal({
                                 </div>
                                 {q.type === "scale" && q.average != null && (
                                   <div className="flex-shrink-0 flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 ml-4">
-                                    <Star className="text-amber-400 fill-amber-400" size={13} />
+                                    <Star
+                                      className="text-amber-400 fill-amber-400"
+                                      size={13}
+                                    />
                                     <span className="text-amber-700 font-bold text-sm leading-none">
                                       {q.average}
                                     </span>
@@ -365,6 +373,7 @@ export default function SurveyResultsModal({
                                   const count = q.distribution![star] || 0;
                                   const percentage =
                                     q.total > 0 ? (count / q.total) * 100 : 0;
+
                                   return (
                                     <div
                                       key={star}
@@ -373,8 +382,8 @@ export default function SurveyResultsModal({
                                       <span className="w-7 text-xs font-medium text-gray-500 flex items-center gap-1 flex-shrink-0">
                                         {star}{" "}
                                         <Star
-                                          size={10}
                                           className="text-gray-400 fill-gray-400"
+                                          size={10}
                                         />
                                       </span>
                                       <Progress

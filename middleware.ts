@@ -12,7 +12,7 @@ const isProtectedApiRoute = createRouteMatcher([
   "/api/upload(.*)",
   "/api/classrooms(.*)",
   "/api/vulgar-words(.*)",
-  "/api/camps(.*)"
+  "/api/camps(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -33,17 +33,19 @@ export default clerkMiddleware(async (auth, req) => {
 
   if (teacherCookie) {
     try {
-      const { jwtVerify } = await import('jose');
+      const { jwtVerify } = await import("jose");
       const secret = new TextEncoder().encode(process.env.JWT_SECRET);
       const { payload } = await jwtVerify(teacherCookie, secret);
+
       role = (payload.role as string)?.toLowerCase() || "teacher";
     } catch (e) {
       console.error("Failed to verify teacher_session cookie", e);
     }
   } else if (studentCookie) {
     try {
-      const { jwtVerify } = await import('jose');
+      const { jwtVerify } = await import("jose");
       const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+
       await jwtVerify(studentCookie, secret);
       role = "student";
     } catch (e) {
@@ -51,8 +53,9 @@ export default clerkMiddleware(async (auth, req) => {
     }
   } else if (parentCookie) {
     try {
-      const { jwtVerify } = await import('jose');
+      const { jwtVerify } = await import("jose");
       const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+
       await jwtVerify(parentCookie, secret);
       role = "parent";
     } catch (e) {
@@ -61,7 +64,9 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (!role && authObject.userId) {
-    role = ((authObject.sessionClaims?.metadata as any)?.role as string | undefined)?.toLowerCase();
+    role = (
+      (authObject.sessionClaims?.metadata as any)?.role as string | undefined
+    )?.toLowerCase();
   }
 
   // API Route Protection
@@ -74,7 +79,9 @@ export default clerkMiddleware(async (auth, req) => {
   if (authObject.userId) {
     if (isAdminRoute(req) && role !== "admin") {
       if (role === "teacher") {
-        return NextResponse.redirect(new URL("/headteacher/dashboard", req.url));
+        return NextResponse.redirect(
+          new URL("/headteacher/dashboard", req.url),
+        );
       } else {
         return NextResponse.redirect(new URL("/student/dashboard", req.url));
       }

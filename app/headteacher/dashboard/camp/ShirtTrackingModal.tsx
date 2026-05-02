@@ -65,6 +65,7 @@ export default function ShirtTrackingModal({
       setLoading(true);
       setData(null);
       const res = await fetch(`/api/camps/${campId}/shirts`);
+
       if (res.ok) {
         setData(await res.json());
       }
@@ -76,7 +77,7 @@ export default function ShirtTrackingModal({
   };
 
   const filteredStudents = data?.students.filter((student) =>
-    student.name.toLowerCase().includes(searchQuery.toLowerCase())
+    student.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const pages = Math.ceil((filteredStudents?.length || 0) / ITEMS_PER_PAGE);
@@ -84,6 +85,7 @@ export default function ShirtTrackingModal({
   const paginatedStudents = useMemo(() => {
     const start = (page - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
+
     return filteredStudents?.slice(start, end);
   }, [page, filteredStudents]);
 
@@ -129,20 +131,27 @@ export default function ShirtTrackingModal({
               ) : data && !data.hasShirt ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500">
                   <Shirt className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="font-medium text-lg text-gray-700">ค่ายนี้ไม่ได้เปิดให้จองเสื้อ</p>
-                  <p className="text-sm mt-1">คุณสามารถเปิดการจองเสื้อได้ในหน้าแก้ไขข้อมูลค่าย</p>
+                  <p className="font-medium text-lg text-gray-700">
+                    ค่ายนี้ไม่ได้เปิดให้จองเสื้อ
+                  </p>
+                  <p className="text-sm mt-1">
+                    คุณสามารถเปิดการจองเสื้อได้ในหน้าแก้ไขข้อมูลค่าย
+                  </p>
                 </div>
               ) : data ? (
                 <div className="space-y-6">
                   {/* Summary Section */}
                   <div className="bg-[#f0f4f2]/50 rounded-2xl p-5 border border-[#d1e0d9]">
                     <h3 className="text-sm font-semibold text-[#5d7c6f] mb-3 flex items-center gap-2">
-                      <Shirt size={16} /> สรุปยอดจองเสื้อ (รวม {data.totalShirts} ตัว)
+                      <Shirt size={16} /> สรุปยอดจองเสื้อ (รวม{" "}
+                      {data.totalShirts} ตัว)
                     </h3>
-                    
+
                     {data.totalShirts === 0 ? (
                       <div className="bg-white border border-[#d1e0d9] p-4 rounded-xl text-center">
-                        <p className="text-sm font-medium text-gray-600">ยังไม่มีผู้จองเสื้อ</p>
+                        <p className="text-sm font-medium text-gray-600">
+                          ยังไม่มีผู้จองเสื้อ
+                        </p>
                         {data.totalStudents > 0 && (
                           <p className="text-xs text-gray-400 mt-1">
                             (รอนักเรียนระบุไซส์ {data.totalStudents} คน)
@@ -155,13 +164,19 @@ export default function ShirtTrackingModal({
                           <div
                             key={size}
                             className={`bg-white border px-4 py-2 rounded-xl flex items-center justify-between min-w-[100px] ${
-                              size === "รอระบุไซส์" ? "border-gray-200" : "border-[#d1e0d9]"
+                              size === "รอระบุไซส์"
+                                ? "border-gray-200"
+                                : "border-[#d1e0d9]"
                             }`}
                           >
-                            <span className={`font-medium ${size === "รอระบุไซส์" ? "text-gray-500" : "text-gray-700"}`}>
+                            <span
+                              className={`font-medium ${size === "รอระบุไซส์" ? "text-gray-500" : "text-gray-700"}`}
+                            >
                               {size}
                             </span>
-                            <span className={`font-bold ml-3 ${size === "รอระบุไซส์" ? "text-gray-600" : "text-[#6b857a]"}`}>
+                            <span
+                              className={`font-bold ml-3 ${size === "รอระบุไซส์" ? "text-gray-600" : "text-[#6b857a]"}`}
+                            >
                               {count}
                             </span>
                           </div>
@@ -224,7 +239,7 @@ export default function ShirtTrackingModal({
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Pagination */}
                   {pages > 1 && (
                     <div className="flex justify-center mt-4 pb-2">

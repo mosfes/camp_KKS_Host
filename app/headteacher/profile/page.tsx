@@ -3,8 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertCircle, CheckCircle2, Phone, Pencil, Save, X,
-  User, ChevronLeft, GraduationCap, Mail, Shield,
+  AlertCircle,
+  CheckCircle2,
+  Phone,
+  Pencil,
+  Save,
+  X,
+  User,
+  ChevronLeft,
+  Mail,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -32,6 +39,7 @@ const displayVal = (v: string | null | undefined) =>
 const roleLabel = (role: string) => {
   if (role === "ADMIN") return "ผู้ดูแลระบบ";
   if (role === "CAMP_LEADER") return "หัวหน้าค่าย";
+
   return "ครูประจำชั้น";
 };
 
@@ -48,27 +56,41 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
 );
 
 const FieldInput = ({
-  label, value, onChange, placeholder, error, icon,
+  label,
+  value,
+  onChange,
+  placeholder,
+  error,
+  icon,
 }: {
-  label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; error?: string; icon?: React.ReactNode;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  error?: string;
+  icon?: React.ReactNode;
 }) => (
   <div>
-    <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
+    <label className="block text-xs font-semibold text-gray-600 mb-1">
+      {label}
+    </label>
     <div className="relative">
       {icon && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          {icon}
+        </span>
       )}
       <input
+        className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-xl border text-sm text-gray-700 outline-none transition-all
+          ${
+            error
+              ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+              : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
+          }`}
+        placeholder={placeholder}
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-xl border text-sm text-gray-700 outline-none transition-all
-          ${error
-            ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-            : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
-          }`}
       />
     </div>
     {error && (
@@ -80,9 +102,13 @@ const FieldInput = ({
 );
 
 const SectionCard = ({
-  icon, title, children,
+  icon,
+  title,
+  children,
 }: {
-  icon: React.ReactNode; title: string; children: React.ReactNode;
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
 }) => (
   <div className="bg-white rounded-2xl shadow-sm p-5">
     <div className="flex items-center gap-2 mb-4">
@@ -133,16 +159,19 @@ export default function TeacherProfilePage() {
 
   const validate = () => {
     const errors: Record<string, string> = {};
+
     if (!form.firstname.trim()) errors.firstname = "กรุณากรอกชื่อ";
     if (!form.lastname.trim()) errors.lastname = "กรุณากรอกนามสกุล";
     if (form.tel.trim() && form.tel.replace(/\D/g, "").length !== 10)
       errors.tel = "เบอร์โทรต้องเป็น 10 หลัก";
+
     return errors;
   };
 
   const handleSave = async () => {
     setApiError("");
     const errors = validate();
+
     setFieldError(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -154,12 +183,23 @@ export default function TeacherProfilePage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) { setApiError(data.error ?? "เกิดข้อผิดพลาด"); return; }
+
+      if (!res.ok) {
+        setApiError(data.error ?? "เกิดข้อผิดพลาด");
+
+        return;
+      }
 
       setSuccess(true);
-      const refreshed = await fetch("/api/teacher/profile").then((r) => r.ok ? r.json() : null);
+      const refreshed = await fetch("/api/teacher/profile").then((r) =>
+        r.ok ? r.json() : null,
+      );
+
       if (refreshed) setProfile(refreshed);
-      setTimeout(() => { setSuccess(false); setEditing(false); }, 1500);
+      setTimeout(() => {
+        setSuccess(false);
+        setEditing(false);
+      }, 1500);
     } catch {
       setApiError("เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
@@ -180,32 +220,33 @@ export default function TeacherProfilePage() {
     setEditing(false);
   };
 
-  if (loading) return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
+  if (loading)
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
 
-  if (!profile) return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <p className="text-gray-400">ไม่พบข้อมูลโปรไฟล์</p>
-    </div>
-  );
+  if (!profile)
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <p className="text-gray-400">ไม่พบข้อมูลโปรไฟล์</p>
+      </div>
+    );
 
   const displayName = `${profile.prefix_name ?? ""}${profile.firstname} ${profile.lastname}`;
   const initials = `${profile.firstname[0]}${profile.lastname[0]}`;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
-
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => router.back()}
           className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
+          onClick={() => router.back()}
         >
           <ChevronLeft size={20} />
         </button>
@@ -225,7 +266,9 @@ export default function TeacherProfilePage() {
             <p className="font-bold text-lg">{displayName}</p>
             <p className="text-sm opacity-80">{profile.email}</p>
             <div className="mt-1.5">
-              <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${roleBadgeClass(profile.role)} opacity-90`}>
+              <span
+                className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${roleBadgeClass(profile.role)} opacity-90`}
+              >
                 {roleLabel(profile.role)}
               </span>
             </div>
@@ -257,23 +300,23 @@ export default function TeacherProfilePage() {
           <div className="space-y-3">
             <FieldInput
               label="คำนำหน้า"
+              placeholder="เช่น นาย, นาง, นางสาว, ครู"
               value={form.prefix_name}
               onChange={(v) => setForm((f) => ({ ...f, prefix_name: v }))}
-              placeholder="เช่น นาย, นาง, นางสาว, ครู"
             />
             <FieldInput
+              error={fieldError.firstname}
               label="ชื่อ *"
+              placeholder="ชื่อจริง"
               value={form.firstname}
               onChange={(v) => setForm((f) => ({ ...f, firstname: v }))}
-              placeholder="ชื่อจริง"
-              error={fieldError.firstname}
             />
             <FieldInput
+              error={fieldError.lastname}
               label="นามสกุล *"
+              placeholder="นามสกุล"
               value={form.lastname}
               onChange={(v) => setForm((f) => ({ ...f, lastname: v }))}
-              placeholder="นามสกุล"
-              error={fieldError.lastname}
             />
           </div>
         ) : (
@@ -289,12 +332,12 @@ export default function TeacherProfilePage() {
       <SectionCard icon={<Phone size={16} />} title="ข้อมูลติดต่อ">
         {editing ? (
           <FieldInput
-            label="เบอร์โทรศัพท์"
-            value={form.tel}
-            onChange={(v) => setForm((f) => ({ ...f, tel: v }))}
-            placeholder="0xxxxxxxxx"
             error={fieldError.tel}
             icon={<Phone size={14} />}
+            label="เบอร์โทรศัพท์"
+            placeholder="0xxxxxxxxx"
+            value={form.tel}
+            onChange={(v) => setForm((f) => ({ ...f, tel: v }))}
           />
         ) : (
           <InfoRow label="เบอร์โทรศัพท์" value={displayVal(profile.tel)} />
@@ -306,13 +349,17 @@ export default function TeacherProfilePage() {
         <InfoRow label="อีเมล" value={profile.email} />
         <div className="py-3 border-b border-gray-100 last:border-0">
           <p className="text-xs text-gray-400 mb-1">สิทธิ์การใช้งาน</p>
-          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${roleBadgeClass(profile.role)}`}>
+          <span
+            className={`text-xs px-2.5 py-1 rounded-full font-medium ${roleBadgeClass(profile.role)}`}
+          >
             {roleLabel(profile.role)}
           </span>
         </div>
         <div className="py-3">
           <p className="text-xs text-gray-400 mb-0.5">รหัสครู</p>
-          <p className="text-sm font-medium text-gray-800">{profile.teachers_id}</p>
+          <p className="text-sm font-medium text-gray-800">
+            {profile.teachers_id}
+          </p>
         </div>
       </SectionCard>
 
@@ -321,28 +368,33 @@ export default function TeacherProfilePage() {
         {editing ? (
           <div className="flex gap-3">
             <button
-              onClick={handleCancelEdit}
-              disabled={saving}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border border-gray-200 bg-white text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+              disabled={saving}
+              onClick={handleCancelEdit}
             >
               <X size={16} /> ยกเลิก
             </button>
             <button
-              onClick={handleSave}
-              disabled={saving}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#5d7c6f] text-white font-semibold text-sm hover:bg-[#4a6659] transition-colors disabled:opacity-60 shadow-md"
+              disabled={saving}
+              onClick={handleSave}
             >
               {saving ? (
-                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> กำลังบันทึก...</>
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
+                  กำลังบันทึก...
+                </>
               ) : (
-                <><Save size={16} /> บันทึกข้อมูล</>
+                <>
+                  <Save size={16} /> บันทึกข้อมูล
+                </>
               )}
             </button>
           </div>
         ) : (
           <button
-            onClick={() => setEditing(true)}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[#5d7c6f] text-white font-semibold text-sm hover:bg-[#4a6659] transition-colors shadow-md"
+            onClick={() => setEditing(true)}
           >
             <Pencil size={16} /> แก้ไขข้อมูล
           </button>

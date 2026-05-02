@@ -1,5 +1,7 @@
+export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+
 import { prisma } from "@/lib/db";
 
 /**
@@ -15,10 +17,13 @@ export async function GET() {
       return NextResponse.json({ error: "ไม่ได้เข้าสู่ระบบ" }, { status: 401 });
     }
 
-    const { jwtVerify } = await import('jose');
+    const { jwtVerify } = await import("jose");
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload: sessionData } = await jwtVerify(sessionCookie.value, secret);
-    const studentId = sessionData.students_id;
+    const { payload: sessionData } = await jwtVerify(
+      sessionCookie.value,
+      secret,
+    );
+    const studentId = sessionData.students_id as number;
 
     // 1. Find classrooms for the student
     const classrooms = await prisma.classrooms.findMany({
@@ -80,7 +85,7 @@ export async function GET() {
     const parentCamps = camps.map((camp) => {
       const enrollments = camp.student_enrollment;
       const myEnrollment = enrollments.find(
-        (e) => e.student_students_id === studentId
+        (e) => e.student_students_id === studentId,
       );
 
       const isRegistered = !!myEnrollment?.enrolled_at;
@@ -88,16 +93,14 @@ export async function GET() {
 
       const totalCapacity = camp.camp_classroom.reduce(
         (sum, cc) => sum + (cc.classroom?._count?.classroom_students || 0),
-        0
+        0,
       );
       const totalEnrolled = enrollments.filter((e) => e.enrolled_at).length;
 
       // Count missions
       const totalMissions =
-        camp.station?.reduce(
-          (acc, s) => acc + (s.mission?.length || 0),
-          0
-        ) || 0;
+        camp.station?.reduce((acc, s) => acc + (s.mission?.length || 0), 0) ||
+        0;
 
       return {
         id: camp.camp_id,
@@ -124,11 +127,12 @@ export async function GET() {
     });
 
     return NextResponse.json(parentCamps);
-  } catch (error) {
-    console.error("Parent camps error:", error);
+  } catch {
+    //     console.error("Parent camps error:", error);
+
     return NextResponse.json(
-      { error: "Failed to fetch camps" },
-      { status: 500 }
+      { _error: "Failed to fetch camps" },
+      { status: 500 },
     );
   }
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Progress } from "@heroui/progress";
-import { ChevronLeft, ChevronRight, Target, ClipboardList } from "lucide-react";
+import { ChevronLeft, ChevronRight, Target } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 // Helper to calculate progress
@@ -39,11 +39,11 @@ export default function StudentMissionsPage() {
   const fetchCamp = async () => {
     try {
       const res = await fetch("/api/student/camps", {
-        cache: 'no-store',
+        cache: "no-store",
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
       });
 
       if (res.ok) {
@@ -54,12 +54,14 @@ export default function StudentMissionsPage() {
           if (!found.isRegistered) {
             toast.error("กรุณาลงทะเบียนเข้าร่วมค่ายก่อนเข้าถึงหน้าภารกิจ");
             router.replace(`/student/dashboard/camp/${id}`);
+
             return;
           }
           // ตรวจสอบว่าค่ายเริ่มแล้วหรือยัง
           if (found.rawStartDate && new Date() < new Date(found.rawStartDate)) {
             toast.error("ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
             router.replace(`/student/dashboard/camp/${id}`);
+
             return;
           }
           setCamp(found);
@@ -106,6 +108,7 @@ export default function StudentMissionsPage() {
             r.mission_mission_id === m.mission_id && r.status === "completed",
         ),
       ).length;
+
       return acc + completed;
     }, 0) || 0;
   const overallProgress =
@@ -167,15 +170,15 @@ export default function StudentMissionsPage() {
             const progress =
               stationMissions.length > 0
                 ? Math.round(
-                  (completedInStation / stationMissions.length) * 100,
-                )
+                    (completedInStation / stationMissions.length) * 100,
+                  )
                 : 0;
             const completed = completedInStation;
 
             return (
               <div
                 key={station.station_id}
-                className={`bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-[#5d7c6f] transition-all cursor-pointer group relative ${navigatingTo === station.station_id ? 'opacity-60 pointer-events-none' : ''}`}
+                className={`bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-[#5d7c6f] transition-all cursor-pointer group relative ${navigatingTo === station.station_id ? "opacity-60 pointer-events-none" : ""}`}
                 onClick={() => goToStation(station.station_id)}
               >
                 {navigatingTo === station.station_id && (

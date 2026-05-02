@@ -1,135 +1,152 @@
 // @ts-nocheck
 import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
 
 /** แปลง Date (UTC จาก DB) → ISO string +07:00 สำหรับแสดงผล */
 const toThaiISOString = (date) => {
-    if (!date) return null;
-    const d = new Date(date);
-    const offset = 7 * 60; // +07:00 in minutes
-    const localMs = d.getTime() + offset * 60 * 1000;
-    const local = new Date(localMs);
-    return local.toISOString().replace('Z', '+07:00');
+  if (!date) return null;
+  const d = new Date(date);
+  const offset = 7 * 60; // +07:00 in minutes
+  const localMs = d.getTime() + offset * 60 * 1000;
+  const local = new Date(localMs);
+
+  return local.toISOString().replace("Z", "+07:00");
 };
 
 /** คืนค่า Date ปัจจุบันในโซนเวลาไทย (+07:00) */
 const thaiNow = () => new Date(Date.now() + 7 * 60 * 60 * 1000);
 
-
 /**
- * 
+ *
  * POST - สร้างค่ายใหม่ พร้อม enroll students และ teachers จาก classrooms (รองรับหลายห้อง)
  */
 export async function POST(req) {
-    // ตรวจสอบ session
-    const { teacher, error: authError } = await requireTeacher();
-    if (authError) return authError;
+  // ตรวจสอบ session
+  const { teacher, error: authError } = await requireTeacher();
 
-    try {
-        const body = await req.json();
+  if (authError) return authError;
 
-        // Validation
-        if (!body.name || !body.location) {
-            return NextResponse.json({ error: "กรุณากรอกชื่อค่ายและสถานที่" }, { status: 400 });
-        }
+  try {
+    const body = await req.json();
 
-        if (!body.classroom_ids || !Array.isArray(body.classroom_ids) || body.classroom_ids.length === 0) {
-            return NextResponse.json({ error: "กรุณาเลือกห้องเรียนอย่างน้อย 1 ห้อง" }, { status: 400 });
-        }
-
-        // สร้าง camp
-        const newCamp = await prisma.camp.create({
-            data: {
-                name: body.name,
-                location: body.location,
-                start_date: new Date(body.campStartDate),
-                end_date: new Date(body.campEndDate),
-                start_regis_date: new Date(body.registrationStartDate),
-                end_regis_date: new Date(body.registrationEndDate),
-                description: body.description || "",
-                has_shirt: body.hasShirt || false,
-                start_shirt_date: body.hasShirt && body.shirtStartDate
-                    ? new Date(body.shirtStartDate)
-                    : thaiNow(),
-                end_shirt_date: body.hasShirt && body.shirtEndDate
-                    ? new Date(body.shirtEndDate)
-                    : thaiNow(),
-                status: "OPEN",
-                img_camp_url: body.img_camp_url || "",
-                img_shirt_url: body.img_shirt_url || "",
-                created_by_teacher_id: teacher.teachers_id,
-                camp_daily_schedule: {
-                    create: body.dailySchedule.map(day => ({
-                        day: day.day,
-                        time_slots: {
-                            create: day.timeSlots.map(slot => ({
-                                startTime: slot.startTime,
-                                endTime: slot.endTime,
-                                activity: slot.activity
-                            }))
-                        }
-                    }))
-                }
-            },
-        });
-
-        // เชื่อมค่ายกับห้องเรียนทั้งหมด (Batch Operation)
-        const campClassroomData = body.classroom_ids.map(classroomId => ({
-            camp_camp_id: newCamp.camp_id,
-            classroom_classroom_id: classroomId,
-        }));
-        await prisma.camp_classroom.createMany({ data: campClassroomData });
-
-        // ดึงครูทั้งหมดที่อยู่ในห้องเรียนที่ถูกเลือก (Batch Query)
-        const classroomTeachers = await prisma.classroom_teacher.findMany({
-            where: { classroom_classroom_id: { in: body.classroom_ids } },
-            select: { teacher_teachers_id: true }
-        });
-
-        // กรอง ID ครูซ้ำ (ในกรณีที่ครู 1 คนเป็นที่ปรึกษาหลายห้อง)
-        const uniqueTeacherIds = Array.from(new Set(classroomTeachers.map(ct => ct.teacher_teachers_id)));
-
-        // Enroll teachers รวดเดียว (Batch Insert)
-        if (uniqueTeacherIds.length > 0) {
-            const teacherEnrollmentData = uniqueTeacherIds.map(tid => ({
-                teacher_teachers_id: tid,
-                camp_camp_id: newCamp.camp_id,
-            }));
-
-            await prisma.teacher_enrollment.createMany({
-                data: teacherEnrollmentData,
-                skipDuplicates: true
-            });
-        }
-
-
-        // ถ้ามีการบันทึกเป็น template
-        if (body.saveAsTemplate && body.templateName) {
-            await prisma.camp_template.create({
-                data: {
-                    name: body.templateName,
-                    camp_camp_id: newCamp.camp_id,
-                },
-            });
-        }
-
-        return NextResponse.json(
-            {
-                message: "สร้างค่ายสำเร็จ",
-                camp: newCamp
-            },
-            { status: 201 }
-        );
-    } catch (error) {
-        console.error("Error creating camp:", error);
-        return NextResponse.json(
-            {
-                error: "สร้างค่ายไม่สำเร็จ"
-            },
-            { status: 500 }
-        );
+    // Validation
+    if (!body.name || !body.location) {
+      return NextResponse.json(
+        { error: "กรุณากรอกชื่อค่ายและสถานที่" },
+        { status: 400 },
+      );
     }
+
+    if (
+      !body.classroom_ids ||
+      !Array.isArray(body.classroom_ids) ||
+      body.classroom_ids.length === 0
+    ) {
+      return NextResponse.json(
+        { error: "กรุณาเลือกห้องเรียนอย่างน้อย 1 ห้อง" },
+        { status: 400 },
+      );
+    }
+
+    // สร้าง camp
+    const newCamp = await prisma.camp.create({
+      data: {
+        name: body.name,
+        location: body.location,
+        start_date: new Date(body.campStartDate),
+        end_date: new Date(body.campEndDate),
+        start_regis_date: new Date(body.registrationStartDate),
+        end_regis_date: new Date(body.registrationEndDate),
+        description: body.description || "",
+        has_shirt: body.hasShirt || false,
+        start_shirt_date:
+          body.hasShirt && body.shirtStartDate
+            ? new Date(body.shirtStartDate)
+            : thaiNow(),
+        end_shirt_date:
+          body.hasShirt && body.shirtEndDate
+            ? new Date(body.shirtEndDate)
+            : thaiNow(),
+        status: "OPEN",
+        img_camp_url: body.img_camp_url || "",
+        img_shirt_url: body.img_shirt_url || "",
+        created_by_teacher_id: teacher.teachers_id,
+        camp_daily_schedule: {
+          create: body.dailySchedule.map((day) => ({
+            day: day.day,
+            time_slots: {
+              create: day.timeSlots.map((slot) => ({
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                activity: slot.activity,
+              })),
+            },
+          })),
+        },
+      },
+    });
+
+    // เชื่อมค่ายกับห้องเรียนทั้งหมด (Batch Operation)
+    const campClassroomData = body.classroom_ids.map((classroomId) => ({
+      camp_camp_id: newCamp.camp_id,
+      classroom_classroom_id: classroomId,
+    }));
+
+    await prisma.camp_classroom.createMany({ data: campClassroomData });
+
+    // ดึงครูทั้งหมดที่อยู่ในห้องเรียนที่ถูกเลือก (Batch Query)
+    const classroomTeachers = await prisma.classroom_teacher.findMany({
+      where: { classroom_classroom_id: { in: body.classroom_ids } },
+      select: { teacher_teachers_id: true },
+    });
+
+    // กรอง ID ครูซ้ำ (ในกรณีที่ครู 1 คนเป็นที่ปรึกษาหลายห้อง)
+    const uniqueTeacherIds = Array.from(
+      new Set(classroomTeachers.map((ct) => ct.teacher_teachers_id)),
+    );
+
+    // Enroll teachers รวดเดียว (Batch Insert)
+    if (uniqueTeacherIds.length > 0) {
+      const teacherEnrollmentData = uniqueTeacherIds.map((tid) => ({
+        teacher_teachers_id: tid,
+        camp_camp_id: newCamp.camp_id,
+      }));
+
+      await prisma.teacher_enrollment.createMany({
+        data: teacherEnrollmentData,
+        skipDuplicates: true,
+      });
+    }
+
+    // ถ้ามีการบันทึกเป็น template
+    if (body.saveAsTemplate && body.templateName) {
+      await prisma.camp_template.create({
+        data: {
+          name: body.templateName,
+          camp_camp_id: newCamp.camp_id,
+        },
+      });
+    }
+
+    return NextResponse.json(
+      {
+        message: "สร้างค่ายสำเร็จ",
+        camp: newCamp,
+      },
+      { status: 201 },
+    );
+  } catch {
+    //     console.error("Error creating camp:", error);
+
+    return NextResponse.json(
+      {
+        _error: "สร้างค่ายไม่สำเร็จ",
+      },
+      { status: 500 },
+    );
+  }
 }
 
 /**
@@ -138,175 +155,189 @@ export async function POST(req) {
  *   - ครูที่เกี่ยวข้อง (teacher_enrollment) → isOwner: false
  */
 export async function GET(request) {
-    const { teacher, error: authError } = await requireTeacher();
-    if (authError) return authError;
+  const { teacher, error: authError } = await requireTeacher();
 
-    try {
-        const { searchParams } = new URL(request.url);
-        const year = searchParams.get('year');
+  if (authError) return authError;
 
-        let dateFilter = {};
-        if (year) {
-            dateFilter.start_date = {
-                gte: new Date(`${year}-01-01T00:00:00.000Z`),
-                lte: new Date(`${year}-12-31T23:59:59.999Z`),
-            };
-        }
+  try {
+    const { searchParams } = new URL(request.url);
+    const year = searchParams.get("year");
 
-        const isAdmin = teacher.role === 'ADMIN';
-        const isCampLeader = teacher.role === 'CAMP_LEADER';
+    let dateFilter = {};
 
-        let whereCondition = {
-            deletedAt: null,
-            ...dateFilter,
-        };
-
-        if (!isAdmin) {
-            const orConditions = [
-                // ผู้สร้างค่าย (ทุก role)
-                { created_by_teacher_id: teacher.teachers_id },
-                // ครูประจำชั้นคนที่ 1 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
-                {
-                    camp_classroom: {
-                        some: {
-                            classroom: {
-                                teachers_teachers_id: teacher.teachers_id
-                            }
-                        }
-                    }
-                },
-                // ครูประจำชั้นคนที่ 2 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
-                {
-                    camp_classroom: {
-                        some: {
-                            classroom: {
-                                classroom_teacher: {
-                                    some: { teacher_teachers_id: teacher.teachers_id }
-                                }
-                            }
-                        }
-                    }
-                },
-            ];
-
-            // เพิ่ม teacher_enrollment เฉพาะ TEACHER role (ไม่ใช่ CAMP_LEADER)
-            if (!isCampLeader) {
-                orConditions.splice(1, 0, {
-                    teacher_enrollment: {
-                        some: { teacher_teachers_id: teacher.teachers_id }
-                    }
-                });
-            }
-
-            whereCondition.OR = orConditions;
-        }
-
-        let camps = await prisma.camp.findMany({
-            where: whereCondition,
-            include: {
-                created_by: {
-                    select: { firstname: true, lastname: true },
-                },
-                _count: {
-                    select: {
-                        student_enrollment: true,
-                        teacher_enrollment: true,
-                    },
-                },
-                camp_classroom: {
-                    include: {
-                        classroom: {
-                            include: {
-                                _count: { select: { classroom_students: true } },
-                                academic_years: true,
-                                classroom_types: true,
-                                teacher: {
-                                    select: { firstname: true, lastname: true },
-                                },
-                                classroom_teacher: {
-                                    include: {
-                                        teacher: {
-                                            select: { firstname: true, lastname: true }
-                                        }
-                                    }
-                                }
-                            },
-                        },
-                    },
-                },
-                teacher_enrollment: true,
-            },
-            orderBy: { camp_id: "desc" },
-        });
-
-
-        const dateFields = [
-            'start_date', 'end_date',
-            'start_regis_date', 'end_regis_date',
-            'start_shirt_date', 'end_shirt_date',
-        ];
-        const campsWithMeta = camps.map(camp => {
-            const updated = { ...camp };
-            for (const f of dateFields) {
-                if (updated[f]) updated[f] = toThaiISOString(updated[f]);
-            }
-            updated.isOwner = camp.created_by_teacher_id === teacher.teachers_id;
-
-            // Extract Grades, Types, and Academic Year
-            const typeMap = new Map();
-            const allGrades = new Set();
-            let campAcademicYear = "";
-
-            if (camp.camp_classroom) {
-                camp.camp_classroom.forEach(cc => {
-                    if (cc.classroom) {
-                        if (!campAcademicYear && cc.classroom.academic_years) {
-                            campAcademicYear = cc.classroom.academic_years.year.toString();
-                        }
-                        const g = cc.classroom.grade;
-                        const typeName = cc.classroom.classroom_types?.name || cc.classroom.type_classroom;
-                        if (g) {
-                            const gradeStr = g.replace('Level_', 'ม.');
-                            allGrades.add(gradeStr);
-
-                            if (typeName) {
-                                if (!typeMap.has(typeName)) {
-                                    typeMap.set(typeName, new Set());
-                                }
-                                typeMap.get(typeName).add(gradeStr);
-                            }
-                        }
-                    }
-                });
-            }
-
-            const sortedGrades = Array.from(allGrades).sort((a, b) => a.localeCompare(b));
-            updated.grades = sortedGrades;
-            updated.academicYear = campAcademicYear;
-
-            updated.gradeDisplay = Array.from(typeMap.entries())
-                .sort((a, b) => a[0].toString().localeCompare(b[0].toString()))
-                .map(([type, typeGrades]) => {
-                    const sortedTypeGrades = Array.from(typeGrades).sort((a, b) => a.localeCompare(b));
-                    return `${type}(${sortedTypeGrades.join(', ')})`;
-                })
-                .join(' ');
-
-            return updated;
-        });
-
-        return NextResponse.json(campsWithMeta, {
-            status: 200,
-            headers: {
-                'Cache-Control': 'no-store, max-age=0'
-            }
-        });
-    } catch (error) {
-        console.error("API_GET_CAMPS_ERROR:", error);
-        return NextResponse.json(
-            { error: "ไม่สามารถดึงข้อมูลค่ายได้" },
-            { status: 500 }
-        );
+    if (year) {
+      dateFilter.start_date = {
+        gte: new Date(`${year}-01-01T00:00:00.000Z`),
+        lte: new Date(`${year}-12-31T23:59:59.999Z`),
+      };
     }
-}
 
+    const isAdmin = teacher.role === "ADMIN";
+    const isCampLeader = teacher.role === "CAMP_LEADER";
+
+    let whereCondition = {
+      deletedAt: null,
+      ...dateFilter,
+    };
+
+    if (!isAdmin) {
+      const orConditions = [
+        // ผู้สร้างค่าย (ทุก role)
+        { created_by_teacher_id: teacher.teachers_id },
+        // ครูประจำชั้นคนที่ 1 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
+        {
+          camp_classroom: {
+            some: {
+              classroom: {
+                teachers_teachers_id: teacher.teachers_id,
+              },
+            },
+          },
+        },
+        // ครูประจำชั้นคนที่ 2 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
+        {
+          camp_classroom: {
+            some: {
+              classroom: {
+                classroom_teacher: {
+                  some: { teacher_teachers_id: teacher.teachers_id },
+                },
+              },
+            },
+          },
+        },
+      ];
+
+      // เพิ่ม teacher_enrollment เฉพาะ TEACHER role (ไม่ใช่ CAMP_LEADER)
+      if (!isCampLeader) {
+        orConditions.splice(1, 0, {
+          teacher_enrollment: {
+            some: { teacher_teachers_id: teacher.teachers_id },
+          },
+        });
+      }
+
+      whereCondition.OR = orConditions;
+    }
+
+    let camps = await prisma.camp.findMany({
+      where: whereCondition,
+      include: {
+        created_by: {
+          select: { firstname: true, lastname: true },
+        },
+        _count: {
+          select: {
+            student_enrollment: true,
+            teacher_enrollment: true,
+          },
+        },
+        camp_classroom: {
+          include: {
+            classroom: {
+              include: {
+                _count: { select: { classroom_students: true } },
+                academic_years: true,
+                classroom_types: true,
+                teacher: {
+                  select: { firstname: true, lastname: true },
+                },
+                classroom_teacher: {
+                  include: {
+                    teacher: {
+                      select: { firstname: true, lastname: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        teacher_enrollment: true,
+      },
+      orderBy: { camp_id: "desc" },
+    });
+
+    const dateFields = [
+      "start_date",
+      "end_date",
+      "start_regis_date",
+      "end_regis_date",
+      "start_shirt_date",
+      "end_shirt_date",
+    ];
+    const campsWithMeta = camps.map((camp) => {
+      const updated = { ...camp };
+
+      for (const f of dateFields) {
+        if (updated[f]) updated[f] = toThaiISOString(updated[f]);
+      }
+      updated.isOwner = camp.created_by_teacher_id === teacher.teachers_id;
+
+      // Extract Grades, Types, and Academic Year
+      const typeMap = new Map();
+      const allGrades = new Set();
+      let campAcademicYear = "";
+
+      if (camp.camp_classroom) {
+        camp.camp_classroom.forEach((cc) => {
+          if (cc.classroom) {
+            if (!campAcademicYear && cc.classroom.academic_years) {
+              campAcademicYear = cc.classroom.academic_years.year.toString();
+            }
+            const g = cc.classroom.grade;
+            const typeName =
+              cc.classroom.classroom_types?.name || cc.classroom.type_classroom;
+
+            if (g) {
+              const gradeStr = g.replace("Level_", "ม.");
+
+              allGrades.add(gradeStr);
+
+              if (typeName) {
+                if (!typeMap.has(typeName)) {
+                  typeMap.set(typeName, new Set());
+                }
+                typeMap.get(typeName).add(gradeStr);
+              }
+            }
+          }
+        });
+      }
+
+      const sortedGrades = Array.from(allGrades).sort((a, b) =>
+        a.localeCompare(b),
+      );
+
+      updated.grades = sortedGrades;
+      updated.academicYear = campAcademicYear;
+
+      updated.gradeDisplay = Array.from(typeMap.entries())
+        .sort((a, b) => a[0].toString().localeCompare(b[0].toString()))
+        .map(([type, typeGrades]) => {
+          const sortedTypeGrades = Array.from(typeGrades).sort((a, b) =>
+            a.localeCompare(b),
+          );
+
+          return `${type}(${sortedTypeGrades.join(", ")})`;
+        })
+        .join(" ");
+
+      return updated;
+    });
+
+    return NextResponse.json(campsWithMeta, {
+      status: 200,
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+      },
+    });
+  } catch {
+    //     console.error("API_GET_CAMPS_ERROR:", error);
+
+    return NextResponse.json(
+      { _error: "ไม่สามารถดึงข้อมูลค่ายได้" },
+      { status: 500 },
+    );
+  }
+}

@@ -29,7 +29,8 @@ const MISSION_TYPES = [
   { key: "QR_CODE_SCANNING", label: "สแกน QR Code" },
 ];
 
-const inputCls = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors text-sm";
+const inputCls =
+  "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors text-sm";
 
 export default function CreateMissionModal({
   isOpen,
@@ -44,66 +45,126 @@ export default function CreateMissionModal({
   const [description, setDescription] = useState("");
   const [textQuestions, setTextQuestions] = useState([{ text: "" }]);
   const [mcqQuestions, setMcqQuestions] = useState([
-    { text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] },
+    {
+      text: "",
+      choices: [
+        { text: "", isCorrect: false },
+        { text: "", isCorrect: false },
+      ],
+    },
   ]);
   const [loading, setLoading] = useState(false);
 
   // MCQ Handlers
   const addMcqQuestion = () =>
-    setMcqQuestions([...mcqQuestions, { text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] }]);
+    setMcqQuestions([
+      ...mcqQuestions,
+      {
+        text: "",
+        choices: [
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false },
+        ],
+      },
+    ]);
 
   const removeMcqQuestion = (i: number) => {
     if (mcqQuestions.length <= 1) return;
     setMcqQuestions(mcqQuestions.filter((_, idx) => idx !== i));
   };
 
-  const addTextQuestion = () => setTextQuestions([...textQuestions, { text: "" }]);
+  const addTextQuestion = () =>
+    setTextQuestions([...textQuestions, { text: "" }]);
   const removeTextQuestion = (i: number) => {
     if (textQuestions.length <= 1) return;
     setTextQuestions(textQuestions.filter((_, idx) => idx !== i));
   };
   const updateTextQ = (i: number, val: string) => {
-    const q = [...textQuestions]; q[i].text = val; setTextQuestions(q);
+    const q = [...textQuestions];
+
+    q[i].text = val;
+    setTextQuestions(q);
   };
 
   const updateQText = (qi: number, text: string) => {
-    const q = [...mcqQuestions]; q[qi].text = text; setMcqQuestions(q);
+    const q = [...mcqQuestions];
+
+    q[qi].text = text;
+    setMcqQuestions(q);
   };
 
   const addChoice = (qi: number) => {
-    const q = [...mcqQuestions]; q[qi].choices.push({ text: "", isCorrect: false }); setMcqQuestions(q);
+    const q = [...mcqQuestions];
+
+    q[qi].choices.push({ text: "", isCorrect: false });
+    setMcqQuestions(q);
   };
 
   const removeChoice = (qi: number, ci: number) => {
     const q = [...mcqQuestions];
+
     if (q[qi].choices.length <= 2) return;
     q[qi].choices = q[qi].choices.filter((_, i) => i !== ci);
     setMcqQuestions(q);
   };
 
   const updateChoiceText = (qi: number, ci: number, text: string) => {
-    const q = [...mcqQuestions]; q[qi].choices[ci].text = text; setMcqQuestions(q);
+    const q = [...mcqQuestions];
+
+    q[qi].choices[ci].text = text;
+    setMcqQuestions(q);
   };
 
   const setCorrect = (qi: number, ci: number) => {
     const q = [...mcqQuestions];
-    q[qi].choices = q[qi].choices.map((c, i) => ({ ...c, isCorrect: i === ci }));
+
+    q[qi].choices = q[qi].choices.map((c, i) => ({
+      ...c,
+      isCorrect: i === ci,
+    }));
     setMcqQuestions(q);
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) { showError("ข้อผิดพลาด", "กรุณากรอกชื่อภารกิจ"); return; }
+    if (!title.trim()) {
+      showError("ข้อผิดพลาด", "กรุณากรอกชื่อภารกิจ");
+
+      return;
+    }
 
     if (type === "MULTIPLE_CHOICE_QUIZ" || type === "PRE_TEST") {
       for (let i = 0; i < mcqQuestions.length; i++) {
         const q = mcqQuestions[i];
-        if (!q.text.trim()) { showError("ข้อผิดพลาด", `คำถามที่ ${i + 1} ยังว่างอยู่`); return; }
-        if (q.choices.some((c) => !c.text.trim())) { showError("ข้อผิดพลาด", `กรุณากรอกตัวเลือกในคำถามที่ ${i + 1} ให้ครบ`); return; }
-        if (!q.choices.some((c) => c.isCorrect)) { showError("ข้อผิดพลาด", `กรุณาเลือกคำตอบที่ถูกต้องสำหรับคำถามที่ ${i + 1}`); return; }
+
+        if (!q.text.trim()) {
+          showError("ข้อผิดพลาด", `คำถามที่ ${i + 1} ยังว่างอยู่`);
+
+          return;
+        }
+        if (q.choices.some((c) => !c.text.trim())) {
+          showError(
+            "ข้อผิดพลาด",
+            `กรุณากรอกตัวเลือกในคำถามที่ ${i + 1} ให้ครบ`,
+          );
+
+          return;
+        }
+        if (!q.choices.some((c) => c.isCorrect)) {
+          showError(
+            "ข้อผิดพลาด",
+            `กรุณาเลือกคำตอบที่ถูกต้องสำหรับคำถามที่ ${i + 1}`,
+          );
+
+          return;
+        }
       }
     } else if (type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION") {
       for (let i = 0; i < textQuestions.length; i++) {
-        if (!textQuestions[i].text.trim()) { showError("ข้อผิดพลาด", `คำถามที่ ${i + 1} ยังว่างอยู่`); return; }
+        if (!textQuestions[i].text.trim()) {
+          showError("ข้อผิดพลาด", `คำถามที่ ${i + 1} ยังว่างอยู่`);
+
+          return;
+        }
       }
     }
     // QR_CODE_SCANNING: no questions needed
@@ -114,18 +175,36 @@ export default function CreateMissionModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title, type, description,
-          questions: (type === "MULTIPLE_CHOICE_QUIZ" || type === "PRE_TEST") ? mcqQuestions
-            : (type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION") ? textQuestions
-            : undefined,
+          title,
+          type,
+          description,
+          questions:
+            type === "MULTIPLE_CHOICE_QUIZ" || type === "PRE_TEST"
+              ? mcqQuestions
+              : type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION"
+                ? textQuestions
+                : undefined,
           stationId: baseId,
         }),
       });
+
       if (!res.ok) throw new Error();
       showSuccess("สำเร็จ", "สร้างภารกิจสำเร็จ");
-      onClose(); onMissionCreated();
-      setTitle(""); setType("QUESTION_ANSWERING"); setDescription(""); setTextQuestions([{ text: "" }]);
-      setMcqQuestions([{ text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }] }]);
+      onClose();
+      onMissionCreated();
+      setTitle("");
+      setType("QUESTION_ANSWERING");
+      setDescription("");
+      setTextQuestions([{ text: "" }]);
+      setMcqQuestions([
+        {
+          text: "",
+          choices: [
+            { text: "", isCorrect: false },
+            { text: "", isCorrect: false },
+          ],
+        },
+      ]);
     } catch {
       showError("ข้อผิดพลาด", "สร้างภารกิจไม่สำเร็จ");
     } finally {
@@ -150,7 +229,9 @@ export default function CreateMissionModal({
           <>
             <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
               <h2 className="text-2xl font-bold text-gray-900">สร้างภารกิจ</h2>
-              <p className="text-sm text-gray-500 font-normal">ตั้งค่าภารกิจใหม่สำหรับนักเรียน</p>
+              <p className="text-sm text-gray-500 font-normal">
+                ตั้งค่าภารกิจใหม่สำหรับนักเรียน
+              </p>
             </ModalHeader>
 
             <ModalBody className="py-6 space-y-5 px-6">
@@ -159,33 +240,55 @@ export default function CreateMissionModal({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   ชื่อภารกิจ <span className="text-red-500">*</span>
                 </label>
-                <input className={inputCls} placeholder="เช่น ถ่ายรูปสัตว์ป่า" value={title} onChange={(e) => setTitle(e.target.value)} />
+                <input
+                  className={inputCls}
+                  placeholder="เช่น ถ่ายรูปสัตว์ป่า"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
               </div>
 
               {/* ประเภทภารกิจ */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ประเภทภารกิจ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ประเภทภารกิจ
+                </label>
                 <select
                   className={inputCls}
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                 >
-                  {MISSION_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                  {MISSION_TYPES.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               {/* รายละเอียด */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด</label>
-                <textarea className={`${inputCls} resize-none`} placeholder="อธิบายภารกิจนี้โดยย่อ" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  รายละเอียด
+                </label>
+                <textarea
+                  className={`${inputCls} resize-none`}
+                  placeholder="อธิบายภารกิจนี้โดยย่อ"
+                  rows={2}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
               </div>
 
               {/* ตอบคำถาม / ส่งรูปภาพ */}
-              {(type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION") && (
+              {(type === "QUESTION_ANSWERING" ||
+                type === "PHOTO_SUBMISSION") && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-5 bg-[#6b857a] rounded-full" />
-                    <label className="text-sm font-semibold text-gray-700">คำถาม</label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      คำถาม
+                    </label>
                   </div>
                   {textQuestions.map((q, i) => (
                     <div key={i} className="flex gap-2 group">
@@ -224,15 +327,30 @@ export default function CreateMissionModal({
                 <div className="p-4 bg-[#6b857a]/5 border border-[#6b857a]/20 rounded-xl">
                   <div className="flex items-start gap-3">
                     <div className="p-2 bg-[#6b857a]/10 rounded-lg text-[#6b857a] shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
-                        <path d="M14 14h3v3m0 0h3m-3 0v3"/>
+                      <svg
+                        fill="none"
+                        height="20"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        viewBox="0 0 24 24"
+                        width="20"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <rect height="7" rx="1" width="7" x="3" y="3" />
+                        <rect height="7" rx="1" width="7" x="14" y="3" />
+                        <rect height="7" rx="1" width="7" x="3" y="14" />
+                        <path d="M14 14h3v3m0 0h3m-3 0v3" />
                       </svg>
                     </div>
                     <div>
-                      <p className="font-semibold text-[#6b857a] text-sm mb-1">ภารกิจสแกน QR Code</p>
+                      <p className="font-semibold text-[#6b857a] text-sm mb-1">
+                        ภารกิจสแกน QR Code
+                      </p>
                       <p className="text-xs text-gray-600 leading-relaxed">
-                        ระบบจะสร้าง QR Code ให้อัตโนมัติ ครูสามารถแสดง QR Code ได้จากหน้า &ldquo;ดูคำตอบนักเรียน&rdquo; นักเรียนเพียงแสกน QR Code ด้วยกล้องมือถือเพื่อบันทึกการผ่านภารกิจ
+                        ระบบจะสร้าง QR Code ให้อัตโนมัติ ครูสามารถแสดง QR Code
+                        ได้จากหน้า &ldquo;ดูคำตอบนักเรียน&rdquo;
+                        นักเรียนเพียงแสกน QR Code
+                        ด้วยกล้องมือถือเพื่อบันทึกการผ่านภารกิจ
                       </p>
                     </div>
                   </div>
@@ -244,11 +362,16 @@ export default function CreateMissionModal({
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-5 bg-[#6b857a] rounded-full" />
-                    <label className="text-sm font-semibold text-gray-700">คำถามแบบทดสอบ</label>
+                    <label className="text-sm font-semibold text-gray-700">
+                      คำถามแบบทดสอบ
+                    </label>
                   </div>
 
                   {mcqQuestions.map((q, qi) => (
-                    <div key={qi} className="p-4 bg-gray-50 rounded-xl border border-gray-200 relative group">
+                    <div
+                      key={qi}
+                      className="p-4 bg-gray-50 rounded-xl border border-gray-200 relative group"
+                    >
                       {mcqQuestions.length > 1 && (
                         <button
                           className="p-2 text-[#E84A5F] opacity-0 group-hover:opacity-70 hover:!opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded-lg transition-all absolute top-3 right-3"
@@ -258,7 +381,9 @@ export default function CreateMissionModal({
                         </button>
                       )}
 
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">คำถามที่ {qi + 1}</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                        คำถามที่ {qi + 1}
+                      </p>
                       <input
                         className={`${inputCls} mb-3 bg-white`}
                         placeholder="กรอกข้อความคำถาม"
@@ -284,10 +409,15 @@ export default function CreateMissionModal({
                               className={`flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none transition-colors ${c.isCorrect ? "border-[#6b857a] ring-1 ring-[#6b857a] bg-[#6b857a]/5" : "border-gray-300 focus:border-[#6b857a] focus:ring-1 focus:ring-[#6b857a]"}`}
                               placeholder={`ตัวเลือกที่ ${ci + 1}`}
                               value={c.text}
-                              onChange={(e) => updateChoiceText(qi, ci, e.target.value)}
+                              onChange={(e) =>
+                                updateChoiceText(qi, ci, e.target.value)
+                              }
                             />
                             {q.choices.length > 2 && (
-                              <button className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 p-1 rounded transition-colors" onClick={() => removeChoice(qi, ci)}>
+                              <button
+                                className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 p-1 rounded transition-colors"
+                                onClick={() => removeChoice(qi, ci)}
+                              >
                                 <Trash2 size={14} />
                               </button>
                             )}
@@ -324,7 +454,13 @@ export default function CreateMissionModal({
               >
                 สร้างภารกิจ
               </Button>
-              <Button fullWidth className="font-medium text-gray-600" size="lg" variant="light" onPress={onClose}>
+              <Button
+                fullWidth
+                className="font-medium text-gray-600"
+                size="lg"
+                variant="light"
+                onPress={onClose}
+              >
                 ยกเลิก
               </Button>
             </ModalFooter>

@@ -13,9 +13,23 @@ import {
   SelectItem,
 } from "@heroui/react";
 import { useState, useEffect, useMemo } from "react";
-import { Eye, Clock, User, CheckCircle2, XCircle, Users, Search, ChevronDown, QrCode, RefreshCw, Copy, Check } from "lucide-react";
-import { useStatusModal } from "@/components/StatusModalProvider";
+import {
+  Eye,
+  Clock,
+  User,
+  CheckCircle2,
+  XCircle,
+  Users,
+  Search,
+  ChevronDown,
+  QrCode,
+  RefreshCw,
+  Copy,
+  Check,
+} from "lucide-react";
 import QRCode from "react-qr-code";
+
+import { useStatusModal } from "@/components/StatusModalProvider";
 
 interface MonitorMissionModalProps {
   isOpen: boolean;
@@ -54,9 +68,13 @@ export default function MonitorMissionModal({
   const fetchResults = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/missions/${missionData.mission_id}/results`);
+      const res = await fetch(
+        `/api/missions/${missionData.mission_id}/results`,
+      );
+
       if (!res.ok) throw new Error("Failed to fetch results");
       const data = await res.json();
+
       setResults(data);
     } catch (error) {
       console.error(error);
@@ -70,8 +88,10 @@ export default function MonitorMissionModal({
     try {
       setQrLoading(true);
       const res = await fetch(`/api/missions/${missionData.mission_id}/qr`);
+
       if (!res.ok) throw new Error("Failed to fetch QR");
       const data = await res.json();
+
       setQrPayload(data.qrPayload);
       setQrPin(data.pin ?? null);
       setQrGeneratedAt(data.generatedAt ? new Date(data.generatedAt) : null);
@@ -85,9 +105,13 @@ export default function MonitorMissionModal({
   const regenerateQr = async () => {
     try {
       setRegenerating(true);
-      const res = await fetch(`/api/missions/${missionData.mission_id}/qr`, { method: 'POST' });
+      const res = await fetch(`/api/missions/${missionData.mission_id}/qr`, {
+        method: "POST",
+      });
+
       if (!res.ok) throw new Error("Failed to regenerate");
       const data = await res.json();
+
       setQrPayload(data.qrPayload);
       setQrPin(data.pin ?? null);
       setQrGeneratedAt(data.generatedAt ? new Date(data.generatedAt) : null);
@@ -101,7 +125,10 @@ export default function MonitorMissionModal({
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
-    const localDateString = dateString.endsWith('Z') ? dateString.slice(0, -1) : dateString;
+    const localDateString = dateString.endsWith("Z")
+      ? dateString.slice(0, -1)
+      : dateString;
+
     return new Date(localDateString).toLocaleString("th-TH", {
       dateStyle: "short",
       timeStyle: "short",
@@ -116,14 +143,19 @@ export default function MonitorMissionModal({
         const query = searchQuery.toLowerCase();
         const matchName = r.studentName?.toLowerCase().includes(query);
         const matchId = String(r.studentId).includes(query);
+
         if (!matchName && !matchId) return false;
       }
+
       return true;
     });
   }, [results, selectedStatus, searchQuery]);
 
   const isQrMission = missionData?.type === "QR_CODE_SCANNING";
-  const isMcqMission = missionData?.type === "MULTIPLE_CHOICE_QUIZ" || missionData?.type === "PRE_TEST" || missionData?.type === "POST_TEST";
+  const isMcqMission =
+    missionData?.type === "MULTIPLE_CHOICE_QUIZ" ||
+    missionData?.type === "PRE_TEST" ||
+    missionData?.type === "POST_TEST";
   const totalMcqQuestions = missionData?.mission_question?.length || 0;
 
   return (
@@ -144,7 +176,9 @@ export default function MonitorMissionModal({
             <ModalHeader className="flex flex-col gap-1 p-6 pb-4 border-b border-gray-100">
               <div className="flex items-center gap-2 text-[#6b857a]">
                 <Eye size={24} />
-                <h2 className="text-2xl font-bold text-gray-900">ดูคำตอบนักเรียน</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  ดูคำตอบนักเรียน
+                </h2>
               </div>
               <p className="text-sm text-gray-500 font-normal">
                 ภารกิจ: {missionData?.title}
@@ -162,21 +196,31 @@ export default function MonitorMissionModal({
                   {isQrMission && (
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                       <div className="flex items-center gap-2 mb-4">
-                        <QrCode size={20} className="text-[#6b857a]" />
-                        <h3 className="font-bold text-gray-900">QR Code สำหรับภารกิจนี้</h3>
+                        <QrCode className="text-[#6b857a]" size={20} />
+                        <h3 className="font-bold text-gray-900">
+                          QR Code สำหรับภารกิจนี้
+                        </h3>
                         <button
-                          onClick={regenerateQr}
-                          disabled={regenerating}
                           className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-[#6b857a] bg-[#6b857a]/10 hover:bg-[#6b857a]/20 transition-colors disabled:opacity-50"
+                          disabled={regenerating}
                           title="สุ่ม QR + PIN ใหม่"
+                          onClick={regenerateQr}
                         >
-                          <RefreshCw size={13} className={regenerating ? "animate-spin" : ""} />
+                          <RefreshCw
+                            className={regenerating ? "animate-spin" : ""}
+                            size={13}
+                          />
                           สุ่มรหัสใหม่
                         </button>
                       </div>
                       {qrGeneratedAt && (
                         <p className="text-[10px] text-gray-400 text-right -mt-3 mb-2">
-                          สร้างเมื่อ {qrGeneratedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          สร้างเมื่อ{" "}
+                          {qrGeneratedAt.toLocaleTimeString("th-TH", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
                         </p>
                       )}
                       <div className="flex flex-col items-center gap-3">
@@ -188,26 +232,31 @@ export default function MonitorMissionModal({
                           <>
                             <div className="p-4 bg-white border-4 border-[#6b857a]/20 rounded-2xl shadow-inner">
                               <QRCode
-                                value={qrPayload}
-                                size={200}
-                                fgColor="#2d3748"
                                 bgColor="#ffffff"
+                                fgColor="#2d3748"
+                                size={200}
+                                value={qrPayload}
                               />
                             </div>
                             <p className="text-xs text-gray-400 text-center">
-                              แสดง QR Code นี้ให้นักเรียนแสกนเพื่อบันทึกการทำภารกิจ
+                              แสดง QR Code
+                              นี้ให้นักเรียนแสกนเพื่อบันทึกการทำภารกิจ
                             </p>
-                             {/* PIN Section */}
+                            {/* PIN Section */}
                             {qrPin && (
                               <div className="w-full mt-1">
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className="w-1 h-4 bg-[#6b857a] rounded-full" />
-                                  <p className="text-xs font-semibold text-gray-600">รหัส PIN สำรอง</p>
-                                  <span className="text-[10px] text-gray-400">(สำหรับนักเรียนที่แสกนไม่ได้)</span>
+                                  <p className="text-xs font-semibold text-gray-600">
+                                    รหัส PIN สำรอง
+                                  </p>
+                                  <span className="text-[10px] text-gray-400">
+                                    (สำหรับนักเรียนที่แสกนไม่ได้)
+                                  </span>
                                 </div>
                                 <div className="flex items-center gap-3 bg-[#6b857a]/5 border-2 border-[#6b857a]/25 rounded-2xl px-5 py-4">
                                   <div className="flex-1 flex gap-2 items-center justify-center">
-                                    {qrPin.split('').map((digit, i) => (
+                                    {qrPin.split("").map((digit, i) => (
                                       <span
                                         key={i}
                                         className="w-10 h-12 bg-white border-2 border-[#6b857a]/30 rounded-xl flex items-center justify-center text-2xl font-black text-[#3d5c52] font-mono shadow-sm"
@@ -217,22 +266,34 @@ export default function MonitorMissionModal({
                                     ))}
                                   </div>
                                   <button
+                                    className="p-2 rounded-lg text-gray-400 hover:text-[#6b857a] hover:bg-white transition-all border border-transparent hover:border-[#6b857a]/20"
+                                    title="คัดลอก PIN"
                                     onClick={() => {
                                       navigator.clipboard.writeText(qrPin);
                                       setPinCopied(true);
-                                      setTimeout(() => setPinCopied(false), 2000);
+                                      setTimeout(
+                                        () => setPinCopied(false),
+                                        2000,
+                                      );
                                     }}
-                                    className="p-2 rounded-lg text-gray-400 hover:text-[#6b857a] hover:bg-white transition-all border border-transparent hover:border-[#6b857a]/20"
-                                    title="คัดลอก PIN"
                                   >
-                                    {pinCopied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+                                    {pinCopied ? (
+                                      <Check
+                                        className="text-green-500"
+                                        size={18}
+                                      />
+                                    ) : (
+                                      <Copy size={18} />
+                                    )}
                                   </button>
                                 </div>
                               </div>
                             )}
                           </>
                         ) : (
-                          <p className="text-gray-400 text-sm">ไม่สามารถโหลด QR Code ได้</p>
+                          <p className="text-gray-400 text-sm">
+                            ไม่สามารถโหลด QR Code ได้
+                          </p>
                         )}
                       </div>
                     </div>
@@ -245,16 +306,25 @@ export default function MonitorMissionModal({
                         <div className="p-2 bg-[#6b857a]/10 rounded-lg text-[#6b857a]">
                           <Users size={18} />
                         </div>
-                        <span>ส่งแล้ว <strong className="text-gray-900 text-lg">{results.filter(r => r.isSubmitted).length}</strong> / {results.length} คน</span>
+                        <span>
+                          ส่งแล้ว{" "}
+                          <strong className="text-gray-900 text-lg">
+                            {results.filter((r) => r.isSubmitted).length}
+                          </strong>{" "}
+                          / {results.length} คน
+                        </span>
                       </div>
 
                       <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
                         <div className="relative w-full sm:w-48">
-                          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <Search
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                            size={16}
+                          />
                           <input
-                            type="text"
-                            placeholder="ค้นหานักเรียน..."
                             className="pl-9 pr-4 py-1.5 text-sm h-[32px] border border-gray-200 rounded-lg focus:outline-none focus:border-[#6b857a] w-full bg-gray-50 hover:bg-gray-100 transition-colors"
+                            placeholder="ค้นหานักเรียน..."
+                            type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                           />
@@ -262,21 +332,29 @@ export default function MonitorMissionModal({
                         <div className="w-full sm:w-40">
                           <Select
                             aria-label="Filter status"
-                            size="sm"
-                            variant="bordered"
-                            selectedKeys={[selectedStatus]}
-                            onSelectionChange={(keys) => {
-                              const val = Array.from(keys)[0] as string;
-                              setSelectedStatus(val || "all");
-                            }}
                             classNames={{
-                              trigger: "border-gray-200 hover:border-[#6b857a] bg-gray-50 min-h-[32px] h-[32px]",
+                              trigger:
+                                "border-gray-200 hover:border-[#6b857a] bg-gray-50 min-h-[32px] h-[32px]",
                               value: "text-gray-700 font-medium text-sm",
                             }}
+                            selectedKeys={[selectedStatus]}
+                            size="sm"
+                            variant="bordered"
+                            onSelectionChange={(keys) => {
+                              const val = Array.from(keys)[0] as string;
+
+                              setSelectedStatus(val || "all");
+                            }}
                           >
-                            <SelectItem key="all" textValue="นักเรียนทุกคน">นักเรียนทุกคน</SelectItem>
-                            <SelectItem key="submitted" textValue="ส่งแล้ว">ส่งแล้ว</SelectItem>
-                            <SelectItem key="unsubmitted" textValue="ยังไม่ส่ง">ยังไม่ส่ง</SelectItem>
+                            <SelectItem key="all" textValue="นักเรียนทุกคน">
+                              นักเรียนทุกคน
+                            </SelectItem>
+                            <SelectItem key="submitted" textValue="ส่งแล้ว">
+                              ส่งแล้ว
+                            </SelectItem>
+                            <SelectItem key="unsubmitted" textValue="ยังไม่ส่ง">
+                              ยังไม่ส่ง
+                            </SelectItem>
                           </Select>
                         </div>
                       </div>
@@ -289,10 +367,14 @@ export default function MonitorMissionModal({
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
                         <Users size={32} />
                       </div>
-                      <p className="text-gray-500 font-medium">ยังไม่มีนักเรียนในฐานนี้</p>
+                      <p className="text-gray-500 font-medium">
+                        ยังไม่มีนักเรียนในฐานนี้
+                      </p>
                     </div>
                   ) : filteredResults.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">ไม่พบนักเรียนที่คุณค้นหา</div>
+                    <div className="text-center py-12 text-gray-500">
+                      ไม่พบนักเรียนที่คุณค้นหา
+                    </div>
                   ) : isQrMission ? (
                     // QR mission: simple list (no answers to show)
                     <div className="space-y-3">
@@ -305,8 +387,12 @@ export default function MonitorMissionModal({
                             <User size={20} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-gray-900 truncate">{result.studentName}</p>
-                            <p className="text-xs text-gray-500">รหัส: {result.studentId}</p>
+                            <p className="font-bold text-gray-900 truncate">
+                              {result.studentName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              รหัส: {result.studentId}
+                            </p>
                           </div>
                           {result.isSubmitted ? (
                             <div className="flex items-center gap-2 shrink-0">
@@ -314,7 +400,9 @@ export default function MonitorMissionModal({
                                 <CheckCircle2 size={14} />
                                 แสกนแล้ว
                               </div>
-                              <span className="text-xs text-gray-400">{formatDate(result.submittedAt)}</span>
+                              <span className="text-xs text-gray-400">
+                                {formatDate(result.submittedAt)}
+                              </span>
                             </div>
                           ) : (
                             <div className="flex items-center gap-1.5 bg-gray-100 text-gray-500 px-3 py-1.5 rounded-full text-xs font-medium shrink-0">
@@ -329,26 +417,32 @@ export default function MonitorMissionModal({
                     // Non-QR mission: Accordion with answers
                     <Accordion
                       key={`${selectedStatus}-${searchQuery}`}
-                      variant="splitted"
                       className="px-0 gap-4"
-                      selectionMode="multiple"
                       defaultExpandedKeys={[]}
+                      selectionMode="multiple"
+                      variant="splitted"
                     >
                       {filteredResults.map((result) => (
                         <AccordionItem
                           key={String(result.enrollmentId)}
                           aria-label={result.studentName}
-                          indicator={({ isOpen }) => (
-                            <div className={`p-1.5 rounded-lg transition-colors ${isOpen ? 'bg-[#6b857a] text-white' : 'bg-gray-100 text-gray-400'}`}>
-                              <ChevronDown size={18} className={`transition-transform duration-0 ${isOpen ? 'rotate-270' : ''}`} />
-                            </div>
-                          )}
                           classNames={{
                             base: "bg-white group-[.is-splitted]:shadow-sm group-[.is-splitted]:border border-gray-100 rounded-xl overflow-hidden",
                             title: "w-full",
-                            trigger: "py-4 px-5 hover:bg-gray-50/50 transition-colors",
+                            trigger:
+                              "py-4 px-5 hover:bg-gray-50/50 transition-colors",
                             content: "pt-0 pb-6 px-6",
                           }}
+                          indicator={({ isOpen }) => (
+                            <div
+                              className={`p-1.5 rounded-lg transition-colors ${isOpen ? "bg-[#6b857a] text-white" : "bg-gray-100 text-gray-400"}`}
+                            >
+                              <ChevronDown
+                                className={`transition-transform duration-0 ${isOpen ? "rotate-270" : ""}`}
+                                size={18}
+                              />
+                            </div>
+                          )}
                           title={
                             <div className="flex items-center justify-between w-full pr-2">
                               <div className="flex items-center gap-3">
@@ -356,24 +450,41 @@ export default function MonitorMissionModal({
                                   <User size={20} />
                                 </div>
                                 <div className="text-left">
-                                  <p className="font-bold text-gray-900 leading-tight">{result.studentName}</p>
-                                  <p className="text-xs text-gray-500 mt-0.5">รหัส: {result.studentId}</p>
+                                  <p className="font-bold text-gray-900 leading-tight">
+                                    {result.studentName}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    รหัส: {result.studentId}
+                                  </p>
                                 </div>
                               </div>
                               <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full">
                                 {isMcqMission && result.isSubmitted && (
                                   <div className="sm:mr-2 flex items-center gap-1.5 bg-[#6b857a]/10 text-[#6b857a] px-3 py-1 rounded-full border border-[#6b857a]/20">
-                                    <span className="font-bold">คะแนน: {result.answers?.filter((ans: any) => ans.isCorrect === true).length || 0} / {totalMcqQuestions}</span>
+                                    <span className="font-bold">
+                                      คะแนน:{" "}
+                                      {result.answers?.filter(
+                                        (ans: any) => ans.isCorrect === true,
+                                      ).length || 0}{" "}
+                                      / {totalMcqQuestions}
+                                    </span>
                                   </div>
                                 )}
                                 <div className="flex items-center gap-1.5">
                                   {result.isSubmitted ? (
                                     <>
-                                      <Clock size={12} className="text-green-600" />
-                                      <span className="text-green-700">{formatDate(result.submittedAt)}</span>
+                                      <Clock
+                                        className="text-green-600"
+                                        size={12}
+                                      />
+                                      <span className="text-green-700">
+                                        {formatDate(result.submittedAt)}
+                                      </span>
                                     </>
                                   ) : (
-                                    <span className="text-gray-500">ยังไม่ส่งงาน</span>
+                                    <span className="text-gray-500">
+                                      ยังไม่ส่งงาน
+                                    </span>
                                   )}
                                 </div>
                               </div>
@@ -385,9 +496,14 @@ export default function MonitorMissionModal({
                               <div className="divider h-px bg-gray-100 w-full mb-5" />
                               <div className="space-y-5">
                                 {result.answers.map((ans: any, idx: number) => (
-                                  <div key={ans.questionId} className="space-y-2">
+                                  <div
+                                    key={ans.questionId}
+                                    className="space-y-2"
+                                  >
                                     <div className="flex gap-2">
-                                      <span className="text-gray-300 font-bold text-lg leading-none">{String(idx + 1).padStart(2, '0')}</span>
+                                      <span className="text-gray-300 font-bold text-lg leading-none">
+                                        {String(idx + 1).padStart(2, "0")}
+                                      </span>
                                       <p className="text-sm font-semibold text-gray-700 pt-0.5">
                                         {ans.questionText || "คำถาม"}
                                       </p>
@@ -395,12 +511,16 @@ export default function MonitorMissionModal({
 
                                     <div className="bg-[#6b857a]/5 p-4 rounded-xl text-sm text-gray-800 border border-[#6b857a]/10 ml-7">
                                       {ans.type === "TEXT" && (
-                                        <span className="whitespace-pre-wrap leading-relaxed">{ans.answerText}</span>
+                                        <span className="whitespace-pre-wrap leading-relaxed">
+                                          {ans.answerText}
+                                        </span>
                                       )}
 
                                       {ans.type === "MCQ" && (
                                         <div className="flex items-center justify-between">
-                                          <span className="font-medium text-[#6b857a]">{ans.answerText}</span>
+                                          <span className="font-medium text-[#6b857a]">
+                                            {ans.answerText}
+                                          </span>
                                           {ans.isCorrect === true && (
                                             <div className="flex items-center gap-1.5 text-green-600 bg-green-50 px-2.5 py-1 rounded-full text-xs font-bold border border-green-100">
                                               <CheckCircle2 size={14} />
@@ -420,12 +540,19 @@ export default function MonitorMissionModal({
                                         <div className="space-y-2">
                                           <div className="relative group">
                                             <img
-                                              src={ans.answerText}
                                               alt="Student submission"
                                               className="w-full max-w-md rounded-lg shadow-sm border border-gray-200 cursor-zoom-in hover:opacity-90 transition-opacity"
-                                              onClick={() => window.open(ans.answerText, '_blank')}
+                                              src={ans.answerText}
+                                              onClick={() =>
+                                                window.open(
+                                                  ans.answerText,
+                                                  "_blank",
+                                                )
+                                              }
                                             />
-                                            <p className="text-[10px] text-gray-400 mt-1">คลิกที่รูปเพื่อดูขนาดใหญ่</p>
+                                            <p className="text-[10px] text-gray-400 mt-1">
+                                              คลิกที่รูปเพื่อดูขนาดใหญ่
+                                            </p>
                                           </div>
                                         </div>
                                       )}
@@ -448,7 +575,12 @@ export default function MonitorMissionModal({
             </ModalBody>
 
             <ModalFooter className="p-4 border-t border-gray-100">
-              <Button fullWidth className="bg-gray-100 text-gray-700 font-medium hover:bg-gray-200" size="lg" onPress={onClose}>
+              <Button
+                fullWidth
+                className="bg-gray-100 text-gray-700 font-medium hover:bg-gray-200"
+                size="lg"
+                onPress={onClose}
+              >
                 ปิดหน้าต่าง
               </Button>
             </ModalFooter>

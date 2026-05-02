@@ -12,11 +12,22 @@ import {
   ModalFooter,
   useDisclosure,
 } from "@heroui/modal";
-import { ChevronLeft, CheckCircle2, Circle, Camera, X, QrCode, ScanLine, KeyRound } from "lucide-react";
+import {
+  ChevronLeft,
+  CheckCircle2,
+  Circle,
+  Camera,
+  X,
+  QrCode,
+  ScanLine,
+  KeyRound,
+} from "lucide-react";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
 
-const QrScanner = dynamic(() => import("@/components/QrScanner"), { ssr: false });
+const QrScanner = dynamic(() => import("@/components/QrScanner"), {
+  ssr: false,
+});
 
 export default function StudentStationDetailPage() {
   const params = useParams();
@@ -36,22 +47,24 @@ export default function StudentStationDetailPage() {
 
   // QR Scan State
   const [qrScanActive, setQrScanActive] = useState(false);
-  const [qrScanResult, setQrScanResult] = useState<'success' | 'alreadyDone' | 'error' | null>(null);
-  const [qrScanMessage, setQrScanMessage] = useState('');
+  const [qrScanResult, setQrScanResult] = useState<
+    "success" | "alreadyDone" | "error" | null
+  >(null);
+  const [qrScanMessage, setQrScanMessage] = useState("");
   const qrProcessingRef = useRef(false);
   const [showPinInput, setShowPinInput] = useState(false);
-  const [pinInput, setPinInput] = useState('');
+  const [pinInput, setPinInput] = useState("");
   const [pinSubmitting, setPinSubmitting] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   const fetchCamp = async () => {
     try {
       const res = await fetch("/api/student/camps", {
-        cache: 'no-store',
+        cache: "no-store",
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
       });
 
       if (res.ok) {
@@ -62,12 +75,17 @@ export default function StudentStationDetailPage() {
           if (!foundCamp.isRegistered) {
             toast.error("กรุณาลงทะเบียนเข้าร่วมค่ายก่อนเข้าถึงหน้าภารกิจ");
             router.replace(`/student/dashboard/camp/${id}`);
+
             return;
           }
           // ตรวจสอบว่าค่ายเริ่มแล้วหรือยัง
-          if (foundCamp.rawStartDate && new Date() < new Date(foundCamp.rawStartDate)) {
+          if (
+            foundCamp.rawStartDate &&
+            new Date() < new Date(foundCamp.rawStartDate)
+          ) {
             toast.error("ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
             router.replace(`/student/dashboard/camp/${id}`);
+
             return;
           }
           setCamp(foundCamp);
@@ -104,17 +122,21 @@ export default function StudentStationDetailPage() {
     // Reset QR state
     setQrScanActive(false);
     setQrScanResult(null);
-    setQrScanMessage('');
+    setQrScanMessage("");
     setShowPinInput(false);
-    setPinInput('');
+    setPinInput("");
     setCameraError(null);
     qrProcessingRef.current = false;
-    
-    const existingResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === mission.mission_id);
+
+    const existingResult = camp?.missionResults?.find(
+      (r: any) => r.mission_mission_id === mission.mission_id,
+    );
     const initialAnswers: any = {};
+
     if (existingResult && existingResult.mission_answer) {
       existingResult.mission_answer.forEach((ans: any) => {
         const qid = ans.mission_question_question_id;
+
         if (ans.answer_text && ans.answer_text.length > 0) {
           initialAnswers[qid] = ans.answer_text[0].answer_text;
         } else if (ans.answer_mcq && ans.answer_mcq.length > 0) {
@@ -124,7 +146,7 @@ export default function StudentStationDetailPage() {
         }
       });
     }
-    
+
     setAnswers(initialAnswers);
     onOpen();
   };
@@ -135,35 +157,35 @@ export default function StudentStationDetailPage() {
     setQrScanActive(false); // Stop scanner
 
     try {
-      const res = await fetch('/api/student/mission/qr-scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/student/mission/qr-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ qrPayload: payload }),
       });
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setQrScanResult(data.alreadyCompleted ? 'alreadyDone' : 'success');
+        setQrScanResult(data.alreadyCompleted ? "alreadyDone" : "success");
         setQrScanMessage(data.message);
         if (!data.alreadyCompleted) {
           await fetchCamp();
         }
       } else {
-        setQrScanResult('error');
-        setQrScanMessage(data.error || 'QR Code ไม่ถูกต้อง');
+        setQrScanResult("error");
+        setQrScanMessage(data.error || "QR Code ไม่ถูกต้อง");
         qrProcessingRef.current = false; // Allow retry
       }
     } catch {
-      setQrScanResult('error');
-      setQrScanMessage('เกิดข้อผิดพลาดในการแสกน');
+      setQrScanResult("error");
+      setQrScanMessage("เกิดข้อผิดพลาดในการแสกน");
       qrProcessingRef.current = false;
     }
   };
 
   const resetQrScan = () => {
     setQrScanResult(null);
-    setQrScanMessage('');
-    setPinInput('');
+    setQrScanMessage("");
+    setPinInput("");
     qrProcessingRef.current = false;
     if (showPinInput) {
       // ถ้าอยู่ใน PIN mode ให้คงอยู่ใน PIN mode
@@ -176,23 +198,27 @@ export default function StudentStationDetailPage() {
     if (!pinInput.trim() || !selectedMission) return;
     setPinSubmitting(true);
     try {
-      const res = await fetch('/api/student/mission/qr-scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: pinInput.trim(), missionId: selectedMission.mission_id }),
+      const res = await fetch("/api/student/mission/qr-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pin: pinInput.trim(),
+          missionId: selectedMission.mission_id,
+        }),
       });
       const data = await res.json();
+
       if (res.ok && data.success) {
-        setQrScanResult(data.alreadyCompleted ? 'alreadyDone' : 'success');
+        setQrScanResult(data.alreadyCompleted ? "alreadyDone" : "success");
         setQrScanMessage(data.message);
         if (!data.alreadyCompleted) await fetchCamp();
       } else {
-        setQrScanResult('error');
-        setQrScanMessage(data.error || 'รหัส PIN ไม่ถูกต้อง');
+        setQrScanResult("error");
+        setQrScanMessage(data.error || "รหัส PIN ไม่ถูกต้อง");
       }
     } catch {
-      setQrScanResult('error');
-      setQrScanMessage('เกิดข้อผิดพลาด กรุณาลองใหม่');
+      setQrScanResult("error");
+      setQrScanMessage("เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
       setPinSubmitting(false);
     }
@@ -202,54 +228,80 @@ export default function StudentStationDetailPage() {
     setCameraError(null); // clear ก่อนลอง
 
     // ตรวจสอบว่า browser รองรับ camera API หรือไม่
-    const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    const isSecure =
+      window.isSecureContext ||
+      location.hostname === "localhost" ||
+      location.hostname === "127.0.0.1";
+    const hasMediaDevices = !!(
+      navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+    );
 
     if (!isSecure) {
-      setCameraError('เบราว์เซอร์นี้ไม่รองรับการเปิดกล้องบนการเชื่อมต่อ HTTP กรุณาใช้ HTTPS หรือกรอก PIN แทน');
+      setCameraError(
+        "เบราว์เซอร์นี้ไม่รองรับการเปิดกล้องบนการเชื่อมต่อ HTTP กรุณาใช้ HTTPS หรือกรอก PIN แทน",
+      );
       setShowPinInput(true);
+
       return;
     }
 
     if (!hasMediaDevices) {
-      setCameraError('เบราว์เซอร์หรืออุปกรณ์นี้ไม่รองรับการเข้าถึงกล้อง กรุณากรอก PIN แทน');
+      setCameraError(
+        "เบราว์เซอร์หรืออุปกรณ์นี้ไม่รองรับการเข้าถึงกล้อง กรุณากรอก PIN แทน",
+      );
       setShowPinInput(true);
+
       return;
     }
 
     // ลอง constraint จากเข้มไปหยาบ
     const constraints = [
-      { video: { facingMode: { ideal: 'environment' } } },
-      { video: { facingMode: 'user' } },
+      { video: { facingMode: { ideal: "environment" } } },
+      { video: { facingMode: "user" } },
       { video: true },
     ];
 
     let lastError: any = null;
+
     for (const constraint of constraints) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia(constraint);
-        stream.getTracks().forEach(track => track.stop());
+
+        stream.getTracks().forEach((track) => track.stop());
         setQrScanActive(true);
+
         return;
       } catch (err: any) {
         lastError = err;
-        if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') break;
+        if (
+          err?.name === "NotAllowedError" ||
+          err?.name === "PermissionDeniedError"
+        )
+          break;
       }
     }
 
     // แสดงสาเหตุที่เฉพาะเจาะจง
-    const isDenied = lastError?.name === 'NotAllowedError' || lastError?.name === 'PermissionDeniedError';
-    const isNotFound = lastError?.name === 'NotFoundError' || lastError?.name === 'DevicesNotFoundError';
+    const isDenied =
+      lastError?.name === "NotAllowedError" ||
+      lastError?.name === "PermissionDeniedError";
+    const isNotFound =
+      lastError?.name === "NotFoundError" ||
+      lastError?.name === "DevicesNotFoundError";
 
     if (isDenied) {
-      setCameraError('ไม่ได้รับอนุญาตเข้าถึงกล้อง กรุณากด "อนุญาต" ในการตั้งค่าเบราว์เซอร์ แล้วลองใหม่');
-      setQrScanResult('error');
-      setQrScanMessage('ไม่ได้รับอนุญาตเข้าถึงกล้อง กรุณาอนุญาตในการตั้งค่าเบราว์เซอร์ หรือกรอก PIN แทน');
+      setCameraError(
+        'ไม่ได้รับอนุญาตเข้าถึงกล้อง กรุณากด "อนุญาต" ในการตั้งค่าเบราว์เซอร์ แล้วลองใหม่',
+      );
+      setQrScanResult("error");
+      setQrScanMessage(
+        "ไม่ได้รับอนุญาตเข้าถึงกล้อง กรุณาอนุญาตในการตั้งค่าเบราว์เซอร์ หรือกรอก PIN แทน",
+      );
     } else if (isNotFound) {
-      setCameraError('ไม่พบกล้องในอุปกรณ์นี้ กรุณากรอก PIN แทน');
+      setCameraError("ไม่พบกล้องในอุปกรณ์นี้ กรุณากรอก PIN แทน");
       setShowPinInput(true);
     } else {
-      setCameraError('ไม่สามารถเปิดกล้องได้ กรุณากรอก PIN แทน');
+      setCameraError("ไม่สามารถเปิดกล้องได้ กรุณากรอก PIN แทน");
       setShowPinInput(true);
     }
   };
@@ -261,10 +313,17 @@ export default function StudentStationDetailPage() {
   const compressImage = async (file: File) => {
     if (!file || !file.type.startsWith("image/")) return file;
     try {
-      const imageCompression = (await import("browser-image-compression")).default;
-      return await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true });
+      const imageCompression = (await import("browser-image-compression"))
+        .default;
+
+      return await imageCompression(file, {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      });
     } catch (e) {
       console.error("Compression error:", e);
+
       return file;
     }
   };
@@ -274,8 +333,10 @@ export default function StudentStationDetailPage() {
 
     // Check file size (20MB limit)
     const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+
     if (file.size > MAX_FILE_SIZE) {
       toast.error("ขนาดไฟล์รูปภาพต้องไม่เกิน 20MB");
+
       return;
     }
 
@@ -283,13 +344,16 @@ export default function StudentStationDetailPage() {
     try {
       const compressedFile = await compressImage(file);
       const formData = new FormData();
+
       formData.append("file", compressedFile);
       const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
+
       if (res.ok) {
         const data = await res.json();
+
         handleAnswerChange(questionId, data.url);
         toast.success("อัปโหลดรูปภาพสำเร็จ");
       } else {
@@ -322,7 +386,8 @@ export default function StudentStationDetailPage() {
     });
 
     const isDraft = selectedMission.mission_question.some(
-      (q: any) => !answers[q.question_id] || String(answers[q.question_id]).trim() === ""
+      (q: any) =>
+        !answers[q.question_id] || String(answers[q.question_id]).trim() === "",
     );
 
     try {
@@ -366,12 +431,13 @@ export default function StudentStationDetailPage() {
 
   const isPreTestCompleted = () => {
     if (!camp || !camp.station) return false;
-    
+
     let preTestMissions: any[] = [];
+
     for (const s of camp.station) {
       if (!s.mission) continue;
       for (const m of s.mission) {
-        if (m.type === 'PRE_TEST') {
+        if (m.type === "PRE_TEST") {
           preTestMissions.push(m);
         }
       }
@@ -382,16 +448,19 @@ export default function StudentStationDetailPage() {
 
     // ตรวจสอบว่าแบบทดสอบก่อนเรียนทั้งหมดทำเสร็จหรือยัง
     let allPreTestsCompleted = true;
+
     for (const m of preTestMissions) {
       const isCompleted = camp.missionResults?.some(
-        (r: any) => r.mission_mission_id === m.mission_id && r.status === "completed"
+        (r: any) =>
+          r.mission_mission_id === m.mission_id && r.status === "completed",
       );
+
       if (!isCompleted) {
         allPreTestsCompleted = false;
         break;
       }
     }
-    
+
     return allPreTestsCompleted;
   };
 
@@ -432,7 +501,7 @@ export default function StudentStationDetailPage() {
 
         {station.mission?.map((mission: any) => {
           const completed = isMissionCompleted(mission.mission_id);
-          const isPostTest = mission.type === 'POST_TEST';
+          const isPostTest = mission.type === "POST_TEST";
           const canDoPostTest = isPreTestCompleted();
           const isLocked = isPostTest && !canDoPostTest && !completed;
 
@@ -441,12 +510,20 @@ export default function StudentStationDetailPage() {
               key={mission.mission_id}
               className={`
                                 bg-white p-5 rounded-2xl shadow-sm border transition-all 
-                                ${isLocked ? "opacity-60 cursor-not-allowed border-gray-200" :
-                                completed ? "border-green-200 bg-green-50 hover:border-green-300 cursor-pointer" : "border-transparent hover:border-[#5d7c6f] cursor-pointer"}
+                                ${
+                                  isLocked
+                                    ? "opacity-60 cursor-not-allowed border-gray-200"
+                                    : completed
+                                      ? "border-green-200 bg-green-50 hover:border-green-300 cursor-pointer"
+                                      : "border-transparent hover:border-[#5d7c6f] cursor-pointer"
+                                }
                             `}
               onClick={() => {
                 if (isLocked) {
-                  toast.error("คุณต้องทำแบบทดสอบก่อนเรียน (Pre-test) ให้เสร็จก่อน จึงจะทำแบบทดสอบหลังเรียนได้");
+                  toast.error(
+                    "คุณต้องทำแบบทดสอบก่อนเรียน (Pre-test) ให้เสร็จก่อน จึงจะทำแบบทดสอบหลังเรียนได้",
+                  );
+
                   return;
                 }
                 openMission(mission);
@@ -468,7 +545,9 @@ export default function StudentStationDetailPage() {
                       className={`font-bold ${completed ? "text-green-800" : "text-gray-900"}`}
                     >
                       {mission.title || "ภารกิจ"}
-                      {mission.type === 'PRE_TEST' && !(mission.title || "").includes("ก่อนเรียน") && " (ก่อนเรียน)"}
+                      {mission.type === "PRE_TEST" &&
+                        !(mission.title || "").includes("ก่อนเรียน") &&
+                        " (ก่อนเรียน)"}
                     </h3>
                     <p className="text-sm text-gray-600 line-clamp-2">
                       {mission.description}
@@ -502,17 +581,25 @@ export default function StudentStationDetailPage() {
             setQrScanResult(null);
             qrProcessingRef.current = false;
           }
-          onOpenChange(open);
+          if (open) {
+            onOpen();
+          } else {
+            onClose();
+          }
         }}
       >
         <ModalContent>
           {(onClose) => (
             <>
               <ModalHeader className="flex flex-col gap-1">
-                <span className="text-sm font-normal text-gray-600">ทำภารกิจ</span>
+                <span className="text-sm font-normal text-gray-600">
+                  ทำภารกิจ
+                </span>
                 <h2 className="text-xl font-bold text-gray-900">
                   {selectedMission?.title}
-                  {selectedMission?.type === 'PRE_TEST' && !(selectedMission?.title || "").includes("ก่อนเรียน") && " (ก่อนเรียน)"}
+                  {selectedMission?.type === "PRE_TEST" &&
+                    !(selectedMission?.title || "").includes("ก่อนเรียน") &&
+                    " (ก่อนเรียน)"}
                 </h2>
               </ModalHeader>
 
@@ -520,313 +607,410 @@ export default function StudentStationDetailPage() {
                 {/* Mission Description */}
                 {selectedMission?.description && (
                   <div className="bg-blue-50/50 p-4 rounded-xl text-gray-700 text-sm leading-relaxed border border-blue-100/50">
-                    <h4 className="font-bold text-[#5d7c6f] mb-1">รายละเอียดภารกิจ:</h4>
-                    <p className="whitespace-pre-wrap">{selectedMission.description}</p>
+                    <h4 className="font-bold text-[#5d7c6f] mb-1">
+                      รายละเอียดภารกิจ:
+                    </h4>
+                    <p className="whitespace-pre-wrap">
+                      {selectedMission.description}
+                    </p>
                   </div>
                 )}
 
                 {/* QR CODE SCANNING */}
-                {selectedMission?.type === 'QR_CODE_SCANNING' && (() => {
-                  const currentResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === selectedMission?.mission_id);
-                  const isCompleted = currentResult?.status === 'completed';
-
-                  if (isCompleted) {
-                    return (
-                      <div className="flex flex-col items-center py-8 gap-3">
-                        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
-                          <CheckCircle2 size={44} className="text-green-500" />
-                        </div>
-                        <p className="text-lg font-bold text-green-700">สแกนสำเร็จแล้ว!</p>
-                        <p className="text-sm text-gray-500">คุณได้ทำภารกิจนี้เรียบร้อยแล้ว</p>
-                      </div>
+                {selectedMission?.type === "QR_CODE_SCANNING" &&
+                  (() => {
+                    const currentResult = camp?.missionResults?.find(
+                      (r: any) =>
+                        r.mission_mission_id === selectedMission?.mission_id,
                     );
-                  }
+                    const isCompleted = currentResult?.status === "completed";
 
-                  if (qrScanResult === 'success') {
-                    return (
-                      <div className="flex flex-col items-center py-8 gap-3">
-                        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
-                          <CheckCircle2 size={44} className="text-green-500" />
+                    if (isCompleted) {
+                      return (
+                        <div className="flex flex-col items-center py-8 gap-3">
+                          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                            <CheckCircle2
+                              className="text-green-500"
+                              size={44}
+                            />
+                          </div>
+                          <p className="text-lg font-bold text-green-700">
+                            สแกนสำเร็จแล้ว!
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            คุณได้ทำภารกิจนี้เรียบร้อยแล้ว
+                          </p>
                         </div>
-                        <p className="text-lg font-bold text-green-700">สำเร็จ!</p>
-                        <p className="text-sm text-gray-600">{qrScanMessage}</p>
-                      </div>
-                    );
-                  }
+                      );
+                    }
 
-                  if (qrScanResult === 'error') {
-                    return (
-                      <div className="flex flex-col items-center py-6 gap-4 w-full">
-                        <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center">
-                          <X size={40} className="text-red-400" />
+                    if (qrScanResult === "success") {
+                      return (
+                        <div className="flex flex-col items-center py-8 gap-3">
+                          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                            <CheckCircle2
+                              className="text-green-500"
+                              size={44}
+                            />
+                          </div>
+                          <p className="text-lg font-bold text-green-700">
+                            สำเร็จ!
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {qrScanMessage}
+                          </p>
                         </div>
-                        <p className="text-base font-semibold text-red-600 text-center">{qrScanMessage}</p>
-                        <div className="flex flex-col w-full gap-2">
-                          {!showPinInput && (
+                      );
+                    }
+
+                    if (qrScanResult === "error") {
+                      return (
+                        <div className="flex flex-col items-center py-6 gap-4 w-full">
+                          <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center">
+                            <X className="text-red-400" size={40} />
+                          </div>
+                          <p className="text-base font-semibold text-red-600 text-center">
+                            {qrScanMessage}
+                          </p>
+                          <div className="flex flex-col w-full gap-2">
+                            {!showPinInput && (
+                              <Button
+                                className="w-full bg-[#5d7c6f] text-white font-semibold"
+                                startContent={<ScanLine size={18} />}
+                                onPress={resetQrScan}
+                              >
+                                ลองสแกนอีกครั้ง
+                              </Button>
+                            )}
                             <Button
-                              className="w-full bg-[#5d7c6f] text-white font-semibold"
-                              onPress={resetQrScan}
-                              startContent={<ScanLine size={18} />}
+                              className="w-full bg-gray-100 text-gray-700 font-medium"
+                              variant="flat"
+                              onPress={() => {
+                                setQrScanResult(null);
+                                setQrScanMessage("");
+                                setPinInput("");
+                                setShowPinInput(true);
+                              }}
                             >
-                              ลองสแกนอีกครั้ง
+                              กรอกรหัส PIN แทน
                             </Button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // PIN input mode
+                    if (showPinInput) {
+                      return (
+                        <div className="flex flex-col items-center py-4 gap-5 w-full">
+                          {/* Camera error banner */}
+                          {cameraError && (
+                            <div className="w-full flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                              <span className="text-amber-500 text-lg shrink-0">
+                                ⚠️
+                              </span>
+                              <p className="text-xs text-amber-800 leading-relaxed">
+                                {cameraError}
+                              </p>
+                            </div>
                           )}
-                          <Button
-                            className="w-full bg-gray-100 text-gray-700 font-medium"
-                            variant="flat"
-                            onPress={() => { setQrScanResult(null); setQrScanMessage(''); setPinInput(''); setShowPinInput(true); }}
-                          >
-                            กรอกรหัส PIN แทน
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  // PIN input mode
-                  if (showPinInput) {
-                    return (
-                      <div className="flex flex-col items-center py-4 gap-5 w-full">
-                        {/* Camera error banner */}
-                        {cameraError && (
-                          <div className="w-full flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                            <span className="text-amber-500 text-lg shrink-0">⚠️</span>
-                            <p className="text-xs text-amber-800 leading-relaxed">{cameraError}</p>
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-16 h-16 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center mb-1 text-[#5d7c6f]">
+                              <KeyRound size={32} strokeWidth={2.5} />
+                            </div>
+                            <p className="font-bold text-gray-900">
+                              กรอกรหัส PIN
+                            </p>
+                            <p className="text-xs text-gray-600 text-center">
+                              ขอรหัส PIN จากครูผู้สอนที่ฐาน
+                            </p>
                           </div>
-                        )}
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="w-16 h-16 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center mb-1 text-[#5d7c6f]">
-                            <KeyRound size={32} strokeWidth={2.5} />
-                          </div>
-                          <p className="font-bold text-gray-900">กรอกรหัส PIN</p>
-                          <p className="text-xs text-gray-600 text-center">ขอรหัส PIN จากครูผู้สอนที่ฐาน</p>
-                        </div>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          maxLength={6}
-                          placeholder="------"
-                          className="w-40 text-center text-gray-900 text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50 placeholder:text-gray-300"
-                          value={pinInput}
-                          onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          onKeyDown={(e) => { if (e.key === 'Enter' && pinInput.length === 6) handlePinSubmit(); }}
-                        />
-                        <div className="flex flex-col w-full gap-2">
-                          <Button
-                            className="w-full bg-[#5d7c6f] text-white font-bold"
-                            size="lg"
-                            isDisabled={pinInput.length !== 6}
-                            isLoading={pinSubmitting}
-                            onPress={handlePinSubmit}
-                          >
-                            ยืนยันรหัส PIN
-                          </Button>
-                          <Button
-                            className="w-full text-gray-500"
-                            variant="light"
-                            onPress={() => { setShowPinInput(false); setPinInput(''); }}
-                            startContent={<ScanLine size={16} />}
-                          >
-                            กลับไปแสกน QR
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  // Scanner initial UI
-                  return (
-                    <div className="flex flex-col items-center gap-4">
-                      {qrScanActive ? (
-                        <div className="w-full max-w-sm mx-auto">
-                          <QrScanner
-                            active={qrScanActive}
-                            onScan={handleQrScan}
-                            onError={(err) => {
-                              setQrScanResult('error');
-                              setQrScanMessage(err);
-                              setQrScanActive(false);
+                          <input
+                            className="w-40 text-center text-gray-900 text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50 placeholder:text-gray-300"
+                            inputMode="numeric"
+                            maxLength={6}
+                            pattern="[0-9]*"
+                            placeholder="------"
+                            type="text"
+                            value={pinInput}
+                            onChange={(e) =>
+                              setPinInput(
+                                e.target.value.replace(/\D/g, "").slice(0, 6),
+                              )
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && pinInput.length === 6)
+                                handlePinSubmit();
                             }}
                           />
-                          <p className="text-center text-xs text-gray-600 mt-2">จัดกล้องให้ตรง QR Code ของครู</p>
-                          <Button
-                            className="w-full mt-3 bg-gray-100 text-gray-600"
-                            variant="flat"
-                            onPress={() => setQrScanActive(false)}
-                          >
-                            ยกเลิก
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center py-4 gap-4 w-full">
-                          <div className="w-24 h-24 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center">
-                            <QrCode size={52} className="text-[#5d7c6f]" />
+                          <div className="flex flex-col w-full gap-2">
+                            <Button
+                              className="w-full bg-[#5d7c6f] text-white font-bold"
+                              isDisabled={pinInput.length !== 6}
+                              isLoading={pinSubmitting}
+                              size="lg"
+                              onPress={handlePinSubmit}
+                            >
+                              ยืนยันรหัส PIN
+                            </Button>
+                            <Button
+                              className="w-full text-gray-500"
+                              startContent={<ScanLine size={16} />}
+                              variant="light"
+                              onPress={() => {
+                                setShowPinInput(false);
+                                setPinInput("");
+                              }}
+                            >
+                              กลับไปแสกน QR
+                            </Button>
                           </div>
-                          <p className="text-base text-gray-700 text-center">
-                            กดปุ่มด้านล่างเพื่อเปิดกล้องแสกน<br/>
-                            <span className="text-sm text-gray-600">QR Code ที่ครูแสดง</span>
-                          </p>
-                          <Button
-                            className="bg-[#5d7c6f] text-white font-bold px-8"
-                            size="lg"
-                            startContent={<ScanLine size={20} />}
-                            onPress={requestCameraAndStartScan}
-                          >
-                            เปิดกล้องแสกน QR
-                          </Button>
-                          <button
-                            className="text-sm text-gray-600 underline underline-offset-2 hover:text-[#5d7c6f] transition-colors"
-                            onClick={() => setShowPinInput(true)}
-                          >
-                            หรือกรอกรหัส PIN แทน
-                          </button>
                         </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                      );
+                    }
+
+                    // Scanner initial UI
+                    return (
+                      <div className="flex flex-col items-center gap-4">
+                        {qrScanActive ? (
+                          <div className="w-full max-w-sm mx-auto">
+                            <QrScanner
+                              active={qrScanActive}
+                              onError={(err) => {
+                                setQrScanResult("error");
+                                setQrScanMessage(err);
+                                setQrScanActive(false);
+                              }}
+                              onScan={handleQrScan}
+                            />
+                            <p className="text-center text-xs text-gray-600 mt-2">
+                              จัดกล้องให้ตรง QR Code ของครู
+                            </p>
+                            <Button
+                              className="w-full mt-3 bg-gray-100 text-gray-600"
+                              variant="flat"
+                              onPress={() => setQrScanActive(false)}
+                            >
+                              ยกเลิก
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center py-4 gap-4 w-full">
+                            <div className="w-24 h-24 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center">
+                              <QrCode className="text-[#5d7c6f]" size={52} />
+                            </div>
+                            <p className="text-base text-gray-700 text-center">
+                              กดปุ่มด้านล่างเพื่อเปิดกล้องแสกน
+                              <br />
+                              <span className="text-sm text-gray-600">
+                                QR Code ที่ครูแสดง
+                              </span>
+                            </p>
+                            <Button
+                              className="bg-[#5d7c6f] text-white font-bold px-8"
+                              size="lg"
+                              startContent={<ScanLine size={20} />}
+                              onPress={requestCameraAndStartScan}
+                            >
+                              เปิดกล้องแสกน QR
+                            </Button>
+                            <button
+                              className="text-sm text-gray-600 underline underline-offset-2 hover:text-[#5d7c6f] transition-colors"
+                              onClick={() => setShowPinInput(true)}
+                            >
+                              หรือกรอกรหัส PIN แทน
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                 {/* Questions (for non-QR missions) */}
-                {selectedMission?.type !== 'QR_CODE_SCANNING' && (
-                <div className="space-y-6">
-                  {(() => {
-                    const currentResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === selectedMission?.mission_id);
-                    const isSubmitted = currentResult?.status === "completed";
-                    
-                    return selectedMission?.mission_question?.map(
-                      (q: any, idx: number) => (
-                        <div key={q.question_id} className="space-y-3">
-                          <label className="block font-semibold text-gray-700">
-                            {idx + 1}. {q.question_text}
-                          </label>
+                {selectedMission?.type !== "QR_CODE_SCANNING" && (
+                  <div className="space-y-6">
+                    {(() => {
+                      const currentResult = camp?.missionResults?.find(
+                        (r: any) =>
+                          r.mission_mission_id === selectedMission?.mission_id,
+                      );
+                      const isSubmitted = currentResult?.status === "completed";
 
-                          {q.question_type === "TEXT" && (
-                            <Textarea
-                              minRows={3}
-                              placeholder={isSubmitted ? "" : "พิมพ์คำตอบของคุณที่นี่..."}
-                              value={answers[q.question_id] || ""}
-                              variant="bordered"
-                              isReadOnly={isSubmitted}
-                              onValueChange={(val) =>
-                                handleAnswerChange(q.question_id, val)
-                              }
-                            />
-                        )}
+                      return selectedMission?.mission_question?.map(
+                        (q: any, idx: number) => (
+                          <div key={q.question_id} className="space-y-3">
+                            <label className="block font-semibold text-gray-700">
+                              {idx + 1}. {q.question_text}
+                            </label>
 
-                        {q.question_type === "MCQ" && (
-                          <div className="space-y-2">
-                            {q.choices?.map((c: any, choiceIdx: number) => {
-                              const choiceLetter = String.fromCharCode(65 + choiceIdx);
-                              return (
-                                <div
-                                  key={c.choice_id}
-                                  className={`
+                            {q.question_type === "TEXT" && (
+                              <Textarea
+                                isReadOnly={isSubmitted}
+                                minRows={3}
+                                placeholder={
+                                  isSubmitted ? "" : "พิมพ์คำตอบของคุณที่นี่..."
+                                }
+                                value={answers[q.question_id] || ""}
+                                variant="bordered"
+                                onValueChange={(val) =>
+                                  handleAnswerChange(q.question_id, val)
+                                }
+                              />
+                            )}
+
+                            {q.question_type === "MCQ" && (
+                              <div className="space-y-2">
+                                {q.choices?.map((c: any, choiceIdx: number) => {
+                                  const choiceLetter = String.fromCharCode(
+                                    65 + choiceIdx,
+                                  );
+
+                                  return (
+                                    <div
+                                      key={c.choice_id}
+                                      className={`
                                       p-3 rounded-lg border flex items-center gap-3 transition-colors
-                                      ${answers[q.question_id] === choiceLetter
-                                      ? "bg-[#5d7c6f] text-white border-[#5d7c6f]"
-                                      : "bg-white text-gray-700 border-gray-200"
-                                    }
+                                      ${
+                                        answers[q.question_id] === choiceLetter
+                                          ? "bg-[#5d7c6f] text-white border-[#5d7c6f]"
+                                          : "bg-white text-gray-700 border-gray-200"
+                                      }
                                     ${isSubmitted ? "opacity-75 cursor-not-allowed" : "cursor-pointer hover:bg-gray-50"}
                                   `}
-                                  onClick={() =>
-                                    !isSubmitted && handleAnswerChange(q.question_id, choiceLetter)
-                                  }
-                                >
-                                  <div
-                                    className={`
+                                      onClick={() =>
+                                        !isSubmitted &&
+                                        handleAnswerChange(
+                                          q.question_id,
+                                          choiceLetter,
+                                        )
+                                      }
+                                    >
+                                      <div
+                                        className={`
                                         w-6 h-6 rounded-full border flex items-center justify-center shrink-0 font-bold text-xs
                                         ${answers[q.question_id] === choiceLetter ? "border-white" : "border-gray-400"}
                                     `}
-                                  >
-                                    {choiceLetter}
-                                  </div>
-                                  <span>{c.choice_text}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        
-                        {q.question_type === "PHOTO" && (
-                          <div className="space-y-3">
-                            {answers[q.question_id] ? (
-                              <div className="relative group w-full max-w-sm">
-                                <img
-                                  src={answers[q.question_id]}
-                                  alt="Uploaded"
-                                  className="w-full h-48 object-cover rounded-xl border border-gray-200"
-                                />
-                                {!isSubmitted && (
-                                  <button
-                                    onClick={() => handleAnswerChange(q.question_id, "")}
-                                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors"
-                                  >
-                                    <X size={16} />
-                                  </button>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="flex flex-col gap-3">
-                                <input
-                                  type="file"
-                                  id={`file-${q.question_id}`}
-                                  className="hidden"
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleImageUpload(q.question_id, file);
-                                  }}
-                                />
-                                <div className="flex gap-3">
-                                  <Button
-                                    isDisabled={isSubmitted || uploadingQid === q.question_id}
-                                    onPress={() => document.getElementById(`file-${q.question_id}`)?.click()}
-                                    className="flex-1 bg-white border-2 border-dashed border-gray-300 hover:border-[#5d7c6f] hover:text-[#5d7c6f] py-4 h-auto rounded-xl transition-all flex flex-col gap-1"
-                                    isLoading={uploadingQid === q.question_id}
-                                  >
-                                    {uploadingQid === q.question_id ? (
-                                      <span className="text-sm font-semibold ml-2">กำลังอัปโหลด...</span>
-                                    ) : (
-                                      <div className="flex flex-col items-center gap-1">
-                                        <Camera size={24} />
-                                        <span className="text-sm font-semibold">ถ่ายรูป / เลือกรูป</span>
-                                        <span className="text-[10px] text-gray-600 font-normal">ขนาดไฟล์รูปภาพสูงสุด 20MB</span>
+                                      >
+                                        {choiceLetter}
                                       </div>
+                                      <span>{c.choice_text}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {q.question_type === "PHOTO" && (
+                              <div className="space-y-3">
+                                {answers[q.question_id] ? (
+                                  <div className="relative group w-full max-w-sm">
+                                    <img
+                                      alt="Uploaded"
+                                      className="w-full h-48 object-cover rounded-xl border border-gray-200"
+                                      src={answers[q.question_id]}
+                                    />
+                                    {!isSubmitted && (
+                                      <button
+                                        className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                                        onClick={() =>
+                                          handleAnswerChange(q.question_id, "")
+                                        }
+                                      >
+                                        <X size={16} />
+                                      </button>
                                     )}
-                                  </Button>
-                                </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-3">
+                                    <input
+                                      accept="image/*"
+                                      className="hidden"
+                                      id={`file-${q.question_id}`}
+                                      type="file"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+
+                                        if (file)
+                                          handleImageUpload(
+                                            q.question_id,
+                                            file,
+                                          );
+                                      }}
+                                    />
+                                    <div className="flex gap-3">
+                                      <Button
+                                        className="flex-1 bg-white border-2 border-dashed border-gray-300 hover:border-[#5d7c6f] hover:text-[#5d7c6f] py-4 h-auto rounded-xl transition-all flex flex-col gap-1"
+                                        isDisabled={
+                                          isSubmitted ||
+                                          uploadingQid === q.question_id
+                                        }
+                                        isLoading={
+                                          uploadingQid === q.question_id
+                                        }
+                                        onPress={() =>
+                                          document
+                                            .getElementById(
+                                              `file-${q.question_id}`,
+                                            )
+                                            ?.click()
+                                        }
+                                      >
+                                        {uploadingQid === q.question_id ? (
+                                          <span className="text-sm font-semibold ml-2">
+                                            กำลังอัปโหลด...
+                                          </span>
+                                        ) : (
+                                          <div className="flex flex-col items-center gap-1">
+                                            <Camera size={24} />
+                                            <span className="text-sm font-semibold">
+                                              ถ่ายรูป / เลือกรูป
+                                            </span>
+                                            <span className="text-[10px] text-gray-600 font-normal">
+                                              ขนาดไฟล์รูปภาพสูงสุด 20MB
+                                            </span>
+                                          </div>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
-                        )}
-                        </div>
-                      ),
-                    );
-                  })()}
-                </div>
+                        ),
+                      );
+                    })()}
+                  </div>
                 )}
               </ModalBody>
 
               <ModalFooter>
                 {(() => {
-                  const currentResult = camp?.missionResults?.find((r: any) => r.mission_mission_id === selectedMission?.mission_id);
+                  const currentResult = camp?.missionResults?.find(
+                    (r: any) =>
+                      r.mission_mission_id === selectedMission?.mission_id,
+                  );
                   const isSubmitted = currentResult?.status === "completed";
-                  const isQr = selectedMission?.type === 'QR_CODE_SCANNING';
+                  const isQr = selectedMission?.type === "QR_CODE_SCANNING";
 
                   // QR mission: only show close button
                   if (isQr) {
                     return (
-                      <Button className="bg-gray-100 text-gray-700" onPress={onClose}>
+                      <Button
+                        className="bg-gray-100 text-gray-700"
+                        onPress={onClose}
+                      >
                         ปิดหน้าต่าง
                       </Button>
                     );
                   }
 
                   const allAnswered = selectedMission?.mission_question?.every(
-                    (q: any) => answers[q.question_id] && String(answers[q.question_id]).trim() !== ""
+                    (q: any) =>
+                      answers[q.question_id] &&
+                      String(answers[q.question_id]).trim() !== "",
                   );
-                  
+
                   return (
                     <>
                       <Button color="danger" variant="light" onPress={onClose}>

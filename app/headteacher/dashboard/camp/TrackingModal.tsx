@@ -10,7 +10,7 @@ import {
   Button,
   Pagination,
 } from "@heroui/react";
-import { Search, Trophy, CheckCircle2, Clock, MapPin } from "lucide-react";
+import { Search, Trophy, Clock, MapPin } from "lucide-react";
 
 interface StudentProgress {
   studentId: number;
@@ -63,6 +63,7 @@ export default function TrackingModal({
       setLoading(true);
       setData(null);
       const res = await fetch(`/api/camps/${campId}/tracking`);
+
       if (res.ok) {
         setData(await res.json());
       }
@@ -75,9 +76,11 @@ export default function TrackingModal({
 
   const filteredStudents = data?.students.filter((student) => {
     const query = searchQuery.trim().toLowerCase();
+
     if (!query) return true;
     const matchName = student.name.toLowerCase().includes(query);
     const matchId = String(student.studentId).includes(query);
+
     return matchName || matchId;
   });
 
@@ -86,6 +89,7 @@ export default function TrackingModal({
   const paginatedStudents = useMemo(() => {
     const start = (page - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
+
     return filteredStudents?.slice(start, end);
   }, [page, filteredStudents]);
 
@@ -122,12 +126,12 @@ export default function TrackingModal({
               {/* Search Bar */}
               <div className="mt-4 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search size={16} className="text-gray-400" />
+                  <Search className="text-gray-400" size={16} />
                 </div>
                 <input
-                  type="text"
-                  placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/20 focus:border-[#5d7c6f] transition-all bg-gray-50/50"
+                  placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
+                  type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -137,10 +141,16 @@ export default function TrackingModal({
               {data && (
                 <div className="flex items-center gap-4 mt-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-lg">
-                    <span className="font-semibold text-gray-900">{data.students.length}</span> คนที่ลงทะเบียน
+                    <span className="font-semibold text-gray-900">
+                      {data.students.length}
+                    </span>{" "}
+                    คนที่ลงทะเบียน
                   </div>
                   <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-lg">
-                    <span className="font-semibold text-gray-900">{data.totalMissions}</span> ภารกิจทั้งหมด
+                    <span className="font-semibold text-gray-900">
+                      {data.totalMissions}
+                    </span>{" "}
+                    ภารกิจทั้งหมด
                   </div>
                 </div>
               )}
@@ -150,7 +160,9 @@ export default function TrackingModal({
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
-                  <p className="mt-4 text-sm text-gray-500">กำลังโหลดข้อมูล...</p>
+                  <p className="mt-4 text-sm text-gray-500">
+                    กำลังโหลดข้อมูล...
+                  </p>
                 </div>
               ) : !data ? (
                 <p className="text-center text-gray-400 py-8">
@@ -192,27 +204,30 @@ export default function TrackingModal({
 
                       <div className="space-y-1.5">
                         <div className="flex justify-between items-end text-xs mb-1">
-                          <span className="text-gray-500 font-medium tracking-wide text-[11px] uppercase">ความก้าวหน้าภารกิจ</span>
+                          <span className="text-gray-500 font-medium tracking-wide text-[11px] uppercase">
+                            ความก้าวหน้าภารกิจ
+                          </span>
                           <span className="font-bold text-[#5d7c6f]">
                             {student.progressPercentage}%
                           </span>
                         </div>
-                        
+
                         {/* Custom Progress Bar */}
                         <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                          <div 
-                            className="bg-[#5d7c6f] h-2.5 rounded-full transition-all duration-1000 ease-in-out" 
+                          <div
+                            className="bg-[#5d7c6f] h-2.5 rounded-full transition-all duration-1000 ease-in-out"
                             style={{ width: `${student.progressPercentage}%` }}
                           />
                         </div>
 
                         <p className="text-xs text-right text-gray-400 mt-1">
-                          สำเร็จ {student.completedMissions} / {student.totalMissions} ภารกิจ
+                          สำเร็จ {student.completedMissions} /{" "}
+                          {student.totalMissions} ภารกิจ
                         </p>
                       </div>
                     </div>
                   ))}
-                  
+
                   {pages > 1 && (
                     <div className="pt-4 flex justify-center pb-2">
                       <Pagination
@@ -237,7 +252,11 @@ export default function TrackingModal({
             </ModalBody>
 
             <ModalFooter className="px-6 py-4 bg-white border-t border-gray-100 rounded-b-3xl">
-              <Button variant="flat" className="w-full sm:w-auto font-medium" onPress={onClose}>
+              <Button
+                className="w-full sm:w-auto font-medium"
+                variant="flat"
+                onPress={onClose}
+              >
                 ปิดหน้าต่าง
               </Button>
             </ModalFooter>

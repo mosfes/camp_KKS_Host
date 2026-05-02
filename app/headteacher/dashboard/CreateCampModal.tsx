@@ -81,8 +81,16 @@ export default function CreateCampModal({
   const [selectedClassroomIds, setSelectedClassroomIds] = useState<number[]>(
     [],
   );
-  const [shirtImages, setShirtImages] = useState<(string | null)[]>([null, null, null]);
-  const [shirtImageFiles, setShirtImageFiles] = useState<(File | null)[]>([null, null, null]);
+  const [shirtImages, setShirtImages] = useState<(string | null)[]>([
+    null,
+    null,
+    null,
+  ]);
+  const [shirtImageFiles, setShirtImageFiles] = useState<(File | null)[]>([
+    null,
+    null,
+    null,
+  ]);
   const [campImage, setCampImage] = useState<string | null>(null);
   const [campImageFile, setCampImageFile] = useState<File | null>(null);
 
@@ -195,7 +203,9 @@ export default function CreateCampModal({
 
   useEffect(() => {
     if (selectedGrades.length > 0) {
-      const filtered = classrooms.filter((c) => selectedGrades.includes(c.grade));
+      const filtered = classrooms.filter((c) =>
+        selectedGrades.includes(c.grade),
+      );
 
       console.log(
         "Filtered classrooms for grades",
@@ -264,6 +274,7 @@ export default function CreateCampModal({
       // ดึง grade ทุกชั้นจาก camp_classroom
       if (campSource.camp_classroom && campSource.camp_classroom.length > 0) {
         const gradesSet = new Set<string>();
+
         campSource.camp_classroom.forEach((cc: any) => {
           if (cc.classroom?.grade) {
             gradesSet.add(cc.classroom.grade);
@@ -404,11 +415,17 @@ export default function CreateCampModal({
       const newData = { ...prev, [field]: value };
 
       if (field === "registrationStartDate") {
-        if (!prev.shirtStartDate || prev.shirtStartDate === prev.registrationStartDate) {
+        if (
+          !prev.shirtStartDate ||
+          prev.shirtStartDate === prev.registrationStartDate
+        ) {
           newData.shirtStartDate = value;
         }
       } else if (field === "registrationEndDate") {
-        if (!prev.shirtEndDate || prev.shirtEndDate === prev.registrationEndDate) {
+        if (
+          !prev.shirtEndDate ||
+          prev.shirtEndDate === prev.registrationEndDate
+        ) {
           newData.shirtEndDate = value;
         }
       }
@@ -457,6 +474,7 @@ export default function CreateCampModal({
     value: string,
   ) => {
     const newSchedule = [...formData.dailySchedule];
+
     newSchedule[dayIndex].timeSlots[slotIndex][field] = value;
     setFormData({ ...formData, dailySchedule: newSchedule });
   };
@@ -470,35 +488,42 @@ export default function CreateCampModal({
     setFormData({ ...formData, dailySchedule: newSchedule });
   };
 
-  const handleShirtImageChange = (index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleShirtImageChange =
+    (index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
 
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        showWarning("ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพเท่านั้น");
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        showWarning("ขนาดไฟล์เกิน", "ขนาดไฟล์ต้องไม่เกิน 10MB");
-        return;
-      }
-      const newFiles = [...shirtImageFiles];
-      newFiles[index] = file;
-      setShirtImageFiles(newFiles);
+      if (file) {
+        if (!file.type.startsWith("image/")) {
+          showWarning("ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพเท่านั้น");
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const newImages = [...shirtImages];
-        newImages[index] = reader.result as string;
-        setShirtImages(newImages);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          showWarning("ขนาดไฟล์เกิน", "ขนาดไฟล์ต้องไม่เกิน 10MB");
+
+          return;
+        }
+        const newFiles = [...shirtImageFiles];
+
+        newFiles[index] = file;
+        setShirtImageFiles(newFiles);
+
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+          const newImages = [...shirtImages];
+
+          newImages[index] = reader.result as string;
+          setShirtImages(newImages);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
 
   const removeShirtImage = (index: number) => {
     const newImages = [...shirtImages];
     const newFiles = [...shirtImageFiles];
+
     newImages[index] = null;
     newFiles[index] = null;
     setShirtImages(newImages);
@@ -511,11 +536,13 @@ export default function CreateCampModal({
     if (file) {
       if (!file.type.startsWith("image/")) {
         showWarning("ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+
         return;
       }
 
       if (file.size > 10 * 1024 * 1024) {
         showWarning("ขนาดไฟล์เกิน", "ขนาดไฟล์ต้องไม่เกิน 10MB");
+
         return;
       }
       setCampImageFile(file);
@@ -565,13 +592,18 @@ export default function CreateCampModal({
 
     // Validation for daily schedule time slots
     const hasInvalidSchedule = formData.dailySchedule.some((day) =>
-      day.timeSlots.some((slot) => slot.startTime && slot.endTime && slot.startTime > slot.endTime)
+      day.timeSlots.some(
+        (slot) =>
+          slot.startTime && slot.endTime && slot.startTime > slot.endTime,
+      ),
     );
+
     if (hasInvalidSchedule) {
       showWarning(
         "ข้อมูลไม่ถูกต้อง",
         "กรุณาตรวจสอบเวลาในกำหนดการรายวัน (เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่ม)",
       );
+
       return;
     }
     // ...
@@ -662,15 +694,16 @@ export default function CreateCampModal({
                   เลือกระดับชั้น (เลือกได้มากกว่า 1)
                   <Select
                     isRequired
-                    selectionMode="multiple"
                     classNames={{
                       trigger: "border-gray-300",
                     }}
                     label="ระดับชั้น"
                     placeholder="-- เลือกระดับชั้น --"
                     selectedKeys={new Set(selectedGrades)}
+                    selectionMode="multiple"
                     onSelectionChange={(keys) => {
                       const grades = Array.from(keys) as string[];
+
                       setSelectedGrades(grades);
                       handleChange("gradeLevel", grades.join(","));
                     }}
@@ -732,16 +765,25 @@ export default function CreateCampModal({
                             }}
                           />
                           <span className="text-sm">
-                            {classroom.grade?.replace("Level_", "ม.")} {classroom.classroom_types?.name || classroom.type_classroom} -{" "}
+                            {classroom.grade?.replace("Level_", "ม.")}{" "}
+                            {classroom.classroom_types?.name ||
+                              classroom.type_classroom}{" "}
+                            -{" "}
                             <span className="text-gray-400">
                               {classroom.teacher.firstname}{" "}
                               {classroom.teacher.lastname}
-                              {classroom.classroom_teacher && classroom.classroom_teacher.length > 0 && (
-                                <>
-                                  {", "}
-                                  {classroom.classroom_teacher.map((ct: any) => `${ct.teacher.firstname} ${ct.teacher.lastname}`).join(", ")}
-                                </>
-                              )}
+                              {classroom.classroom_teacher &&
+                                classroom.classroom_teacher.length > 0 && (
+                                  <>
+                                    {", "}
+                                    {classroom.classroom_teacher
+                                      .map(
+                                        (ct: any) =>
+                                          `${ct.teacher.firstname} ${ct.teacher.lastname}`,
+                                      )
+                                      .join(", ")}
+                                  </>
+                                )}
                             </span>
                           </span>
                         </label>
@@ -767,9 +809,9 @@ export default function CreateCampModal({
                   รายละเอียด
                 </label>
                 <textarea
-                  rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none resize-none"
                   placeholder="ค่ายเกี่ยวกับการประยุกต์ใช้ STEM ในชีวิตประจำวัน"
+                  rows={3}
                   value={formData.description}
                   onChange={(e) => handleChange("description", e.target.value)}
                 />
@@ -788,8 +830,13 @@ export default function CreateCampModal({
                         onChange={handleCampImageChange}
                       />
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all">
-                        <ImageOff className="mx-auto text-gray-400 mb-2" size={28} />
-                        <p className="text-sm text-gray-500 font-medium">คลิกเพื่ออัปโหลดรูปปกค่าย</p>
+                        <ImageOff
+                          className="mx-auto text-gray-400 mb-2"
+                          size={28}
+                        />
+                        <p className="text-sm text-gray-500 font-medium">
+                          คลิกเพื่ออัปโหลดรูปปกค่าย
+                        </p>
                       </div>
                     </label>
                   ) : (
@@ -1027,11 +1074,13 @@ export default function CreateCampModal({
                               )}
                             </div>
                           </div>
-                          {slot.startTime && slot.endTime && slot.startTime > slot.endTime && (
-                            <p className="text-red-500 text-xs mt-2 px-1">
-                              * เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่ม
-                            </p>
-                          )}
+                          {slot.startTime &&
+                            slot.endTime &&
+                            slot.startTime > slot.endTime && (
+                              <p className="text-red-500 text-xs mt-2 px-1">
+                                * เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่ม
+                              </p>
+                            )}
                         </div>
                       ))}
                     </div>
@@ -1088,8 +1137,14 @@ export default function CreateCampModal({
                     }
                     onChange={(range) => {
                       if (!range) return;
-                      handleChange("shirtStartDate", dateValueToString(range.start));
-                      handleChange("shirtEndDate", dateValueToString(range.end));
+                      handleChange(
+                        "shirtStartDate",
+                        dateValueToString(range.start),
+                      );
+                      handleChange(
+                        "shirtEndDate",
+                        dateValueToString(range.end),
+                      );
                     }}
                   />
                 </div>
@@ -1114,8 +1169,13 @@ export default function CreateCampModal({
                               onChange={handleShirtImageChange(index)}
                             />
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all aspect-square flex flex-col items-center justify-center">
-                              <ImageOff className="text-gray-400 mb-1" size={24} />
-                              <p className="text-xs text-gray-400">รูปที่ {index + 1}</p>
+                              <ImageOff
+                                className="text-gray-400 mb-1"
+                                size={24}
+                              />
+                              <p className="text-xs text-gray-400">
+                                รูปที่ {index + 1}
+                              </p>
                             </div>
                           </label>
                         ) : (

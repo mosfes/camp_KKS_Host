@@ -53,6 +53,7 @@ export default function EnrollmentModal({
       setLoading(true);
       setData(null);
       const res = await fetch(`/api/camps/${campId}/enrollments`);
+
       if (res.ok) {
         setData(await res.json());
       }
@@ -134,7 +135,10 @@ export default function EnrollmentModal({
               ) : tab === "enrolled" ? (
                 data.enrolled.length === 0 ? (
                   <div className="text-center py-10 text-gray-400">
-                    <CheckCircle2 className="mx-auto mb-2 opacity-30" size={32} />
+                    <CheckCircle2
+                      className="mx-auto mb-2 opacity-30"
+                      size={32}
+                    />
                     <p className="text-sm">ยังไม่มีนักเรียนลงทะเบียน</p>
                   </div>
                 ) : (
@@ -155,14 +159,20 @@ export default function EnrollmentModal({
                             เสื้อ {s.shirt_size}
                           </span>
                         )}
-                        <CheckCircle2 size={16} className="text-[#5d7c6f] shrink-0" />
+                        <CheckCircle2
+                          className="text-[#5d7c6f] shrink-0"
+                          size={16}
+                        />
                       </li>
                     ))}
                   </ul>
                 )
               ) : data.notEnrolled.length === 0 ? (
                 <div className="text-center py-10 text-gray-400">
-                  <CheckCircle2 className="mx-auto mb-2 opacity-30 text-[#5d7c6f]" size={32} />
+                  <CheckCircle2
+                    className="mx-auto mb-2 opacity-30 text-[#5d7c6f]"
+                    size={32}
+                  />
                   <p className="text-sm">นักเรียนทุกคนลงทะเบียนแล้ว!</p>
                 </div>
               ) : (
@@ -178,7 +188,7 @@ export default function EnrollmentModal({
                       <span className="flex-1 text-sm font-medium text-gray-700">
                         {s.name}
                       </span>
-                      <Clock size={16} className="text-amber-500 shrink-0" />
+                      <Clock className="text-amber-500 shrink-0" size={16} />
                     </li>
                   ))}
                 </ul>
@@ -186,7 +196,11 @@ export default function EnrollmentModal({
             </ModalBody>
 
             <ModalFooter className="px-6 py-4 bg-gray-50/50 rounded-b-3xl">
-              <Button variant="flat" className="w-full sm:w-auto" onPress={onClose}>
+              <Button
+                className="w-full sm:w-auto"
+                variant="flat"
+                onPress={onClose}
+              >
                 ปิด
               </Button>
             </ModalFooter>

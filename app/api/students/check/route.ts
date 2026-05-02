@@ -1,17 +1,18 @@
 // @ts-nocheck
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/db";
 
 export async function POST(req) {
   try {
     const body = await req.json();
     const { ids } = body;
-    
+
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json([]);
     }
 
-    const parsedIds = ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+    const parsedIds = ids.map((id) => parseInt(id)).filter((id) => !isNaN(id));
 
     if (parsedIds.length === 0) {
       return NextResponse.json([]);
@@ -19,17 +20,21 @@ export async function POST(req) {
 
     const existingStudents = await prisma.students.findMany({
       where: {
-        students_id: { in: parsedIds }
+        students_id: { in: parsedIds },
       },
       select: {
         students_id: true,
-        deletedAt: true
-      }
+        deletedAt: true,
+      },
     });
 
     return NextResponse.json(existingStudents);
-  } catch (error) {
-    console.error("Check existing students error:", error);
-    return NextResponse.json({ error: 'Failed to verify students' }, { status: 500 });
+  } catch {
+    //     console.error("Check existing students error:", error);
+
+    return NextResponse.json(
+      { _error: "Failed to verify students" },
+      { status: 500 },
+    );
   }
 }

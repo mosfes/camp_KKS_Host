@@ -1,10 +1,12 @@
 // @ts-nocheck
 import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
 
 export async function GET(request, { params }) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
 
   try {
@@ -22,20 +24,28 @@ export async function GET(request, { params }) {
         deletedAt: null,
         OR: [
           { created_by_teacher_id: teacher.teachers_id },
-          { teacher_enrollment: { some: { teacher_teachers_id: teacher.teachers_id } } },
+          {
+            teacher_enrollment: {
+              some: { teacher_teachers_id: teacher.teachers_id },
+            },
+          },
           {
             camp_classroom: {
-              some: { classroom: { teachers_teachers_id: teacher.teachers_id } }
-            }
+              some: {
+                classroom: { teachers_teachers_id: teacher.teachers_id },
+              },
+            },
           },
           {
             camp_classroom: {
               some: {
                 classroom: {
-                  classroom_teacher: { some: { teacher_teachers_id: teacher.teachers_id } }
-                }
-              }
-            }
+                  classroom_teacher: {
+                    some: { teacher_teachers_id: teacher.teachers_id },
+                  },
+                },
+              },
+            },
           },
         ],
       },
@@ -45,17 +55,22 @@ export async function GET(request, { params }) {
     });
 
     if (!camp && !teacher.roles?.includes("ADMIN")) {
-      return NextResponse.json({ error: "Unauthorized access to this camp" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Unauthorized access to this camp" },
+        { status: 403 },
+      );
     }
-    
+
     // If Admin but not found in the above query, just fetch the basic camp
-    const adminCamp = camp || await prisma.camp.findUnique({
-      where: { camp_id: campId },
-      include: { camp_classroom: true }
-    });
+    const adminCamp =
+      camp ||
+      (await prisma.camp.findUnique({
+        where: { camp_id: campId },
+        include: { camp_classroom: true },
+      }));
 
     if (!adminCamp) {
-       return NextResponse.json({ error: "Camp not found" }, { status: 404 });
+      return NextResponse.json({ error: "Camp not found" }, { status: 404 });
     }
 
     // Fetch enrollments that belong to the classrooms assigned to this camp, and ONLY if they actually enrolled
@@ -71,16 +86,16 @@ export async function GET(request, { params }) {
               include: {
                 classroom: {
                   include: {
-                    classroom_types: true
-                  }
-                }
-              }
-            }
-          }
-        }
+                    classroom_types: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       orderBy: {
-        enrolled_at: "asc", 
+        enrolled_at: "asc",
       },
     });
 
@@ -89,11 +104,13 @@ export async function GET(request, { params }) {
     const sizeSummary = {};
     const students = [];
 
-    const campClassroomIds = adminCamp.camp_classroom.map((cc) => cc.classroom_id);
+    const campClassroomIds = adminCamp.camp_classroom.map(
+      (cc) => cc.classroom_id,
+    );
 
     for (const enr of enrollments) {
       const size = enr.shirt_size || "รอระบุไซส์";
-      
+
       if (enr.shirt_size) {
         totalShirts++;
         sizeSummary[size] = (sizeSummary[size] || 0) + 1;
@@ -103,12 +120,17 @@ export async function GET(request, { params }) {
 
       // Find which of the student's classrooms is the one participating in this camp
       let classroomStr = "-";
-      const matchedCs = enr.student.classroom_students.find((cs) => 
-        campClassroomIds.includes(cs.classroom_classroom_id)
+      const matchedCs = enr.student.classroom_students.find((cs) =>
+        campClassroomIds.includes(cs.classroom_classroom_id),
       );
+
       if (matchedCs && matchedCs.classroom) {
-        const gradeStr = String(matchedCs.classroom.grade).replace("Level_", "");
+        const gradeStr = String(matchedCs.classroom.grade).replace(
+          "Level_",
+          "",
+        );
         const typeStr = matchedCs.classroom.classroom_types?.name || "";
+
         classroomStr = `ม.${gradeStr} ห้อง ${typeStr}`.trim();
       }
 
@@ -129,11 +151,12 @@ export async function GET(request, { params }) {
       totalStudents: students.length,
       students,
     });
-  } catch (error) {
-    console.error("Error fetching shirt tracking data:", error);
+  } catch {
+    //     console.error("Error fetching shirt tracking data:", error);
+
     return NextResponse.json(
-      { error: "Failed to fetch shirt tracking data" },
-      { status: 500 }
+      { _error: "Failed to fetch shirt tracking data" },
+      { status: 500 },
     );
   }
 }

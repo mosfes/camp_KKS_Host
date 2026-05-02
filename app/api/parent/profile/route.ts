@@ -1,5 +1,7 @@
+export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+
 import { prisma } from "@/lib/db";
 
 /**
@@ -15,10 +17,13 @@ export async function GET() {
       return NextResponse.json({ error: "ไม่ได้เข้าสู่ระบบ" }, { status: 401 });
     }
 
-    const { jwtVerify } = await import('jose');
+    const { jwtVerify } = await import("jose");
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload: sessionData } = await jwtVerify(sessionCookie.value, secret);
-    const studentId = sessionData.students_id;
+    const { payload: sessionData } = await jwtVerify(
+      sessionCookie.value,
+      secret,
+    );
+    const studentId = sessionData.students_id as number;
 
     const parent = await prisma.parents.findFirst({
       where: { username_student_id: studentId },
@@ -31,9 +36,10 @@ export async function GET() {
     });
 
     return NextResponse.json({ parent, hasProfile: !!parent });
-  } catch (error) {
-    console.error("Parent profile GET error:", error);
-    return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
+  } catch {
+    //     console.error("Parent profile GET error:", error);
+
+    return NextResponse.json({ _error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
 }
 
@@ -51,10 +57,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "ไม่ได้เข้าสู่ระบบ" }, { status: 401 });
     }
 
-    const { jwtVerify } = await import('jose');
+    const { jwtVerify } = await import("jose");
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload: sessionData } = await jwtVerify(sessionCookie.value, secret);
-    const studentId = sessionData.students_id;
+    const { payload: sessionData } = await jwtVerify(
+      sessionCookie.value,
+      secret,
+    );
+    const studentId = sessionData.students_id as number;
 
     const body = await req.json();
     const { firstname, lastname, tel } = body;
@@ -63,15 +72,16 @@ export async function POST(req: Request) {
     if (!firstname?.trim() || !lastname?.trim() || !tel?.trim()) {
       return NextResponse.json(
         { error: "กรุณากรอกข้อมูลให้ครบถ้วน" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const telDigits = tel.replace(/\D/g, "");
+
     if (telDigits.length !== 10) {
       return NextResponse.json(
         { error: "เบอร์โทรต้องมี 10 หลัก" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -81,6 +91,7 @@ export async function POST(req: Request) {
     });
 
     let parent;
+
     if (existing) {
       parent = await prisma.parents.update({
         where: { parents_id: existing.parents_id },
@@ -111,8 +122,9 @@ export async function POST(req: Request) {
         tel: parent.tel,
       },
     });
-  } catch (error) {
-    console.error("Parent profile POST error:", error);
-    return NextResponse.json({ error: "เกิดข้อผิดพลาด" }, { status: 500 });
+  } catch {
+    //     console.error("Parent profile POST error:", error);
+
+    return NextResponse.json({ _error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
 }

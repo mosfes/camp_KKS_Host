@@ -18,6 +18,7 @@ export default function ParentLoginPage() {
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
       setError("กรุณากรอกข้อมูลให้ครบ");
+
       return;
     }
     try {
@@ -26,11 +27,16 @@ export default function ParentLoginPage() {
       const res = await fetch("/api/auth/parent/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password: password.trim() }),
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password.trim(),
+        }),
       });
       const data = await res.json();
+
       if (!res.ok) {
         setError(data.error || "เข้าสู่ระบบไม่สำเร็จ");
+
         return;
       }
       router.push("/parent/dashboard");
@@ -65,20 +71,27 @@ export default function ParentLoginPage() {
               <Users size={20} />
             </div>
             <div>
-              <h2 className="text-xl text-gray-600 font-semibold">เข้าสู่ระบบผู้ปกครอง</h2>
+              <h2 className="text-xl text-gray-600 font-semibold">
+                เข้าสู่ระบบผู้ปกครอง
+              </h2>
             </div>
           </div>
 
           {/* Username */}
           <div>
-            <p className="text-gray-500 text-sm mb-2">ชื่อผู้ใช้ (รหัสนักเรียน)</p>
+            <p className="text-gray-500 text-sm mb-2">
+              ชื่อผู้ใช้ (รหัสนักเรียน)
+            </p>
             <Input
               label="รหัสนักเรียน"
               size="sm"
               type="text"
               value={username}
-              onValueChange={(v) => { setUsername(v); setError(""); }}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              onValueChange={(v) => {
+                setUsername(v);
+                setError("");
+              }}
             />
           </div>
 
@@ -90,8 +103,11 @@ export default function ParentLoginPage() {
               size="sm"
               type="password"
               value={password}
-              onValueChange={(v) => { setPassword(v); setError(""); }}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              onValueChange={(v) => {
+                setPassword(v);
+                setError("");
+              }}
             />
           </div>
 
@@ -108,8 +124,8 @@ export default function ParentLoginPage() {
 
           {/* Back to main */}
           <button
-            onClick={() => router.push("/")}
             className="w-full flex items-center justify-center gap-1 text-sm text-gray-400 hover:text-[#5d7c6f] transition-colors"
+            onClick={() => router.push("/")}
           >
             <ArrowLeft size={14} />
             กลับหน้าหลัก

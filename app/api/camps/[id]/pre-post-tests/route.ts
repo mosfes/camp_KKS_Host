@@ -167,11 +167,11 @@ export async function GET(request, { params }) {
     }
 
     return NextResponse.json({ pairs });
-  } catch (error) {
-    console.error("Error fetching pre-post tests:", error);
+  } catch {
+    //     console.error("Error fetching pre-post tests:", error);
 
     return NextResponse.json(
-      { error: "Failed to fetch pre-post tests" },
+      { _error: "Failed to fetch pre-post tests" },
       { status: 500 },
     );
   }

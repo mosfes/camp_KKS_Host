@@ -1,5 +1,7 @@
+export const runtime = "nodejs";
 // @ts-nocheck
 import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/db";
 
 /**
@@ -7,7 +9,7 @@ import { prisma } from "@/lib/db";
  * Body: { email: string }
  * ค้นหาครูด้วย email → set HttpOnly cookie → return teacher info
  */
-export async function POST(req) {
+export async function POST(req: any) {
   try {
     const { email } = await req.json();
 
@@ -30,7 +32,10 @@ export async function POST(req) {
     });
 
     if (!teacher) {
-      return NextResponse.json({ error: "ไม่พบบัญชีครูนี้ในระบบ" }, { status: 404 });
+      return NextResponse.json(
+        { error: "ไม่พบบัญชีครูนี้ในระบบ" },
+        { status: 404 },
+      );
     }
 
     // สร้าง session payload ด้วย JWT
@@ -57,8 +62,12 @@ export async function POST(req) {
     });
 
     return response;
-  } catch (error) {
-    console.error("Login error:", error);
-    return NextResponse.json({ error: "เข้าสู่ระบบไม่สำเร็จ" }, { status: 500 });
+  } catch {
+    //     console.error("Login error:", error);
+
+    return NextResponse.json(
+      { _error: "เข้าสู่ระบบไม่สำเร็จ" },
+      { status: 500 },
+    );
   }
 }

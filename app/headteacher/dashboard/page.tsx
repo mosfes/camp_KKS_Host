@@ -16,11 +16,8 @@ import {
   Tent,
   GraduationCap,
   Users,
-  TrendingUp,
   Trash2,
   Pencil,
-  Target,
-  Layout,
   Smile,
   ClipboardCheck,
   Star,
@@ -51,30 +48,46 @@ function DefaultCampImage() {
 // ... imports
 import { useStatusModal } from "@/components/StatusModalProvider";
 
-const fetcher = (url: string) => fetch(url).then((res) => {
-  if (res.status === 401) throw new Error("Unauthorized");
-  return res.json();
-});
+const fetcher = (url: string) =>
+  fetch(url).then((res) => {
+    if (res.status === 401) throw new Error("Unauthorized");
+
+    return res.json();
+  });
 
 export default function StudentDashboard() {
-  const { showSuccess, showError, showConfirm, setIsLoading } = useStatusModal();
+  const { showSuccess, showError, showConfirm, setIsLoading } =
+    useStatusModal();
   const router = useRouter();
 
   const compressImage = async (file: File) => {
     if (!file || !file.type.startsWith("image/")) return file;
     try {
-      const imageCompression = (await import("browser-image-compression")).default;
-      return await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true });
+      const imageCompression = (await import("browser-image-compression"))
+        .default;
+
+      return await imageCompression(file, {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      });
     } catch (e) {
       console.error("Compression error:", e);
+
       return file;
     }
   };
   const { data: rawCamps, mutate: mutateCamps } = useSWR("/api/camps", fetcher);
-  const { data: statsData, mutate: mutateStats } = useSWR("/api/camps/stats", fetcher);
+  const { data: statsData, mutate: mutateStats } = useSWR(
+    "/api/camps/stats",
+    fetcher,
+  );
   const { data: teacherInfo } = useSWR("/api/auth/me", fetcher);
   const { data: dbAcademicYears } = useSWR("/api/academic_years", fetcher);
-  const { data: homeroomData, isLoading: loadingHomeroom } = useSWR("/api/teacher/homeroom", fetcher);
+  const { data: homeroomData, isLoading: loadingHomeroom } = useSWR(
+    "/api/teacher/homeroom",
+    fetcher,
+  );
 
   const stats = statsData || {
     totalCamps: 0,
@@ -120,27 +133,36 @@ export default function StudentDashboard() {
     setHomeroomPage(1);
   }, [homeroomSearch, homeroomFilter]);
 
-  const allHomeroomStudents = homeroomData?.students?.filter((s: any) => {
-    const searchLower = homeroomSearch.toLowerCase();
-    const fullName = `${s.prefix || ""}${s.firstname} ${s.lastname}`.toLowerCase();
-    const matchesSearch = s.id.toString().includes(searchLower) || fullName.includes(searchLower);
-    
-    let matchesFilter = true;
-    if (homeroomFilter === "allergy") {
-      matchesFilter = s.foodAllergy && s.foodAllergy !== "-" && s.foodAllergy !== "ไม่มี";
-    } else if (homeroomFilter === "disease") {
-      matchesFilter = s.chronicDisease && s.chronicDisease !== "-" && s.chronicDisease !== "ไม่มี";
-    } else if (homeroomFilter === "remark") {
-      matchesFilter = s.remark && s.remark !== "-" && s.remark !== "ไม่มี";
-    }
+  const allHomeroomStudents =
+    homeroomData?.students?.filter((s: any) => {
+      const searchLower = homeroomSearch.toLowerCase();
+      const fullName =
+        `${s.prefix || ""}${s.firstname} ${s.lastname}`.toLowerCase();
+      const matchesSearch =
+        s.id.toString().includes(searchLower) || fullName.includes(searchLower);
 
-    return matchesSearch && matchesFilter;
-  }) || [];
+      let matchesFilter = true;
 
-  const homeroomTotalPages = Math.ceil(allHomeroomStudents.length / itemsPerPage) || 1;
+      if (homeroomFilter === "allergy") {
+        matchesFilter =
+          s.foodAllergy && s.foodAllergy !== "-" && s.foodAllergy !== "ไม่มี";
+      } else if (homeroomFilter === "disease") {
+        matchesFilter =
+          s.chronicDisease &&
+          s.chronicDisease !== "-" &&
+          s.chronicDisease !== "ไม่มี";
+      } else if (homeroomFilter === "remark") {
+        matchesFilter = s.remark && s.remark !== "-" && s.remark !== "ไม่มี";
+      }
+
+      return matchesSearch && matchesFilter;
+    }) || [];
+
+  const homeroomTotalPages =
+    Math.ceil(allHomeroomStudents.length / itemsPerPage) || 1;
   const filteredHomeroomStudents = allHomeroomStudents.slice(
     (homeroomPage - 1) * itemsPerPage,
-    homeroomPage * itemsPerPage
+    homeroomPage * itemsPerPage,
   );
 
   const goToCampDetail = (campId: number) => {
@@ -151,6 +173,7 @@ export default function StudentDashboard() {
 
   const camps = useMemo(() => {
     if (!rawCamps) return [];
+
     return rawCamps.map((camp: any) => {
       // Determine status label
       let statusLabel = "ยังไม่เริ่ม";
@@ -170,13 +193,27 @@ export default function StudentDashboard() {
         description: camp.description,
         status: statusLabel,
         location: camp.location,
-        startDate: start.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" }),
-        endDate: end.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" }),
+        startDate: start.toLocaleDateString("th-TH", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+        endDate: end.toLocaleDateString("th-TH", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
         enrolled: camp._count?.student_enrollment || 0,
-        totalStudents: (camp.camp_classroom || []).reduce((sum: number, cc: any) => sum + (cc.classroom?._count?.classroom_students ?? 0), 0),
+        totalStudents: (camp.camp_classroom || []).reduce(
+          (sum: number, cc: any) =>
+            sum + (cc.classroom?._count?.classroom_students ?? 0),
+          0,
+        ),
         image: camp.img_camp_url || null,
         isOwner: camp.isOwner,
-        ownerName: camp.created_by ? `${camp.created_by.firstname} ${camp.created_by.lastname}`.trim() : "",
+        ownerName: camp.created_by
+          ? `${camp.created_by.firstname} ${camp.created_by.lastname}`.trim()
+          : "",
         grades: camp.grades || [],
         gradeDisplay: camp.gradeDisplay || "",
         academicYear: camp.academicYear || "",
@@ -188,9 +225,13 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (dbAcademicYears) {
-      const activeYear = dbAcademicYears.find((y: any) => 
-        y.status === "แอคทีฟ" || y.status === "Active" || y.status === "ใช้งาน"
+      const activeYear = dbAcademicYears.find(
+        (y: any) =>
+          y.status === "แอคทีฟ" ||
+          y.status === "Active" ||
+          y.status === "ใช้งาน",
       );
+
       if (activeYear) {
         setCampAcademicYearFilter(activeYear.year.toString());
       }
@@ -199,7 +240,11 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (!loading && teacherInfo) {
-      const isHeadteacher = teacherInfo.roles?.includes("HEADTEACHER") || teacherInfo.role === "HEADTEACHER" || teacherInfo.role === "ADMIN";
+      const isHeadteacher =
+        teacherInfo.roles?.includes("HEADTEACHER") ||
+        teacherInfo.role === "HEADTEACHER" ||
+        teacherInfo.role === "ADMIN";
+
       if (!isHeadteacher && selectedTab === "overview") {
         if (homeroomData?.hasHomeroom) {
           setSelectedTab("homeroom");
@@ -266,6 +311,7 @@ export default function StudentDashboard() {
         try {
           const compressedFile = await compressImage(data.campImageFile);
           const formData = new FormData();
+
           formData.append("file", compressedFile);
 
           const uploadRes = await fetch("/api/upload", {
@@ -275,30 +321,44 @@ export default function StudentDashboard() {
 
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
+
             img_camp_url = uploadData.url;
             console.log("Uploaded camp image:", img_camp_url);
           } else {
             console.error("Failed to upload camp image");
-            showError("อัปโหลดรูปล้มเหลว", "ไม่สามารถอัปโหลดรูปภาพหน้าปกค่ายได้ แต่จะดำเนินการสร้างค่ายต่อ");
+            showError(
+              "อัปโหลดรูปล้มเหลว",
+              "ไม่สามารถอัปโหลดรูปภาพหน้าปกค่ายได้ แต่จะดำเนินการสร้างค่ายต่อ",
+            );
           }
         } catch (uploadErr) {
           console.error("Error during upload:", uploadErr);
-          showError("อัปโหลดรูปล้มเหลว", "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพหน้าปกค่าย");
+          showError(
+            "อัปโหลดรูปล้มเหลว",
+            "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพหน้าปกค่าย",
+          );
         }
       }
 
       // Upload shirt images (up to 3) to Cloudinary
       const shirtUrls: string[] = [];
+
       if (data.shirtImageFiles && Array.isArray(data.shirtImageFiles)) {
         for (const file of data.shirtImageFiles) {
           if (file) {
             try {
               const compressedFile = await compressImage(file);
               const formData = new FormData();
+
               formData.append("file", compressedFile);
-              const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+              const uploadRes = await fetch("/api/upload", {
+                method: "POST",
+                body: formData,
+              });
+
               if (uploadRes.ok) {
                 const uploadData = await uploadRes.json();
+
                 shirtUrls.push(uploadData.url);
               }
             } catch (uploadErr) {
@@ -365,8 +425,10 @@ export default function StudentDashboard() {
     try {
       setIsEditFetching(true);
       const response = await fetch(`/api/camps/${campId}`);
+
       if (!response.ok) throw new Error("Failed to fetch camp data");
       const data = await response.json();
+
       setEditingCampData(data);
       setIsEditModalOpen(true);
     } catch (error) {
@@ -386,9 +448,15 @@ export default function StudentDashboard() {
 
       // Upload new shirt images if files were picked
       let finalShirtUrls: (string | null)[] = [];
+
       try {
-        const parsed = JSON.parse(formData.shirtImages ? JSON.stringify(formData.shirtImages) : "[]");
-        finalShirtUrls = Array.isArray(parsed) ? parsed : [formData.shirtImages];
+        const parsed = JSON.parse(
+          formData.shirtImages ? JSON.stringify(formData.shirtImages) : "[]",
+        );
+
+        finalShirtUrls = Array.isArray(parsed)
+          ? parsed
+          : [formData.shirtImages];
       } catch (e) {
         finalShirtUrls = [formData.shirtImages];
       }
@@ -396,14 +464,21 @@ export default function StudentDashboard() {
       if (formData.shirtImageFiles && Array.isArray(formData.shirtImageFiles)) {
         for (let i = 0; i < formData.shirtImageFiles.length; i++) {
           const file = formData.shirtImageFiles[i];
+
           if (file) {
             try {
               const compressedFile = await compressImage(file);
               const uploadForm = new FormData();
+
               uploadForm.append("file", compressedFile);
-              const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
+              const uploadRes = await fetch("/api/upload", {
+                method: "POST",
+                body: uploadForm,
+              });
+
               if (uploadRes.ok) {
                 const uploadData = await uploadRes.json();
+
                 finalShirtUrls[i] = uploadData.url;
               }
             } catch (uploadErr) {
@@ -418,10 +493,16 @@ export default function StudentDashboard() {
         try {
           const compressedFile = await compressImage(formData.campImageFile);
           const uploadForm = new FormData();
+
           uploadForm.append("file", compressedFile);
-          const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: uploadForm,
+          });
+
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
+
             img_camp_url = uploadData.url;
           }
         } catch (uploadErr) {
@@ -441,6 +522,7 @@ export default function StudentDashboard() {
 
       if (!response.ok) {
         const result = await response.json();
+
         throw new Error(result.error || "Failed to edit camp");
       }
 
@@ -475,11 +557,17 @@ export default function StudentDashboard() {
   const [campRoleFilter, setCampRoleFilter] = useState("all"); // "all", "owner", "related"
   const [campAcademicYearFilter, setCampAcademicYearFilter] = useState("all");
 
-  const filteredMyCamps = camps.filter((camp) => {
-    if (campStatusFilter !== "all" && camp.status !== campStatusFilter) return false;
+  const filteredMyCamps = camps.filter((camp: any) => {
+    if (campStatusFilter !== "all" && camp.status !== campStatusFilter)
+      return false;
     if (campRoleFilter === "owner" && !camp.isOwner) return false;
     if (campRoleFilter === "related" && camp.isOwner) return false;
-    if (campAcademicYearFilter !== "all" && String(camp.academicYear) !== String(campAcademicYearFilter)) return false;
+    if (
+      campAcademicYearFilter !== "all" &&
+      String(camp.academicYear) !== String(campAcademicYearFilter)
+    )
+      return false;
+
     return true;
   });
 
@@ -492,7 +580,9 @@ export default function StudentDashboard() {
           <div className="relative bg-white rounded-2xl shadow-2xl px-10 py-8 flex flex-col items-center gap-4">
             <div className="w-14 h-14 rounded-full border-4 border-[#6b857a]/20 border-t-[#6b857a] animate-spin" />
             <div className="text-center">
-              <p className="font-semibold text-[#2d3748] text-base">กำลังโหลดข้อมูลค่าย</p>
+              <p className="font-semibold text-[#2d3748] text-base">
+                กำลังโหลดข้อมูลค่าย
+              </p>
               <p className="text-sm text-gray-400 mt-0.5">กรุณารอสักครู่...</p>
             </div>
           </div>
@@ -502,7 +592,10 @@ export default function StudentDashboard() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 text-[#2d3748]">
-            ยินดีต้อนรับ, ครู{teacherInfo?.firstname || "หัวหน้าค่าย"}{teacherInfo?.classroomName ? ` ประจำชั้น ${teacherInfo.classroomName}` : ""}
+            ยินดีต้อนรับ, ครู{teacherInfo?.firstname || "หัวหน้าค่าย"}
+            {teacherInfo?.classroomName
+              ? ` ประจำชั้น ${teacherInfo.classroomName}`
+              : ""}
           </h1>
           <p className="text-lg text-gray-500">
             จัดการค่ายและติดตามการเรียนรู้ของนักเรียน
@@ -521,8 +614,14 @@ export default function StudentDashboard() {
               tabContent: "font-semibold text-center",
             }}
             items={[
-              ...(teacherInfo?.roles?.includes("HEADTEACHER") || teacherInfo?.role === "HEADTEACHER" || teacherInfo?.role === "ADMIN" ? [{ id: "overview", label: "ภาพรวมระบบ" }] : []),
-              ...(homeroomData?.hasHomeroom ? [{ id: "homeroom", label: "นักเรียนประจำชั้น" }] : []),
+              ...(teacherInfo?.roles?.includes("HEADTEACHER") ||
+              teacherInfo?.role === "HEADTEACHER" ||
+              teacherInfo?.role === "ADMIN"
+                ? [{ id: "overview", label: "ภาพรวมระบบ" }]
+                : []),
+              ...(homeroomData?.hasHomeroom
+                ? [{ id: "homeroom", label: "นักเรียนประจำชั้น" }]
+                : []),
               { id: "camp", label: "ค่ายที่เกี่ยวข้อง" },
             ]}
             selectedKey={selectedTab}
@@ -587,9 +686,11 @@ export default function StudentDashboard() {
                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                   <Info className="text-gray-400" size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">ไม่พบข้อมูลชั้นเรียนประจำ</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  ไม่พบข้อมูลชั้นเรียนประจำ
+                </h3>
                 <p className="text-gray-500 max-w-md mx-auto">
-                  คุณยังไม่ได้ถูกกำหนดให้เป็นครูประจำชั้นของห้องใดๆ ในระบบ 
+                  คุณยังไม่ได้ถูกกำหนดให้เป็นครูประจำชั้นของห้องใดๆ ในระบบ
                   หากต้องการตรวจสอบข้อมูล กรุณาติดต่อผู้ดูแลระบบ (Admin)
                 </p>
               </div>
@@ -605,16 +706,21 @@ export default function StudentDashboard() {
                       มีนักเรียนทั้งหมด {homeroomData.students?.length || 0} คน
                     </p>
                   </div>
-                  
+
                   {/* Special Care summary box */}
                   <div className="bg-[#F5F1E8] backdrop-blur-sm px-4 py-3 rounded-xl border border-white/10 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
                       <HeartPulse className="text-rose-500" size={20} />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">ต้องการดูแลเป็นพิเศษ</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        ต้องการดูแลเป็นพิเศษ
+                      </p>
                       <p className="text-lg font-bold text-rose-600">
-                        {homeroomData.students?.filter((s: any) => s.isSpecialCare).length || 0} คน
+                        {homeroomData.students?.filter(
+                          (s: any) => s.isSpecialCare,
+                        ).length || 0}{" "}
+                        คน
                       </p>
                     </div>
                   </div>
@@ -622,22 +728,35 @@ export default function StudentDashboard() {
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
                   <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 w-full">
-                    <h3 className="text-xl font-semibold text-gray-900 w-full sm:w-auto">รายชื่อนักเรียน</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 w-full sm:w-auto">
+                      รายชื่อนักเรียน
+                    </h3>
                     <div className="flex gap-2 w-full sm:w-auto">
                       <div className="w-[200px]">
                         <Select
                           aria-label="ตัวกรอง"
-                          placeholder="ตัวกรองทั้งหมด"
                           className="w-full"
-                          size="sm"
+                          classNames={{
+                            trigger:
+                              "bg-white border border-gray-100 text-gray-700 font-medium h-10",
+                          }}
+                          placeholder="ตัวกรองทั้งหมด"
                           selectedKeys={[homeroomFilter]}
+                          size="sm"
                           onChange={(e) => setHomeroomFilter(e.target.value)}
-                          classNames={{ trigger: "bg-white border border-gray-100 text-gray-700 font-medium h-10" }}
                         >
-                          <SelectItem key="all" textValue="แสดงทั้งหมด">แสดงทั้งหมด</SelectItem>
-                          <SelectItem key="allergy" textValue="แพ้อาหาร">แพ้อาหาร</SelectItem>
-                          <SelectItem key="disease" textValue="โรคประจำตัว">โรคประจำตัว</SelectItem>
-                          <SelectItem key="remark" textValue="หมายเหตุอื่นๆ">หมายเหตุอื่นๆ</SelectItem>
+                          <SelectItem key="all" textValue="แสดงทั้งหมด">
+                            แสดงทั้งหมด
+                          </SelectItem>
+                          <SelectItem key="allergy" textValue="แพ้อาหาร">
+                            แพ้อาหาร
+                          </SelectItem>
+                          <SelectItem key="disease" textValue="โรคประจำตัว">
+                            โรคประจำตัว
+                          </SelectItem>
+                          <SelectItem key="remark" textValue="หมายเหตุอื่นๆ">
+                            หมายเหตุอื่นๆ
+                          </SelectItem>
                         </Select>
                       </div>
                       <div className="relative w-full sm:w-72">
@@ -645,9 +764,9 @@ export default function StudentDashboard() {
                           <Search className="h-5 w-5 text-gray-400" />
                         </div>
                         <input
-                          type="text"
                           className="block w-full pl-10 pr-3 h-10 border border-gray-100 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-[#6b857a] focus:border-[#6b857a] transition-colors text-sm"
                           placeholder="ค้นหาชื่อ, นามสกุล หรือเลขประจำตัว..."
+                          type="text"
                           value={homeroomSearch}
                           onChange={(e) => setHomeroomSearch(e.target.value)}
                         />
@@ -659,64 +778,96 @@ export default function StudentDashboard() {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-gray-50 text-gray-600 text-sm border-y border-gray-100">
-                          <th className="p-4 font-semibold rounded-tl-lg">รหัสนักเรียน</th>
+                          <th className="p-4 font-semibold rounded-tl-lg">
+                            รหัสนักเรียน
+                          </th>
                           <th className="p-4 font-semibold">ชื่อ-นามสกุล</th>
                           <th className="p-4 font-semibold">โรคประจำตัว</th>
                           <th className="p-4 font-semibold">อาหารที่แพ้</th>
-                          <th className="p-4 font-semibold rounded-tr-lg w-1/4">หมายเหตุ</th>
+                          <th className="p-4 font-semibold rounded-tr-lg w-1/4">
+                            หมายเหตุ
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {loadingHomeroom ? (
                           <tr>
-                            <td colSpan={5} className="p-8 text-center text-gray-400">
+                            <td
+                              className="p-8 text-center text-gray-400"
+                              colSpan={5}
+                            >
                               กำลังโหลดข้อมูล...
                             </td>
                           </tr>
                         ) : filteredHomeroomStudents.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="p-12 text-center text-gray-400">
-                              {homeroomSearch ? "ไม่พบนักเรียนที่ค้นหา" : "ยังไม่มีนักเรียนในห้องนี้"}
+                            <td
+                              className="p-12 text-center text-gray-400"
+                              colSpan={5}
+                            >
+                              {homeroomSearch
+                                ? "ไม่พบนักเรียนที่ค้นหา"
+                                : "ยังไม่มีนักเรียนในห้องนี้"}
                             </td>
                           </tr>
                         ) : (
                           filteredHomeroomStudents.map((student: any) => (
-                            <tr 
-                              key={student.id} 
+                            <tr
+                              key={student.id}
                               className={`border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${student.isSpecialCare ? "bg-rose-50/20" : ""}`}
                               onClick={() => setSelectedStudent(student)}
                             >
-                              <td className="p-4 text-sm text-gray-900 font-medium">{student.id}</td>
+                              <td className="p-4 text-sm text-gray-900 font-medium">
+                                {student.id}
+                              </td>
                               <td className="p-4 text-gray-900">
                                 <div className="flex items-center gap-2">
                                   <span>
-                                    {student.prefix}{student.firstname} {student.lastname}
+                                    {student.prefix}
+                                    {student.firstname} {student.lastname}
                                   </span>
                                   {student.isSpecialCare && (
                                     <span title="ต้องการดูแลเป็นพิเศษ">
-                                      <ShieldAlert size={14} className="text-rose-500" />
+                                      <ShieldAlert
+                                        className="text-rose-500"
+                                        size={14}
+                                      />
                                     </span>
                                   )}
                                 </div>
                               </td>
                               <td className="p-4">
-                                {student.chronicDisease && student.chronicDisease !== "-" && student.chronicDisease !== "ไม่มี" ? (
+                                {student.chronicDisease &&
+                                student.chronicDisease !== "-" &&
+                                student.chronicDisease !== "ไม่มี" ? (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
                                     {student.chronicDisease}
                                   </span>
-                                ) : <span className="text-gray-400">-</span>}
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
                               </td>
                               <td className="p-4">
-                                {student.foodAllergy && student.foodAllergy !== "-" && student.foodAllergy !== "ไม่มี" ? (
+                                {student.foodAllergy &&
+                                student.foodAllergy !== "-" &&
+                                student.foodAllergy !== "ไม่มี" ? (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
                                     {student.foodAllergy}
                                   </span>
-                                ) : <span className="text-gray-400">-</span>}
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
                               </td>
                               <td className="p-4">
-                                {student.remark && student.remark !== "-" && student.remark !== "ไม่มี" ? (
-                                  <span className="text-sm text-blue-700 font-medium">{student.remark}</span>
-                                ) : <span className="text-gray-400">-</span>}
+                                {student.remark &&
+                                student.remark !== "-" &&
+                                student.remark !== "ไม่มี" ? (
+                                  <span className="text-sm text-blue-700 font-medium">
+                                    {student.remark}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
                               </td>
                             </tr>
                           ))
@@ -730,13 +881,13 @@ export default function StudentDashboard() {
                       <Pagination
                         isCompact
                         showControls
+                        classNames={{
+                          cursor: "bg-[#5d7c6f] text-white font-bold",
+                        }}
                         color="default"
                         page={homeroomPage}
                         total={homeroomTotalPages}
                         onChange={setHomeroomPage}
-                        classNames={{
-                          cursor: "bg-[#5d7c6f] text-white font-bold",
-                        }}
                       />
                     </div>
                   )}
@@ -771,19 +922,28 @@ export default function StudentDashboard() {
               <div className="w-full sm:w-[180px] min-w-[180px]">
                 <Select
                   aria-label="Select Academic Year"
-                  placeholder="ปีการศึกษา: ทั้งหมด"
                   className="w-full"
-                  size="sm"
+                  classNames={{
+                    trigger:
+                      "bg-white border border-gray-100 text-gray-700 font-medium",
+                  }}
+                  placeholder="ปีการศึกษา: ทั้งหมด"
                   selectedKeys={[campAcademicYearFilter]}
+                  size="sm"
                   onChange={(e) => setCampAcademicYearFilter(e.target.value)}
-                  classNames={{ trigger: "bg-white border border-gray-100 text-gray-700 font-medium" }}
                 >
-                  {[{year: "all"}, ...dbAcademicYears].map(item => (
-                    <SelectItem 
-                      key={String(item.year)} 
-                      textValue={item.year === "all" ? "ปีการศึกษา: ทั้งหมด" : `ปีการศึกษา: ${(parseInt(item.year) + 543).toString()}`}
+                  {[{ year: "all" }, ...dbAcademicYears].map((item) => (
+                    <SelectItem
+                      key={String(item.year)}
+                      textValue={
+                        item.year === "all"
+                          ? "ปีการศึกษา: ทั้งหมด"
+                          : `ปีการศึกษา: ${(parseInt(item.year) + 543).toString()}`
+                      }
                     >
-                      {item.year === "all" ? "ปีการศึกษา: ทั้งหมด" : `ปีการศึกษา: ${parseInt(item.year) + 543}`}
+                      {item.year === "all"
+                        ? "ปีการศึกษา: ทั้งหมด"
+                        : `ปีการศึกษา: ${parseInt(item.year) + 543}`}
                     </SelectItem>
                   ))}
                 </Select>
@@ -793,17 +953,28 @@ export default function StudentDashboard() {
               <div className="w-full sm:w-[160px] min-w-[160px]">
                 <Select
                   aria-label="สถานะ"
-                  placeholder="สถานะ: ทั้งหมด"
                   className="w-full"
-                  size="sm"
+                  classNames={{
+                    trigger:
+                      "bg-white border border-gray-100 text-gray-700 font-medium",
+                  }}
+                  placeholder="สถานะ: ทั้งหมด"
                   selectedKeys={[campStatusFilter]}
+                  size="sm"
                   onChange={(e) => setCampStatusFilter(e.target.value)}
-                  classNames={{ trigger: "bg-white border border-gray-100 text-gray-700 font-medium" }}
                 >
-                  <SelectItem key="all" textValue="สถานะ: ทั้งหมด">สถานะ: ทั้งหมด</SelectItem>
-                  <SelectItem key="กำลังจัด" textValue="สถานะ: กำลังจัด">สถานะ: กำลังจัด</SelectItem>
-                  <SelectItem key="ยังไม่เริ่ม" textValue="สถานะ: ยังไม่เริ่ม">สถานะ: ยังไม่เริ่ม</SelectItem>
-                  <SelectItem key="เสร็จสิ้น" textValue="สถานะ: เสร็จสิ้น">สถานะ: เสร็จสิ้น</SelectItem>
+                  <SelectItem key="all" textValue="สถานะ: ทั้งหมด">
+                    สถานะ: ทั้งหมด
+                  </SelectItem>
+                  <SelectItem key="กำลังจัด" textValue="สถานะ: กำลังจัด">
+                    สถานะ: กำลังจัด
+                  </SelectItem>
+                  <SelectItem key="ยังไม่เริ่ม" textValue="สถานะ: ยังไม่เริ่ม">
+                    สถานะ: ยังไม่เริ่ม
+                  </SelectItem>
+                  <SelectItem key="เสร็จสิ้น" textValue="สถานะ: เสร็จสิ้น">
+                    สถานะ: เสร็จสิ้น
+                  </SelectItem>
                 </Select>
               </div>
 
@@ -811,16 +982,28 @@ export default function StudentDashboard() {
               <div className="w-full sm:w-[210px] min-w-[210px]">
                 <Select
                   aria-label="ประเภท"
-                  placeholder="ประเภท: ทั้งหมด"
                   className="w-full"
-                  size="sm"
+                  classNames={{
+                    trigger:
+                      "bg-white border border-gray-100 text-gray-700 font-medium",
+                  }}
+                  placeholder="ประเภท: ทั้งหมด"
                   selectedKeys={[campRoleFilter]}
+                  size="sm"
                   onChange={(e) => setCampRoleFilter(e.target.value)}
-                  classNames={{ trigger: "bg-white border border-gray-100 text-gray-700 font-medium" }}
                 >
-                  <SelectItem key="all" textValue="ประเภท: ทั้งหมด">ประเภท: ทั้งหมด</SelectItem>
-                  <SelectItem key="owner" textValue="ประเภท: ค่ายที่สร้าง">ประเภท: ค่ายที่สร้าง</SelectItem>
-                  <SelectItem key="related" textValue="ประเภท: ค่ายที่เกี่ยวข้อง">ประเภท: ค่ายที่เกี่ยวข้อง</SelectItem>
+                  <SelectItem key="all" textValue="ประเภท: ทั้งหมด">
+                    ประเภท: ทั้งหมด
+                  </SelectItem>
+                  <SelectItem key="owner" textValue="ประเภท: ค่ายที่สร้าง">
+                    ประเภท: ค่ายที่สร้าง
+                  </SelectItem>
+                  <SelectItem
+                    key="related"
+                    textValue="ประเภท: ค่ายที่เกี่ยวข้อง"
+                  >
+                    ประเภท: ค่ายที่เกี่ยวข้อง
+                  </SelectItem>
                 </Select>
               </div>
             </div>
@@ -838,7 +1021,7 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {filteredMyCamps.map((camp) => (
+                {filteredMyCamps.map((camp: any) => (
                   <Card
                     key={camp.id}
                     className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow bg-white relative group"
@@ -935,15 +1118,23 @@ export default function StudentDashboard() {
 
                       {/* Location */}
                       <div className="flex items-center gap-2 mb-1.5 text-[#718096] text-sm">
-                        <MapPin size={16} className="flex-shrink-0" />
-                        <span className="truncate" title={camp.location}>{camp.location}</span>
+                        <MapPin className="flex-shrink-0" size={16} />
+                        <span className="truncate" title={camp.location}>
+                          {camp.location}
+                        </span>
                       </div>
 
                       {/* Grades */}
                       {camp.gradeDisplay && (
                         <div className="flex items-start gap-2 mb-2 text-[#718096] text-sm">
-                          <GraduationCap size={16} className="flex-shrink-0 mt-0.5" />
-                          <span className="line-clamp-1" title={`ระดับชั้น: ${camp.gradeDisplay}`}>
+                          <GraduationCap
+                            className="flex-shrink-0 mt-0.5"
+                            size={16}
+                          />
+                          <span
+                            className="line-clamp-1"
+                            title={`ระดับชั้น: ${camp.gradeDisplay}`}
+                          >
                             ระดับชั้น: {camp.gradeDisplay}
                           </span>
                         </div>
@@ -951,7 +1142,7 @@ export default function StudentDashboard() {
 
                       {/* Date */}
                       <div className="flex items-center gap-2 mb-3 text-[#718096] text-sm">
-                        <Calendar size={16} className="flex-shrink-0" />
+                        <Calendar className="flex-shrink-0" size={16} />
                         <span className="truncate">
                           {camp.startDate} - {camp.endDate}
                         </span>
@@ -965,7 +1156,11 @@ export default function StudentDashboard() {
                         <div className="flex items-center gap-2">
                           <Button
                             className="bg-transparent text-[#5d7c6f] font-semibold hover:opacity-70"
-                            endContent={navigatingTo === camp.id ? null : <ChevronRight size={20} />}
+                            endContent={
+                              navigatingTo === camp.id ? null : (
+                                <ChevronRight size={20} />
+                              )
+                            }
                             isDisabled={navigatingTo !== null}
                             isLoading={navigatingTo === camp.id}
                             onPress={() => {
@@ -1008,16 +1203,16 @@ export default function StudentDashboard() {
       />
 
       <EnrollmentModal
-        isOpen={isEnrollmentModalOpen}
         campId={enrollmentCampId ?? 0}
         campName={enrollmentCampName}
+        isOpen={isEnrollmentModalOpen}
         onClose={() => setIsEnrollmentModalOpen(false)}
       />
 
       <EditCampModal
-        isOpen={isEditModalOpen}
         campData={editingCampData}
         isLoading={isSubmitting}
+        isOpen={isEditModalOpen}
         onClose={() => {
           setIsEditModalOpen(false);
           setEditingCampData(null);
@@ -1027,8 +1222,8 @@ export default function StudentDashboard() {
 
       <HomeroomStudentModal
         isOpen={!!selectedStudent}
-        onClose={() => setSelectedStudent(null)}
         student={selectedStudent}
+        onClose={() => setSelectedStudent(null)}
       />
     </div>
   );

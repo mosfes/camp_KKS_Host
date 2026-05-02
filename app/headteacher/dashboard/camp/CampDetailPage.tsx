@@ -11,20 +11,16 @@ import {
   Calendar,
   Clock,
   Shirt,
-  FileText,
   Award,
   BarChart3,
   Plus,
   Target,
   Pencil,
   Trash2,
-  Settings,
   ClipboardList,
-  Star,
   Users,
   GraduationCap,
   UserCheck,
-  BarChart2,
   TrendingUp,
   BookOpen,
 } from "lucide-react";
@@ -42,7 +38,6 @@ import AttendanceModal from "./AttendanceModal";
 import PrePostTestModal from "./PrePostTestModal";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
-import { toast } from "react-hot-toast";
 
 interface TimeSlot {
   startTime: string;
@@ -92,10 +87,17 @@ export default function CampDetailPage() {
   const compressImage = async (file: File) => {
     if (!file || !file.type.startsWith("image/")) return file;
     try {
-      const imageCompression = (await import("browser-image-compression")).default;
-      return await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true });
+      const imageCompression = (await import("browser-image-compression"))
+        .default;
+
+      return await imageCompression(file, {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      });
     } catch (e) {
       console.error("Compression error:", e);
+
       return file;
     }
   };
@@ -105,7 +107,8 @@ export default function CampDetailPage() {
   const isEdit = searchParams.get("edit");
 
   const [camp, setCamp] = useState<CampDetail | null>(null);
-  const { showError, showSuccess, showConfirm, setIsLoading } = useStatusModal();
+  const { showError, showSuccess, showConfirm, setIsLoading } =
+    useStatusModal();
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
@@ -118,7 +121,8 @@ export default function CampDetailPage() {
   const [isCreateSurveyModalOpen, setIsCreateSurveyModalOpen] = useState(false);
   const [isEditSurveyModalOpen, setIsEditSurveyModalOpen] = useState(false);
   const [surveyLoading, setSurveyLoading] = useState(false);
-  const [isSurveyResultsModalOpen, setIsSurveyResultsModalOpen] = useState(false);
+  const [isSurveyResultsModalOpen, setIsSurveyResultsModalOpen] =
+    useState(false);
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
   const [isShirtModalOpen, setIsShirtModalOpen] = useState(false);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
@@ -134,7 +138,10 @@ export default function CampDetailPage() {
     if (!camp?.img_shirt_url) return [];
     try {
       const parsed = JSON.parse(camp.img_shirt_url);
-      return Array.isArray(parsed) ? parsed.filter((url: any) => url) : [camp.img_shirt_url];
+
+      return Array.isArray(parsed)
+        ? parsed.filter((url: any) => url)
+        : [camp.img_shirt_url];
     } catch (e) {
       return [camp.img_shirt_url];
     }
@@ -157,8 +164,10 @@ export default function CampDetailPage() {
   const fetchShirtCount = async () => {
     try {
       const res = await fetch(`/api/camps/${campId}/shirts`);
+
       if (res.ok) {
         const data = await res.json();
+
         setShirtCount(data.totalShirts ?? 0);
       }
     } catch {
@@ -170,11 +179,14 @@ export default function CampDetailPage() {
     setSurveyLoading(true);
     try {
       const res = await fetch(`/api/surveys?campId=${campId}`);
+
       if (!res.ok) {
         setSurvey(null);
+
         return;
       }
       const data = await res.json();
+
       // data may be `null` if the survey is not found but returns 200
       setSurvey(data && !data.error ? data : null);
     } catch (err) {
@@ -191,7 +203,10 @@ export default function CampDetailPage() {
       async () => {
         try {
           setIsLoading(true);
-          const res = await fetch(`/api/surveys?campId=${campId}`, { method: "DELETE" });
+          const res = await fetch(`/api/surveys?campId=${campId}`, {
+            method: "DELETE",
+          });
+
           if (!res.ok) throw new Error();
           showSuccess("สำเร็จ", "ลบแบบสอบถามเรียบร้อยแล้ว");
           setSurvey(null);
@@ -201,7 +216,7 @@ export default function CampDetailPage() {
           setIsLoading(false);
         }
       },
-      "ลบแบบสอบถาม"
+      "ลบแบบสอบถาม",
     );
   };
 
@@ -226,6 +241,7 @@ export default function CampDetailPage() {
         });
 
         const firstClassroom = data.camp_classroom[0].classroom;
+
         if (firstClassroom) {
           planTypeName = firstClassroom.classroom_types?.name || "MSEC";
         }
@@ -324,7 +340,7 @@ export default function CampDetailPage() {
           setIsLoading(false);
         }
       },
-      "ลบค่าย"
+      "ลบค่าย",
     );
   };
 
@@ -337,9 +353,15 @@ export default function CampDetailPage() {
 
       // Upload new shirt images if files were picked
       let finalShirtUrls: (string | null)[] = [];
+
       try {
-        const parsed = JSON.parse(formData.shirtImages ? JSON.stringify(formData.shirtImages) : "[]");
-        finalShirtUrls = Array.isArray(parsed) ? parsed.filter((url: any) => url != null) : [formData.shirtImages];
+        const parsed = JSON.parse(
+          formData.shirtImages ? JSON.stringify(formData.shirtImages) : "[]",
+        );
+
+        finalShirtUrls = Array.isArray(parsed)
+          ? parsed.filter((url: any) => url != null)
+          : [formData.shirtImages];
       } catch (e) {
         finalShirtUrls = [formData.shirtImages];
       }
@@ -347,14 +369,21 @@ export default function CampDetailPage() {
       if (formData.shirtImageFiles && Array.isArray(formData.shirtImageFiles)) {
         for (let i = 0; i < formData.shirtImageFiles.length; i++) {
           const file = formData.shirtImageFiles[i];
+
           if (file) {
             try {
               const compressedFile = await compressImage(file);
               const uploadForm = new FormData();
+
               uploadForm.append("file", compressedFile);
-              const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
+              const uploadRes = await fetch("/api/upload", {
+                method: "POST",
+                body: uploadForm,
+              });
+
               if (uploadRes.ok) {
                 const uploadData = await uploadRes.json();
+
                 finalShirtUrls[i] = uploadData.url;
               }
             } catch (uploadErr) {
@@ -370,10 +399,16 @@ export default function CampDetailPage() {
         try {
           const compressedFile = await compressImage(formData.campImageFile);
           const uploadForm = new FormData();
+
           uploadForm.append("file", compressedFile);
-          const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: uploadForm,
+          });
+
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
+
             img_camp_url = uploadData.url;
           } else {
             showError("อัปโหลดรูปล้มเหลว", "ไม่สามารถอัปโหลดรูปปกค่ายได้");
@@ -469,27 +504,35 @@ export default function CampDetailPage() {
 
         <div
           className="relative w-full rounded-[2rem] overflow-hidden min-h-[260px] flex flex-col justify-end p-6 md:p-8 shadow-sm border border-gray-100"
-          style={!camp.img_camp_url ? { background: 'linear-gradient(to right, #6b857a, #8ea69b)' } : undefined}
+          style={
+            !camp.img_camp_url
+              ? { background: "linear-gradient(to right, #6b857a, #8ea69b)" }
+              : undefined
+          }
         >
           {camp.img_camp_url && (
             <Image
-              src={camp.img_camp_url}
-              alt="Camp Cover"
               fill
+              alt="Camp Cover"
               className="object-cover z-0"
+              src={camp.img_camp_url}
             />
           )}
           {/* Dark overlay and Blur for readability */}
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-[3px] z-0"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-0"></div>
-          
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[3px] z-0" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-0" />
+
           <div className="relative z-10 w-full flex flex-col gap-3">
             {/* Status and ID */}
             <div className="flex items-center gap-3 mb-1">
               <span className="bg-[#00C48C] text-white px-3 py-1 rounded-full text-xs font-semibold">
-                {camp.status === 'active' ? 'กำลังดำเนินการ' : (camp.status || 'กำลังดำเนินการ')}
+                {camp.status === "active"
+                  ? "กำลังดำเนินการ"
+                  : camp.status || "กำลังดำเนินการ"}
               </span>
-              <span className="text-gray-300 text-sm font-medium">ID: {camp.camp_id}</span>
+              <span className="text-gray-300 text-sm font-medium">
+                ID: {camp.camp_id}
+              </span>
             </div>
 
             {/* Title */}
@@ -501,11 +544,11 @@ export default function CampDetailPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="flex flex-col sm:flex-row sm:items-center gap-6 text-gray-200 text-sm md:text-base font-medium">
                 <div className="flex items-center gap-2">
-                  <MapPin size={20} className="text-[#00C48C]" />
+                  <MapPin className="text-[#00C48C]" size={20} />
                   <span>{camp.location}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar size={20} className="text-[#00C48C]" />
+                  <Calendar className="text-[#00C48C]" size={20} />
                   <span>
                     {formatDate(camp.start_date)} – {formatDate(camp.end_date)}
                   </span>
@@ -525,7 +568,9 @@ export default function CampDetailPage() {
                     </Button>
                     <Button
                       className="bg-white text-[#1a3a32] font-bold hover:bg-gray-100 transition-colors h-11 px-6 rounded-xl shadow-sm"
-                      startContent={<Pencil size={18} className="text-[#1a3a32]" />}
+                      startContent={
+                        <Pencil className="text-[#1a3a32]" size={18} />
+                      }
                       onPress={() => setIsEditModalOpen(true)}
                     >
                       แก้ไขค่าย
@@ -586,19 +631,49 @@ export default function CampDetailPage() {
                 <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
                   <Target size={32} />
                 </div>
-                <span className="font-semibold text-sm text-center text-gray-700">สร้าง<br/>ฐานกิจกรรม</span>
+                <span className="font-semibold text-sm text-center text-gray-700">
+                  สร้าง
+                  <br />
+                  ฐานกิจกรรม
+                </span>
               </button>
             )}
 
             {camp.isOwner && (
               <button
                 className={`rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] cursor-pointer`}
-                onClick={() => survey !== null ? setIsSurveyResultsModalOpen(true) : setIsCreateSurveyModalOpen(true)}
+                onClick={() =>
+                  survey !== null
+                    ? setIsSurveyResultsModalOpen(true)
+                    : setIsCreateSurveyModalOpen(true)
+                }
               >
-                <div className={`text-[#6b857a] group-hover:scale-110 transition-transform`}>
-                  {survey !== null ? <BarChart3 size={32} /> : <ClipboardList size={32} />}
+                <div
+                  className={`text-[#6b857a] group-hover:scale-110 transition-transform`}
+                >
+                  {survey !== null ? (
+                    <BarChart3 size={32} />
+                  ) : (
+                    <ClipboardList size={32} />
+                  )}
                 </div>
-                <span className={`font-semibold text-sm text-center text-gray-700`}>{survey !== null ? <>ดูผลการ<br/>ตอบกลับ</> : <>สร้าง<br/>แบบสอบถาม</>}</span>
+                <span
+                  className={`font-semibold text-sm text-center text-gray-700`}
+                >
+                  {survey !== null ? (
+                    <>
+                      ดูผลการ
+                      <br />
+                      ตอบกลับ
+                    </>
+                  ) : (
+                    <>
+                      สร้าง
+                      <br />
+                      แบบสอบถาม
+                    </>
+                  )}
+                </span>
               </button>
             )}
 
@@ -610,7 +685,11 @@ export default function CampDetailPage() {
                 <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
                   <BarChart3 size={32} />
                 </div>
-                <span className="font-semibold text-sm text-center text-gray-700">ผลการ<br/>ประเมิน</span>
+                <span className="font-semibold text-sm text-center text-gray-700">
+                  ผลการ
+                  <br />
+                  ประเมิน
+                </span>
               </button>
             )}
 
@@ -622,7 +701,11 @@ export default function CampDetailPage() {
                 <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
                   <TrendingUp size={32} />
                 </div>
-                <span className="font-semibold text-sm text-center text-gray-700">เปรียบเทียบ<br/>คะแนน</span>
+                <span className="font-semibold text-sm text-center text-gray-700">
+                  เปรียบเทียบ
+                  <br />
+                  คะแนน
+                </span>
               </button>
             )}
 
@@ -633,7 +716,11 @@ export default function CampDetailPage() {
               <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
                 <Users size={32} />
               </div>
-              <span className="font-semibold text-sm text-center text-gray-700">ติดตาม<br/>นักเรียน</span>
+              <span className="font-semibold text-sm text-center text-gray-700">
+                ติดตาม
+                <br />
+                นักเรียน
+              </span>
             </button>
 
             <button
@@ -643,30 +730,36 @@ export default function CampDetailPage() {
               <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
                 <UserCheck size={32} />
               </div>
-              <span className="font-semibold text-sm text-center text-gray-700">เช็คชื่อ<br/>นักเรียน</span>
+              <span className="font-semibold text-sm text-center text-gray-700">
+                เช็คชื่อ
+                <br />
+                นักเรียน
+              </span>
             </button>
 
             {camp.isOwner && (
               <button
-                className="bg-gray-50 border-gray-100 rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-not-allowed opacity-70"
                 disabled
+                className="bg-gray-50 border-gray-100 rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-not-allowed opacity-70"
               >
                 <div className="text-gray-300 transition-transform">
                   <Award size={32} />
                 </div>
                 <span className="font-semibold text-sm text-center text-gray-400">
-                  ประกาศนียบัตร<br />(กำลังพัฒนา)
+                  ประกาศนียบัตร
+                  <br />
+                  (กำลังพัฒนา)
                 </span>
               </button>
             )}
 
             <button
               className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+              disabled={isStudentsLoading}
               onClick={() => {
                 setIsStudentsLoading(true);
                 router.push(`/headteacher/dashboard/camp/${campId}/students`);
               }}
-              disabled={isStudentsLoading}
             >
               <div className="text-[#6b857a] group-hover:scale-110 transition-transform flex items-center justify-center w-[32px] h-[32px]">
                 {isStudentsLoading ? (
@@ -675,7 +768,11 @@ export default function CampDetailPage() {
                   <BookOpen size={32} />
                 )}
               </div>
-              <span className="font-semibold text-sm text-center text-gray-700">ข้อมูล<br/>นักเรียน</span>
+              <span className="font-semibold text-sm text-center text-gray-700">
+                ข้อมูล
+                <br />
+                นักเรียน
+              </span>
             </button>
           </div>
         </div>
@@ -727,7 +824,9 @@ export default function CampDetailPage() {
                   </div>
 
                   <div>
-                    <p className="text-gray-500 mb-1">ประเภทห้องเรียน/แผนการเรียน</p>
+                    <p className="text-gray-500 mb-1">
+                      ประเภทห้องเรียน/แผนการเรียน
+                    </p>
                     <p className="font-medium text-gray-900">
                       {camp.plan_type_name}
                     </p>
@@ -746,8 +845,6 @@ export default function CampDetailPage() {
                     </p>
                   </div>
                 </div>
-
-
               </div>
             </div>
           )}
@@ -764,7 +861,9 @@ export default function CampDetailPage() {
               <div className="w-9 h-9 rounded-xl bg-[#f0f4f2] flex items-center justify-center flex-shrink-0">
                 <Shirt className="text-[#6b857a]" size={18} />
               </div>
-              <h3 className="font-semibold text-gray-900">การจองและจัดการเสื้อ</h3>
+              <h3 className="font-semibold text-gray-900">
+                การจองและจัดการเสื้อ
+              </h3>
               {camp.has_shirt ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
@@ -778,7 +877,11 @@ export default function CampDetailPage() {
               )}
             </div>
             <div className="text-gray-400 transition-transform duration-200">
-              {isShirtOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              {isShirtOpen ? (
+                <ChevronUp size={20} />
+              ) : (
+                <ChevronDown size={20} />
+              )}
             </div>
           </button>
 
@@ -790,7 +893,9 @@ export default function CampDetailPage() {
                   {/* Left: Status + Date */}
                   <div className="flex-1 space-y-4">
                     <div>
-                      <p className="text-xs font-medium text-gray-400 mb-1">ช่วงเวลาจอง</p>
+                      <p className="text-xs font-medium text-gray-400 mb-1">
+                        ช่วงเวลาจอง
+                      </p>
                       <p className="text-sm font-medium text-gray-700">
                         {camp.start_shirt_date && camp.end_shirt_date
                           ? `${formatDate(camp.start_shirt_date)} – ${formatDate(camp.end_shirt_date)}`
@@ -801,19 +906,21 @@ export default function CampDetailPage() {
                     {/* Show Shirt Images */}
                     {shirtImages.length > 0 && (
                       <div className="pt-1">
-                        <p className="text-xs font-medium text-gray-400 mb-2">ตัวอย่างเสื้อ</p>
+                        <p className="text-xs font-medium text-gray-400 mb-2">
+                          ตัวอย่างเสื้อ
+                        </p>
                         <div className="flex flex-wrap gap-3">
                           {shirtImages.map((img, idx) => (
-                            <div 
-                              key={idx} 
+                            <div
+                              key={idx}
                               className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50 flex items-center justify-center cursor-pointer"
                               onClick={() => setSelectedImage(img)}
                             >
-                              <Image 
-                                src={img} 
-                                alt={`Shirt ${idx + 1}`} 
-                                fill 
-                                className="object-cover hover:scale-110 transition-transform duration-300" 
+                              <Image
+                                fill
+                                alt={`Shirt ${idx + 1}`}
+                                className="object-cover hover:scale-110 transition-transform duration-300"
+                                src={img}
                               />
                             </div>
                           ))}
@@ -827,7 +934,9 @@ export default function CampDetailPage() {
                     <div className="flex-shrink-0 w-full md:w-56 bg-white border border-gray-100 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
                       <div>
                         <div className="flex items-center justify-between mb-4">
-                          <p className="text-sm font-medium text-gray-500">ยอดการจองทั้งหมด</p>
+                          <p className="text-sm font-medium text-gray-500">
+                            ยอดการจองทั้งหมด
+                          </p>
                           <div className="w-8 h-8 bg-[#f0f4f2] rounded-lg flex items-center justify-center">
                             <Shirt className="text-[#6b857a]" size={16} />
                           </div>
@@ -836,17 +945,29 @@ export default function CampDetailPage() {
                           <p className="text-4xl font-extrabold text-gray-900">
                             {shirtCount !== null ? shirtCount : "—"}
                           </p>
-                          <span className="text-sm font-medium text-gray-500">ตัว</span>
+                          <span className="text-sm font-medium text-gray-500">
+                            ตัว
+                          </span>
                         </div>
                       </div>
-                      
+
                       <button
                         className="w-full mt-5 flex items-center justify-center gap-2 text-sm font-semibold text-[#6b857a] bg-white border-2 border-[#6b857a] hover:bg-[#6b857a] hover:text-white rounded-xl py-2.5 px-4 transition-all"
                         onClick={() => setIsShirtModalOpen(true)}
                       >
                         ดูรายการทั้งหมด
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M9 5l7 7-7 7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                          />
                         </svg>
                       </button>
                     </div>
@@ -854,10 +975,20 @@ export default function CampDetailPage() {
                 </div>
               ) : (
                 <div className="flex items-center gap-3 py-2">
-                  <svg className="w-5 h-5 text-gray-300 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  <svg
+                    className="w-5 h-5 text-gray-300 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      clipRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      fillRule="evenodd"
+                    />
                   </svg>
-                  <p className="text-sm text-gray-400">ค่ายนี้ไม่ได้เปิดจองเสื้อ</p>
+                  <p className="text-sm text-gray-400">
+                    ค่ายนี้ไม่ได้เปิดจองเสื้อ
+                  </p>
                 </div>
               )}
             </div>
@@ -885,7 +1016,11 @@ export default function CampDetailPage() {
               </span>
             </div>
             <div className="text-gray-400 transition-transform duration-200">
-              {isScheduleOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              {isScheduleOpen ? (
+                <ChevronUp size={20} />
+              ) : (
+                <ChevronDown size={20} />
+              )}
             </div>
           </button>
 
@@ -936,43 +1071,140 @@ export default function CampDetailPage() {
         </div>
 
         {/* Bases Section - แสดงเฉพาะเจ้าของค่าย */}
-        {camp.isOwner && <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="font-semibold text-gray-900 text-lg">
-                ฐานกิจกรรม
-              </h3>
-              <p className="text-sm text-gray-500">จัดการฐานกิจกรรมและภารกิจ</p>
+        {camp.isOwner && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="font-semibold text-gray-900 text-lg">
+                  ฐานกิจกรรม
+                </h3>
+                <p className="text-sm text-gray-500">
+                  จัดการฐานกิจกรรมและภารกิจ
+                </p>
+              </div>
+
+              {camp.isOwner && (
+                <Button
+                  className="bg-[#6b857a] text-white"
+                  startContent={<Plus size={18} />}
+                  onPress={() => setIsCreateBaseModalOpen(true)}
+                >
+                  สร้างฐานกิจกรรม
+                </Button>
+              )}
             </div>
 
-            {camp.isOwner && (
-              <Button
-                className="bg-[#6b857a] text-white"
-                startContent={<Plus size={18} />}
-                onPress={() => setIsCreateBaseModalOpen(true)}
-              >
-                สร้างฐานกิจกรรม
-              </Button>
+            {camp.station && camp.station.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {camp.station.map((station: any) => (
+                  <div
+                    key={station.station_id}
+                    className="p-4 rounded-xl border-2 border-gray-100 hover:border-[#6b857a] hover:bg-[#6b857a]/5 transition-all cursor-pointer group"
+                    onClick={() =>
+                      router.push(
+                        `/headteacher/dashboard/camp/${campId}/base/${station.station_id}`,
+                      )
+                    }
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="p-2 bg-white rounded-lg border border-gray-100 group-hover:border-[#6b857a]/20">
+                        <Target className="text-[#6b857a]" size={24} />
+                      </div>
+                      {/* ซ่อนปุ่มแก้ไข/ลบฐาน ถ้าไม่ใช่เจ้าของ */}
+                      {camp.isOwner && (
+                        <div className="flex gap-1">
+                          <Button
+                            isIconOnly
+                            className="text-gray-400 hover:text-blue-500"
+                            size="sm"
+                            variant="light"
+                            onClick={(e) => handleEditBase(station, e)}
+                          >
+                            <Pencil size={18} />
+                          </Button>
+                          <Button
+                            isIconOnly
+                            className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 hover:text-[#FF847C]"
+                            size="sm"
+                            variant="light"
+                            onClick={(e) =>
+                              handleDeleteBase(station.station_id, e)
+                            }
+                          >
+                            <Trash2 size={18} />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <h4 className="font-semibold text-gray-900 mb-1">
+                      {station.name}
+                    </h4>
+                    <p className="text-sm text-gray-500 line-clamp-2">
+                      {station.description || "ไม่มีคำอธิบาย"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Target className="text-gray-400" size={32} />
+                  </div>
+                  <p className="text-gray-500 mb-4">ยังไม่ได้สร้างฐานกิจกรรม</p>
+                  {camp.isOwner && (
+                    <Button
+                      className="bg-[#6b857a] text-white"
+                      size="lg"
+                      startContent={<Plus size={18} />}
+                      onPress={() => setIsCreateBaseModalOpen(true)}
+                    >
+                      เริ่มสร้างฐานกิจกรรม
+                    </Button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
+        )}
 
-          {camp.station && camp.station.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {camp.station.map((station: any) => (
+        {/* Survey Section - แสดงเฉพาะเจ้าของค่าย */}
+        {camp.isOwner && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm mt-8">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="font-semibold text-gray-900 text-lg">
+                  แบบสอบถาม
+                </h3>
+                <p className="text-sm text-gray-500">
+                  นักเรียนต้องทำแบบสอบถามก่อนดาวน์โหลดประกาศนียบัตร
+                </p>
+              </div>
+              {camp.isOwner && !survey && (
+                <Button
+                  className="bg-[#6b857a] text-white"
+                  startContent={<Plus size={18} />}
+                  onPress={() => setIsCreateSurveyModalOpen(true)}
+                >
+                  สร้างแบบสอบถาม
+                </Button>
+              )}
+            </div>
+
+            {surveyLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : survey ? (
+              <div className="w-full">
                 <div
-                  key={station.station_id}
-                  className="p-4 rounded-xl border-2 border-gray-100 hover:border-[#6b857a] hover:bg-[#6b857a]/5 transition-all cursor-pointer group"
-                  onClick={() =>
-                    router.push(
-                      `/headteacher/dashboard/camp/${campId}/base/${station.station_id}`,
-                    )
-                  }
+                  className="p-4 rounded-xl border-2 border-gray-100 hover:border-[#6b857a] hover:bg-[#6b857a]/5 transition-all group cursor-pointer"
+                  onClick={() => setIsSurveyResultsModalOpen(true)}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="p-2 bg-white rounded-lg border border-gray-100 group-hover:border-[#6b857a]/20">
-                      <Target className="text-[#6b857a]" size={24} />
+                      <ClipboardList className="text-[#6b857a]" size={24} />
                     </div>
-                    {/* ซ่อนปุ่มแก้ไข/ลบฐาน ถ้าไม่ใช่เจ้าของ */}
                     {camp.isOwner && (
                       <div className="flex gap-1">
                         <Button
@@ -980,7 +1212,7 @@ export default function CampDetailPage() {
                           className="text-gray-400 hover:text-blue-500"
                           size="sm"
                           variant="light"
-                          onClick={(e) => handleEditBase(station, e)}
+                          onClick={() => setIsEditSurveyModalOpen(true)}
                         >
                           <Pencil size={18} />
                         </Button>
@@ -989,7 +1221,7 @@ export default function CampDetailPage() {
                           className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 hover:text-[#FF847C]"
                           size="sm"
                           variant="light"
-                          onClick={(e) => handleDeleteBase(station.station_id, e)}
+                          onClick={handleDeleteSurvey}
                         >
                           <Trash2 size={18} />
                         </Button>
@@ -997,145 +1229,60 @@ export default function CampDetailPage() {
                     )}
                   </div>
                   <h4 className="font-semibold text-gray-900 mb-1">
-                    {station.name}
+                    {survey.title}
                   </h4>
                   <p className="text-sm text-gray-500 line-clamp-2">
-                    {station.description || "ไม่มีคำอธิบาย"}
+                    {survey.description || "ไม่มีคำอธิบาย"}
                   </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="text-center">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Target className="text-gray-400" size={32} />
-                </div>
-                <p className="text-gray-500 mb-4">ยังไม่ได้สร้างฐานกิจกรรม</p>
-                {camp.isOwner && (
-                  <Button
-                    className="bg-[#6b857a] text-white"
-                    size="lg"
-                    startContent={<Plus size={18} />}
-                    onPress={() => setIsCreateBaseModalOpen(true)}
-                  >
-                    เริ่มสร้างฐานกิจกรรม
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>}
-
-        {/* Survey Section - แสดงเฉพาะเจ้าของค่าย */}
-        {camp.isOwner && <div className="bg-white rounded-2xl p-6 shadow-sm mt-8">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="font-semibold text-gray-900 text-lg">แบบสอบถาม</h3>
-              <p className="text-sm text-gray-500">
-                นักเรียนต้องทำแบบสอบถามก่อนดาวน์โหลดประกาศนียบัตร
-              </p>
-            </div>
-            {camp.isOwner && !survey && (
-              <Button
-                className="bg-[#6b857a] text-white"
-                startContent={<Plus size={18} />}
-                onPress={() => setIsCreateSurveyModalOpen(true)}
-              >
-                สร้างแบบสอบถาม
-              </Button>
-            )}
-          </div>
-
-          {surveyLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : survey ? (
-            <div className="w-full">
-              <div
-                className="p-4 rounded-xl border-2 border-gray-100 hover:border-[#6b857a] hover:bg-[#6b857a]/5 transition-all group cursor-pointer"
-                onClick={() => setIsSurveyResultsModalOpen(true)}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="p-2 bg-white rounded-lg border border-gray-100 group-hover:border-[#6b857a]/20">
-                    <ClipboardList className="text-[#6b857a]" size={24} />
-                  </div>
-                  {camp.isOwner && (
-                    <div className="flex gap-1">
-                      <Button
-                        isIconOnly
-                        className="text-gray-400 hover:text-blue-500"
-                        size="sm"
-                        variant="light"
-                        onClick={() => setIsEditSurveyModalOpen(true)}
-                      >
-                        <Pencil size={18} />
-                      </Button>
-                      <Button
-                        isIconOnly
-                        className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 hover:text-[#FF847C]"
-                        size="sm"
-                        variant="light"
-                        onClick={handleDeleteSurvey}
-                      >
-                        <Trash2 size={18} />
-                      </Button>
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <ClipboardList size={14} />
+                        <span>{survey.survey_question?.length || 0} คำถาม</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-[#6b857a] font-medium">
+                        <Users size={14} />
+                        <span>
+                          {survey._count?.survey_response || 0} การตอบกลับ
+                        </span>
+                      </div>
                     </div>
+                    <Button
+                      className="bg-indigo-50 text-indigo-600 font-medium"
+                      size="sm"
+                      startContent={<BarChart3 size={14} />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsSurveyResultsModalOpen(true);
+                      }}
+                    >
+                      ดูผลประเมิน
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <ClipboardList className="text-gray-400" size={32} />
+                  </div>
+                  <p className="text-gray-500 mb-4">ยังไม่ได้สร้างแบบสอบถาม</p>
+                  {camp.isOwner && (
+                    <Button
+                      className="bg-[#6b857a] text-white"
+                      size="lg"
+                      startContent={<Plus size={18} />}
+                      onPress={() => setIsCreateSurveyModalOpen(true)}
+                    >
+                      เริ่มสร้างแบบสอบถาม
+                    </Button>
                   )}
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-1">
-                  {survey.title}
-                </h4>
-                <p className="text-sm text-gray-500 line-clamp-2">
-                  {survey.description || "ไม่มีคำอธิบาย"}
-                </p>
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <ClipboardList size={14} />
-                      <span>{survey.survey_question?.length || 0} คำถาม</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-[#6b857a] font-medium">
-                      <Users size={14} />
-                      <span>{survey._count?.survey_response || 0} การตอบกลับ</span>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="bg-indigo-50 text-indigo-600 font-medium"
-                    startContent={<BarChart3 size={14} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsSurveyResultsModalOpen(true);
-                    }}
-                  >
-                    ดูผลประเมิน
-                  </Button>
-                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="text-center">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <ClipboardList className="text-gray-400" size={32} />
-                </div>
-                <p className="text-gray-500 mb-4">ยังไม่ได้สร้างแบบสอบถาม</p>
-                {camp.isOwner && (
-                  <Button
-                    className="bg-[#6b857a] text-white"
-                    size="lg"
-                    startContent={<Plus size={18} />}
-                    onPress={() => setIsCreateSurveyModalOpen(true)}
-                  >
-                    เริ่มสร้างแบบสอบถาม
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>}
+            )}
+          </div>
+        )}
       </div>
 
       <EditCampModal
@@ -1161,55 +1308,55 @@ export default function CampDetailPage() {
 
       <CreateSurveyModal
         campId={Number(campId)}
-        teacherId={camp?.created_by_teacher_id || 0}
         isOpen={isCreateSurveyModalOpen}
+        teacherId={camp?.created_by_teacher_id || 0}
         onClose={() => setIsCreateSurveyModalOpen(false)}
         onSurveyCreated={fetchSurvey}
       />
 
       <CreateSurveyModal
         campId={Number(campId)}
-        teacherId={camp?.created_by_teacher_id || 0}
+        initialData={survey}
         isOpen={isEditSurveyModalOpen}
+        teacherId={camp?.created_by_teacher_id || 0}
         onClose={() => setIsEditSurveyModalOpen(false)}
         onSurveyCreated={fetchSurvey}
-        initialData={survey}
       />
 
       <SurveyResultsModal
+        campId={Number(campId)}
         isOpen={isSurveyResultsModalOpen}
         onClose={() => setIsSurveyResultsModalOpen(false)}
-        campId={Number(campId)}
       />
 
       <TrackingModal
-        isOpen={isTrackingModalOpen}
-        onClose={() => setIsTrackingModalOpen(false)}
         campId={Number(campId)}
         campName={camp?.name || ""}
+        isOpen={isTrackingModalOpen}
+        onClose={() => setIsTrackingModalOpen(false)}
       />
 
       {camp && (
         <ShirtTrackingModal
-          isOpen={isShirtModalOpen}
-          onClose={() => setIsShirtModalOpen(false)}
           campId={camp.camp_id}
           campName={camp.name}
+          isOpen={isShirtModalOpen}
+          onClose={() => setIsShirtModalOpen(false)}
         />
       )}
 
       {camp && (
         <AttendanceModal
-          isOpen={isAttendanceModalOpen}
-          onClose={() => setIsAttendanceModalOpen(false)}
           campId={camp.camp_id}
           campName={camp.name}
+          isOpen={isAttendanceModalOpen}
+          onClose={() => setIsAttendanceModalOpen(false)}
         />
       )}
       <PrePostTestModal
+        campId={Number(campId)}
         isOpen={isPrePostTestModalOpen}
         onClose={() => setIsPrePostTestModalOpen(false)}
-        campId={Number(campId)}
       />
 
       {selectedImage && (
@@ -1222,14 +1369,24 @@ export default function CampDetailPage() {
               className="absolute top-4 right-4 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors z-10"
               onClick={() => setSelectedImage(null)}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M6 18L18 6M6 6l12 12"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
               </svg>
             </button>
             <img
-              src={selectedImage}
               alt="Expanded view"
               className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+              src={selectedImage}
               onClick={(e) => e.stopPropagation()}
             />
           </div>

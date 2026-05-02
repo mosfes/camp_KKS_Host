@@ -1,5 +1,7 @@
+export const runtime = "nodejs";
 // @ts-nocheck
 import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/db";
 
 /**
@@ -7,12 +9,15 @@ import { prisma } from "@/lib/db";
  * Body: { studentId: number }
  * ค้นหานักเรียนด้วย students_id → set HttpOnly cookie student_session
  */
-export async function POST(req) {
+export async function POST(req: any) {
   try {
     const { studentId } = await req.json();
 
     if (!studentId) {
-      return NextResponse.json({ error: "กรุณากรอกรหัสนักเรียน" }, { status: 400 });
+      return NextResponse.json(
+        { error: "กรุณากรอกรหัสนักเรียน" },
+        { status: 400 },
+      );
     }
 
     const student = await prisma.students.findFirst({
@@ -29,7 +34,10 @@ export async function POST(req) {
     });
 
     if (!student) {
-      return NextResponse.json({ error: "ไม่พบรหัสนักเรียนนี้ในระบบ" }, { status: 404 });
+      return NextResponse.json(
+        { error: "ไม่พบรหัสนักเรียนนี้ในระบบ" },
+        { status: 404 },
+      );
     }
 
     const { SignJWT } = await import("jose");
@@ -51,8 +59,12 @@ export async function POST(req) {
     });
 
     return response;
-  } catch (error) {
-    console.error("Student login error:", error);
-    return NextResponse.json({ error: "เข้าสู่ระบบไม่สำเร็จ" }, { status: 500 });
+  } catch {
+    //     console.error("Student login error:", error);
+
+    return NextResponse.json(
+      { _error: "เข้าสู่ระบบไม่สำเร็จ" },
+      { status: 500 },
+    );
   }
 }

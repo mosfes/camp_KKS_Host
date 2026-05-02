@@ -63,8 +63,8 @@ export default async function Home() {
             />
             {/* ปุ่มไปหน้าล็อคอินผู้ปกครอง */}
             <Link
-              href="/login"
               className="w-full max-w-[400px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-[#a0b8af] bg-white text-[#5d7c6f] text-sm font-medium shadow-sm hover:bg-[#eaf1ee] hover:border-[#5d7c6f] transition-all"
+              href="/login"
             >
               <Users size={18} />
               เข้าสู่ระบบสำหรับผู้ปกครอง

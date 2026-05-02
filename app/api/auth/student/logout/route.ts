@@ -6,11 +6,16 @@ import { NextResponse } from "next/server";
  * ลบ cookie student_session
  */
 export async function POST() {
-    const response = NextResponse.json({ success: true, message: "ออกจากระบบสำเร็จ" });
-    response.cookies.set("student_session", "", {
-        httpOnly: true,
-        path: "/",
-        maxAge: 0,
-    });
-    return response;
+  const response = NextResponse.json({
+    success: true,
+    message: "ออกจากระบบสำเร็จ",
+  });
+
+  response.cookies.set("student_session", "", {
+    httpOnly: true,
+    path: "/",
+    maxAge: 0,
+  });
+
+  return response;
 }

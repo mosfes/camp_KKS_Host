@@ -1,10 +1,12 @@
 // @ts-nocheck
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/db";
 
 // ─── Shared in-memory store (via globalThis to persist across hot reload) ───
 // missionId → { pin, nonce, generatedAt }
-const qrStore = globalThis._campQrStore ?? (globalThis._campQrStore = new Map());
+const qrStore =
+  globalThis._campQrStore ?? (globalThis._campQrStore = new Map());
 
 function generatePin() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -19,9 +21,10 @@ function getOrCreate(missionId) {
     qrStore.set(missionId, {
       pin: generatePin(),
       nonce: generateNonce(),
-      generatedAt: new Date()
+      generatedAt: new Date(),
     });
   }
+
   return qrStore.get(missionId);
 }
 
@@ -29,9 +32,11 @@ function regenerate(missionId) {
   const data = {
     pin: generatePin(),
     nonce: generateNonce(),
-    generatedAt: new Date()
+    generatedAt: new Date(),
   };
+
   qrStore.set(missionId, data);
+
   return data;
 }
 
@@ -40,24 +45,29 @@ function buildPayload(missionId, campId, nonce) {
 }
 
 // ─── Export helpers for qr-scan route ────────────────────────────
-export function verifyQRPayload(payload) {
+function verifyQRPayload(payload) {
   try {
-    if (!payload || typeof payload !== 'string') return null;
-    const parts = payload.split(':');
-    if (parts.length !== 4 || parts[0] !== 'CAMP_MISSION') return null;
+    if (!payload || typeof payload !== "string") return null;
+    const parts = payload.split(":");
+
+    if (parts.length !== 4 || parts[0] !== "CAMP_MISSION") return null;
     const [, missionId, campId, nonce] = parts;
     const mid = parseInt(missionId);
     const stored = qrStore.get(mid);
+
     if (!stored || stored.nonce !== nonce) return null;
+
     return { missionId: mid, campId: parseInt(campId) };
   } catch {
     return null;
   }
 }
 
-export function verifyPin(missionId, pin) {
+function verifyPin(missionId, pin) {
   const stored = qrStore.get(missionId);
+
   if (!stored) return false;
+
   return String(pin).trim() === stored.pin;
 }
 
@@ -69,11 +79,13 @@ export async function GET(request, { params }) {
 
     const mission = await prisma.mission.findUnique({
       where: { mission_id: missionId },
-      include: { station: true }
+      include: { station: true },
     });
 
-    if (!mission) return NextResponse.json({ error: 'Mission not found' }, { status: 404 });
-    if (mission.type !== 'QR_CODE_SCANNING') return NextResponse.json({ error: 'Not a QR mission' }, { status: 400 });
+    if (!mission)
+      return NextResponse.json({ error: "Mission not found" }, { status: 404 });
+    if (mission.type !== "QR_CODE_SCANNING")
+      return NextResponse.json({ error: "Not a QR mission" }, { status: 400 });
 
     const campId = mission.station.camp_camp_id;
     const data = getOrCreate(missionId);
@@ -85,11 +97,12 @@ export async function GET(request, { params }) {
       missionTitle: mission.title,
       qrPayload,
       pin: data.pin,
-      generatedAt: data.generatedAt
+      generatedAt: data.generatedAt,
     });
-  } catch (error) {
-    console.error('QR GET error:', error);
-    return NextResponse.json({ error: 'Failed to get QR' }, { status: 500 });
+  } catch {
+    //     console.error("QR GET error:", error);
+
+    return NextResponse.json({ _error: "Failed to get QR" }, { status: 500 });
   }
 }
 
@@ -101,11 +114,13 @@ export async function POST(request, { params }) {
 
     const mission = await prisma.mission.findUnique({
       where: { mission_id: missionId },
-      include: { station: true }
+      include: { station: true },
     });
 
-    if (!mission) return NextResponse.json({ error: 'Mission not found' }, { status: 404 });
-    if (mission.type !== 'QR_CODE_SCANNING') return NextResponse.json({ error: 'Not a QR mission' }, { status: 400 });
+    if (!mission)
+      return NextResponse.json({ error: "Mission not found" }, { status: 404 });
+    if (mission.type !== "QR_CODE_SCANNING")
+      return NextResponse.json({ error: "Not a QR mission" }, { status: 400 });
 
     const campId = mission.station.camp_camp_id;
     const data = regenerate(missionId);
@@ -117,10 +132,14 @@ export async function POST(request, { params }) {
       missionTitle: mission.title,
       qrPayload,
       pin: data.pin,
-      generatedAt: data.generatedAt
+      generatedAt: data.generatedAt,
     });
-  } catch (error) {
-    console.error('QR POST error:', error);
-    return NextResponse.json({ error: 'Failed to regenerate QR' }, { status: 500 });
+  } catch {
+    //     console.error("QR POST error:", error);
+
+    return NextResponse.json(
+      { _error: "Failed to regenerate QR" },
+      { status: 500 },
+    );
   }
 }

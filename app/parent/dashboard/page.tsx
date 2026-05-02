@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Clock,
 } from "lucide-react";
+
 import { ParentNavbar } from "@/components/ParentNavbar";
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -65,12 +66,14 @@ const formatDate = (start: string, end?: string) => {
     month: "short",
     day: "numeric",
   });
+
   if (!end || start === end) return s;
   const e = new Date(end).toLocaleDateString("th-TH", {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
+
   return `${s} - ${e}`;
 };
 
@@ -91,7 +94,9 @@ export default function ParentDashboard() {
   const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [hasParentProfile, setHasParentProfile] = useState<boolean>(true);
-  const [parentProfile, setParentProfile] = useState<ParentProfile | null>(null);
+  const [parentProfile, setParentProfile] = useState<ParentProfile | null>(
+    null,
+  );
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
@@ -104,6 +109,7 @@ export default function ParentDashboard() {
 
         if (meRes.ok) {
           const meData = await meRes.json();
+
           if (meData.student) {
             setStudent(meData.student);
             setHasParentProfile(meData.hasParentProfile);
@@ -169,14 +175,12 @@ export default function ParentDashboard() {
 
   if (selectedYear !== "all") {
     endedCamps = endedCamps.filter(
-      (c: any) => c.academicYear?.toString() === selectedYear
+      (c: any) => c.academicYear?.toString() === selectedYear,
     );
   }
 
   const uniqueYears = Array.from(
-    new Set(
-      camps.map((c: any) => c.academicYear).filter(Boolean)
-    )
+    new Set(camps.map((c: any) => c.academicYear).filter(Boolean)),
   ).sort((a: any, b: any) => b - a);
 
   return (
@@ -186,9 +190,9 @@ export default function ParentDashboard() {
       {/* Profile Setup Modal (บังคับกรอกครั้งแรก) */}
       {showProfileModal && student && (
         <ProfileSetupModal
-          studentName={`${student.firstname} ${student.lastname}`}
-          studentId={student.students_id}
           initialTel={parentProfile?.tel || student.tel || ""}
+          studentId={student.students_id}
+          studentName={`${student.firstname} ${student.lastname}`}
           onSaved={(profile: ParentProfile) => {
             setParentProfile(profile);
             setHasParentProfile(true);
@@ -202,7 +206,8 @@ export default function ParentDashboard() {
         <div className="bg-[#5d7c6f] rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
           <div className="relative z-10">
             <h1 className="text-2xl font-bold mb-1 flex items-center gap-2">
-              ยินดีต้อนรับผู้ปกครอง <Sparkles className="text-white" size={24} />
+              ยินดีต้อนรับผู้ปกครอง{" "}
+              <Sparkles className="text-white" size={24} />
             </h1>
             <p className="opacity-90 mb-4">
               ของ{student.prefix_name ?? ""}
@@ -213,7 +218,20 @@ export default function ParentDashboard() {
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {/* Student ID Badge */}
               <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="13" x="3" y="4" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" /></svg>
+                <svg
+                  fill="none"
+                  height="14"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  width="14"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <rect height="13" rx="2" width="18" x="3" y="4" />
+                  <path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" />
+                </svg>
                 <span className="hidden xs:inline">รหัสนักเรียน:</span>
                 <span className="xs:hidden">ID:</span> {student.students_id}
               </span>
@@ -221,7 +239,20 @@ export default function ParentDashboard() {
               {/* Grade Badge */}
               {classroom?.grade && (
                 <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" /></svg>
+                  <svg
+                    fill="none"
+                    height="14"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    width="14"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                    <path d="M6 12v5c3 3 9 3 12 0v-5" />
+                  </svg>
                   ชั้น {gradeLabel[classroom.grade] ?? classroom.grade}
                 </span>
               )}
@@ -229,7 +260,20 @@ export default function ParentDashboard() {
               {/* Classroom Badge */}
               {classroom?.classroom_types?.name && (
                 <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M3 9h18M9 21V9" /></svg>
+                  <svg
+                    fill="none"
+                    height="14"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    width="14"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <rect height="18" rx="2" width="18" x="3" y="3" />
+                    <path d="M3 9h18M9 21V9" />
+                  </svg>
                   ห้อง {classroom.classroom_types.name}
                 </span>
               )}
@@ -241,8 +285,6 @@ export default function ParentDashboard() {
                   ปี {classroom.academic_years_years_id + 543}
                 </span>
               )}
-
-
             </div>
           </div>
           <div className="absolute right-0 bottom-0 opacity-10">
@@ -250,13 +292,12 @@ export default function ParentDashboard() {
           </div>
         </div>
 
-
-
         {/* ──────── Camp Tabs (same style as student) ──────── */}
         <Tabs
           aria-label="Camp Options"
           classNames={{
-            tabList: "gap-0 w-full relative rounded-none p-0 border-b border-divider",
+            tabList:
+              "gap-0 w-full relative rounded-none p-0 border-b border-divider",
             cursor: "w-full bg-[#5d7c6f]",
             tab: " max-w-none px-2 h-12 justify-center",
             tabContent: "group-data-[selected=true]:text-[#5d7c6f] font-bold",
@@ -318,24 +359,24 @@ export default function ParentDashboard() {
               {uniqueYears.length > 0 && (
                 <div className="flex flex-wrap gap-2 pb-1">
                   <button
-                    onClick={() => setSelectedYear("all")}
                     className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border ${
                       selectedYear === "all"
                         ? "bg-[#5d7c6f] text-white border-[#5d7c6f] shadow-sm"
                         : "bg-white text-gray-500 border-gray-200 hover:border-[#5d7c6f]/50 hover:text-[#5d7c6f]"
                     }`}
+                    onClick={() => setSelectedYear("all")}
                   >
                     ทั้งหมด
                   </button>
                   {uniqueYears.map((year: any) => (
                     <button
                       key={year}
-                      onClick={() => setSelectedYear(year.toString())}
                       className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border ${
                         selectedYear === year.toString()
                           ? "bg-[#5d7c6f] text-white border-[#5d7c6f] shadow-sm"
                           : "bg-white text-gray-500 border-gray-200 hover:border-[#5d7c6f]/50 hover:text-[#5d7c6f]"
                       }`}
+                      onClick={() => setSelectedYear(year.toString())}
                     >
                       ปี {(year + 543).toString()}
                     </button>
@@ -356,10 +397,10 @@ export default function ParentDashboard() {
                 endedCamps.map((camp: any) => (
                   <CampCard
                     key={camp.id}
+                    isEnded
                     camp={camp}
                     navigatingTo={navigatingTo}
                     onPress={() => goToCamp(camp.id)}
-                    isEnded
                   />
                 ))
               )}
@@ -381,12 +422,17 @@ export default function ParentDashboard() {
             <div className="py-4">
               {teachers.length === 0 ? (
                 <div className="text-center text-gray-400 py-10">
-                  <GraduationCap className="mx-auto mb-3 opacity-30" size={40} />
+                  <GraduationCap
+                    className="mx-auto mb-3 opacity-30"
+                    size={40}
+                  />
                   <p>ไม่พบข้อมูลครูประจำชั้น</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  <p className="text-xs text-gray-500 px-1">ช่องทางติดต่อครูประจำชั้น</p>
+                  <p className="text-xs text-gray-500 px-1">
+                    ช่องทางติดต่อครูประจำชั้น
+                  </p>
                   {teachers.map((t, i) => (
                     <div
                       key={i}
@@ -398,24 +444,30 @@ export default function ParentDashboard() {
                         </div>
                         <div>
                           <p className="font-bold text-[#3d6357] text-sm">
-                            {t.prefix_name ?? ""}{t.firstname} {t.lastname}
+                            {t.prefix_name ?? ""}
+                            {t.firstname} {t.lastname}
                           </p>
-                          <p className="text-[10px] text-gray-400">ครูประจำชั้น</p>
+                          <p className="text-[10px] text-gray-400">
+                            ครูประจำชั้น
+                          </p>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
                         <a
-                          href={`tel:${t.tel}`}
                           className="flex items-center gap-3 bg-[#f5f0e7]/60 rounded-xl p-3 text-sm text-gray-700 hover:bg-[#5d7c6f]/10 transition-colors"
+                          href={`tel:${t.tel}`}
                         >
-                          <Phone size={16} className="text-[#5d7c6f] shrink-0" />
+                          <Phone
+                            className="text-[#5d7c6f] shrink-0"
+                            size={16}
+                          />
                           <span>{t.tel || "-"}</span>
                         </a>
                         <a
-                          href={`mailto:${t.email}`}
                           className="flex items-center gap-3 bg-[#f5f0e7]/60 rounded-xl p-3 text-sm text-gray-700 hover:bg-[#5d7c6f]/10 transition-colors"
+                          href={`mailto:${t.email}`}
                         >
-                          <Mail size={16} className="text-[#5d7c6f] shrink-0" />
+                          <Mail className="text-[#5d7c6f] shrink-0" size={16} />
                           <span className="truncate">{t.email || "-"}</span>
                         </a>
                       </div>
@@ -447,13 +499,16 @@ function CampCard({
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
+
     return () => clearInterval(timer);
   }, []);
 
   const regisStart = camp.startRegisDate ? new Date(camp.startRegisDate) : null;
-  const isUpcomingRegis = regisStart && now < regisStart && !isEnded && !camp.isRegistered;
+  const isUpcomingRegis =
+    regisStart && now < regisStart && !isEnded && !camp.isRegistered;
 
   let countdownText = "";
+
   if (isUpcomingRegis && regisStart) {
     const diffTime = Math.abs(regisStart.getTime() - now.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -467,18 +522,20 @@ function CampCard({
 
   return (
     <Card
-      isPressable={navigatingTo === null && !isUpcomingRegis}
       className={`border-none shadow-sm transition-shadow bg-white relative ${
         navigatingTo === camp.id ? "opacity-60" : ""
       } ${
-        isEnded ? "opacity-80 hover:opacity-100 transition-opacity" : "hover:shadow-md"
+        isEnded
+          ? "opacity-80 hover:opacity-100 transition-opacity"
+          : "hover:shadow-md"
       } ${isUpcomingRegis ? "cursor-not-allowed opacity-90" : ""}`}
+      isPressable={navigatingTo === null && !isUpcomingRegis}
       onPress={isUpcomingRegis ? undefined : onPress}
     >
       {isUpcomingRegis && (
         <div className="absolute inset-0 z-20 bg-gray-900/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-white rounded-2xl">
           <div className="mb-3">
-            <Clock size={28} className="text-white" />
+            <Clock className="text-white" size={28} />
           </div>
           <h3 className="font-bold text-lg mb-1">ยังไม่เปิดรับสมัคร</h3>
           <p className="text-sm opacity-90">{countdownText}</p>
@@ -494,9 +551,9 @@ function CampCard({
         <div className="w-full h-40 sm:w-48 sm:h-full md:w-56 bg-gray-100 flex-shrink-0 relative overflow-hidden rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none">
           {camp.img_camp_url ? (
             <img
-              src={camp.img_camp_url}
               alt={camp.title}
               className={`w-full h-full object-cover ${isEnded ? "opacity-80" : ""}`}
+              src={camp.img_camp_url}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
@@ -517,21 +574,21 @@ function CampCard({
 
           <div className="flex flex-col gap-1.5 text-sm text-gray-600">
             <div className="flex items-center gap-2">
-              <MapPin size={14} className="text-[#5d7c6f]" />
+              <MapPin className="text-[#5d7c6f]" size={14} />
               <span className="text-gray-400">สถานที่:</span>
               <span className="text-gray-700 line-clamp-1">
                 {camp.location}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Calendar size={14} className="text-[#5d7c6f]" />
+              <Calendar className="text-[#5d7c6f]" size={14} />
               <span className="text-gray-400">วันลงทะเบียน:</span>
               <span className="text-gray-700">
                 {formatDate(camp.startRegisDate, camp.endRegisDate)}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Calendar size={14} className="text-[#5d7c6f]" />
+              <Calendar className="text-[#5d7c6f]" size={14} />
               <span className="text-gray-400">วันเริ่มค่าย:</span>
               <span className="text-gray-700">
                 {formatDate(camp.rawStartDate, camp.rawEndDate)}
@@ -571,14 +628,17 @@ function ProfileSetupModal({
 
   const validate = () => {
     const errors: Record<string, string> = {};
+
     if (!form.firstname.trim()) errors.firstname = "กรุณากรอกชื่อ";
     if (!form.lastname.trim()) errors.lastname = "กรุณากรอกนามสกุล";
     if (!form.tel.trim()) {
       errors.tel = "กรุณากรอกเบอร์โทร";
     } else {
       const digits = form.tel.replace(/\D/g, "");
+
       if (digits.length !== 10) errors.tel = "เบอร์โทรต้องเป็น 10 หลัก";
     }
+
     return errors;
   };
 
@@ -586,6 +646,7 @@ function ProfileSetupModal({
     e.preventDefault();
     setApiError("");
     const errors = validate();
+
     setFieldError(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -597,8 +658,10 @@ function ProfileSetupModal({
         body: JSON.stringify(form),
       });
       const data = await res.json();
+
       if (!res.ok) {
         setApiError(data.error || "เกิดข้อผิดพลาด");
+
         return;
       }
       setSuccess(true);
@@ -636,29 +699,31 @@ function ProfileSetupModal({
           {success ? (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
               <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
-                <CheckCircle2 size={32} className="text-[#5d7c6f]" />
+                <CheckCircle2 className="text-[#5d7c6f]" size={32} />
               </div>
               <p className="font-bold text-gray-800">บันทึกข้อมูลสำเร็จ!</p>
               <p className="text-sm text-gray-500">กำลังพาไปยังหน้าหลัก...</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-
+            <form className="space-y-4 pt-2" onSubmit={handleSubmit}>
               {/* Firstname */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   ชื่อผู้ปกครอง <span className="text-red-500">*</span>
                 </label>
                 <input
+                  className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all
+                    ${
+                      fieldError.firstname
+                        ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+                        : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
+                    }`}
+                  placeholder="เช่น สมชาย"
                   type="text"
                   value={form.firstname}
-                  onChange={(e) => setForm((f) => ({ ...f, firstname: e.target.value }))}
-                  placeholder="เช่น สมชาย"
-                  className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all
-                    ${ fieldError.firstname
-                      ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-                      : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
-                    }`}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, firstname: e.target.value }))
+                  }
                 />
                 {fieldError.firstname && (
                   <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -673,15 +738,18 @@ function ProfileSetupModal({
                   นามสกุลผู้ปกครอง <span className="text-red-500">*</span>
                 </label>
                 <input
+                  className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all
+                    ${
+                      fieldError.lastname
+                        ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+                        : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
+                    }`}
+                  placeholder="เช่น ใจดี"
                   type="text"
                   value={form.lastname}
-                  onChange={(e) => setForm((f) => ({ ...f, lastname: e.target.value }))}
-                  placeholder="เช่น ใจดี"
-                  className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all
-                    ${ fieldError.lastname
-                      ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-                      : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
-                    }`}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, lastname: e.target.value }))
+                  }
                 />
                 {fieldError.lastname && (
                   <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
@@ -696,18 +764,24 @@ function ProfileSetupModal({
                   เบอร์โทรศัพท์ <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Phone
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                    size={16}
+                  />
                   <input
+                    className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm outline-none transition-all
+                      ${
+                        fieldError.tel
+                          ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+                          : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
+                      }`}
+                    maxLength={10}
+                    placeholder="0xxxxxxxxx"
                     type="tel"
                     value={form.tel}
-                    onChange={(e) => setForm((f) => ({ ...f, tel: e.target.value }))}
-                    placeholder="0xxxxxxxxx"
-                    maxLength={10}
-                    className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm outline-none transition-all
-                      ${ fieldError.tel
-                        ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-                        : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
-                      }`}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, tel: e.target.value }))
+                    }
                   />
                 </div>
                 {fieldError.tel && (
@@ -725,9 +799,9 @@ function ProfileSetupModal({
               )}
 
               <button
-                type="submit"
-                disabled={saving}
                 className="w-full bg-[#5d7c6f] hover:bg-[#4a6659] text-white font-semibold py-3.5 rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+                disabled={saving}
+                type="submit"
               >
                 {saving ? (
                   <>

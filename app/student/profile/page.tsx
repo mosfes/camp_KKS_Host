@@ -3,8 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertCircle, CheckCircle2, Phone, Pencil, Save, X,
-  User, Heart, CalendarDays, MessageSquare, ChevronLeft
+  AlertCircle,
+  CheckCircle2,
+  Phone,
+  Pencil,
+  Save,
+  X,
+  User,
+  Heart,
+  CalendarDays,
+  MessageSquare,
+  ChevronLeft,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -19,7 +28,12 @@ interface StudentProfile {
   chronic_disease: string | null;
   remark: string | null;
   tel: string | null;
-  parents: { parents_id: number; firstname: string; lastname: string; tel: string }[];
+  parents: {
+    parents_id: number;
+    firstname: string;
+    lastname: string;
+    tel: string;
+  }[];
   classroom?: {
     grade_label?: string;
     class_name?: string;
@@ -38,12 +52,18 @@ interface FormData {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const months = [
-  { value: "01", label: "มกราคม" }, { value: "02", label: "กุมภาพันธ์" },
-  { value: "03", label: "มีนาคม" }, { value: "04", label: "เมษายน" },
-  { value: "05", label: "พฤษภาคม" }, { value: "06", label: "มิถุนายน" },
-  { value: "07", label: "กรกฎาคม" }, { value: "08", label: "สิงหาคม" },
-  { value: "09", label: "กันยายน" }, { value: "10", label: "ตุลาคม" },
-  { value: "11", label: "พฤศจิกายน" }, { value: "12", label: "ธันวาคม" },
+  { value: "01", label: "มกราคม" },
+  { value: "02", label: "กุมภาพันธ์" },
+  { value: "03", label: "มีนาคม" },
+  { value: "04", label: "เมษายน" },
+  { value: "05", label: "พฤษภาคม" },
+  { value: "06", label: "มิถุนายน" },
+  { value: "07", label: "กรกฎาคม" },
+  { value: "08", label: "สิงหาคม" },
+  { value: "09", label: "กันยายน" },
+  { value: "10", label: "ตุลาคม" },
+  { value: "11", label: "พฤศจิกายน" },
+  { value: "12", label: "ธันวาคม" },
 ];
 
 const formatBirthdayThai = (iso: string | null) => {
@@ -52,6 +72,7 @@ const formatBirthdayThai = (iso: string | null) => {
   const day = d.getDate();
   const month = months[d.getMonth()].label;
   const year = d.getFullYear() + 543;
+
   return `${day} ${month} ${year}`;
 };
 
@@ -67,28 +88,44 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
 
 // ─── Field Input ─────────────────────────────────────────────────────────────
 const FieldInput = ({
-  label, value, onChange, placeholder, error, type = "text", icon,
+  label,
+  value,
+  onChange,
+  placeholder,
+  error,
+  type = "text",
+  icon,
 }: {
-  label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; error?: string; type?: string; icon?: React.ReactNode;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  error?: string;
+  type?: string;
+  icon?: React.ReactNode;
 }) => (
   <div>
-    <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
+    <label className="block text-xs font-semibold text-gray-600 mb-1">
+      {label}
+    </label>
     <div className="relative">
       {icon && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          {icon}
+        </span>
       )}
       <input
+        className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-xl border text-sm text-gray-700 outline-none transition-all
+          ${
+            error
+              ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+              : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
+          }`}
+        maxLength={type === "tel" ? 10 : undefined}
+        placeholder={placeholder}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        maxLength={type === "tel" ? 10 : undefined}
-        className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-xl border text-sm text-gray-700 outline-none transition-all
-          ${error
-            ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-            : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
-          }`}
       />
     </div>
     {error && (
@@ -101,9 +138,13 @@ const FieldInput = ({
 
 // ─── Section Card ─────────────────────────────────────────────────────────────
 const SectionCard = ({
-  icon, title, children,
+  icon,
+  title,
+  children,
 }: {
-  icon: React.ReactNode; title: string; children: React.ReactNode;
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
 }) => (
   <div className="bg-white rounded-2xl shadow-sm p-5">
     <div className="flex items-center gap-2 mb-4">
@@ -140,8 +181,12 @@ export default function StudentProfilePage() {
   const [bday, setBday] = useState({ day: "", month: "", year: "" });
 
   const currentYear = new Date().getFullYear();
-  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, "0"));
-  const years = Array.from({ length: 30 }, (_, i) => (currentYear - (i + 5)).toString());
+  const days = Array.from({ length: 31 }, (_, i) =>
+    (i + 1).toString().padStart(2, "0"),
+  );
+  const years = Array.from({ length: 30 }, (_, i) =>
+    (currentYear - (i + 5)).toString(),
+  );
 
   useEffect(() => {
     fetch("/api/student/profile")
@@ -152,7 +197,12 @@ export default function StudentProfilePage() {
           const parentTel = data.parents?.[0]?.tel ?? "";
           const birthdayISO = data.birthday ? data.birthday.split("T")[0] : "";
           const parts = birthdayISO ? birthdayISO.split("-") : ["", "", ""];
-          setBday({ year: parts[0] ?? "", month: parts[1] ?? "", day: parts[2] ?? "" });
+
+          setBday({
+            year: parts[0] ?? "",
+            month: parts[1] ?? "",
+            day: parts[2] ?? "",
+          });
           setForm({
             chronic_disease: data.chronic_disease ?? "",
             food_allergy: data.food_allergy ?? "",
@@ -169,9 +219,13 @@ export default function StudentProfilePage() {
 
   const updateBirthday = (type: "day" | "month" | "year", value: string) => {
     const next = { ...bday, [type]: value };
+
     setBday(next);
     if (next.year && next.month && next.day) {
-      setForm((f) => ({ ...f, birthday: `${next.year}-${next.month}-${next.day}` }));
+      setForm((f) => ({
+        ...f,
+        birthday: `${next.year}-${next.month}-${next.day}`,
+      }));
     } else {
       setForm((f) => ({ ...f, birthday: "" }));
     }
@@ -179,19 +233,30 @@ export default function StudentProfilePage() {
 
   const validate = () => {
     const errors: Record<string, string> = {};
-    if (!form.chronic_disease.trim()) errors.chronic_disease = "กรุณากรอกข้อมูลโรคประจำตัว";
-    if (!form.food_allergy.trim()) errors.food_allergy = "กรุณากรอกข้อมูลการแพ้อาหาร/ยา";
+
+    if (!form.chronic_disease.trim())
+      errors.chronic_disease = "กรุณากรอกข้อมูลโรคประจำตัว";
+    if (!form.food_allergy.trim())
+      errors.food_allergy = "กรุณากรอกข้อมูลการแพ้อาหาร/ยา";
     if (!form.birthday) errors.birthday = "กรุณาเลือกวันเกิดให้ครบถ้วน";
-    if (form.student_tel.trim() && form.student_tel.replace(/\D/g, "").length !== 10)
+    if (
+      form.student_tel.trim() &&
+      form.student_tel.replace(/\D/g, "").length !== 10
+    )
       errors.student_tel = "เบอร์โทรต้องเป็น 10 หลัก";
-    if (form.parent_tel.trim() && form.parent_tel.replace(/\D/g, "").length !== 10)
+    if (
+      form.parent_tel.trim() &&
+      form.parent_tel.replace(/\D/g, "").length !== 10
+    )
       errors.parent_tel = "เบอร์โทรต้องเป็น 10 หลัก";
+
     return errors;
   };
 
   const handleSave = async () => {
     setApiError("");
     const errors = validate();
+
     setFieldError(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -203,13 +268,24 @@ export default function StudentProfilePage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) { setApiError(data.error ?? "เกิดข้อผิดพลาด"); return; }
+
+      if (!res.ok) {
+        setApiError(data.error ?? "เกิดข้อผิดพลาด");
+
+        return;
+      }
 
       setSuccess(true);
       // Refresh profile data
-      const refreshed = await fetch("/api/student/profile").then((r) => r.ok ? r.json() : null);
+      const refreshed = await fetch("/api/student/profile").then((r) =>
+        r.ok ? r.json() : null,
+      );
+
       if (refreshed) setProfile(refreshed);
-      setTimeout(() => { setSuccess(false); setEditing(false); }, 1500);
+      setTimeout(() => {
+        setSuccess(false);
+        setEditing(false);
+      }, 1500);
     } catch {
       setApiError("เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
@@ -222,7 +298,12 @@ export default function StudentProfilePage() {
     const parentTel = profile.parents?.[0]?.tel ?? "";
     const birthdayISO = profile.birthday ? profile.birthday.split("T")[0] : "";
     const parts = birthdayISO ? birthdayISO.split("-") : ["", "", ""];
-    setBday({ year: parts[0] ?? "", month: parts[1] ?? "", day: parts[2] ?? "" });
+
+    setBday({
+      year: parts[0] ?? "",
+      month: parts[1] ?? "",
+      day: parts[2] ?? "",
+    });
     setForm({
       chronic_disease: profile.chronic_disease ?? "",
       food_allergy: profile.food_allergy ?? "",
@@ -236,32 +317,33 @@ export default function StudentProfilePage() {
     setEditing(false);
   };
 
-  if (loading) return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
+  if (loading)
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
 
-  if (!profile) return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <p className="text-gray-400">ไม่พบข้อมูลโปรไฟล์</p>
-    </div>
-  );
+  if (!profile)
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <p className="text-gray-400">ไม่พบข้อมูลโปรไฟล์</p>
+      </div>
+    );
 
   const displayName = `${profile.prefix_name ?? ""}${profile.firstname} ${profile.lastname}`;
   const initials = `${profile.firstname[0]}${profile.lastname[0]}`;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => router.push("/student/dashboard")}
           className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
+          onClick={() => router.push("/student/dashboard")}
         >
           <ChevronLeft size={20} />
         </button>
@@ -280,7 +362,9 @@ export default function StudentProfilePage() {
           <div>
             <p className="font-bold text-lg">{displayName}</p>
             <p className="text-sm opacity-80">{profile.email}</p>
-            <p className="text-xs opacity-70 mt-0.5">รหัสนักเรียน: {profile.students_id}</p>
+            <p className="text-xs opacity-70 mt-0.5">
+              รหัสนักเรียน: {profile.students_id}
+            </p>
           </div>
         </div>
         <div className="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-white/5" />
@@ -334,18 +418,18 @@ export default function StudentProfilePage() {
         {editing ? (
           <div className="space-y-3">
             <FieldInput
+              error={fieldError.chronic_disease}
               label="โรคประจำตัว *"
+              placeholder="เช่น ไม่มี, หอบหืด"
               value={form.chronic_disease}
               onChange={(v) => setForm((f) => ({ ...f, chronic_disease: v }))}
-              placeholder='เช่น ไม่มี, หอบหืด'
-              error={fieldError.chronic_disease}
             />
             <FieldInput
+              error={fieldError.food_allergy}
               label="การแพ้อาหาร/ยา *"
+              placeholder="เช่น ไม่มี, อาหารทะเล"
               value={form.food_allergy}
               onChange={(v) => setForm((f) => ({ ...f, food_allergy: v }))}
-              placeholder='เช่น ไม่มี, อาหารทะเล'
-              error={fieldError.food_allergy}
             />
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
@@ -353,28 +437,40 @@ export default function StudentProfilePage() {
               </label>
               <div className="grid grid-cols-3 gap-2">
                 <select
+                  className="px-2 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-[#5d7c6f]"
                   value={bday.day}
                   onChange={(e) => updateBirthday("day", e.target.value)}
-                  className="px-2 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-[#5d7c6f]"
                 >
                   <option value="">วันที่</option>
-                  {days.map((d) => <option key={d} value={d}>{parseInt(d)}</option>)}
+                  {days.map((d) => (
+                    <option key={d} value={d}>
+                      {parseInt(d)}
+                    </option>
+                  ))}
                 </select>
                 <select
+                  className="px-2 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-[#5d7c6f]"
                   value={bday.month}
                   onChange={(e) => updateBirthday("month", e.target.value)}
-                  className="px-2 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-[#5d7c6f]"
                 >
                   <option value="">เดือน</option>
-                  {months.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  {months.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
                 </select>
                 <select
+                  className="px-2 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-[#5d7c6f]"
                   value={bday.year}
                   onChange={(e) => updateBirthday("year", e.target.value)}
-                  className="px-2 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-[#5d7c6f]"
                 >
                   <option value="">ปี (พ.ศ.)</option>
-                  {years.map((y) => <option key={y} value={y}>{parseInt(y) + 543}</option>)}
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {parseInt(y) + 543}
+                    </option>
+                  ))}
                 </select>
               </div>
               {fieldError.birthday && (
@@ -386,8 +482,14 @@ export default function StudentProfilePage() {
           </div>
         ) : (
           <>
-            <InfoRow label="โรคประจำตัว" value={displayVal(profile.chronic_disease)} />
-            <InfoRow label="การแพ้อาหาร/ยา" value={displayVal(profile.food_allergy)} />
+            <InfoRow
+              label="โรคประจำตัว"
+              value={displayVal(profile.chronic_disease)}
+            />
+            <InfoRow
+              label="การแพ้อาหาร/ยา"
+              value={displayVal(profile.food_allergy)}
+            />
           </>
         )}
       </SectionCard>
@@ -397,22 +499,22 @@ export default function StudentProfilePage() {
         {editing ? (
           <div className="space-y-3">
             <FieldInput
+              error={fieldError.student_tel}
+              icon={<Phone size={14} />}
               label="เบอร์โทรศัพท์นักเรียน"
+              placeholder="0xxxxxxxxx"
               type="tel"
               value={form.student_tel}
               onChange={(v) => setForm((f) => ({ ...f, student_tel: v }))}
-              placeholder="0xxxxxxxxx"
-              error={fieldError.student_tel}
-              icon={<Phone size={14} />}
             />
             <FieldInput
+              error={fieldError.parent_tel}
+              icon={<Phone size={14} />}
               label="เบอร์โทรศัพท์ผู้ปกครอง"
+              placeholder="0xxxxxxxxx"
               type="tel"
               value={form.parent_tel}
               onChange={(v) => setForm((f) => ({ ...f, parent_tel: v }))}
-              placeholder="0xxxxxxxxx"
-              error={fieldError.parent_tel}
-              icon={<Phone size={14} />}
             />
           </div>
         ) : (
@@ -420,7 +522,9 @@ export default function StudentProfilePage() {
             <InfoRow label="เบอร์โทรนักเรียน" value={displayVal(profile.tel)} />
             <InfoRow
               label="เบอร์โทรผู้ปกครอง"
-              value={profile.parents?.[0]?.tel ? profile.parents[0].tel : "ไม่ระบุ"}
+              value={
+                profile.parents?.[0]?.tel ? profile.parents[0].tel : "ไม่ระบุ"
+              }
             />
           </>
         )}
@@ -430,11 +534,11 @@ export default function StudentProfilePage() {
       <SectionCard icon={<MessageSquare size={16} />} title="หมายเหตุเพิ่มเติม">
         {editing ? (
           <textarea
-            value={form.remark}
-            onChange={(e) => setForm((f) => ({ ...f, remark: e.target.value }))}
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none transition-all focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20 resize-none"
             placeholder="ข้อมูลอื่นที่ต้องการแจ้งครู..."
             rows={3}
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none transition-all focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20 resize-none"
+            value={form.remark}
+            onChange={(e) => setForm((f) => ({ ...f, remark: e.target.value }))}
           />
         ) : (
           <p className="text-sm text-gray-700">{displayVal(profile.remark)}</p>
@@ -444,7 +548,10 @@ export default function StudentProfilePage() {
       {/* ── Birthday in view mode ── */}
       {!editing && (
         <SectionCard icon={<CalendarDays size={16} />} title="วันเกิด">
-          <InfoRow label="วัน/เดือน/ปีเกิด" value={formatBirthdayThai(profile.birthday)} />
+          <InfoRow
+            label="วัน/เดือน/ปีเกิด"
+            value={formatBirthdayThai(profile.birthday)}
+          />
         </SectionCard>
       )}
 
@@ -453,28 +560,33 @@ export default function StudentProfilePage() {
         {editing ? (
           <div className="flex gap-3">
             <button
-              onClick={handleCancelEdit}
-              disabled={saving}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border border-gray-200 bg-white text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+              disabled={saving}
+              onClick={handleCancelEdit}
             >
               <X size={16} /> ยกเลิก
             </button>
             <button
-              onClick={handleSave}
-              disabled={saving}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#5d7c6f] text-white font-semibold text-sm hover:bg-[#4a6659] transition-colors disabled:opacity-60 shadow-md"
+              disabled={saving}
+              onClick={handleSave}
             >
               {saving ? (
-                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> กำลังบันทึก...</>
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
+                  กำลังบันทึก...
+                </>
               ) : (
-                <><Save size={16} /> บันทึกข้อมูล</>
+                <>
+                  <Save size={16} /> บันทึกข้อมูล
+                </>
               )}
             </button>
           </div>
         ) : (
           <button
-            onClick={() => setEditing(true)}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[#5d7c6f] text-white font-semibold text-sm hover:bg-[#4a6659] transition-colors shadow-md"
+            onClick={() => setEditing(true)}
           >
             <Pencil size={16} /> แก้ไขข้อมูล
           </button>

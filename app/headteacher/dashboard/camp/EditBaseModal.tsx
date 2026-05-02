@@ -45,6 +45,7 @@ export default function EditBaseModal({
   const handleSubmit = async () => {
     if (!name.trim()) {
       showError("ข้อผิดพลาด", "กรุณากรอกชื่อฐานกิจกรรม");
+
       return;
     }
 
@@ -84,8 +85,12 @@ export default function EditBaseModal({
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
-              <h2 className="text-2xl font-bold text-gray-900">แก้ไขฐานกิจกรรม</h2>
-              <p className="text-sm text-gray-500 font-normal">แก้ไขข้อมูลฐานกิจกรรม</p>
+              <h2 className="text-2xl font-bold text-gray-900">
+                แก้ไขฐานกิจกรรม
+              </h2>
+              <p className="text-sm text-gray-500 font-normal">
+                แก้ไขข้อมูลฐานกิจกรรม
+              </p>
             </ModalHeader>
 
             <ModalBody className="py-6 space-y-4 px-6">

@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextResponse } from "next/server";
+
 import { requireTeacher } from "@/lib/auth";
 
 const recordsStore =
@@ -8,7 +9,7 @@ const recordsStore =
 
 // POST /api/attendance/[campId]/manual-checkin
 export async function POST(req, { params }) {
-  const { teacher, error: authError } = await requireTeacher();
+  const { error: authError } = await requireTeacher();
 
   if (authError) return authError;
 
@@ -41,10 +42,11 @@ export async function POST(req, { params }) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Manual check-in error:", error);
+  } catch {
+    //     console.error("Manual check-in error:", error);
+
     return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดในการเช็คชื่อ" },
+      { _error: "เกิดข้อผิดพลาดในการเช็คชื่อ" },
       { status: 500 },
     );
   }

@@ -3,8 +3,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
 
-export async function GET(request: Request, context: { params: { id: string } }) {
-  const { teacher, error: authError } = await requireTeacher();
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { error: authError } = await requireTeacher();
 
   if (authError) return authError;
 
@@ -28,7 +31,9 @@ export async function GET(request: Request, context: { params: { id: string } })
           OR: [
             { firstname: { contains: search } },
             { lastname: { contains: search } },
-            !isNaN(Number(search)) ? { students_id: Number(search) } : undefined,
+            !isNaN(Number(search))
+              ? { students_id: Number(search) }
+              : undefined,
           ].filter(Boolean) as any,
         }
       : {};
@@ -43,7 +48,10 @@ export async function GET(request: Request, context: { params: { id: string } })
           { food_allergy: { not: "ไม่มี" } },
         ],
       };
-      studentCondition = search ? { AND: [studentCondition, allergyCondition] } : allergyCondition;
+
+      studentCondition = search
+        ? { AND: [studentCondition, allergyCondition] }
+        : allergyCondition;
     } else if (filter === "disease") {
       const diseaseCondition = {
         AND: [
@@ -53,7 +61,10 @@ export async function GET(request: Request, context: { params: { id: string } })
           { chronic_disease: { not: "ไม่มี" } },
         ],
       };
-      studentCondition = search ? { AND: [studentCondition, diseaseCondition] } : diseaseCondition;
+
+      studentCondition = search
+        ? { AND: [studentCondition, diseaseCondition] }
+        : diseaseCondition;
     } else if (filter === "remark") {
       const remarkCondition = {
         AND: [
@@ -63,12 +74,17 @@ export async function GET(request: Request, context: { params: { id: string } })
           { remark: { not: "ไม่มี" } },
         ],
       };
-      studentCondition = search ? { AND: [studentCondition, remarkCondition] } : remarkCondition;
+
+      studentCondition = search
+        ? { AND: [studentCondition, remarkCondition] }
+        : remarkCondition;
     }
 
     const whereClause = {
       camp_camp_id: campId,
-      ...(Object.keys(studentCondition).length > 0 ? { student: studentCondition } : {}),
+      ...(Object.keys(studentCondition).length > 0
+        ? { student: studentCondition }
+        : {}),
     };
 
     // Get total count for pagination based on search
@@ -118,15 +134,24 @@ export async function GET(request: Request, context: { params: { id: string } })
     const totalStudents = allEnrollments.length;
 
     const isSignificant = (text: string | null) =>
-      text && text.trim() !== "" && text.trim() !== "-" && text.trim() !== "ไม่มี";
+      text &&
+      text.trim() !== "" &&
+      text.trim() !== "-" &&
+      text.trim() !== "ไม่มี";
 
     const allergies = allEnrollments
       .filter((e) => isSignificant(e.student.food_allergy))
-      .map((e) => ({ id: e.student.students_id, text: e.student.food_allergy }));
+      .map((e) => ({
+        id: e.student.students_id,
+        text: e.student.food_allergy,
+      }));
 
     const chronicDiseases = allEnrollments
       .filter((e) => isSignificant(e.student.chronic_disease))
-      .map((e) => ({ id: e.student.students_id, text: e.student.chronic_disease }));
+      .map((e) => ({
+        id: e.student.students_id,
+        text: e.student.chronic_disease,
+      }));
 
     const remarks = allEnrollments
       .filter((e) => isSignificant(e.student.remark))
@@ -153,8 +178,12 @@ export async function GET(request: Request, context: { params: { id: string } })
       },
       { status: 200 },
     );
-  } catch (error) {
-    console.error("Error fetching students:", error);
-    return NextResponse.json({ error: "Failed to fetch student data" }, { status: 500 });
+  } catch {
+    //     console.error("Error fetching students:", error);
+
+    return NextResponse.json(
+      { _error: "Failed to fetch student data" },
+      { status: 500 },
+    );
   }
 }
