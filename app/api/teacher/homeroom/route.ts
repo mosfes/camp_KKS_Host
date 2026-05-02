@@ -48,7 +48,9 @@ export async function GET() {
     const roomType = classroom.classroom_types?.name || "";
     const classroomName = `ม.${gradeStr} ห้อง ${roomType}`;
 
-    const rawStudents = classroom.classroom_students.map((cs: any) => cs.student);
+    const rawStudents = classroom.classroom_students.map(
+      (cs: any) => cs.student,
+    );
 
     const activeStudents = rawStudents
       .filter((s: any) => !s.deletedAt)
