@@ -162,22 +162,22 @@ export default function PrePostTestModal({ isOpen, onClose, campId }: any) {
                           </div>
                         </div>
                         <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse">
+                          <table className="w-full text-left border-collapse min-w-[650px]">
                             <thead>
                               <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm">
-                                <th className="px-6 py-3 font-semibold">
+                                <th className="px-6 py-3 font-semibold whitespace-nowrap">
                                   รหัสนักเรียน
                                 </th>
-                                <th className="px-6 py-3 font-semibold">
+                                <th className="px-6 py-3 font-semibold whitespace-nowrap">
                                   ชื่อ-นามสกุล
                                 </th>
-                                <th className="px-6 py-3 font-semibold text-center w-32">
+                                <th className="px-6 py-3 font-semibold text-center w-32 whitespace-nowrap">
                                   ก่อนเรียน
                                 </th>
-                                <th className="px-6 py-3 font-semibold text-center w-32">
+                                <th className="px-6 py-3 font-semibold text-center w-32 whitespace-nowrap">
                                   หลังเรียน
                                 </th>
-                                <th className="px-6 py-3 font-semibold text-center w-32">
+                                <th className="px-6 py-3 font-semibold text-center w-32 whitespace-nowrap">
                                   พัฒนาการ
                                 </th>
                               </tr>

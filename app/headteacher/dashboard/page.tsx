@@ -727,13 +727,13 @@ function DashboardContent() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="bg-white rounded-2xl p-6 shadow-sm overflow-hidden">
                   <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 w-full">
                     <h3 className="text-xl font-semibold text-gray-900 w-full sm:w-auto">
                       รายชื่อนักเรียน
                     </h3>
-                    <div className="flex gap-2 w-full sm:w-auto">
-                      <div className="w-[200px]">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                      <div className="w-full sm:w-[200px]">
                         <Select
                           aria-label="ตัวกรอง"
                           className="w-full"
@@ -776,16 +776,16 @@ function DashboardContent() {
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
                       <thead>
                         <tr className="bg-gray-50 text-gray-600 text-sm border-y border-gray-100">
-                          <th className="p-4 font-semibold rounded-tl-lg">
+                          <th className="p-4 font-semibold rounded-tl-lg whitespace-nowrap">
                             รหัสนักเรียน
                           </th>
-                          <th className="p-4 font-semibold">ชื่อ-นามสกุล</th>
-                          <th className="p-4 font-semibold">โรคประจำตัว</th>
-                          <th className="p-4 font-semibold">อาหารที่แพ้</th>
-                          <th className="p-4 font-semibold rounded-tr-lg w-1/4">
+                          <th className="p-4 font-semibold whitespace-nowrap">ชื่อ-นามสกุล</th>
+                          <th className="p-4 font-semibold whitespace-nowrap">โรคประจำตัว</th>
+                          <th className="p-4 font-semibold whitespace-nowrap">อาหารที่แพ้</th>
+                          <th className="p-4 font-semibold rounded-tr-lg whitespace-nowrap">
                             หมายเหตุ
                           </th>
                         </tr>

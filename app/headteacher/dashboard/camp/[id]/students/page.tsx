@@ -253,13 +253,13 @@ export default function CampStudentsPage() {
         )}
 
         {/* Search & Table Section */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-white rounded-2xl p-6 shadow-sm overflow-hidden">
           <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
             <h3 className="text-xl font-semibold text-gray-900 w-full sm:w-auto">
               รายชื่อนักเรียน
             </h3>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <div className="w-[200px]">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="w-full sm:w-[200px]">
                 <Select
                   aria-label="ตัวกรอง"
                   className="w-full"
@@ -289,7 +289,7 @@ export default function CampStudentsPage() {
                   </SelectItem>
                 </Select>
               </div>
-              <div className="w-72">
+              <div className="w-full sm:w-72">
                 <Input
                   className="w-full"
                   classNames={{
@@ -306,15 +306,15 @@ export default function CampStudentsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="bg-gray-50 text-gray-600 text-sm border-y border-gray-100">
-                  <th className="p-4 font-semibold rounded-tl-lg">รหัส</th>
-                  <th className="p-4 font-semibold">ชื่อ - นามสกุล</th>
-                  <th className="p-4 font-semibold">เบอร์โทร</th>
-                  <th className="p-4 font-semibold">แพ้อาหาร</th>
-                  <th className="p-4 font-semibold">โรคประจำตัว</th>
-                  <th className="p-4 font-semibold rounded-tr-lg">
+                  <th className="p-4 font-semibold rounded-tl-lg whitespace-nowrap">รหัส</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">ชื่อ - นามสกุล</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">เบอร์โทร</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">แพ้อาหาร</th>
+                  <th className="p-4 font-semibold whitespace-nowrap">โรคประจำตัว</th>
+                  <th className="p-4 font-semibold rounded-tr-lg whitespace-nowrap">
                     เงื่อนไขพิเศษ/อื่นๆ
                   </th>
                 </tr>

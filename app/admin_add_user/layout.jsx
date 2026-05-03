@@ -195,7 +195,7 @@ export default function AdminLayout({ children }) {
                     </Suspense>
 
                     {/* Page Content */}
-                    <main className="flex-1">
+                    <main className="flex-1 min-w-0">
                         {children}
                     </main>
                 </div>
