@@ -29,12 +29,14 @@ import {
 import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
 import { I18nProvider } from "@react-aria/i18n";
 import { useState, useEffect } from "react";
-import { Search, MapPin, Users, Calendar, GraduationCap, SquarePen, Trash2, RotateCcw, Trash, Archive, AlertTriangle, ArrowLeft, X } from 'lucide-react';
+import { Search, MapPin, Users, Calendar, GraduationCap, SquarePen, Trash2, RotateCcw, Trash, Archive, AlertTriangle, ArrowLeft, X, Eye } from 'lucide-react';
+import { useRouter } from "next/navigation";
 import adminService from "@/app/service/adminService";
 
 
 
 const CampManager = () => {
+    const router = useRouter();
     const { showError, showSuccess, showConfirm } = useStatusModal();
 
     const dateValueToString = (date) => {
@@ -555,6 +557,13 @@ const CampManager = () => {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
+                                                    <span
+                                                        className="cursor-pointer active:opacity-50 text-blue-500 hover:text-blue-700 transition-colors"
+                                                        onClick={() => router.push(`/headteacher/dashboard/camp/${camp.camp_id}`)}
+                                                        title="ดูหน้าแสดงผลแบบหัวหน้าค่าย"
+                                                    >
+                                                        <Eye size={18} />
+                                                    </span>
                                                     <span
                                                         className="cursor-pointer active:opacity-50 text-sage hover:text-sage-dark"
                                                         onClick={() => handleEdit(camp)}

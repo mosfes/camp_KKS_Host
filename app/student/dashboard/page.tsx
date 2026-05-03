@@ -633,9 +633,7 @@ function StudentProfileSetupModal({
             </div>
             <div>
               <h2 className="text-xl font-bold">มาทำความรู้จักกันอีกนิด</h2>
-              <p className="text-sm opacity-80 decoration-dotted">
-                รบกวนอัปเดตข้อมูลเพื่อความสะดวกในการดูแล
-              </p>
+
             </div>
           </div>
         </div>

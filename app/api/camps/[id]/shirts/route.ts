@@ -54,7 +54,7 @@ export async function GET(request, { params }) {
       },
     });
 
-    if (!camp && !teacher.roles?.includes("ADMIN")) {
+    if (!camp && teacher.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Unauthorized access to this camp" },
         { status: 403 },

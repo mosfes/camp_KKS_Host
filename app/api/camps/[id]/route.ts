@@ -114,7 +114,7 @@ export async function GET(request, context) {
     return NextResponse.json(
       {
         ...camp,
-        isOwner: camp.created_by_teacher_id === teacher.teachers_id,
+        isOwner: camp.created_by_teacher_id === teacher.teachers_id || teacher.role === "ADMIN",
         isHomeroomTeacher,
         total_eligible_students: totalEligibleStudents,
       },

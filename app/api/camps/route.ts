@@ -180,45 +180,43 @@ export async function GET(request) {
       ...dateFilter,
     };
 
-    if (!isAdmin) {
-      const orConditions = [
-        // ผู้สร้างค่าย (ทุก role)
-        { created_by_teacher_id: teacher.teachers_id },
-        // ครูประจำชั้นคนที่ 1 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
-        {
-          camp_classroom: {
-            some: {
-              classroom: {
-                teachers_teachers_id: teacher.teachers_id,
+    const orConditions = [
+      // ผู้สร้างค่าย (ทุก role)
+      { created_by_teacher_id: teacher.teachers_id },
+      // ครูประจำชั้นคนที่ 1 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
+      {
+        camp_classroom: {
+          some: {
+            classroom: {
+              teachers_teachers_id: teacher.teachers_id,
+            },
+          },
+        },
+      },
+      // ครูประจำชั้นคนที่ 2 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
+      {
+        camp_classroom: {
+          some: {
+            classroom: {
+              classroom_teacher: {
+                some: { teacher_teachers_id: teacher.teachers_id },
               },
             },
           },
         },
-        // ครูประจำชั้นคนที่ 2 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
-        {
-          camp_classroom: {
-            some: {
-              classroom: {
-                classroom_teacher: {
-                  some: { teacher_teachers_id: teacher.teachers_id },
-                },
-              },
-            },
-          },
+      },
+    ];
+
+    // เพิ่ม teacher_enrollment เฉพาะ TEACHER role (ไม่ใช่ CAMP_LEADER) หรือ ADMIN
+    if (!isCampLeader || isAdmin) {
+      orConditions.splice(1, 0, {
+        teacher_enrollment: {
+          some: { teacher_teachers_id: teacher.teachers_id },
         },
-      ];
-
-      // เพิ่ม teacher_enrollment เฉพาะ TEACHER role (ไม่ใช่ CAMP_LEADER)
-      if (!isCampLeader) {
-        orConditions.splice(1, 0, {
-          teacher_enrollment: {
-            some: { teacher_teachers_id: teacher.teachers_id },
-          },
-        });
-      }
-
-      whereCondition.OR = orConditions;
+      });
     }
+
+    whereCondition.OR = orConditions;
 
     let camps = await prisma.camp.findMany({
       where: whereCondition,
@@ -272,7 +270,7 @@ export async function GET(request) {
       for (const f of dateFields) {
         if (updated[f]) updated[f] = toThaiISOString(updated[f]);
       }
-      updated.isOwner = camp.created_by_teacher_id === teacher.teachers_id;
+      updated.isOwner = camp.created_by_teacher_id === teacher.teachers_id || teacher.role === "ADMIN";
 
       // Extract Grades, Types, and Academic Year
       const typeMap = new Map();
