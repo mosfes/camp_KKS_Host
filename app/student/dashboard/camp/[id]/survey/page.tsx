@@ -52,6 +52,7 @@ export default function StudentSurveyPage() {
   };
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     fetchSurvey();
   }, [id]);
 
@@ -230,7 +231,7 @@ export default function StudentSurveyPage() {
               {q.question_type === "text" && (
                 <Textarea
                   classNames={{
-                    input: "text-gray-700 bg-gray-50",
+                    input: "text-gray-900 bg-gray-50",
                     inputWrapper: "bg-gray-50 data-[hover=true]:bg-gray-100",
                   }}
                   minRows={3}

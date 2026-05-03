@@ -37,6 +37,7 @@ export default function StudentStationDetailPage() {
 
   const [camp, setCamp] = useState<any>(null);
   const [station, setStation] = useState<any>(null);
+  const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Mission Execution State
@@ -60,16 +61,23 @@ export default function StudentStationDetailPage() {
 
   const fetchCamp = async () => {
     try {
-      const res = await fetch("/api/student/camps", {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
-        },
-      });
+      const [campRes, studentRes] = await Promise.all([
+        fetch("/api/student/camps", {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        }),
+        fetch("/api/auth/student/me")
+      ]);
 
-      if (res.ok) {
-        const data = await res.json();
+      if (studentRes.ok) {
+        setStudent(await studentRes.json());
+      }
+
+      if (campRes.ok) {
+        const data = await campRes.json();
         const foundCamp = data.find((c: any) => c.id === Number(id));
 
         if (foundCamp) {
@@ -321,6 +329,7 @@ export default function StudentStationDetailPage() {
         maxSizeMB: 2,
         maxWidthOrHeight: 1920,
         useWebWorker: true,
+        fileType: "image/jpeg", // Always convert to JPEG for compatibility
       });
     } catch (e) {
       console.error("Compression error:", e);
@@ -346,7 +355,7 @@ export default function StudentStationDetailPage() {
       const compressedFile = await compressImage(file);
       const formData = new FormData();
 
-      formData.append("file", compressedFile);
+      formData.append("file", compressedFile, file.name);
       const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
@@ -358,7 +367,8 @@ export default function StudentStationDetailPage() {
         handleAnswerChange(questionId, data.url);
         toast.success("อัปโหลดรูปภาพสำเร็จ");
       } else {
-        toast.error("อัปโหลดล้มเหลว");
+        const errorData = await res.json();
+        toast.error(errorData.error || errorData._error || "อัปโหลดล้มเหลว");
       }
     } catch (error) {
       console.error(error);
@@ -422,7 +432,6 @@ export default function StudentStationDetailPage() {
   const isMissionCompleted = (missionId: number) => {
     if (!camp || !camp.missionResults) return false;
 
-    // Check if any result confirms completion for this mission
     // status='completed'
     return camp.missionResults.some(
       (r: any) =>
@@ -444,10 +453,8 @@ export default function StudentStationDetailPage() {
       }
     }
 
-    // ถ้าไม่มีแบบทดสอบก่อนเรียนในค่ายเลย ให้ทำหลังเรียนได้เลย
     if (preTestMissions.length === 0) return true;
 
-    // ตรวจสอบว่าแบบทดสอบก่อนเรียนทั้งหมดทำเสร็จหรือยัง
     let allPreTestsCompleted = true;
 
     for (const m of preTestMissions) {
@@ -467,40 +474,39 @@ export default function StudentStationDetailPage() {
 
   if (loading)
     return (
-      <div className="p-8 text-center bg-[#F5F1E8] min-h-screen">
-        กำลังโหลด...
+      <div className="p-8 text-center bg-[#F5F2E9] min-h-screen flex items-center justify-center">
+        <div className="text-gray-400 font-bold">กำลังโหลด...</div>
       </div>
     );
   if (!station)
     return (
-      <div className="p-8 text-center bg-[#F5F1E8] min-h-screen">
-        ไม่พบฐานกิจกรรม
+      <div className="p-8 text-center bg-[#F5F2E9] min-h-screen flex items-center justify-center">
+        <div className="text-gray-400 font-bold">ไม่พบฐานกิจกรรม</div>
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#FBF9F4] pb-12">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-xl px-4 py-4 shadow-sm flex items-center gap-4 sticky top-0 z-50 border-b border-gray-100">
+    <div className="min-h-screen bg-[#F5F2E9] pb-12">
+      {/* Station Header */}
+      <div className="bg-white px-4 py-6 flex items-center gap-4 border-b border-gray-100/50">
         <Button 
           isIconOnly 
-          className="bg-gray-50 rounded-xl text-gray-700 hover:bg-gray-100 transition-colors"
-          variant="flat" 
+          className="bg-transparent text-gray-400 hover:bg-gray-50 min-w-0 w-8 h-8"
+          variant="light" 
           onPress={() => router.back()}
         >
           <ChevronLeft size={24} />
         </Button>
-        <div className="min-w-0">
-          <h1 className="text-lg font-black text-gray-900 tracking-tight truncate">{station.name}</h1>
-          <p className="text-xs text-gray-500 font-medium truncate opacity-70">{camp.title}</p>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-[#2D3648] leading-tight">{station.name}</h1>
+          <p className="text-[13px] text-gray-400 font-medium leading-tight line-clamp-2 mt-1">{camp.title}</p>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         {station.description && (
-          <div className="bg-white/60 backdrop-blur-sm p-6 rounded-[2rem] border border-white shadow-sm mb-4">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-4">
              <div className="flex items-center gap-2 mb-3">
-                <div className="w-1 h-5 bg-[#5d7c6f] rounded-full" />
                 <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">เกี่ยวกับฐานนี้</h2>
               </div>
             <p className="text-gray-600 text-sm leading-relaxed font-medium">
@@ -510,7 +516,7 @@ export default function StudentStationDetailPage() {
         )}
 
         {station.mission?.length === 0 && (
-          <div className="text-center text-gray-400 py-16 bg-white/40 rounded-[2rem] border-2 border-dashed border-gray-100">
+          <div className="text-center text-gray-400 py-16 bg-white/40 rounded-2xl border-2 border-dashed border-gray-100">
             <Circle className="mx-auto mb-3 opacity-20" size={48} />
             <p className="font-bold">ยังไม่มีภารกิจในฐานนี้</p>
           </div>
@@ -527,13 +533,13 @@ export default function StudentStationDetailPage() {
               <div
                 key={mission.mission_id}
                 className={`
-                  relative group overflow-hidden bg-white p-6 rounded-[2rem] border-2 transition-all duration-300
+                  bg-white p-6 rounded-2xl border-2 transition-all duration-300 flex items-center gap-4 cursor-pointer
                   ${
                     isLocked
                       ? "opacity-60 grayscale border-gray-100"
                       : completed
-                        ? "border-[#5d7c6f]/10 bg-gradient-to-br from-green-50/30 to-white hover:border-[#5d7c6f]/30 shadow-sm"
-                        : "border-transparent hover:border-[#5d7c6f]/30 shadow-sm hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
+                        ? "border-[#5D7C6F]/20 shadow-sm"
+                        : "border-transparent shadow-sm hover:shadow-md"
                   }
                 `}
                 onClick={() => {
@@ -546,56 +552,30 @@ export default function StudentStationDetailPage() {
                   openMission(mission);
                 }}
               >
-                {/* Status Indicator Bar */}
-                <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${completed ? "bg-[#5d7c6f]" : isLocked ? "bg-gray-200" : "bg-gray-100 group-hover:bg-[#5d7c6f]/50"}`} />
-                
-                <div className="flex justify-between items-center gap-4">
-                  <div className="flex items-center gap-5 min-w-0">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${completed ? "bg-[#5d7c6f] text-white" : "bg-gray-50 text-gray-400 group-hover:bg-[#5d7c6f]/10 group-hover:text-[#5d7c6f]"}`}>
-                      {completed ? (
-                        <CheckCircle2 size={24} strokeWidth={2.5} />
-                      ) : (
-                        <Circle size={24} strokeWidth={2.5} />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className={`font-black tracking-tight truncate ${completed ? "text-gray-900" : "text-gray-800"}`}>
-                          {mission.title || "ภารกิจ"}
-                        </h3>
-                        {mission.type === "PRE_TEST" && (
-                          <span className="text-[9px] font-black bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                            ก่อนเรียน
-                          </span>
-                        )}
-                        {mission.type === "POST_TEST" && (
-                          <span className="text-[9px] font-black bg-purple-100 text-purple-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                            หลังเรียน
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest truncate">
-                        {mission.description || "กดเพื่อทำภารกิจ"}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="shrink-0">
-                    {completed ? (
-                       <div className="bg-[#5d7c6f]/10 text-[#5d7c6f] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
-                        สำเร็จแล้ว
-                      </div>
-                    ) : isLocked ? (
-                      <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300">
-                         <ScanLine size={16} />
-                      </div>
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-[#5d7c6f]/10 group-hover:text-[#5d7c6f] transition-all group-hover:translate-x-1">
-                        <ChevronRight size={20} strokeWidth={3} />
-                      </div>
-                    )}
-                  </div>
+                <div className={`w-12 h-12 flex items-center justify-center shrink-0`}>
+                  {completed ? (
+                    <CheckCircle2 className="text-[#10B981]" size={28} />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full border-2 border-gray-300" />
+                  )}
                 </div>
+
+                <div className="flex-1 min-w-0">
+                  <h3 className={`text-lg font-bold text-[#2D3648] truncate`}>
+                    {mission.title || "ภารกิจ"}
+                    {mission.type === "PRE_TEST" && " (ก่อนเรียน)"}
+                    {mission.type === "POST_TEST" && " (หลังเรียน)"}
+                  </h3>
+                  <p className="text-[14px] text-gray-400 font-medium">
+                    {mission.description || "กดเพื่อทำภารกิจ"}
+                  </p>
+                </div>
+
+                {completed && (
+                  <div className="bg-[#E6F4EA] text-[#1E8E3E] text-[13px] font-bold px-3 py-1 rounded-full shrink-0">
+                    สำเร็จ
+                  </div>
+                )}
               </div>
             );
           })}
@@ -763,7 +743,7 @@ export default function StudentStationDetailPage() {
                             </p>
                           </div>
                           <input
-                            className="w-40 text-center text-gray-900 text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50 placeholder:text-gray-300"
+                            className="w-60 pl-[0.35em] text-center text-gray-900 text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50 placeholder:text-gray-300"
                             inputMode="numeric"
                             maxLength={6}
                             pattern="[0-9]*"
@@ -884,6 +864,9 @@ export default function StudentStationDetailPage() {
                               <Textarea
                                 isReadOnly={isSubmitted}
                                 minRows={3}
+                                classNames={{
+                                  input: "text-gray-900 font-medium",
+                                }}
                                 placeholder={
                                   isSubmitted ? "" : "พิมพ์คำตอบของคุณที่นี่..."
                                 }
@@ -961,6 +944,7 @@ export default function StudentStationDetailPage() {
                                   <div className="flex flex-col gap-3">
                                     <input
                                       accept="image/*"
+                                      capture="environment"
                                       className="hidden"
                                       id={`file-${q.question_id}`}
                                       type="file"

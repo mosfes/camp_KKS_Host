@@ -28,11 +28,13 @@ export async function POST(request) {
       "image/png",
       "image/webp",
       "image/gif",
+      "image/heic",
+      "image/heif",
     ];
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { error: "ไม่อนุญาตให้อัปโหลดไฟล์ประเภทนี้ (รองรับเฉพาะรูปภาพ)" },
+        { error: `ไม่อนุญาตให้อัปโหลดไฟล์ประเภท ${file.type} (รองรับเฉพาะรูปภาพ)` },
         { status: 400 },
       );
     }
@@ -57,11 +59,11 @@ export async function POST(request) {
       { url: result.secure_url, public_id: result.public_id },
       { status: 200 },
     );
-  } catch {
-    //     console.error("Error uploading file to Cloudinary:", error);
+  } catch (error) {
+    console.error("Error uploading file to Cloudinary:", error);
 
     return NextResponse.json(
-      { _error: "Error uploading file" },
+      { _error: "Error uploading file", details: error.message },
       { status: 500 },
     );
   }

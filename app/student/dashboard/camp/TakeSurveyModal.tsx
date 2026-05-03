@@ -215,7 +215,7 @@ export default function TakeSurveyModal({
                       <div className="pl-9">
                         {q.question_type === "text" ? (
                           <textarea
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#5d7c6f] focus:border-[#5d7c6f] outline-none transition-all text-sm resize-none bg-white"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#5d7c6f] focus:border-[#5d7c6f] outline-none transition-all text-sm resize-none bg-white text-gray-900"
                             placeholder="พิมพ์คำตอบของคุณที่นี่..."
                             rows={3}
                             value={answers[q.question_id] || ""}

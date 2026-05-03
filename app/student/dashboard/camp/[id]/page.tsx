@@ -400,7 +400,7 @@ export default function StudentCampDetailPage() {
   const campNotStarted = startDate && today < startDate;
 
   return (
-    <div className="min-h-screen bg-[#F5F5F3] pb-32">
+    <div className="min-h-screen bg-[#F5F5F3] pb-72">
       {/* Hero Section */}
       <div className="h-64 sm:h-72 bg-gray-200 relative overflow-hidden">
         {camp.img_camp_url ? (
@@ -554,7 +554,7 @@ export default function StudentCampDetailPage() {
         )}
 
         {camp.isRegistered && camp.hasShirt && (
-          <div className="bg-white rounded-2xl shadow-sm p-6 mt-3 border border-gray-100 mb-20">
+          <div className="bg-white rounded-2xl shadow-sm p-6 mt-3 border border-gray-100">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Shirt className="text-[#5d7c6f]" size={22} />
@@ -1074,7 +1074,7 @@ export default function StudentCampDetailPage() {
                     </p>
                   </div>
                   <input
-                    className="w-40 text-center text-gray-900 text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50 placeholder:text-gray-300"
+                    className="w-60 pl-[0.35em] text-center text-gray-900 text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50 placeholder:text-gray-300"
                     inputMode="numeric"
                     maxLength={6}
                     pattern="[0-9]*"

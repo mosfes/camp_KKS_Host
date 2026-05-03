@@ -60,6 +60,7 @@ export default function StudentDashboard() {
   };
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     async function fetchData() {
       try {
         const [campsRes, studentRes, profileRes] = await Promise.all([

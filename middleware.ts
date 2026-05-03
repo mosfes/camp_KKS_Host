@@ -77,10 +77,18 @@ export default clerkMiddleware(async (auth, req) => {
     r === "head_teacher" ||
     r === "headteacher";
 
-  // API Route Protection — อนุญาตเฉพาะ role ที่เป็นครู
+  // API Route Protection
   if (isProtectedApiRoute(req)) {
-    if (!isTeacherRole(role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Special case for upload: allow both teachers and students
+    if (req.nextUrl.pathname.startsWith("/api/upload")) {
+      if (!isTeacherRole(role) && role !== "student") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else {
+      // Other protected routes: only allow teachers
+      if (!isTeacherRole(role)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
   }
 
