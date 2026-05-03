@@ -79,7 +79,7 @@ export default function AttendanceModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [autoRefresh, setAutoRefresh] = useState(true);
-  
+
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
@@ -304,7 +304,7 @@ export default function AttendanceModal({
 
           if (res.ok) fetchResults(selectedRoundId);
           close();
-        } catch {}
+        } catch { }
       },
       confirmText,
     );
@@ -398,17 +398,7 @@ export default function AttendanceModal({
                     </div>
                     {qrPayload && (
                       <div className="sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
-                        <button
-                          className="flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-lg text-[#6b857a] bg-[#6b857a]/10 hover:bg-[#6b857a]/20 transition-colors disabled:opacity-50 whitespace-nowrap"
-                          disabled={regenerating}
-                          onClick={regenerateQr}
-                        >
-                          <RefreshCw
-                            className={regenerating ? "animate-spin" : ""}
-                            size={13}
-                          />
-                          สุ่มรหัสใหม่
-                        </button>
+
                         <button
                           className="flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors whitespace-nowrap"
                           onClick={handleCloseSession}
@@ -578,13 +568,12 @@ export default function AttendanceModal({
                         return (
                           <button
                             key={round.roundId}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                              isSelected
-                                ? "bg-[#6b857a] text-white border-[#6b857a]"
-                                : isActive
-                                  ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                                  : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
-                            }`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${isSelected
+                              ? "bg-[#6b857a] text-white border-[#6b857a]"
+                              : isActive
+                                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                                : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                              }`}
                             onClick={() => handleSelectRound(round.roundId)}
                           >
                             {isActive && (
@@ -732,64 +721,64 @@ export default function AttendanceModal({
                   </div>
                 ) : (
                   <>
-                  <div className="space-y-3">
-                    {paginatedResults.map((result) => (
-                      <div
-                        key={result.enrollmentId}
-                        className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4 hover:border-[#6b857a] hover:shadow-md transition-all cursor-pointer group"
-                        onClick={() =>
-                          handleToggleCheckin(
-                            result.studentId,
-                            result.enrollmentId,
-                            result.isCheckedIn,
-                            result.studentName,
-                          )
-                        }
-                      >
+                    <div className="space-y-3">
+                      {paginatedResults.map((result) => (
                         <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${result.isCheckedIn ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400 group-hover:bg-[#6b857a]/10 group-hover:text-[#6b857a]"}`}
+                          key={result.enrollmentId}
+                          className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4 hover:border-[#6b857a] hover:shadow-md transition-all cursor-pointer group"
+                          onClick={() =>
+                            handleToggleCheckin(
+                              result.studentId,
+                              result.enrollmentId,
+                              result.isCheckedIn,
+                              result.studentName,
+                            )
+                          }
                         >
-                          <User size={20} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 truncate group-hover:text-[#6b857a] transition-colors">
-                            {result.studentName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            รหัส: {result.studentId}
-                          </p>
-                        </div>
-                        {result.isCheckedIn ? (
-                          <div className="flex items-center gap-2 shrink-0">
-                            <div className="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-100 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm">
-                              <CheckCircle2 size={14} />
-                              เช็คชื่อแล้ว
-                            </div>
-                            <div className="flex items-center gap-1 text-xs text-gray-400">
-                              <Clock size={12} />
-                              {formatTime(result.checkedAt)}
-                            </div>
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${result.isCheckedIn ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400 group-hover:bg-[#6b857a]/10 group-hover:text-[#6b857a]"}`}
+                          >
+                            <User size={20} />
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 bg-gray-100 text-gray-500 px-3 py-1.5 rounded-full text-xs font-medium shrink-0 group-hover:bg-gray-200 transition-colors">
-                            คลิกเพื่อเช็คชื่อ
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-gray-900 truncate group-hover:text-[#6b857a] transition-colors">
+                              {result.studentName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              รหัส: {result.studentId}
+                            </p>
                           </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {pages > 1 && (
-                    <div className="flex justify-center mt-4 pb-2">
-                      <Pagination
-                        classNames={{
-                          cursor: "bg-[#5d7c6f] text-white font-bold",
-                        }}
-                        page={page}
-                        total={pages}
-                        onChange={setPage}
-                      />
+                          {result.isCheckedIn ? (
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-100 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm">
+                                <CheckCircle2 size={14} />
+                                เช็คชื่อแล้ว
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-gray-400">
+                                <Clock size={12} />
+                                {formatTime(result.checkedAt)}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 bg-gray-100 text-gray-500 px-3 py-1.5 rounded-full text-xs font-medium shrink-0 group-hover:bg-gray-200 transition-colors">
+                              คลิกเพื่อเช็คชื่อ
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  )}
+                    {pages > 1 && (
+                      <div className="flex justify-center mt-4 pb-2">
+                        <Pagination
+                          classNames={{
+                            cursor: "bg-[#5d7c6f] text-white font-bold",
+                          }}
+                          page={page}
+                          total={pages}
+                          onChange={setPage}
+                        />
+                      </div>
+                    )}
                   </>
                 )}
               </div>

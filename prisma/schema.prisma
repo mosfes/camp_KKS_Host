@@ -51,9 +51,10 @@ model students {
   email           String    @db.VarChar(255)
   deletedAt       DateTime?
 
-  parents            parents[]
-  classroom_students classroom_students[]
-  student_enrollment student_enrollment[]
+  parents                    parents[]
+  classroom_students         classroom_students[]
+  student_enrollment         student_enrollment[]
+  attendance_record_student  attendance_record_student[]
 
   @@index([deletedAt])
 }
@@ -159,6 +160,7 @@ model camp {
   camp_classroom      camp_classroom[]
   teacher_enrollment  teacher_enrollment[]
   student_enrollment  student_enrollment[]
+  attendance_session  attendance_session[]
   attendance_teachers attendance_teachers[]
   station             station[]
   camp_daily_schedule camp_daily_schedule[]
@@ -251,13 +253,33 @@ model student_enrollment {
   @@index([camp_camp_id])
 }
 
+model attendance_session {
+  id           Int      @id @default(autoincrement())
+  camp_camp_id Int
+  camp         camp     @relation(fields: [camp_camp_id], references: [camp_id])
+  round_id     String   @db.VarChar(64) // string id เช่น "l9x3r2ab"
+  round_number Int
+  description  String   @db.VarChar(255)
+  nonce        String   @db.VarChar(64)
+  pin          String   @db.VarChar(10)
+  generated_at DateTime @default(now())
+  expires_at   DateTime
+  is_closed    Boolean  @default(false)
+  closed_at    DateTime?
+
+  @@index([camp_camp_id])
+  @@index([round_id])
+}
+
 model attendance_record_student {
   record_id                     Int      @id @default(autoincrement())
   checkin_time                  DateTime
   attendance_teacher_session_id Int
+  student_students_id           Int
   image_url                     String?  @db.Text
 
   attendance_teachers_session_id attendance_teachers @relation(fields: [attendance_teacher_session_id], references: [session_id])
+  student                        students            @relation(fields: [student_students_id], references: [students_id])
 }
 
 model attendance_teachers {
@@ -265,6 +287,11 @@ model attendance_teachers {
   description                              String                     @db.Text
   method                                   attendance_teachers_method
   created_at                               DateTime                   @default(now())
+  expires_at                               DateTime?
+  round_id                                 String?                    @db.VarChar(64)
+  round_number                             Int                        @default(1)
+  is_closed                                Boolean                    @default(false)
+  closed_at                                DateTime?
   camp_camp_id                             Int
   camp                                     camp                       @relation(fields: [camp_camp_id], references: [camp_id])
   teacher_enrollment_teacher_enrollment_id Int

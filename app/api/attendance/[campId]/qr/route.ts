@@ -1,16 +1,8 @@
 // @ts-nocheck
 import { NextResponse } from "next/server";
 
+import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
-
-// campId → { pin, nonce, generatedAt, expiresAt, description, roundId }
-const attendanceStore =
-  globalThis._campAttendanceStore ??
-  (globalThis._campAttendanceStore = new Map());
-// campId → RoundInfo[]
-const roundsStore =
-  globalThis._campAttendanceRounds ??
-  (globalThis._campAttendanceRounds = new Map());
 
 function generatePin() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -25,80 +17,58 @@ function buildPayload(campId, nonce) {
   return `CAMP_ATTEND:${campId}:${nonce}`;
 }
 
-function closeRound(campId, roundId) {
-  const rounds = roundsStore.get(campId) ?? [];
-  const round = rounds.find((r) => r.roundId === roundId);
-
-  if (round) {
-    round.isClosed = true;
-    round.closedAt = new Date();
-  }
+/** ดึง active session ของค่าย (ยังไม่หมดเวลา ยังไม่ปิด) */
+async function getActiveSession(campId) {
+  const now = new Date();
+  return prisma.attendance_session.findFirst({
+    where: {
+      camp_camp_id: campId,
+      is_closed: false,
+      expires_at: { gt: now },
+    },
+    orderBy: { id: "desc" },
+  });
 }
 
-function verifyAttendanceQR(payload) {
-  try {
-    if (!payload || typeof payload !== "string") return null;
-    const parts = payload.split(":");
+/** ดึงรอบทั้งหมดของค่าย (เรียงตาม round_number) */
+async function getAllRounds(campId) {
+  const sessions = await prisma.attendance_session.findMany({
+    where: { camp_camp_id: campId },
+    orderBy: { round_number: "asc" },
+  });
 
-    if (parts.length !== 3 || parts[0] !== "CAMP_ATTEND") return null;
-    const [, campId, nonce] = parts;
-    const cid = parseInt(campId);
-    const stored = attendanceStore.get(cid);
-
-    if (!stored || stored.nonce !== nonce) return null;
-    if (stored.expiresAt && new Date() > new Date(stored.expiresAt))
-      return null;
-
-    return { campId: cid, roundId: stored.roundId };
-  } catch {
-    return null;
-  }
-}
-
-function verifyAttendancePin(campId, pin) {
-  const stored = attendanceStore.get(campId);
-
-  if (!stored) return null;
-  if (stored.expiresAt && new Date() > new Date(stored.expiresAt)) return null;
-  if (String(pin).trim() !== stored.pin) return null;
-
-  return { roundId: stored.roundId };
-}
-
-function getAttendanceSession(campId) {
-  const stored = attendanceStore.get(campId);
-
-  if (stored && stored.expiresAt && new Date() > new Date(stored.expiresAt)) {
-    closeRound(campId, stored.roundId);
-    attendanceStore.delete(campId);
-
-    return null;
-  }
-
-  return stored ?? null;
+  return sessions.map((s) => ({
+    roundId: s.round_id,
+    roundNumber: s.round_number,
+    description: s.description || `รอบที่ ${s.round_number}`,
+    createdAt: s.generated_at,
+    expiresAt: s.expires_at,
+    isClosed: s.is_closed,
+    closedAt: s.closed_at,
+  }));
 }
 
 // GET: session ปัจจุบัน + ประวัติรอบทั้งหมด
 export async function GET(request, { params }) {
   const { error: authError } = await requireTeacher();
-
   if (authError) return authError;
 
   const { campId } = await params;
   const cid = parseInt(campId);
-  const session = getAttendanceSession(cid);
-  const rounds = roundsStore.get(cid) ?? [];
+
+  const session = await getActiveSession(cid);
+  const rounds = await getAllRounds(cid);
 
   if (!session) return NextResponse.json({ active: false, rounds });
 
   return NextResponse.json({
     active: true,
     campId: cid,
-    roundId: session.roundId,
+    roundId: session.round_id,
     qrPayload: buildPayload(cid, session.nonce),
     pin: session.pin,
-    generatedAt: session.generatedAt,
-    expiresAt: session.expiresAt,
+    generatedAt: session.generated_at,
+    expiresAt: session.expires_at,
     description: session.description,
     rounds,
   });
@@ -106,8 +76,7 @@ export async function GET(request, { params }) {
 
 // POST: สร้างรอบเช็คชื่อใหม่
 export async function POST(request, { params }) {
-  const { error: authError } = await requireTeacher();
-
+  const { teacher, error: authError } = await requireTeacher();
   if (authError) return authError;
 
   const { campId } = await params;
@@ -118,43 +87,88 @@ export async function POST(request, { params }) {
 
   try {
     const body = await request.json();
-
     description = body.description || "";
     if (body.durationMinutes) durationMinutes = parseInt(body.durationMinutes);
   } catch {}
 
-  // ปิดรอบเก่าถ้ามีอยู่
-  const existing = attendanceStore.get(cid);
+  // ปิดรอบเก่าที่ยังเปิดอยู่
+  const now = new Date();
+  await prisma.attendance_session.updateMany({
+    where: {
+      camp_camp_id: cid,
+      is_closed: false,
+    },
+    data: {
+      is_closed: true,
+      closed_at: now,
+    },
+  });
 
-  if (existing) closeRound(cid, existing.roundId);
+  // ปิด attendance_teachers ที่ยังเปิดอยู่
+  await prisma.attendance_teachers.updateMany({
+    where: { camp_camp_id: cid, is_closed: false },
+    data: { is_closed: true, closed_at: now },
+  });
 
-  const rounds = roundsStore.get(cid) ?? [];
-  const roundNumber = rounds.length + 1;
+  // นับรอบปัจจุบัน
+  const roundCount = await prisma.attendance_session.count({
+    where: { camp_camp_id: cid },
+  });
+  const roundNumber = roundCount + 1;
+
   const roundId = generateRoundId();
   const nonce = generateNonce();
   const pin = generatePin();
-  const generatedAt = new Date();
+  const generatedAt = now;
   const expiresAt = new Date(generatedAt.getTime() + durationMinutes * 60000);
+  const roundDescription = description || `รอบที่ ${roundNumber}`;
 
-  attendanceStore.set(cid, {
-    pin,
-    nonce,
-    generatedAt,
-    expiresAt,
-    description,
-    roundId,
+  await prisma.attendance_session.create({
+    data: {
+      camp_camp_id: cid,
+      round_id: roundId,
+      round_number: roundNumber,
+      description: roundDescription,
+      nonce,
+      pin,
+      generated_at: generatedAt,
+      expires_at: expiresAt,
+      is_closed: false,
+    },
   });
 
-  rounds.push({
-    roundId,
-    roundNumber,
-    description: description || `รอบที่ ${roundNumber}`,
-    createdAt: generatedAt,
-    expiresAt,
-    isClosed: false,
-    closedAt: null,
+  // หรือสร้าง teacher_enrollment ถ้ายังไม่มี
+  let teacherEnrollment = await prisma.teacher_enrollment.findFirst({
+    where: {
+      teacher_teachers_id: teacher.teachers_id,
+      camp_camp_id: cid,
+    },
   });
-  roundsStore.set(cid, rounds);
+
+  if (!teacherEnrollment) {
+    teacherEnrollment = await prisma.teacher_enrollment.create({
+      data: {
+        teacher_teachers_id: teacher.teachers_id,
+        camp_camp_id: cid,
+      },
+    });
+  }
+
+  // สร้าง attendance_teachers record (เพื่อให้ checkin FK ชี้หาได้)
+  await prisma.attendance_teachers.create({
+    data: {
+      camp_camp_id: cid,
+      teacher_enrollment_teacher_enrollment_id: teacherEnrollment.teacher_enrollment_id,
+      description: roundDescription,
+      method: "QR",
+      round_id: roundId,
+      round_number: roundNumber,
+      expires_at: expiresAt,
+      is_closed: false,
+    },
+  });
+
+  const rounds = await getAllRounds(cid);
 
   return NextResponse.json({
     active: true,
@@ -164,7 +178,7 @@ export async function POST(request, { params }) {
     pin,
     generatedAt,
     expiresAt,
-    description,
+    description: description || `รอบที่ ${roundNumber}`,
     rounds,
   });
 }
@@ -172,22 +186,27 @@ export async function POST(request, { params }) {
 // DELETE: ปิดรอบปัจจุบัน
 export async function DELETE(request, { params }) {
   const { error: authError } = await requireTeacher();
-
   if (authError) return authError;
 
   const { campId } = await params;
   const cid = parseInt(campId);
 
-  const existing = attendanceStore.get(cid);
+  await prisma.attendance_session.updateMany({
+    where: {
+      camp_camp_id: cid,
+      is_closed: false,
+    },
+    data: {
+      is_closed: true,
+      closed_at: new Date(),
+    },
+  });
 
-  if (existing) {
-    closeRound(cid, existing.roundId);
-    attendanceStore.delete(cid);
-  }
+  const rounds = await getAllRounds(cid);
 
   return NextResponse.json({
     success: true,
     message: "ปิดรับเช็คชื่อแล้ว",
-    rounds: roundsStore.get(cid) ?? [],
+    rounds,
   });
 }

@@ -1,16 +1,12 @@
 // @ts-nocheck
 import { NextResponse } from "next/server";
 
+import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
-
-const recordsStore =
-  globalThis._campAttendanceRecords ??
-  (globalThis._campAttendanceRecords = new Map());
 
 // POST /api/attendance/[campId]/manual-checkin
 export async function POST(req, { params }) {
   const { error: authError } = await requireTeacher();
-
   if (authError) return authError;
 
   const { campId } = await params;
@@ -24,27 +20,47 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "ข้อมูลไม่ครบถ้วน" }, { status: 400 });
     }
 
-    const roundKey = `${cid}:${roundId}`;
-    let records = recordsStore.get(roundKey) ?? [];
+    // หา teacherSession ที่ตรงกับ roundId
+    const teacherSession = await prisma.attendance_teachers.findFirst({
+      where: { camp_camp_id: cid, round_id: roundId },
+    });
+
+    if (!teacherSession) {
+      return NextResponse.json(
+        { error: "ไม่พบรอบการเช็คชื่อ" },
+        { status: 404 },
+      );
+    }
 
     if (action === "checkin") {
-      const alreadyChecked = records.find((r) => r.studentId === studentId);
+      const existing = await prisma.attendance_record_student.findFirst({
+        where: {
+          attendance_teacher_session_id: teacherSession.session_id,
+          student_students_id: studentId,
+        },
+      });
 
-      if (!alreadyChecked) {
-        const checkedAt = new Date(Date.now() + 7 * 60 * 60 * 1000);
-
-        records.push({ studentId, enrollmentId, checkedAt });
-        recordsStore.set(roundKey, records);
+      if (!existing) {
+        await prisma.attendance_record_student.create({
+          data: {
+            attendance_teacher_session_id: teacherSession.session_id,
+            student_students_id: studentId,
+            checkin_time: new Date(),
+          },
+        });
       }
     } else if (action === "uncheck") {
-      records = records.filter((r) => r.studentId !== studentId);
-      recordsStore.set(roundKey, records);
+      await prisma.attendance_record_student.deleteMany({
+        where: {
+          attendance_teacher_session_id: teacherSession.session_id,
+          student_students_id: studentId,
+        },
+      });
     }
 
     return NextResponse.json({ success: true });
-  } catch {
-    //     console.error("Manual check-in error:", error);
-
+  } catch (e) {
+    console.error("Manual check-in error:", e);
     return NextResponse.json(
       { _error: "เกิดข้อผิดพลาดในการเช็คชื่อ" },
       { status: 500 },
