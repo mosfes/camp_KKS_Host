@@ -456,28 +456,29 @@ export default function CreateSurveyModal({
                 {questions.map((q, i) => (
                   <div
                     key={i}
-                    className={`p-4 rounded-xl border space-y-3 ${
+                    className={`p-3 rounded-xl border space-y-3 ${
                       q.type === "header"
                         ? "bg-purple-50/50 border-purple-200"
                         : "bg-gray-50 border-gray-200"
                     }`}
                   >
+                    {/* Row 1: Badge + Item number */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         {q.type === "scale" ? (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                            <Star fill="currentColor" size={12} />
-                            ระดับความพึงพอใจ
+                          <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-md text-xs font-medium">
+                            <Star size={11} fill="currentColor" />
+                            <span>ประเมินระดับ</span>
                           </div>
                         ) : q.type === "text" ? (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                            <FileText size={12} />
-                            ข้อเสนอแนะ
+                          <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">
+                            <FileText size={11} />
+                            <span>ข้อเสนอแนะ</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                            <Heading size={12} />
-                            ส่วนแบ่งหัวข้อ
+                          <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-md text-xs font-medium">
+                            <Heading size={11} />
+                            <span>หัวข้อ</span>
                           </div>
                         )}
                         <span className="text-xs text-gray-400">
@@ -485,53 +486,52 @@ export default function CreateSurveyModal({
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <select
-                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-[#6b857a] bg-white max-w-[130px]"
-                          value={q.type}
-                          onChange={(e) =>
-                            updateQuestion(
-                              i,
-                              "type",
-                              e.target.value as "text" | "scale" | "header",
-                            )
-                          }
+                      {/* Action buttons: move + delete */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                          disabled={i === 0}
+                          onClick={() => moveQuestion(i, -1)}
+                          title="เลื่อนขึ้น"
                         >
-                          <option value="scale">ระดับความพึงพอใจ</option>
-                          <option value="text">ข้อเสนอแนะ</option>
-                          <option value="header">ส่วนแบ่งหัวข้อ</option>
-                        </select>
-
-                        <div className="flex items-center ml-2 border-l border-gray-200 pl-2 gap-1">
-                          <button
-                            className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-                            disabled={i === 0}
-                            title="เลื่อนขึ้น"
-                            onClick={() => moveQuestion(i, -1)}
-                          >
-                            <ChevronUp size={16} />
-                          </button>
-                          <button
-                            className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-                            disabled={i === questions.length - 1}
-                            title="เลื่อนลง"
-                            onClick={() => moveQuestion(i, 1)}
-                          >
-                            <ChevronDown size={16} />
-                          </button>
-                        </div>
-
+                          <ChevronUp size={15} />
+                        </button>
+                        <button
+                          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                          disabled={i === questions.length - 1}
+                          onClick={() => moveQuestion(i, 1)}
+                          title="เลื่อนลง"
+                        >
+                          <ChevronDown size={15} />
+                        </button>
                         {questions.length > 1 && (
                           <button
-                            className="p-1 ml-1 text-[#E84A5F] opacity-70 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded transition-colors"
-                            title="ลบคำถาม"
+                            className="p-1.5 text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 rounded-lg transition-colors"
                             onClick={() => removeQuestion(i)}
+                            title="ลบคำถาม"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                           </button>
                         )}
                       </div>
                     </div>
+
+                    {/* Row 2: Type selector */}
+                    <select
+                      className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#6b857a] bg-white"
+                      value={q.type}
+                      onChange={(e) =>
+                        updateQuestion(
+                          i,
+                          "type",
+                          e.target.value as "text" | "scale" | "header",
+                        )
+                      }
+                    >
+                      <option value="scale">ระดับความพึงพอใจ</option>
+                      <option value="text">ข้อเสนอแนะ</option>
+                      <option value="header">ส่วนแบ่งหัวข้อ</option>
+                    </select>
 
                     <input
                       className={`${inputCls} ${q.type === "header" ? "font-semibold text-purple-900 border-purple-200 focus:ring-purple-500 focus:border-purple-500 bg-white" : ""}`}
