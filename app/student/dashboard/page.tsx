@@ -176,7 +176,9 @@ export default function StudentDashboard() {
                 <h1 className="text-2xl font-extrabold tracking-tight">
                   สวัสดีน้อง{student?.firstname || "ๆ"}
                 </h1>
-                <p className="text-white/80 text-sm font-medium">ยินดีต้อนรับเข้าสู่ KKS Camp ✨</p>
+                <p className="text-white text-sm font-medium flex items-center gap-1.5">
+                  ยินดีต้อนรับเข้าสู่ KKS Camp <Sparkles size={14} className="text-white animate-pulse" />
+                </p>
               </div>
             </div>
 
@@ -187,7 +189,7 @@ export default function StudentDashboard() {
                   <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center">
                     <History size={12} className="text-white" />
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-wider opacity-70">ID:</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider">รหัสนักเรียน:</span>
                   <span className="text-sm font-bold">{student.students_id}</span>
                 </div>
 
@@ -201,11 +203,11 @@ export default function StudentDashboard() {
                 )}
                 
                 {student.classroom?.homeroom_teacher && (
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm max-w-[200px]">
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm">
                     <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
                       <Users size={12} className="text-white" />
                     </div>
-                    <span className="text-xs font-bold truncate">ครู{student.classroom.homeroom_teacher}</span>
+                    <span className="text-xs font-bold whitespace-nowrap">ครู{student.classroom.homeroom_teacher}</span>
                   </div>
                 )}
               </div>
@@ -440,9 +442,9 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent sm:hidden" />
         </div>
 
-        <div className="flex-1 p-5 flex flex-col gap-4">
+        <div className="flex-1 p-4 flex flex-col gap-2">
           <div className="space-y-1">
-            <h3 className="font-extrabold text-lg sm:text-xl text-gray-800 line-clamp-2 leading-tight group-hover:text-[#5d7c6f] transition-colors">
+            <h3 className="font-extrabold text-base sm:text-lg text-gray-800 line-clamp-2 leading-tight group-hover:text-[#5d7c6f] transition-colors">
               {camp.title}
             </h3>
             {isEnded && (
@@ -452,7 +454,7 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-2 text-[13px]">
+          <div className="grid grid-cols-1 gap-1 text-[13px]">
             <div className="flex items-center gap-2.5 text-gray-600">
               <div className="w-7 h-7 rounded-lg bg-[#5d7c6f]/10 flex items-center justify-center shrink-0">
                 <MapPin className="text-[#5d7c6f]" size={14} />
@@ -464,7 +466,7 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
               <div className="w-7 h-7 rounded-lg bg-[#5d7c6f]/10 flex items-center justify-center shrink-0">
                 <Calendar className="text-[#5d7c6f]" size={14} />
               </div>
-              <span className="font-medium">
+              <span className="font-medium text-xs sm:text-[13px]">
                 {formatDate(camp.rawStartDate, camp.rawEndDate)}
               </span>
             </div>
@@ -596,7 +598,7 @@ function StudentProfileSetupModal({
         <div className="bg-[#5d7c6f] px-6 pt-8 pb-6 text-white text-center">
           <div className="flex flex-col items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-              <Sparkles size={24} />
+              <Sparkles size={24} className="text-white" />
             </div>
             <div>
               <h2 className="text-xl font-bold">มาทำความรู้จักกันอีกนิด</h2>

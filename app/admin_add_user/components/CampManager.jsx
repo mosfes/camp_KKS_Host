@@ -385,7 +385,7 @@ const CampManager = () => {
                                 shadow="none"
                                 isHeaderSticky
                                 classNames={{
-                                    wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[700px] md:min-w-full bg-white",
+                                    wrapper: "border border-gray-100 rounded-xl p-0 min-w-[800px] md:min-w-full bg-white overflow-x-auto",
                                     th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
                                     td: "py-4 border-b border-gray-50/50",
                                 }}
@@ -463,7 +463,7 @@ const CampManager = () => {
                                 shadow="none"
                                 isHeaderSticky
                                 classNames={{
-                                    wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[900px] md:min-w-full bg-white",
+                                    wrapper: "border border-gray-100 rounded-xl p-0 min-w-[1100px] bg-white overflow-x-auto",
                                     th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
                                     td: "py-4 border-b border-gray-50/50",
                                 }}
@@ -474,8 +474,8 @@ const CampManager = () => {
                                     <TableColumn>กำหนดการ</TableColumn>
                                     <TableColumn>สถานะ</TableColumn>
                                     <TableColumn>ผู้สร้าง</TableColumn>
-                                    <TableColumn>ระดับ/ห้องเรียน</TableColumn>
-                                    <TableColumn>ดำเนินการ</TableColumn>
+                                    <TableColumn className="w-[150px]">ระดับ/ห้องเรียน</TableColumn>
+                                    <TableColumn className="w-[120px]">ดำเนินการ</TableColumn>
                                 </TableHeader>
                                 <TableBody
                                     emptyContent={"ไม่มีข้อมูลค่าย"}

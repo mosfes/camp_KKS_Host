@@ -48,56 +48,45 @@ export default function ParentLoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#fbf9f4] flex flex-col items-center justify-center px-4 relative overflow-hidden">
-      {/* Abstract Background Shapes */}
-      <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-[#5d7c6f]/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-5%] left-[-5%] w-[300px] h-[300px] bg-[#3d5c50]/10 rounded-full blur-3xl pointer-events-none" />
-      
-      <Card className="w-full max-w-md rounded-[2.5rem] bg-white/80 backdrop-blur-2xl border border-white/50 shadow-2xl shadow-gray-200/50 relative z-10 overflow-hidden">
-        {/* Top accent bar */}
-        <div className="h-2 w-full bg-gradient-to-r from-[#5d7c6f] to-[#3d5c50]" />
+    <div className="min-h-screen w-full bg-[#f6f3eb] flex flex-col items-center justify-center px-4 relative">
+      <Card className="w-full max-w-[420px] rounded-2xl bg-white border-none shadow-[0_4px_25px_rgba(0,0,0,0.04)] overflow-hidden">
         <CardBody className="p-8 space-y-5">
-          <div className="flex flex-col items-center mb-8">
-            <div className="mb-6 relative group">
-              <div className="absolute inset-0 bg-[#5d7c6f]/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-500 scale-90" />
+          <div className="flex flex-col items-center mb-1">
+            <div className="mb-3">
               <Image
                 alt="KKS Camp Logo"
-                className="relative z-10 transition-transform duration-500 group-hover:scale-110"
-                height={120}
+                height={90}
                 src="/images/logoKKS.png"
-                width={120}
+                width={90}
+                priority
               />
             </div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tighter">KKS Camp</h1>
-            <p className="text-[10px] font-black text-[#5d7c6f] uppercase tracking-[0.3em] mt-1 opacity-70">Experience Excellence</p>
+            <h1 className="text-2xl font-bold text-[#334155] tracking-tight">KKS Camp</h1>
           </div>
 
+          <div className="w-full h-[1px] bg-gray-100" />
+
           {/* Header */}
-          <div className="flex items-center gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 mb-2">
-            <div className="w-12 h-12 rounded-xl bg-[#5d7c6f] shadow-lg shadow-[#5d7c6f]/20 flex items-center justify-center text-white shrink-0">
-              <Users size={24} strokeWidth={2.5} />
+          <div className="flex items-center gap-3 mt-1">
+            <div className="w-10 h-10 rounded-full bg-[#eff4f2] flex items-center justify-center text-[#5d7c6f]">
+              <Users size={20} />
             </div>
-            <div>
-              <h2 className="text-lg font-black text-gray-800 leading-none mb-1">
-                ผู้ปกครอง
-              </h2>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none">
-                ระบบเข้าใช้งานสำหรับผู้ปกครอง
-              </p>
-            </div>
+            <h2 className="text-lg font-bold text-[#334155]">
+              เข้าสู่ระบบผู้ปกครอง
+            </h2>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5 ml-0.5">
                 ชื่อผู้ใช้ (รหัสนักเรียน)
               </label>
               <Input
                 classNames={{
-                  inputWrapper: "h-12 bg-gray-50/50 border border-gray-100 focus-within:border-[#5d7c6f] transition-all rounded-xl shadow-inner",
-                  input: "text-base font-bold text-gray-800 placeholder:text-gray-300",
+                  inputWrapper: "h-12 bg-[#f1f3f5] border-none rounded-xl",
+                  input: "text-sm text-gray-700 placeholder:text-gray-400 font-medium",
                 }}
-                placeholder="กรอกรหัสนักเรียน"
+                placeholder="รหัสนักเรียน"
                 type="text"
                 value={username}
                 onKeyDown={(e) => e.key === "Enter" && handleLogin()}
@@ -109,15 +98,15 @@ export default function ParentLoginPage() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5 ml-0.5">
                 รหัสผ่าน
               </label>
               <Input
                 classNames={{
-                  inputWrapper: "h-12 bg-gray-50/50 border border-gray-100 focus-within:border-[#5d7c6f] transition-all rounded-xl shadow-inner",
-                  input: "text-base font-bold text-gray-800 placeholder:text-gray-300",
+                  inputWrapper: "h-12 bg-[#f1f3f5] border-none rounded-xl",
+                  input: "text-sm text-gray-700 placeholder:text-gray-400 font-medium",
                 }}
-                placeholder="กรอกรหัสผ่าน"
+                placeholder="รหัสผ่าน"
                 type="password"
                 value={password}
                 onKeyDown={(e) => e.key === "Enter" && handleLogin()}
@@ -129,11 +118,11 @@ export default function ParentLoginPage() {
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+          {error && <p className="text-xs text-red-500 text-center">{error}</p>}
 
-          <div className="pt-2 space-y-4">
+          <div className="pt-1 space-y-5">
             <Button
-              className="w-full h-14 rounded-2xl bg-[#5d7c6f] text-white font-black text-lg shadow-xl shadow-[#5d7c6f]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="w-full h-12 rounded-xl bg-[#6b857a] text-white font-bold text-base shadow-sm hover:bg-[#5a7168] transition-colors"
               isLoading={loading}
               onPress={handleLogin}
             >
@@ -141,11 +130,11 @@ export default function ParentLoginPage() {
             </Button>
 
             <button
-              className="w-full flex items-center justify-center gap-2 text-[11px] font-black text-gray-400 uppercase tracking-widest hover:text-[#5d7c6f] transition-colors"
+              className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors"
               onClick={() => router.push("/")}
             >
-              <ArrowLeft size={14} strokeWidth={3} />
-              กลับสู่หน้าหลัก
+              <ArrowLeft size={14} />
+              กลับหน้าหลัก
             </button>
           </div>
         </CardBody>
