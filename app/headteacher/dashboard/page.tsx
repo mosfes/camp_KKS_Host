@@ -130,7 +130,10 @@ function DashboardContent() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [homeroomFilter, setHomeroomFilter] = useState("all");
   const [homeroomPage, setHomeroomPage] = useState(1);
-  const itemsPerPage = 10;
+  const homeroomItemsPerPage = 5; // Reduced to 5 per user request
+
+  const [campPage, setCampPage] = useState(1);
+  const campsPerPage = 6; // 6 looks good on a 3-col grid
 
   useEffect(() => {
     setHomeroomPage(1);
@@ -162,10 +165,10 @@ function DashboardContent() {
     }) || [];
 
   const homeroomTotalPages =
-    Math.ceil(allHomeroomStudents.length / itemsPerPage) || 1;
+    Math.ceil(allHomeroomStudents.length / homeroomItemsPerPage) || 1;
   const filteredHomeroomStudents = allHomeroomStudents.slice(
-    (homeroomPage - 1) * itemsPerPage,
-    homeroomPage * itemsPerPage,
+    (homeroomPage - 1) * homeroomItemsPerPage,
+    homeroomPage * homeroomItemsPerPage,
   );
 
   const pathname = usePathname();
@@ -568,6 +571,17 @@ function DashboardContent() {
     return true;
   });
 
+  const campTotalPages = Math.ceil(filteredMyCamps.length / campsPerPage) || 1;
+  const paginatedCamps = filteredMyCamps.slice(
+    (campPage - 1) * campsPerPage,
+    campPage * campsPerPage
+  );
+
+  // Reset camp page when filters change
+  useEffect(() => {
+    setCampPage(1);
+  }, [campStatusFilter, campRoleFilter, campAcademicYearFilter]);
+
   return (
     <div className="bg-[#f5f5f2] min-h-full">
       {/* Edit-fetch loading overlay */}
@@ -825,8 +839,8 @@ function DashboardContent() {
                               </td>
                               <td className="p-4">
                                 {student.chronicDisease &&
-                                student.chronicDisease !== "-" &&
-                                student.chronicDisease !== "ไม่มี" ? (
+                                  student.chronicDisease !== "-" &&
+                                  student.chronicDisease !== "ไม่มี" ? (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
                                     {student.chronicDisease}
                                   </span>
@@ -836,8 +850,8 @@ function DashboardContent() {
                               </td>
                               <td className="p-4">
                                 {student.foodAllergy &&
-                                student.foodAllergy !== "-" &&
-                                student.foodAllergy !== "ไม่มี" ? (
+                                  student.foodAllergy !== "-" &&
+                                  student.foodAllergy !== "ไม่มี" ? (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
                                     {student.foodAllergy}
                                   </span>
@@ -847,8 +861,8 @@ function DashboardContent() {
                               </td>
                               <td className="p-4">
                                 {student.remark &&
-                                student.remark !== "-" &&
-                                student.remark !== "ไม่มี" ? (
+                                  student.remark !== "-" &&
+                                  student.remark !== "ไม่มี" ? (
                                   <span className="text-sm text-blue-700 font-medium">
                                     {student.remark}
                                   </span>
@@ -1007,161 +1021,173 @@ function DashboardContent() {
                 ยังไม่มีค่ายในขณะนี้
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {filteredMyCamps.map((camp: any) => (
-                  <div
-                    key={camp.id}
-                    className="cursor-pointer"
-                    onClick={() => goToCampDetail(camp.id)}
-                  >
-                    <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all bg-white relative group h-full">
-                      {/* Image */}
-                      <div
-                        className={`relative h-48 overflow-hidden ${navigatingTo === camp.id ? "opacity-60" : ""}`}
-                      >
-                        {navigatingTo === camp.id && (
-                          <div className="absolute inset-0 flex items-center justify-center z-20 bg-white/40">
-                            <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
-                          </div>
-                        )}
-                        {camp.isOwner && (
-                          <div className="absolute top-2 right-2 z-10 flex flex-col gap-2">
-                            <button
-                              className="p-2 bg-[#5d7c6f] text-white rounded-full opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#4a6358] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
-                              disabled={loading || isSubmitting}
-                              title="แก้ไขค่าย"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (loading || isSubmitting) return;
-                                handleEditCampClick(camp.id);
-                              }}
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              className="p-2 bg-[#E84A5F] text-white rounded-full opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#FF847C] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
-                              disabled={loading}
-                              title="ลบค่าย"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (loading) return;
-                                handleDeleteCamp(camp.id, camp.title);
-                              }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        )}
-                        {camp.image ? (
-                          <img
-                            alt={camp.title}
-                            className="w-full h-full object-cover"
-                            src={camp.image}
-                          />
-                        ) : (
-                          <DefaultCampImage />
-                        )}
-                      </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {paginatedCamps.map((camp: any) => (
+                    <div
+                      key={camp.id}
+                      className="cursor-pointer"
+                      onClick={() => goToCampDetail(camp.id)}
+                    >
+                      <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all bg-white relative group h-full">
+                        {/* Image */}
+                        <div
+                          className={`relative h-48 overflow-hidden ${navigatingTo === camp.id ? "opacity-60" : ""}`}
+                        >
+                          {navigatingTo === camp.id && (
+                            <div className="absolute inset-0 flex items-center justify-center z-20 bg-white/40">
+                              <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          )}
+                          {camp.isOwner && (
+                            <div className="absolute top-2 right-2 z-10 flex flex-col gap-2">
+                              <button
+                                className="p-2 bg-[#5d7c6f] text-white rounded-full opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#4a6358] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                                disabled={loading || isSubmitting}
+                                title="แก้ไขค่าย"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (loading || isSubmitting) return;
+                                  handleEditCampClick(camp.id);
+                                }}
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                className="p-2 bg-[#E84A5F] text-white rounded-full opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#FF847C] shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                                disabled={loading}
+                                title="ลบค่าย"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (loading) return;
+                                  handleDeleteCamp(camp.id, camp.title);
+                                }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          )}
+                          {camp.image ? (
+                            <img
+                              alt={camp.title}
+                              className="w-full h-full object-cover"
+                              src={camp.image}
+                            />
+                          ) : (
+                            <DefaultCampImage />
+                          )}
+                        </div>
 
-                      <CardBody className="p-4 sm:p-6 flex flex-col">
-                        {/* Status + Owner row */}
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <Chip
-                            className={`
+                        <CardBody className="p-4 sm:p-6 flex flex-col">
+                          {/* Status + Owner row */}
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <Chip
+                              className={`
                               ${STATUS_STYLES[camp.status]?.bg ?? "bg-gray-100"}
                               ${STATUS_STYLES[camp.status]?.text ?? "text-gray-600"}
                             `}
-                            size="sm"
-                            variant="shadow"
-                          >
-                            {camp.status}
-                          </Chip>
-                          {camp.isOwner ? (
-                            <span
-                              className="inline-block max-w-[160px] truncate text-xs px-2 py-0.5 rounded-full bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
-                              title={`เจ้าของค่าย: ${camp.ownerName}`}
+                              size="sm"
+                              variant="shadow"
                             >
-                              เจ้าของ: {camp.ownerName}
-                            </span>
-                          ) : camp.ownerName ? (
-                            <span
-                              className="inline-block max-w-[160px] truncate text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
-                              title={`ผู้สร้าง: ${camp.ownerName}`}
-                            >
-                              เจ้าของ: {camp.ownerName}
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="mb-3">
-                          <h3 className="text-base sm:text-lg font-bold mb-1 text-[#2d3748] leading-snug line-clamp-2">
-                            {camp.title}
-                          </h3>
-                          <p className="mb-1 text-[#718096] text-sm line-clamp-2 leading-relaxed">
-                            {camp.description}
-                          </p>
-                        </div>
+                              {camp.status}
+                            </Chip>
+                            {camp.isOwner ? (
+                              <span
+                                className="inline-block max-w-[160px] truncate text-xs px-2 py-0.5 rounded-full bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
+                                title={`เจ้าของค่าย: ${camp.ownerName}`}
+                              >
+                                เจ้าของ: {camp.ownerName}
+                              </span>
+                            ) : camp.ownerName ? (
+                              <span
+                                className="inline-block max-w-[160px] truncate text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                                title={`ผู้สร้าง: ${camp.ownerName}`}
+                              >
+                                เจ้าของ: {camp.ownerName}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="mb-3">
+                            <h3 className="text-base sm:text-lg font-bold mb-1 text-[#2d3748] leading-snug line-clamp-2">
+                              {camp.title}
+                            </h3>
+                            <p className="mb-1 text-[#718096] text-sm line-clamp-2 leading-relaxed">
+                              {camp.description}
+                            </p>
+                          </div>
 
-                        {/* Location */}
-                        <div className="flex items-center gap-2 mb-1.5 text-[#718096] text-sm">
-                          <MapPin className="flex-shrink-0" size={16} />
-                          <span className="truncate" title={camp.location}>
-                            {camp.location}
-                          </span>
-                        </div>
-
-                        {/* Grades */}
-                        {camp.gradeDisplay && (
-                          <div className="flex items-start gap-2 mb-2 text-[#718096] text-sm">
-                            <GraduationCap
-                              className="flex-shrink-0 mt-0.5"
-                              size={16}
-                            />
-                            <span
-                              className="line-clamp-1"
-                              title={`ระดับชั้น: ${camp.gradeDisplay}`}
-                            >
-                              ระดับชั้น: {camp.gradeDisplay}
+                          {/* Location */}
+                          <div className="flex items-center gap-2 mb-1.5 text-[#718096] text-sm">
+                            <MapPin className="flex-shrink-0" size={16} />
+                            <span className="truncate" title={camp.location}>
+                              {camp.location}
                             </span>
                           </div>
-                        )}
 
-                        {/* Date */}
-                        <div className="flex items-center gap-2 mb-3 text-[#718096] text-sm">
-                          <Calendar className="flex-shrink-0" size={16} />
-                          <span className="truncate">
-                            {camp.startDate} - {camp.endDate}
-                          </span>
-                        </div>
+                          {/* Grades */}
+                          {camp.gradeDisplay && (
+                            <div className="flex items-start gap-2 mb-2 text-[#718096] text-sm">
+                              <GraduationCap
+                                className="flex-shrink-0 mt-0.5"
+                                size={16}
+                              />
+                              <span
+                                className="line-clamp-1"
+                                title={`ระดับชั้น: ${camp.gradeDisplay}`}
+                              >
+                                ระดับชั้น: {camp.gradeDisplay}
+                              </span>
+                            </div>
+                          )}
 
-                        {/* Footer */}
-                        <div className="flex justify-between items-center pt-4 border-t border-[#e2e8f0] mt-auto">
-                          <span className="text-[#718096] text-sm">
-                            ลงทะเบียนแล้ว {camp.enrolled}/{camp.totalStudents} คน
-                          </span>
+                          {/* Date */}
+                          <div className="flex items-center gap-2 mb-3 text-[#718096] text-sm">
+                            <Calendar className="flex-shrink-0" size={16} />
+                            <span className="truncate">
+                              {camp.startDate} - {camp.endDate}
+                            </span>
+                          </div>
+
+                          {/* Footer */}
                           <div
-                            className="flex items-center gap-2"
-                            onClick={(e) => e.stopPropagation()}
+                            className="flex justify-between items-center pt-4 border-t border-[#e2e8f0] mt-auto cursor-pointer hover:bg-gray-50/50 -mx-4 px-4 -mb-4 pb-4 rounded-b-2xl transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEnrollmentCampId(camp.id);
+                              setEnrollmentCampName(camp.title);
+                              setIsEnrollmentModalOpen(true);
+                            }}
                           >
-                            <Button
-                              className="bg-transparent text-[#5d7c6f] font-semibold hover:opacity-70"
-                              endContent={
-                                navigatingTo === camp.id ? null : (
-                                  <ChevronRight size={20} />
-                                )
-                              }
-                              isDisabled={navigatingTo !== null}
-                              isLoading={navigatingTo === camp.id}
-                              onPress={() => goToCampDetail(camp.id)}
-                            >
+                            <span className="text-[#718096] text-sm">
+                              ลงทะเบียนแล้ว {camp.enrolled}/{camp.totalStudents} คน
+                            </span>
+                            <div className="flex items-center gap-1 text-[#5d7c6f] font-semibold text-sm">
                               ดูรายละเอียด
-                            </Button>
+                              <ChevronRight size={18} />
+                            </div>
                           </div>
-                        </div>
-                      </CardBody>
-                    </Card>
+                        </CardBody>
+                      </Card>
+                    </div>
+                  ))}
+                </div>
+
+                {!loading && campTotalPages > 1 && (
+                  <div className="flex justify-center items-center mt-8">
+                    <Pagination
+                      isCompact
+                      showControls
+                      classNames={{
+                        cursor: "bg-[#5d7c6f] text-white font-bold",
+                      }}
+                      color="default"
+                      page={campPage}
+                      total={campTotalPages}
+                      onChange={setCampPage}
+                    />
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         )}

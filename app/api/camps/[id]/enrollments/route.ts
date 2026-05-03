@@ -22,32 +22,36 @@ export async function GET(request, context) {
       where: {
         camp_id: campId,
         deletedAt: null,
-        OR: [
-          { created_by_teacher_id: teacher.teachers_id },
-          {
-            teacher_enrollment: {
-              some: { teacher_teachers_id: teacher.teachers_id },
-            },
-          },
-          {
-            camp_classroom: {
-              some: {
-                classroom: { teachers_teachers_id: teacher.teachers_id },
-              },
-            },
-          },
-          {
-            camp_classroom: {
-              some: {
-                classroom: {
-                  classroom_teacher: {
+        ...(teacher.role !== "ADMIN"
+          ? {
+              OR: [
+                { created_by_teacher_id: teacher.teachers_id },
+                {
+                  teacher_enrollment: {
                     some: { teacher_teachers_id: teacher.teachers_id },
                   },
                 },
-              },
-            },
-          },
-        ],
+                {
+                  camp_classroom: {
+                    some: {
+                      classroom: { teachers_teachers_id: teacher.teachers_id },
+                    },
+                  },
+                },
+                {
+                  camp_classroom: {
+                    some: {
+                      classroom: {
+                        classroom_teacher: {
+                          some: { teacher_teachers_id: teacher.teachers_id },
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
       },
       select: { camp_id: true },
     });

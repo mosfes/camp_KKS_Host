@@ -9,7 +9,8 @@ import {
   ModalFooter,
   Button,
 } from "@heroui/react";
-import { Users, CheckCircle2, Clock } from "lucide-react";
+import { Pagination } from "@heroui/pagination";
+import { Users, CheckCircle2, Clock, Search } from "lucide-react";
 
 interface EnrollmentModalProps {
   isOpen: boolean;
@@ -41,6 +42,28 @@ export default function EnrollmentModal({
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<EnrollmentData | null>(null);
   const [tab, setTab] = useState<"enrolled" | "notEnrolled">("enrolled");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [enrolledPage, setEnrolledPage] = useState(1);
+  const [notEnrolledPage, setNotEnrolledPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Filter students by name or student ID
+  const filterStudents = (students: StudentEntry[]) => {
+    if (!searchQuery.trim()) return students;
+    const q = searchQuery.trim().toLowerCase();
+    return students.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        String(s.students_id).includes(q)
+    );
+  };
+
+  useEffect(() => {
+    setEnrolledPage(1);
+    setNotEnrolledPage(1);
+    setSearchQuery("");
+  }, [tab]);
 
   useEffect(() => {
     if (isOpen && campId) {
@@ -98,22 +121,20 @@ export default function EnrollmentModal({
               {data && (
                 <div className="flex gap-3 mt-3">
                   <button
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      tab === "enrolled"
-                        ? "bg-[#5d7c6f] text-white"
-                        : "bg-[#eaf1ee] text-[#5d7c6f]"
-                    }`}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === "enrolled"
+                      ? "bg-[#5d7c6f] text-white"
+                      : "bg-[#eaf1ee] text-[#5d7c6f]"
+                      }`}
                     onClick={() => setTab("enrolled")}
                   >
                     <CheckCircle2 size={14} />
                     ลงทะเบียนแล้ว ({data.enrolledCount})
                   </button>
                   <button
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      tab === "notEnrolled"
-                        ? "bg-amber-500 text-white"
-                        : "bg-amber-50 text-amber-700"
-                    }`}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === "notEnrolled"
+                      ? "bg-amber-500 text-white"
+                      : "bg-amber-50 text-amber-700"
+                      }`}
                     onClick={() => setTab("notEnrolled")}
                   >
                     <Clock size={14} />
@@ -142,30 +163,76 @@ export default function EnrollmentModal({
                     <p className="text-sm">ยังไม่มีนักเรียนลงทะเบียน</p>
                   </div>
                 ) : (
-                  <ul className="space-y-2">
-                    {data.enrolled.map((s, i) => (
-                      <li
-                        key={s.students_id}
-                        className="flex items-center gap-3 p-3 bg-[#f5f9f7] rounded-xl"
-                      >
-                        <span className="w-6 text-xs text-gray-400 text-right shrink-0">
-                          {i + 1}.
-                        </span>
-                        <span className="flex-1 text-sm font-medium text-gray-800">
-                          {s.name}
-                        </span>
-                        {s.shirt_size && (
-                          <span className="text-xs bg-white border border-gray-200 text-gray-500 px-2 py-0.5 rounded-full">
-                            เสื้อ {s.shirt_size}
-                          </span>
+                  (() => {
+                    const filtered = filterStudents(data.enrolled);
+                    return (
+                      <>
+                        {/* Search box */}
+                        <div className="relative mb-3">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                          <input
+                            type="text"
+                            placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
+                            value={searchQuery}
+                            onChange={(e) => {
+                              setSearchQuery(e.target.value);
+                              setEnrolledPage(1);
+                            }}
+                            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/30 focus:border-[#5d7c6f] transition-all placeholder:text-gray-400"
+                          />
+                        </div>
+                        {filtered.length === 0 ? (
+                          <p className="text-center text-gray-400 py-6 text-sm">ไม่พบนักเรียนที่ค้นหา</p>
+                        ) : (
+                          <>
+                            <ul className="space-y-2">
+                              {filtered
+                                .slice((enrolledPage - 1) * itemsPerPage, enrolledPage * itemsPerPage)
+                                .map((s, i) => (
+                                  <li
+                                    key={s.students_id}
+                                    className="flex items-center gap-3 p-3 bg-[#f5f9f7] rounded-xl"
+                                  >
+                                    <span className="w-6 text-xs text-gray-400 text-right shrink-0">
+                                      {(enrolledPage - 1) * itemsPerPage + i + 1}.
+                                    </span>
+                                    <span className="flex-1 text-sm font-medium text-gray-800">
+                                      {s.name}
+                                    </span>
+                                    <span className="text-xs text-gray-400 shrink-0">
+                                      รหัสนักเรียน: {s.students_id}
+                                    </span>
+                                    {s.shirt_size && (
+                                      <span className="text-xs bg-white border border-gray-200 text-gray-500 px-2 py-0.5 rounded-full">
+                                        เสื้อ {s.shirt_size}
+                                      </span>
+                                    )}
+                                    <CheckCircle2
+                                      className="text-[#5d7c6f] shrink-0"
+                                      size={16}
+                                    />
+                                  </li>
+                                ))}
+                            </ul>
+                            {Math.ceil(filtered.length / itemsPerPage) > 1 && (
+                              <div className="flex justify-center mt-4">
+                                <Pagination
+                                  isCompact
+                                  showControls
+                                  classNames={{
+                                    cursor: "bg-[#5d7c6f] text-white font-bold",
+                                  }}
+                                  page={enrolledPage}
+                                  total={Math.ceil(filtered.length / itemsPerPage)}
+                                  onChange={setEnrolledPage}
+                                />
+                              </div>
+                            )}
+                          </>
                         )}
-                        <CheckCircle2
-                          className="text-[#5d7c6f] shrink-0"
-                          size={16}
-                        />
-                      </li>
-                    ))}
-                  </ul>
+                      </>
+                    );
+                  })()
                 )
               ) : data.notEnrolled.length === 0 ? (
                 <div className="text-center py-10 text-gray-400">
@@ -176,22 +243,68 @@ export default function EnrollmentModal({
                   <p className="text-sm">นักเรียนทุกคนลงทะเบียนแล้ว!</p>
                 </div>
               ) : (
-                <ul className="space-y-2">
-                  {data.notEnrolled.map((s, i) => (
-                    <li
-                      key={s.students_id}
-                      className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl"
-                    >
-                      <span className="w-6 text-xs text-gray-400 text-right shrink-0">
-                        {i + 1}.
-                      </span>
-                      <span className="flex-1 text-sm font-medium text-gray-700">
-                        {s.name}
-                      </span>
-                      <Clock className="text-amber-500 shrink-0" size={16} />
-                    </li>
-                  ))}
-                </ul>
+                (() => {
+                  const filtered = filterStudents(data.notEnrolled);
+                  return (
+                    <>
+                      {/* Search box */}
+                      <div className="relative mb-3">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <input
+                          type="text"
+                          placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setNotEnrolledPage(1);
+                          }}
+                          className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/30 focus:border-[#5d7c6f] transition-all placeholder:text-gray-400"
+                        />
+                      </div>
+                      {filtered.length === 0 ? (
+                        <p className="text-center text-gray-400 py-6 text-sm">ไม่พบนักเรียนที่ค้นหา</p>
+                      ) : (
+                        <>
+                          <ul className="space-y-2">
+                            {filtered
+                              .slice((notEnrolledPage - 1) * itemsPerPage, notEnrolledPage * itemsPerPage)
+                              .map((s, i) => (
+                                <li
+                                  key={s.students_id}
+                                  className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl"
+                                >
+                                  <span className="w-6 text-xs text-gray-400 text-right shrink-0">
+                                    {(notEnrolledPage - 1) * itemsPerPage + i + 1}.
+                                  </span>
+                                  <span className="flex-1 text-sm font-medium text-gray-700">
+                                    {s.name}
+                                  </span>
+                                  <span className="text-xs text-gray-400 shrink-0">
+                                    รหัสนักเรียน: {s.students_id}
+                                  </span>
+                                  <Clock className="text-amber-500 shrink-0" size={16} />
+                                </li>
+                              ))}
+                          </ul>
+                          {Math.ceil(filtered.length / itemsPerPage) > 1 && (
+                            <div className="flex justify-center mt-4">
+                              <Pagination
+                                isCompact
+                                showControls
+                                classNames={{
+                                  cursor: "bg-[#5d7c6f] text-white font-bold",
+                                }}
+                                page={notEnrolledPage}
+                                total={Math.ceil(filtered.length / itemsPerPage)}
+                                onChange={setNotEnrolledPage}
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  );
+                })()
               )}
             </ModalBody>
 

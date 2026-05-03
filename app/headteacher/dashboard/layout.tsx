@@ -38,15 +38,14 @@ function TeacherSidebar({
       className={`
         hidden md:flex flex-col bg-white border-r border-gray-200
         transition-all duration-300 ease-in-out shrink-0
-        min-h-[calc(100vh-64px)]
+        sticky top-[64px] h-[calc(100vh-64px)]
         ${collapsed ? "w-16" : "w-56"}
       `}
     >
       {/* Header */}
       <div
-        className={`flex items-center px-3 py-4 border-b border-gray-100 ${
-          collapsed ? "justify-center" : "justify-between"
-        }`}
+        className={`flex items-center px-3 py-4 border-b border-gray-100 ${collapsed ? "justify-center" : "justify-between"
+          }`}
       >
         {!collapsed && (
           <div className="flex items-center gap-2">
@@ -82,10 +81,9 @@ function TeacherSidebar({
                 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
                 transition-all duration-150 w-full
                 ${collapsed ? "justify-center" : "text-left"}
-                ${
-                  isActive
-                    ? "bg-[#5d7c6f] text-white shadow-sm"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                ${isActive
+                  ? "bg-[#5d7c6f] text-white shadow-sm"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }
               `}
             >
@@ -119,23 +117,20 @@ function MobileSidebar({
 
   return (
     <div
-      className={`md:hidden fixed inset-0 z-[9999] transition-all duration-300 ease-in-out ${
-        isOpen ? "visible" : "invisible delay-300"
-      }`}
+      className={`md:hidden fixed inset-0 z-[9999] transition-all duration-300 ease-in-out ${isOpen ? "visible" : "invisible delay-300"
+        }`}
     >
       {/* Overlay */}
       <div
-        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
-          isOpen ? "opacity-100" : "opacity-0"
-        }`}
+        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${isOpen ? "opacity-100" : "opacity-0"
+          }`}
         onClick={() => setIsOpen(false)}
       />
 
       {/* Drawer */}
       <aside
-        className={`absolute top-0 left-0 w-64 max-w-[80%] bg-white h-full flex flex-col shadow-xl transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`absolute top-0 left-0 w-64 max-w-[80%] bg-white h-full flex flex-col shadow-xl transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
@@ -167,10 +162,9 @@ function MobileSidebar({
                 className={`
                   flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium
                   transition-all duration-150 w-full text-left
-                  ${
-                    isActive
-                      ? "bg-[#5d7c6f] text-white shadow-sm"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  ${isActive
+                    ? "bg-[#5d7c6f] text-white shadow-sm"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                   }
                 `}
               >
@@ -210,20 +204,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <StatusModalProvider>
       <div className="min-h-screen bg-[#f5f5f2] flex flex-col">
-        <HeadteacherNavbar onMenuClick={() => setMobileOpen(true)} />
+        <div className="sticky top-0 z-50 w-full">
+          <HeadteacherNavbar onMenuClick={() => setMobileOpen(true)} />
+        </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1">
           {/* Desktop Sidebar */}
           <Suspense
             fallback={
-              <div className="hidden md:block w-56 bg-white border-r border-gray-200 min-h-[calc(100vh-64px)]" />
+              <div className="hidden md:block w-56 bg-white border-r border-gray-200 sticky top-[64px] h-[calc(100vh-64px)]" />
             }
           >
             <TeacherSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
           </Suspense>
 
           {/* Page Content */}
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className="flex-1">{children}</main>
         </div>
 
         {/* Mobile Sidebar */}

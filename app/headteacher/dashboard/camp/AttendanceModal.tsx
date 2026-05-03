@@ -9,6 +9,7 @@ import {
   Button,
   Select,
   SelectItem,
+  Pagination,
 } from "@heroui/react";
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -78,6 +79,13 @@ export default function AttendanceModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [autoRefresh, setAutoRefresh] = useState(true);
+  
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedStatus, selectedRoundId]);
 
   // ─── Fetch helpers ────────────────────────────────────────────────────────
 
@@ -335,6 +343,14 @@ export default function AttendanceModal({
       }),
     [results, selectedStatus, searchQuery],
   );
+
+  const pages = Math.ceil((filteredResults?.length || 0) / ITEMS_PER_PAGE);
+
+  const paginatedResults = useMemo(() => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    return filteredResults?.slice(start, end);
+  }, [page, filteredResults]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -715,8 +731,9 @@ export default function AttendanceModal({
                     ไม่พบนักเรียนที่คุณค้นหา
                   </div>
                 ) : (
+                  <>
                   <div className="space-y-3">
-                    {filteredResults.map((result) => (
+                    {paginatedResults.map((result) => (
                       <div
                         key={result.enrollmentId}
                         className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4 hover:border-[#6b857a] hover:shadow-md transition-all cursor-pointer group"
@@ -761,6 +778,19 @@ export default function AttendanceModal({
                       </div>
                     ))}
                   </div>
+                  {pages > 1 && (
+                    <div className="flex justify-center mt-4 pb-2">
+                      <Pagination
+                        classNames={{
+                          cursor: "bg-[#5d7c6f] text-white font-bold",
+                        }}
+                        page={page}
+                        total={pages}
+                        onChange={setPage}
+                      />
+                    </div>
+                  )}
+                  </>
                 )}
               </div>
             </ModalBody>

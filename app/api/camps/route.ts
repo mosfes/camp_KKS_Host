@@ -216,7 +216,9 @@ export async function GET(request) {
       });
     }
 
-    whereCondition.OR = orConditions;
+    if (!isAdmin) {
+      whereCondition.OR = orConditions;
+    }
 
     let camps = await prisma.camp.findMany({
       where: whereCondition,

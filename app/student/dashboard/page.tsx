@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Phone,
   Clock,
+  Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -161,100 +162,57 @@ export default function StudentDashboard() {
 
       <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
         {/* Greeting Card */}
-        <div className="bg-[#5d7c6f] rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div className="relative bg-gradient-to-br from-[#5d7c6f] to-[#3d5c50] rounded-[2rem] p-6 text-white shadow-xl overflow-hidden mb-8">
+          {/* Decorative shapes */}
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-black/10 rounded-full blur-2xl pointer-events-none" />
+          
           <div className="relative z-10">
-            <h1 className="text-2xl font-bold mb-1 flex items-center gap-2">
-              สวัสดีน้อง{student?.firstname || "ๆ"}{" "}
-              <Sparkles className="text-white" size={24} />
-            </h1>
-            <p className="opacity-90 mb-4">ยินดีต้อนรับเข้าสู่ระบบ KKS Camp </p>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+                <Sparkles className="text-white animate-pulse" size={24} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-extrabold tracking-tight">
+                  สวัสดีน้อง{student?.firstname || "ๆ"}
+                </h1>
+                <p className="text-white/80 text-sm font-medium">ยินดีต้อนรับเข้าสู่ KKS Camp ✨</p>
+              </div>
+            </div>
 
             {/* Student Info Badges */}
             {student && (
-              <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium">
-                  <svg
-                    fill="none"
-                    height="14"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                    width="14"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <rect height="13" rx="2" width="18" x="3" y="4" />
-                    <path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" />
-                  </svg>
-                  <span>รหัสนักเรียน:</span> {student.students_id}
-                </span>
+              <div className="flex flex-wrap gap-2">
+                <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm">
+                  <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center">
+                    <History size={12} className="text-white" />
+                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-wider opacity-70">ID:</span>
+                  <span className="text-sm font-bold">{student.students_id}</span>
+                </div>
 
                 {student.classroom?.grade_label && (
-                  <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium">
-                    <svg
-                      fill="none"
-                      height="14"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                      width="14"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-                      <path d="M6 12v5c3 3 9 3 12 0v-5" />
-                    </svg>
-                    ชั้น {student.classroom.grade_label}
-                  </span>
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm">
+                    <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center">
+                      <Flag size={12} className="text-white" />
+                    </div>
+                    <span className="text-sm font-bold">{student.classroom.grade_label}/{student.classroom.class_name}</span>
+                  </div>
                 )}
-                {student.classroom?.class_name && (
-                  <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium">
-                    <svg
-                      fill="none"
-                      height="14"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                      width="14"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <rect height="18" rx="2" width="18" x="3" y="3" />
-                      <path d="M3 9h18M9 21V9" />
-                    </svg>
-                    ห้อง {student.classroom.class_name}
-                  </span>
-                )}
+                
                 {student.classroom?.homeroom_teacher && (
-                  <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium overflow-hidden">
-                    <svg
-                      className="flex-shrink-0"
-                      fill="none"
-                      height="14"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                      width="14"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                    <span className="truncate">
-                      ครูประจำชั้น: {student.classroom.homeroom_teacher}
-                    </span>
-                  </span>
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm max-w-[200px]">
+                    <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                      <Users size={12} className="text-white" />
+                    </div>
+                    <span className="text-xs font-bold truncate">ครู{student.classroom.homeroom_teacher}</span>
+                  </div>
                 )}
               </div>
             )}
           </div>
-          <div className="absolute right-0 bottom-0 opacity-10">
-            <Flag size={120} />
+          <div className="absolute right-[-20px] bottom-[-20px] opacity-10 rotate-12">
+            <Flag size={140} />
           </div>
         </div>
 
@@ -440,74 +398,83 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
 
   return (
     <Card
-      className={`border-none shadow-sm transition-shadow bg-white relative ${
-        navigatingTo === camp.id ? "opacity-60" : ""
+      className={`border-none shadow-sm transition-all duration-300 bg-white relative overflow-hidden group ${
+        navigatingTo === camp.id ? "scale-[0.98] opacity-60" : "hover:scale-[1.01] hover:shadow-xl"
       } ${
-        isEnded ? "opacity-80 hover:opacity-100" : "hover:shadow-md"
-      } ${isUpcomingRegis ? "cursor-not-allowed opacity-90" : ""}`}
+        isEnded ? "grayscale-[0.5] opacity-80" : ""
+      } ${isUpcomingRegis ? "cursor-not-allowed" : ""}`}
       isPressable={navigatingTo === null && !isUpcomingRegis}
       onPress={isUpcomingRegis ? undefined : onPress}
     >
       {isUpcomingRegis && (
-        <div className="absolute inset-0 z-20 bg-gray-900/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-white rounded-2xl">
-          <div className="mb-3">
-            <Clock className="text-white" size={28} />
+        <div className="absolute inset-0 z-20 bg-gray-900/60 backdrop-blur-[3px] flex flex-col items-center justify-center text-white p-6 text-center">
+          <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center mb-4 ring-1 ring-white/30">
+            <Clock className="text-white animate-pulse" size={28} />
           </div>
-          <h3 className="font-bold text-lg mb-1">ยังไม่เปิดรับสมัคร</h3>
-          <p className="text-sm opacity-90">{countdownText}</p>
+          <h3 className="font-extrabold text-xl mb-1 tracking-tight">ยังไม่เปิดรับสมัคร</h3>
+          <p className="text-sm font-medium text-white/80">{countdownText}</p>
         </div>
       )}
 
       {navigatingTo === camp.id && (
-        <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/60 rounded-2xl">
-          <div className="w-6 h-6 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+        <div className="absolute inset-0 flex items-center justify-center z-30 bg-white/40 backdrop-blur-sm">
+          <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin shadow-lg" />
         </div>
       )}
-      <CardBody className="p-0 flex flex-col sm:flex-row sm:h-48">
-        <div className="w-full h-40 sm:w-48 sm:h-full md:w-56 bg-gray-100 flex-shrink-0 relative overflow-hidden rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none">
+      
+      <CardBody className="p-0 flex flex-col sm:flex-row h-auto sm:h-52">
+        <div className="w-full h-48 sm:w-56 sm:h-full bg-gray-100 flex-shrink-0 relative overflow-hidden">
           {camp.img_camp_url ? (
             <img
               alt={camp.title}
-              className={`w-full h-full object-cover ${isEnded ? "opacity-80" : ""}`}
+              className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isEnded ? "opacity-70" : ""}`}
               src={camp.img_camp_url}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Flag className="text-[#5d7c6f]/20" size={40} />
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-200">
+              <Flag className="text-[#5d7c6f]/20" size={48} />
             </div>
           )}
+          
+          {/* Overlay gradient on image */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent sm:hidden" />
         </div>
-        <div className="flex-1 p-4 flex flex-col justify-start gap-3">
-          <div className="min-w-0">
-            <h3 className="font-bold text-base sm:text-lg text-gray-800 line-clamp-2 leading-snug">
+
+        <div className="flex-1 p-5 flex flex-col gap-4">
+          <div className="space-y-1">
+            <h3 className="font-extrabold text-lg sm:text-xl text-gray-800 line-clamp-2 leading-tight group-hover:text-[#5d7c6f] transition-colors">
               {camp.title}
             </h3>
+            {isEnded && (
+              <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md">
+                ค่ายจบแล้ว
+              </span>
+            )}
           </div>
-          <div className="flex flex-col gap-1.5 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <MapPin className="text-[#5d7c6f]" size={14} />
-              <span className="text-gray-400">สถานที่:</span>
-              <span className="text-gray-700 line-clamp-1">
-                {camp.location}
-              </span>
+
+          <div className="grid grid-cols-1 gap-2 text-[13px]">
+            <div className="flex items-center gap-2.5 text-gray-600">
+              <div className="w-7 h-7 rounded-lg bg-[#5d7c6f]/10 flex items-center justify-center shrink-0">
+                <MapPin className="text-[#5d7c6f]" size={14} />
+              </div>
+              <span className="font-medium line-clamp-1">{camp.location}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="text-[#5d7c6f]" size={14} />
-              <span className="text-gray-400">วันลงทะเบียน:</span>
-              <span className="text-gray-700">
-                {formatDate(camp.startRegisDate, camp.endRegisDate)}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="text-[#5d7c6f]" size={14} />
-              <span className="text-gray-400">วันเริ่มค่าย:</span>
-              <span className="text-gray-700">
+            
+            <div className="flex items-center gap-2.5 text-gray-600">
+              <div className="w-7 h-7 rounded-lg bg-[#5d7c6f]/10 flex items-center justify-center shrink-0">
+                <Calendar className="text-[#5d7c6f]" size={14} />
+              </div>
+              <span className="font-medium">
                 {formatDate(camp.rawStartDate, camp.rawEndDate)}
               </span>
             </div>
           </div>
-          <div className="w-full bg-[#5d7c6f] text-white font-medium py-2.5 rounded-xl flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity text-sm">
-            {isEnded ? "ดูรายละเอียด" : "ดูรายละเอียดค่าย"}
+
+          <div className="mt-auto pt-2">
+            <div className="w-full bg-[#5d7c6f] text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-[#5d7c6f]/20 group-hover:bg-[#4a6358] transition-all transform group-hover:-translate-y-0.5 active:translate-y-0 text-sm">
+              <span>{isEnded ? "ดูย้อนหลัง" : "ดูรายละเอียดค่าย"}</span>
+              <History size={16} className={isEnded ? "block" : "hidden"} />
+            </div>
           </div>
         </div>
       </CardBody>

@@ -111,12 +111,64 @@ export async function GET(request, context) {
         return total + (cc.classroom?._count?.classroom_students || 0);
       }, 0) ?? 0;
 
+    const typeMap = new Map();
+    const allGrades = new Set();
+    let campAcademicYear = "";
+
+    if (camp.camp_classroom) {
+      camp.camp_classroom.forEach((cc) => {
+        if (cc.classroom) {
+          if (!campAcademicYear && cc.classroom.academic_years) {
+            campAcademicYear = cc.classroom.academic_years.year.toString();
+          }
+          const g = cc.classroom.grade;
+          const typeName =
+            cc.classroom.classroom_types?.name || cc.classroom.type_classroom;
+
+          if (g) {
+            const gradeStr = g.replace("Level_", "ม.");
+
+            allGrades.add(gradeStr);
+
+            if (typeName) {
+              if (!typeMap.has(typeName)) {
+                typeMap.set(typeName, new Set());
+              }
+              typeMap.get(typeName).add(gradeStr);
+            }
+          }
+        }
+      });
+    }
+
+    const sortedGrades = Array.from(allGrades).sort((a, b) =>
+      a.localeCompare(b),
+    );
+
+    const gradeDisplayList = Array.from(typeMap.entries())
+      .sort((a, b) => a[0].toString().localeCompare(b[0].toString()))
+      .map(([type, typeGrades]) => {
+        const sortedTypeGrades = Array.from(typeGrades).sort((a, b) =>
+          a.localeCompare(b),
+        );
+
+        return { type, grades: sortedTypeGrades };
+      });
+
+    const gradeDisplay = gradeDisplayList
+      .map((item) => `${item.type}(${item.grades.join(", ")})`)
+      .join(" ");
+
     return NextResponse.json(
       {
         ...camp,
         isOwner: camp.created_by_teacher_id === teacher.teachers_id || teacher.role === "ADMIN",
         isHomeroomTeacher,
         total_eligible_students: totalEligibleStudents,
+        grades: sortedGrades,
+        gradeDisplay: gradeDisplay,
+        gradeDisplayList: gradeDisplayList,
+        academicYear: campAcademicYear,
       },
       { status: 200 },
     );

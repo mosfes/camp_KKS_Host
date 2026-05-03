@@ -14,6 +14,7 @@ import {
 } from "@heroui/modal";
 import {
   ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Circle,
   Camera,
@@ -478,91 +479,127 @@ export default function StudentStationDetailPage() {
     );
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
+    <div className="min-h-screen bg-[#FBF9F4] pb-12">
       {/* Header */}
-      <div className="bg-white px-4 py-4 shadow-sm flex items-center gap-4 sticky top-0 z-50">
-        <Button isIconOnly variant="light" onPress={() => router.back()}>
-          <ChevronLeft className="text-gray-600" size={24} />
+      <div className="bg-white/80 backdrop-blur-xl px-4 py-4 shadow-sm flex items-center gap-4 sticky top-0 z-50 border-b border-gray-100">
+        <Button 
+          isIconOnly 
+          className="bg-gray-50 rounded-xl text-gray-700 hover:bg-gray-100 transition-colors"
+          variant="flat" 
+          onPress={() => router.back()}
+        >
+          <ChevronLeft size={24} />
         </Button>
-        <div>
-          <h1 className="text-lg font-bold text-gray-900">{station.name}</h1>
-          <p className="text-sm text-gray-600">{camp.title}</p>
+        <div className="min-w-0">
+          <h1 className="text-lg font-black text-gray-900 tracking-tight truncate">{station.name}</h1>
+          <p className="text-xs text-gray-500 font-medium truncate opacity-70">{camp.title}</p>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
-        <p className="text-gray-700 mb-6">{station.description}</p>
-
-        {station.mission?.length === 0 && (
-          <div className="text-center text-gray-600 py-10">
-            ยังไม่มีภารกิจในฐานนี้
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+        {station.description && (
+          <div className="bg-white/60 backdrop-blur-sm p-6 rounded-[2rem] border border-white shadow-sm mb-4">
+             <div className="flex items-center gap-2 mb-3">
+                <div className="w-1 h-5 bg-[#5d7c6f] rounded-full" />
+                <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">เกี่ยวกับฐานนี้</h2>
+              </div>
+            <p className="text-gray-600 text-sm leading-relaxed font-medium">
+              {station.description}
+            </p>
           </div>
         )}
 
-        {station.mission?.map((mission: any) => {
-          const completed = isMissionCompleted(mission.mission_id);
-          const isPostTest = mission.type === "POST_TEST";
-          const canDoPostTest = isPreTestCompleted();
-          const isLocked = isPostTest && !canDoPostTest && !completed;
+        {station.mission?.length === 0 && (
+          <div className="text-center text-gray-400 py-16 bg-white/40 rounded-[2rem] border-2 border-dashed border-gray-100">
+            <Circle className="mx-auto mb-3 opacity-20" size={48} />
+            <p className="font-bold">ยังไม่มีภารกิจในฐานนี้</p>
+          </div>
+        )}
 
-          return (
-            <div
-              key={mission.mission_id}
-              className={`
-                                bg-white p-5 rounded-2xl shadow-sm border transition-all 
-                                ${
-                                  isLocked
-                                    ? "opacity-60 cursor-not-allowed border-gray-200"
-                                    : completed
-                                      ? "border-green-200 bg-green-50 hover:border-green-300 cursor-pointer"
-                                      : "border-transparent hover:border-[#5d7c6f] cursor-pointer"
-                                }
-                            `}
-              onClick={() => {
-                if (isLocked) {
-                  toast.error(
-                    "คุณต้องทำแบบทดสอบก่อนเรียน (Pre-test) ให้เสร็จก่อน จึงจะทำแบบทดสอบหลังเรียนได้",
-                  );
+        <div className="space-y-4">
+          {station.mission?.map((mission: any) => {
+            const completed = isMissionCompleted(mission.mission_id);
+            const isPostTest = mission.type === "POST_TEST";
+            const canDoPostTest = isPreTestCompleted();
+            const isLocked = isPostTest && !canDoPostTest && !completed;
 
-                  return;
-                }
-                openMission(mission);
-              }}
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`mt-1 ${completed ? "text-green-600" : "text-gray-500"}`}
-                  >
+            return (
+              <div
+                key={mission.mission_id}
+                className={`
+                  relative group overflow-hidden bg-white p-6 rounded-[2rem] border-2 transition-all duration-300
+                  ${
+                    isLocked
+                      ? "opacity-60 grayscale border-gray-100"
+                      : completed
+                        ? "border-[#5d7c6f]/10 bg-gradient-to-br from-green-50/30 to-white hover:border-[#5d7c6f]/30 shadow-sm"
+                        : "border-transparent hover:border-[#5d7c6f]/30 shadow-sm hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
+                  }
+                `}
+                onClick={() => {
+                  if (isLocked) {
+                    toast.error(
+                      "คุณต้องทำแบบทดสอบก่อนเรียน (Pre-test) ให้เสร็จก่อน จึงจะทำแบบทดสอบหลังเรียนได้",
+                    );
+                    return;
+                  }
+                  openMission(mission);
+                }}
+              >
+                {/* Status Indicator Bar */}
+                <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${completed ? "bg-[#5d7c6f]" : isLocked ? "bg-gray-200" : "bg-gray-100 group-hover:bg-[#5d7c6f]/50"}`} />
+                
+                <div className="flex justify-between items-center gap-4">
+                  <div className="flex items-center gap-5 min-w-0">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${completed ? "bg-[#5d7c6f] text-white" : "bg-gray-50 text-gray-400 group-hover:bg-[#5d7c6f]/10 group-hover:text-[#5d7c6f]"}`}>
+                      {completed ? (
+                        <CheckCircle2 size={24} strokeWidth={2.5} />
+                      ) : (
+                        <Circle size={24} strokeWidth={2.5} />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className={`font-black tracking-tight truncate ${completed ? "text-gray-900" : "text-gray-800"}`}>
+                          {mission.title || "ภารกิจ"}
+                        </h3>
+                        {mission.type === "PRE_TEST" && (
+                          <span className="text-[9px] font-black bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                            ก่อนเรียน
+                          </span>
+                        )}
+                        {mission.type === "POST_TEST" && (
+                          <span className="text-[9px] font-black bg-purple-100 text-purple-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                            หลังเรียน
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                        {mission.description || "กดเพื่อทำภารกิจ"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="shrink-0">
                     {completed ? (
-                      <CheckCircle2 size={20} />
+                       <div className="bg-[#5d7c6f]/10 text-[#5d7c6f] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                        สำเร็จแล้ว
+                      </div>
+                    ) : isLocked ? (
+                      <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300">
+                         <ScanLine size={16} />
+                      </div>
                     ) : (
-                      <Circle size={20} />
+                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-[#5d7c6f]/10 group-hover:text-[#5d7c6f] transition-all group-hover:translate-x-1">
+                        <ChevronRight size={20} strokeWidth={3} />
+                      </div>
                     )}
                   </div>
-                  <div>
-                    <h3
-                      className={`font-bold ${completed ? "text-green-800" : "text-gray-900"}`}
-                    >
-                      {mission.title || "ภารกิจ"}
-                      {mission.type === "PRE_TEST" &&
-                        !(mission.title || "").includes("ก่อนเรียน") &&
-                        " (ก่อนเรียน)"}
-                    </h3>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {mission.description}
-                    </p>
-                  </div>
                 </div>
-                {completed && (
-                  <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                    สำเร็จ
-                  </span>
-                )}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Mission Execution Modal */}

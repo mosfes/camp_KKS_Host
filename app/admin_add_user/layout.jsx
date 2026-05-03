@@ -37,7 +37,7 @@ function AdminSidebar({ collapsed, setCollapsed }) {
             className={`
                 hidden md:flex flex-col bg-white border-r border-gray-200
                 transition-all duration-300 ease-in-out shrink-0
-                min-h-[calc(100vh-64px)]
+                sticky top-[64px] h-[calc(100vh-64px)]
                 ${collapsed ? "w-16" : "w-56"}
             `}
         >
@@ -180,20 +180,22 @@ export default function AdminLayout({ children }) {
     return (
         <StatusModalProvider>
             <div className="min-h-screen bg-[#f5f5f2] flex flex-col">
-                <HeadteacherNavbar onMenuClick={() => setMobileOpen(true)} />
+                <div className="sticky top-0 z-50 w-full">
+                    <HeadteacherNavbar onMenuClick={() => setMobileOpen(true)} />
+                </div>
 
-                <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-1">
                     {/* Desktop Sidebar */}
                     <Suspense
                         fallback={
-                            <div className="hidden md:block w-56 bg-white border-r border-gray-200 min-h-[calc(100vh-64px)]" />
+                            <div className="hidden md:block w-56 bg-white border-r border-gray-200 sticky top-[64px] h-[calc(100vh-64px)]" />
                         }
                     >
                         <AdminSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
                     </Suspense>
 
                     {/* Page Content */}
-                    <main className="flex-1 overflow-y-auto">
+                    <main className="flex-1">
                         {children}
                     </main>
                 </div>

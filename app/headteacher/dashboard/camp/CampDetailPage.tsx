@@ -60,6 +60,9 @@ interface CampDetail {
   end_regis_date: string;
   description: string;
   grade_level: string;
+  grades?: string[];
+  gradeDisplay?: string;
+  gradeDisplayList?: { type: string; grades: string[] }[];
   has_shirt: boolean;
   start_shirt_date?: string;
   end_shirt_date?: string;
@@ -813,7 +816,18 @@ export default function CampDetailPage() {
                       <span>ระดับชั้นที่เปิดรับ</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {camp.grade_level ? (
+                      {camp.grades && camp.grades.length > 0 ? (
+                        camp.grades.map((grade: string) => (
+                          <Chip
+                            key={grade}
+                            className="bg-[#f0f4f2] text-[#5d7c6f] border border-[#d1e0d9]"
+                            size="sm"
+                            variant="flat"
+                          >
+                            {grade}
+                          </Chip>
+                        ))
+                      ) : camp.grade_level ? (
                         camp.grade_level.split(",").map((grade: string) => (
                           <Chip
                             key={grade}
@@ -830,13 +844,42 @@ export default function CampDetailPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <p className="text-gray-500 mb-1">
+                  <div className="pt-2">
+                    <p className="text-gray-500 mb-2 font-medium">
                       ประเภทห้องเรียน/แผนการเรียน
                     </p>
-                    <p className="font-medium text-gray-900">
-                      {camp.plan_type_name}
-                    </p>
+                    {camp.gradeDisplayList && camp.gradeDisplayList.length > 0 ? (
+                      <div className="flex flex-wrap gap-2.5">
+                        {camp.gradeDisplayList.map(
+                          (item: { type: string; grades: string[] }) => (
+                            <div
+                              key={item.type}
+                              className="flex flex-col sm:flex-row sm:items-center bg-white border border-[#e4ebe8] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              <div className="bg-[#f0f4f2] px-3 py-1.5 sm:py-2 border-b sm:border-b-0 sm:border-r border-[#e4ebe8]">
+                                <span className="text-[#3d5248] font-semibold text-sm">
+                                  {item.type}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 px-3 py-2">
+                                {item.grades.map((g) => (
+                                  <span
+                                    key={g}
+                                    className="bg-white text-[#6b857a] text-xs font-medium px-2 py-0.5 rounded-md border border-[#e4ebe8]"
+                                  >
+                                    {g}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    ) : (
+                      <p className="font-medium text-gray-900 leading-relaxed bg-gray-50 px-3 py-2 rounded-lg inline-block border border-gray-100">
+                        {camp.gradeDisplay || camp.plan_type_name || "ไม่ได้ระบุ"}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -1094,7 +1137,6 @@ export default function CampDetailPage() {
                 <Button
                   className="bg-[#6b857a] text-white"
                   isDisabled={navigatingToBase !== null}
-                  startContent={<Plus size={18} />}
                   onPress={() => {
                     if (navigatingToBase !== null) return;
                     setIsCreateBaseModalOpen(true);
@@ -1202,8 +1244,7 @@ export default function CampDetailPage() {
               </div>
               {camp.isOwner && !survey && (
                 <Button
-                  className="bg-[#6b857a] text-white"
-                  startContent={<Plus size={18} />}
+                  className="bg-[#6b857a] text-white justify-center px-8 py-4 "
                   onPress={() => setIsCreateSurveyModalOpen(true)}
                 >
                   สร้างแบบสอบถาม
@@ -1292,7 +1333,7 @@ export default function CampDetailPage() {
                     <Button
                       className="bg-[#6b857a] text-white"
                       size="lg"
-                      startContent={<Plus size={18} />}
+                      startContent={<Plus size={24} />}
                       onPress={() => setIsCreateSurveyModalOpen(true)}
                     >
                       เริ่มสร้างแบบสอบถาม

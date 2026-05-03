@@ -71,7 +71,10 @@ export default function SurveyResultsModal({
       setAiSummary(null);
       const res = await fetch(`/api/surveys/results?campId=${campId}`);
 
-      if (!res.ok) throw new Error("Failed to fetch results");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "ไม่สามารถดึงข้อมูลผลแบบประเมินได้");
+      }
       const json = await res.json();
 
       setData(json.survey === null ? null : json);

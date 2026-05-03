@@ -391,134 +391,103 @@ export default function StudentCampDetailPage() {
   const campNotStarted = startDate && today < startDate;
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8] pb-64">
-      <div className="h-64 bg-gray-200 relative overflow-hidden">
+    <div className="min-h-screen bg-[#FBF9F4] pb-64">
+      {/* Hero Section */}
+      <div className="h-72 sm:h-80 bg-gray-200 relative overflow-hidden">
         {camp.img_camp_url ? (
           <img
             alt={camp.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-1000 hover:scale-105"
             src={camp.img_camp_url}
           />
         ) : (
-          <div className="w-full h-full bg-[#2d3748] flex items-center justify-center text-white/20">
-            <Flag size={64} />
+          <div className="w-full h-full bg-gradient-to-br from-[#2d3748] to-[#1a202c] flex items-center justify-center text-white/20">
+            <Flag size={80} className="animate-pulse" />
           </div>
         )}
-        <div className="absolute top-4 left-4">
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60" />
+        
+        <div className="absolute top-6 left-4 z-20">
           <Button
             isIconOnly
-            className="bg-white/80 backdrop-blur-md text-gray-700"
+            className="bg-white/90 backdrop-blur-xl text-gray-800 shadow-xl border border-white/20 rounded-2xl"
             variant="flat"
             onPress={() => router.back()}
           >
-            <ChevronLeft />
+            <ChevronLeft size={24} />
           </Button>
+        </div>
+
+        {/* Hero Title Overlay (Small Screens Only) */}
+        <div className="absolute bottom-24 left-6 right-6 z-10 sm:hidden">
+          <h1 className="text-white text-2xl font-black leading-tight drop-shadow-lg tracking-tight">
+            {camp.title}
+          </h1>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 -mt-20 relative z-10">
+      <div className="max-w-4xl mx-auto px-4 -mt-16 relative z-20">
         {/* Main Info Card */}
-        <div className="bg-white rounded-3xl shadow-lg p-6 mb-4">
-          <h1 className="text-2xl font-bold text-gray-900 mb-3 leading-snug">
-            {camp.title}
-          </h1>
+        <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl shadow-gray-200/50 p-7 mb-6 border border-white/50">
+          <div className="hidden sm:block">
+            <h1 className="text-3xl font-black text-gray-900 mb-4 leading-tight tracking-tight">
+              {camp.title}
+            </h1>
+          </div>
 
-          {/* Info Pills */}
-          <div className="flex flex-wrap gap-2 mb-4">
+          {/* Status Badges */}
+          <div className="flex flex-wrap gap-2 mb-6">
             {camp.isRegistered && !camp.isEnded && (
-              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">
-                <CheckCircle2 size={12} /> ลงทะเบียนแล้ว
+              <span className="inline-flex items-center gap-1.5 bg-[#5d7c6f] text-white text-[11px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-lg shadow-[#5d7c6f]/20">
+                <CheckCircle2 size={13} /> ลงทะเบียนแล้ว
               </span>
             )}
             {camp.isEnded && (
-              <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 text-xs font-semibold px-3 py-1 rounded-full">
-                <Flag size={12} /> ค่ายจบแล้ว
+              <span className="inline-flex items-center gap-1.5 bg-gray-900 text-white text-[11px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full">
+                <Flag size={13} /> ค่ายจบแล้ว
               </span>
             )}
+            <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 text-[11px] font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-blue-100">
+              <Users size={13} /> {camp.totalEnrolled}/{camp.totalCapacity} คน
+            </span>
           </div>
 
-          {/* Description */}
-          {camp.description && (
-            <div className="mb-5">
-              <div className="flex items-center gap-1.5 mb-2">
-                <FileText className="text-[#5d7c6f]" size={15} />
-                <span className="text-sm font-semibold text-gray-700">
-                  รายละเอียดค่าย
-                </span>
+          {/* Info Grid - Modern Layout */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex items-center gap-4 bg-gray-50/50 p-4 rounded-[1.5rem] border border-gray-100 transition-colors hover:bg-white hover:border-[#5d7c6f]/30 group">
+              <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center shrink-0 group-hover:bg-[#5d7c6f] transition-all">
+                <MapPin className="text-[#5d7c6f] group-hover:text-white" size={20} />
               </div>
-              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">สถานที่</p>
+                <p className="text-gray-900 font-bold truncate text-sm">{camp.location}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-gray-50/50 p-4 rounded-[1.5rem] border border-gray-100 transition-colors hover:bg-white hover:border-[#5d7c6f]/30 group">
+              <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center shrink-0 group-hover:bg-[#5d7c6f] transition-all">
+                <Calendar className="text-[#5d7c6f] group-hover:text-white" size={20} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">วันเริ่มค่าย</p>
+                <p className="text-gray-900 font-bold text-sm">
+                  {formatDate(camp.rawStartDate)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Description Section */}
+          {camp.description && (
+            <div className="mt-8 pt-8 border-t border-gray-100">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-1.5 h-6 bg-[#5d7c6f] rounded-full" />
+                <h2 className="text-sm font-black text-gray-900 uppercase tracking-wider">รายละเอียดค่าย</h2>
+              </div>
+              <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line font-medium opacity-90">
                 {camp.description}
               </p>
-            </div>
-          )}
-
-          {/* Info Grid */}
-          <div className="grid grid-cols-1 gap-3 text-sm">
-            <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
-              <MapPin
-                className="text-[#5d7c6f] mt-0.5 flex-shrink-0"
-                size={16}
-              />
-              <div>
-                <p className="text-[11px] text-gray-600 mb-0.5">
-                  สถานที่จัดค่าย
-                </p>
-                <p className="text-gray-800 font-medium">{camp.location}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
-              <Calendar
-                className="text-[#5d7c6f] mt-0.5 flex-shrink-0"
-                size={16}
-              />
-              <div>
-                <p className="text-[11px] text-gray-600 mb-0.5">วันจัดค่าย</p>
-                <p className="text-gray-800 font-medium">
-                  {formatDate(camp.rawStartDate)} –{" "}
-                  {formatDate(camp.rawEndDate)}
-                </p>
-              </div>
-            </div>
-            {camp.startRegisDate && (
-              <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
-                <CalendarCheck
-                  className="text-[#5d7c6f] mt-0.5 flex-shrink-0"
-                  size={16}
-                />
-                <div>
-                  <p className="text-[11px] text-gray-600 mb-0.5">
-                    ช่วงเวลารับสมัคร
-                  </p>
-                  <p className="text-gray-800 font-medium">
-                    {formatDate(camp.startRegisDate)} –{" "}
-                    {formatDate(camp.endRegisDate)}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Enrollment Progress */}
-          {camp.totalCapacity > 0 && (
-            <div className="mt-4 bg-gray-50 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="text-[#5d7c6f]" size={15} />
-                <span className="text-sm font-semibold text-gray-700">
-                  จำนวนผู้ลงทะเบียน
-                </span>
-                <span className="ml-auto text-sm font-bold text-[#5d7c6f]">
-                  {camp.totalEnrolled} / {camp.totalCapacity} คน
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-[#5d7c6f] h-2 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(100, (camp.totalEnrolled / camp.totalCapacity) * 100)}%`,
-                  }}
-                />
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1.5" />
             </div>
           )}
         </div>
@@ -756,25 +725,25 @@ export default function StudentCampDetailPage() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8 z-50">
-        <div className="max-w-4xl mx-auto space-y-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-2xl border-t border-gray-100 p-6 pb-10 z-50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <div className="max-w-4xl mx-auto">
           {!camp.isRegistered ? (
             camp.isEnded ? (
               <Button
                 fullWidth
                 isDisabled
-                className="bg-gray-300 text-gray-500 font-bold text-lg h-12 cursor-not-allowed"
+                className="bg-gray-100 text-gray-400 font-black text-lg h-14 rounded-2xl cursor-not-allowed border border-gray-200"
               >
                 สิ้นสุดการรับสมัครแล้ว
               </Button>
             ) : (
               <Button
                 fullWidth
-                className="bg-[#5d7c6f] text-white font-bold text-lg h-12"
+                className="bg-gradient-to-r from-[#5d7c6f] to-[#3d5c50] text-white font-black text-lg h-14 rounded-2xl shadow-xl shadow-[#5d7c6f]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
                 isLoading={registering}
                 onPress={handleRegister}
               >
-                เข้าร่วมค่าย
+                เข้าร่วมค่ายตอนนี้
               </Button>
             )
           ) : (

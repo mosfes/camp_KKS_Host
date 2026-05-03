@@ -9,19 +9,10 @@ import {
   Button,
 } from "@heroui/react";
 import { useState, useEffect } from "react";
-import {
-  Save,
-  Plus,
-  Trash2,
-  FileText,
-  Star,
-  BookTemplate,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
-import { Heading } from "lucide-react";
+import { Save, Plus, Trash2, FileText, Star, BookTemplate, ChevronDown, ChevronUp } from "lucide-react";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import { Heading } from "lucide-react";
 
 interface Question {
   text: string;
@@ -81,21 +72,15 @@ export default function CreateSurveyModal({
       if (isEditing && initialData) {
         setTitle(initialData.title || "");
         setDescription(initialData.description || "");
-        if (
-          initialData.survey_question &&
-          initialData.survey_question.length > 0
-        ) {
+        if (initialData.survey_question && initialData.survey_question.length > 0) {
           setQuestions(
             initialData.survey_question.map((q: any) => ({
               text: q.question_text,
               type: q.question_type,
               scaleMax: q.scale_max || 5,
-            })),
+            }))
           );
-          const scaleQ = initialData.survey_question.find(
-            (q: any) => q.question_type === "scale",
-          );
-
+          const scaleQ = initialData.survey_question.find((q: any) => q.question_type === 'scale');
           if (scaleQ && scaleQ.scale_max) {
             setGlobalScaleMax(scaleQ.scale_max);
           } else {
@@ -134,7 +119,6 @@ export default function CreateSurveyModal({
     try {
       const res = await fetch(`/api/surveys/templates?teacherId=${teacherId}`);
       const data = await res.json();
-
       setTemplates(data || []);
     } catch {
       /* ignore */
@@ -151,12 +135,9 @@ export default function CreateSurveyModal({
         text: q.question_text,
         type: q.question_type,
         scaleMax: q.scale_max || 5,
-      })),
+      }))
     );
-    const scaleQ = tpl.survey_template_question.find(
-      (q) => q.question_type === "scale",
-    );
-
+    const scaleQ = tpl.survey_template_question.find((q) => q.question_type === 'scale');
     if (scaleQ && scaleQ.scale_max) {
       setGlobalScaleMax(scaleQ.scale_max);
     } else {
@@ -168,17 +149,11 @@ export default function CreateSurveyModal({
   const deleteTemplate = async (templateId: number) => {
     if (!confirm("คุณต้องการลบเทมเพลตนี้ใช่หรือไม่?")) return;
     try {
-      const res = await fetch(
-        `/api/surveys/templates?templateId=${templateId}`,
-        {
-          method: "DELETE",
-        },
-      );
-
+      const res = await fetch(`/api/surveys/templates?templateId=${templateId}`, {
+        method: "DELETE",
+      });
       if (res.ok) {
-        setTemplates((prev) =>
-          prev.filter((t) => t.template_id !== templateId),
-        );
+        setTemplates((prev) => prev.filter((t) => t.template_id !== templateId));
         showSuccess("สำเร็จ", "ลบเทมเพลตเรียบร้อยแล้ว");
       } else {
         showError("ข้อผิดพลาด", "ไม่สามารถลบเทมเพลตได้");
@@ -201,19 +176,13 @@ export default function CreateSurveyModal({
     if (i + dir < 0 || i + dir >= questions.length) return;
     const newQ = [...questions];
     const temp = newQ[i];
-
     newQ[i] = newQ[i + dir];
     newQ[i + dir] = temp;
     setQuestions(newQ);
   };
 
-  const updateQuestion = (
-    i: number,
-    field: keyof Question,
-    val: string | number,
-  ) => {
+  const updateQuestion = (i: number, field: keyof Question, val: string | number) => {
     const q = [...questions];
-
     (q[i] as any)[field] = val;
     setQuestions(q);
   };
@@ -225,23 +194,17 @@ export default function CreateSurveyModal({
   const handleSubmit = async () => {
     if (!title.trim()) {
       showError("ข้อผิดพลาด", "กรุณากรอกชื่อแบบสอบถาม");
-
       return;
     }
-    const realQuestions = questions.filter((q) => q.type !== "header");
-
+    const realQuestions = questions.filter(q => q.type !== "header");
     if (realQuestions.length === 0) {
       showError("ข้อผิดพลาด", "กรุณาเพิ่มคำถามอย่างน้อย 1 ข้อ");
-
       return;
     }
     for (let i = 0; i < questions.length; i++) {
       if (!questions[i].text.trim()) {
-        const itemType =
-          questions[i].type === "header" ? "หัวข้อ" : "คำถามข้อที่";
-
+        const itemType = questions[i].type === "header" ? "หัวข้อ" : "คำถามข้อที่";
         showError("ข้อผิดพลาด", `กรุณากรอก${itemType} ${i + 1} ให้ครบถ้วน`);
-
         return;
       }
     }
@@ -273,26 +236,15 @@ export default function CreateSurveyModal({
 
       if (!res.ok) {
         const data = await res.json();
-
-        showError(
-          "ข้อผิดพลาด",
-          data.error || `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามไม่สำเร็จ`,
-        );
-
+        showError("ข้อผิดพลาด", data.error || `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามไม่สำเร็จ`);
         return;
       }
 
-      showSuccess(
-        "สำเร็จ",
-        `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามเรียบร้อยแล้ว`,
-      );
+      showSuccess("สำเร็จ", `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามเรียบร้อยแล้ว`);
       handleClose();
       onSurveyCreated();
     } catch {
-      showError(
-        "ข้อผิดพลาด",
-        `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามไม่สำเร็จ`,
-      );
+      showError("ข้อผิดพลาด", `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามไม่สำเร็จ`);
     } finally {
       setLoading(false);
     }
@@ -334,21 +286,17 @@ export default function CreateSurveyModal({
                   <BookTemplate size={16} />
                   โหลดจากเทมเพลต
                   <ChevronDown
-                    className={`transition-transform ${showTemplates ? "rotate-180" : ""}`}
                     size={14}
+                    className={`transition-transform ${showTemplates ? "rotate-180" : ""}`}
                   />
                 </button>
 
                 {showTemplates && (
                   <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden">
                     {loadingTemplates ? (
-                      <p className="text-sm text-gray-400 p-4 text-center">
-                        กำลังโหลด...
-                      </p>
+                      <p className="text-sm text-gray-400 p-4 text-center">กำลังโหลด...</p>
                     ) : templates.length === 0 ? (
-                      <p className="text-sm text-gray-400 p-4 text-center">
-                        ยังไม่มีเทมเพลต
-                      </p>
+                      <p className="text-sm text-gray-400 p-4 text-center">ยังไม่มีเทมเพลต</p>
                     ) : (
                       templates.map((tpl) => (
                         <div
@@ -359,20 +307,18 @@ export default function CreateSurveyModal({
                             className="flex-1 text-left"
                             onClick={() => applyTemplate(tpl)}
                           >
-                            <p className="text-sm font-medium text-gray-900">
-                              {tpl.title}
-                            </p>
+                            <p className="text-sm font-medium text-gray-900">{tpl.title}</p>
                             <p className="text-xs text-gray-500">
                               {tpl.survey_template_question.length} รายการ
                             </p>
                           </button>
                           <button
                             className="p-2 text-[#E84A5F] opacity-0 group-hover:opacity-70 hover:!opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded-lg transition-all"
-                            title="ลบเทมเพลต"
                             onClick={(e) => {
                               e.stopPropagation();
                               deleteTemplate(tpl.template_id);
                             }}
+                            title="ลบเทมเพลต"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -411,32 +357,30 @@ export default function CreateSurveyModal({
               </div>
 
               {/* การตั้งค่าคะแนนสูงสุด (Global) */}
-              <div className="bg-[#f0f4f2]/50 border border-[#d1e0d9] p-4 rounded-xl">
+              <div className="bg-orange-50/50 border border-orange-100 p-4 rounded-xl">
                 <label className="block text-sm font-semibold text-gray-800 mb-3">
                   คะแนนสูงสุดสำหรับแบบประเมิน
                   <span className="block text-xs font-normal text-gray-500 mt-0.5">
-                    (เลือกครั้งเดียว ใช้คะแนนนี้สำหรับคำถามประเภท
-                    "ระดับความพึงพอใจ" ทุกข้อ)
+                    (เลือกครั้งเดียว ใช้คะแนนนี้สำหรับคำถามประเภท "ระดับความพึงพอใจ" ทุกข้อ)
                   </span>
                 </label>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-2 sm:gap-4">
                   {[3, 5, 10].map((score) => (
                     <label
                       key={score}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer border transition-colors ${
-                        globalScaleMax === score
-                          ? "bg-[#f0f4f2] border-[#6b857a] text-[#2d3748]"
-                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                      }`}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition-colors ${globalScaleMax === score
+                        ? "bg-orange-100 border-orange-300 text-orange-800"
+                        : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                        }`}
                     >
                       <input
-                        checked={globalScaleMax === score}
-                        className="w-4 h-4 text-[#6b857a] focus:ring-[#6b857a]"
-                        name="globalScaleMax"
                         type="radio"
+                        name="globalScaleMax"
+                        className="w-4 h-4 text-orange-600 focus:ring-orange-500 shrink-0"
+                        checked={globalScaleMax === score}
                         onChange={() => setGlobalScaleMax(score)}
                       />
-                      <span className="text-sm font-medium">{score} คะแนน</span>
+                      <span className="text-sm font-medium whitespace-nowrap">{score} คะแนน</span>
                     </label>
                   ))}
                 </div>
@@ -447,94 +391,53 @@ export default function CreateSurveyModal({
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-5 bg-[#6b857a] rounded-full" />
                   <label className="text-sm font-semibold text-gray-700">
-                    คำถาม ({questions.filter((q) => q.type !== "header").length}
-                    ) และ ส่วนแบ่งหัวข้อ (
-                    {questions.filter((q) => q.type === "header").length})
+                    คำถาม ({questions.filter(q => q.type !== "header").length}) และ ส่วนแบ่งหัวข้อ ({questions.filter(q => q.type === "header").length})
                   </label>
                 </div>
 
                 {questions.map((q, i) => (
                   <div
                     key={i}
-                    className={`p-3 rounded-xl border space-y-3 ${
-                      q.type === "header"
-                        ? "bg-purple-50/50 border-purple-200"
-                        : "bg-gray-50 border-gray-200"
-                    }`}
+                    className={`p-4 rounded-xl border space-y-3 ${q.type === "header" ? "bg-purple-50/50 border-purple-200" : "bg-gray-50 border-gray-200"
+                      }`}
                   >
-                    {/* Row 1: Badge + Item number */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         {q.type === "scale" ? (
-                          <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-md text-xs font-medium">
-                            <Star size={11} fill="currentColor" />
-                            <span>ประเมินระดับ</span>
+                          <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-[10px] sm:text-xs font-medium">
+                            <Star size={12} fill="currentColor" />
+                            <span className="hidden sm:inline">ระดับความพึงพอใจ</span>
+                            <span className="sm:hidden">ความพึงพอใจ</span>
                           </div>
                         ) : q.type === "text" ? (
-                          <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">
-                            <FileText size={11} />
-                            <span>ข้อเสนอแนะ</span>
+                          <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] sm:text-xs font-medium">
+                            <FileText size={12} />
+                            ข้อเสนอแนะ
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-md text-xs font-medium">
-                            <Heading size={11} />
-                            <span>หัวข้อ</span>
+                          <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-[10px] sm:text-xs font-medium">
+                            <Heading size={12} />
+                            ส่วนแบ่งหัวข้อ
                           </div>
                         )}
-                        <span className="text-xs text-gray-400">
-                          รายการที่ {i + 1}
-                        </span>
+                        <span className="text-xs text-gray-400">รายการที่ {i + 1}</span>
                       </div>
 
-                      {/* Action buttons: move + delete */}
-                      <div className="flex items-center gap-1">
-                        <button
-                          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-                          disabled={i === 0}
-                          onClick={() => moveQuestion(i, -1)}
-                          title="เลื่อนขึ้น"
-                        >
-                          <ChevronUp size={15} />
-                        </button>
-                        <button
-                          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-                          disabled={i === questions.length - 1}
-                          onClick={() => moveQuestion(i, 1)}
-                          title="เลื่อนลง"
-                        >
-                          <ChevronDown size={15} />
-                        </button>
-                        {questions.length > 1 && (
-                          <button
-                            className="p-1.5 text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 rounded-lg transition-colors"
-                            onClick={() => removeQuestion(i)}
-                            title="ลบคำถาม"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        )}
-                      </div>
+                      <select
+                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-[#6b857a] bg-white w-auto max-w-[130px]"
+                        value={q.type}
+                        onChange={(e) =>
+                          updateQuestion(i, "type", e.target.value as "text" | "scale" | "header")
+                        }
+                      >
+                        <option value="scale">ระดับความพึงพอใจ</option>
+                        <option value="text">ข้อเสนอแนะ</option>
+                        <option value="header">ส่วนแบ่งหัวข้อ</option>
+                      </select>
                     </div>
 
-                    {/* Row 2: Type selector */}
-                    <select
-                      className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#6b857a] bg-white"
-                      value={q.type}
-                      onChange={(e) =>
-                        updateQuestion(
-                          i,
-                          "type",
-                          e.target.value as "text" | "scale" | "header",
-                        )
-                      }
-                    >
-                      <option value="scale">ระดับความพึงพอใจ</option>
-                      <option value="text">ข้อเสนอแนะ</option>
-                      <option value="header">ส่วนแบ่งหัวข้อ</option>
-                    </select>
-
                     <input
-                      className={`${inputCls} ${q.type === "header" ? "font-semibold text-purple-900 border-purple-200 focus:ring-purple-500 focus:border-purple-500 bg-white" : ""}`}
+                      className={`${inputCls} ${q.type === 'header' ? 'font-semibold text-purple-900 border-purple-200 focus:ring-purple-500 focus:border-purple-500 bg-white' : ''}`}
                       placeholder={
                         q.type === "scale"
                           ? "เช่น ความพึงพอใจโดยรวมของค่ายอยู่ในระดับใด"
@@ -543,49 +446,82 @@ export default function CreateSurveyModal({
                             : "ชื่อส่วนแบ่งหัวข้อ (เช่น ส่วนที่ 2: ความพึงพอใจด้านสถานที่)"
                       }
                       value={q.text}
-                      onChange={(e) =>
-                        updateQuestion(i, "text", e.target.value)
-                      }
+                      onChange={(e) => updateQuestion(i, "text", e.target.value)}
                     />
+
+                    {/* Move and Delete Buttons */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 mt-1 border-t border-gray-200/60">
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="py-1.5 px-3 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex items-center gap-1 text-[11px] font-bold tracking-wide"
+                          disabled={i === 0}
+                          onClick={() => moveQuestion(i, -1)}
+                          title="เลื่อนขึ้น"
+                        >
+                          <ChevronUp size={16} />
+                          <span>เลื่อนขึ้น</span>
+                        </button>
+                        <button
+                          className="py-1.5 px-3 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex items-center gap-1 text-[11px] font-bold tracking-wide"
+                          disabled={i === questions.length - 1}
+                          onClick={() => moveQuestion(i, 1)}
+                          title="เลื่อนลง"
+                        >
+                          <ChevronDown size={16} />
+                          <span>เลื่อนลง</span>
+                        </button>
+                      </div>
+
+                      {questions.length > 1 && (
+                        <button
+                          className="py-1.5 px-3 text-[#E84A5F] opacity-80 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-bold tracking-wide"
+                          onClick={() => removeQuestion(i)}
+                          title="ลบคำถาม"
+                        >
+                          <Trash2 size={14} />
+                          <span>ลบรายการ</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
 
                 {/* ปุ่มเพิ่มคำถาม */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <button
-                    className="py-2 border-2 border-dashed border-gray-200 hover:border-yellow-400 rounded-xl text-xs text-gray-500 hover:text-yellow-600 font-medium transition-colors flex items-center justify-center gap-1"
+                    className="flex-1 py-3 sm:py-2 border-2 border-dashed border-gray-200 hover:border-yellow-400 rounded-xl text-sm sm:text-xs text-gray-500 hover:text-yellow-600 font-medium transition-colors flex items-center justify-center gap-2 sm:gap-1"
                     onClick={() => addQuestion("scale")}
                   >
-                    <Plus size={14} />
-                    <Star fill="currentColor" size={12} />
-                    ระดับความพึงพอใจ
+                    <Plus size={16} className="sm:w-3.5 sm:h-3.5" />
+                    <Star size={14} fill="currentColor" className="sm:w-3 sm:h-3" />
+                    เพิ่มระดับความพึงพอใจ
                   </button>
                   <button
-                    className="py-2 border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-xl text-xs text-gray-500 hover:text-blue-600 font-medium transition-colors flex items-center justify-center gap-1"
+                    className="flex-1 py-3 sm:py-2 border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-xl text-sm sm:text-xs text-gray-500 hover:text-blue-600 font-medium transition-colors flex items-center justify-center gap-2 sm:gap-1"
                     onClick={() => addQuestion("text")}
                   >
-                    <Plus size={14} />
-                    <FileText size={12} />
-                    ข้อเสนอแนะ
+                    <Plus size={16} className="sm:w-3.5 sm:h-3.5" />
+                    <FileText size={14} className="sm:w-3 sm:h-3" />
+                    เพิ่มข้อเสนอแนะ
                   </button>
                   <button
-                    className="py-2 border-2 border-dashed border-gray-200 hover:border-purple-400 rounded-xl text-xs text-gray-500 hover:text-purple-600 font-medium transition-colors flex items-center justify-center gap-1"
+                    className="flex-1 py-3 sm:py-2 border-2 border-dashed border-gray-200 hover:border-purple-400 rounded-xl text-sm sm:text-xs text-gray-500 hover:text-purple-600 font-medium transition-colors flex items-center justify-center gap-2 sm:gap-1"
                     onClick={() => addQuestion("header")}
                   >
-                    <Plus size={14} />
-                    <Heading size={12} />
-                    ส่วนแบ่งหัวข้อ
+                    <Plus size={16} className="sm:w-3.5 sm:h-3.5" />
+                    <Heading size={14} className="sm:w-3 sm:h-3" />
+                    เพิ่มส่วนแบ่งหัวข้อ
                   </button>
                 </div>
               </div>
 
               {/* บันทึกเป็นเทมเพลต */}
-              <div className="border-t border-gray-100 pt-4">
+              <div className="border-t border-gray-100 pt-4 pb-2">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
-                    checked={saveAsTemplate}
-                    className="w-4 h-4 accent-[#6b857a]"
                     type="checkbox"
+                    className="w-4 h-4 accent-[#6b857a]"
+                    checked={saveAsTemplate}
                     onChange={(e) => setSaveAsTemplate(e.target.checked)}
                   />
                   <span className="text-sm font-medium text-gray-700">
@@ -594,7 +530,7 @@ export default function CreateSurveyModal({
                 </label>
 
                 {saveAsTemplate && (
-                  <div className="mt-2 ml-7">
+                  <div className="mt-3 ml-7">
                     <input
                       className={inputCls}
                       placeholder="ชื่อเทมเพลต (ถ้าไม่กรอกจะใช้ชื่อแบบสอบถาม)"
@@ -606,22 +542,21 @@ export default function CreateSurveyModal({
               </div>
             </ModalBody>
 
-            <ModalFooter className="p-6 pt-2 flex-col gap-2">
+            <ModalFooter className="px-6 py-4 pb-8 sm:pb-6 flex-col gap-3 bg-white border-t border-gray-50 rounded-b-2xl">
               <Button
                 fullWidth
-                className="bg-[#6b857a] text-white rounded-xl font-bold shadow-lg hover:bg-[#5a7268]"
+                className="bg-[#6b857a] text-white rounded-xl font-bold shadow-lg shadow-[#6b857a]/20 hover:bg-[#5a7268] active:scale-[0.98] transition-transform"
                 isLoading={loading}
                 size="lg"
-                startContent={!loading && <Save size={18} />}
                 onPress={handleSubmit}
               >
                 {isEditing ? "บันทึกการแก้ไข" : "สร้างแบบสอบถาม"}
               </Button>
               <Button
                 fullWidth
-                className="font-medium text-gray-600"
+                className="font-semibold text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
                 size="lg"
-                variant="light"
+                variant="flat"
                 onPress={handleClose}
               >
                 ยกเลิก

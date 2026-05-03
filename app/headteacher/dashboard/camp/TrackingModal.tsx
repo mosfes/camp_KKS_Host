@@ -44,7 +44,7 @@ export default function TrackingModal({
   const [data, setData] = useState<TrackingData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 5;
 
   useEffect(() => {
     if (isOpen && campId) {

@@ -18,7 +18,7 @@ export async function GET(request) {
 
     if (!campId) {
       return NextResponse.json(
-        { error: "campId is required" },
+        { error: "กรุณาระบุ campId" },
         { status: 400 },
       );
     }
@@ -32,12 +32,15 @@ export async function GET(request) {
     });
 
     if (!camp) {
-      return NextResponse.json({ error: "Camp not found" }, { status: 404 });
+      return NextResponse.json({ error: "ไม่พบค่ายนี้ในระบบ" }, { status: 404 });
     }
 
-    if (camp.created_by_teacher_id !== teacher.teachers_id) {
+    if (
+      camp.created_by_teacher_id !== teacher.teachers_id &&
+      teacher.role !== "ADMIN"
+    ) {
       return NextResponse.json(
-        { error: "Unauthorized to view these results" },
+        { error: "ไม่มีสิทธิ์ดูผลการประเมินนี้" },
         { status: 403 },
       );
     }
@@ -128,7 +131,7 @@ export async function GET(request) {
     //     console.error("Error fetching survey results:", err);
 
     return NextResponse.json(
-      { error: "Failed to fetch survey results" },
+      { error: "เกิดข้อผิดพลาดในการดึงข้อมูลผลแบบประเมิน" },
       { status: 500 },
     );
   }

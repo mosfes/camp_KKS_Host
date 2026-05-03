@@ -18,14 +18,18 @@ export async function GET(request, context) {
       where: {
         camp_id: campId,
         deletedAt: null,
-        OR: [
-          { created_by_teacher_id: teacher.teachers_id },
-          {
-            teacher_enrollment: {
-              some: { teacher_teachers_id: teacher.teachers_id },
-            },
-          },
-        ],
+        ...(teacher.role !== "ADMIN"
+          ? {
+              OR: [
+                { created_by_teacher_id: teacher.teachers_id },
+                {
+                  teacher_enrollment: {
+                    some: { teacher_teachers_id: teacher.teachers_id },
+                  },
+                },
+              ],
+            }
+          : {}),
       },
     });
 

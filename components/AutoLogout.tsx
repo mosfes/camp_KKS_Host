@@ -135,7 +135,7 @@ export default function AutoLogout({ email }: { email: string }) {
             maxWidth: "100%",
           }}
         >
-          <span style={{ fontSize: "16px" }}>📧</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5d7c6f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
           <span
             style={{
               fontSize: "14px",
