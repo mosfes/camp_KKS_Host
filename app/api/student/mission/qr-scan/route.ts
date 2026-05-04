@@ -4,22 +4,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 
-// ─── Re-implement store helpers inline ───────────────────────────
-// (Next.js route isolation means we can't import from sibling routes directly)
-const qrStore =
-  globalThis._campQrStore ?? (globalThis._campQrStore = new Map());
-
-function verifyQRPayload(payload) {
+async function verifyQRPayload(payload) {
   try {
     if (!payload || typeof payload !== "string") return null;
     const parts = payload.split(":");
 
-    if (parts.length !== 4 || parts[0] !== "CAMP_MISSION") return null;
-    const [, missionId, campId, nonce] = parts;
+    // We changed payload from 4 parts (with nonce) to 3 parts (stable)
+    if (parts.length < 3 || parts[0] !== "CAMP_MISSION") return null;
+    const [, missionId, campId] = parts;
     const mid = parseInt(missionId);
-    const stored = qrStore.get(mid);
-
-    if (!stored || stored.nonce !== nonce) return null;
 
     return { missionId: mid, campId: parseInt(campId) };
   } catch {
@@ -27,12 +20,14 @@ function verifyQRPayload(payload) {
   }
 }
 
-function verifyPin(missionId, pin) {
-  const stored = qrStore.get(missionId);
+async function verifyPin(missionId, pin) {
+  const mission = await prisma.mission.findUnique({
+    where: { mission_id: missionId },
+  });
 
-  if (!stored) return false;
+  if (!mission) return false;
 
-  return String(pin).trim() === stored.pin;
+  return String(pin).trim() === mission.qr_pin;
 }
 
 async function recordCompletion(studentId, missionId, campId) {
@@ -96,10 +91,10 @@ export async function POST(req) {
 
     // --- Mode 1: QR payload ---
     if (qrPayload) {
-      decoded = verifyQRPayload(qrPayload);
+      decoded = await verifyQRPayload(qrPayload);
       if (!decoded) {
         return NextResponse.json(
-          { error: "QR Code ไม่ถูกต้องหรือหมดอายุ กรุณาให้ครูสุ่มรหัสใหม่" },
+          { error: "QR Code ไม่ถูกต้อง" },
           { status: 400 },
         );
       }
@@ -108,7 +103,7 @@ export async function POST(req) {
     else if (pin && pinMissionId) {
       const missionId = parseInt(pinMissionId);
 
-      if (!verifyPin(missionId, pin)) {
+      if (!(await verifyPin(missionId, pin))) {
         return NextResponse.json(
           { error: "รหัส PIN ไม่ถูกต้อง" },
           { status: 400 },

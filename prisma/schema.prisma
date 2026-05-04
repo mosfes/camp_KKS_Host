@@ -51,10 +51,10 @@ model students {
   email           String    @db.VarChar(255)
   deletedAt       DateTime?
 
-  parents                    parents[]
-  classroom_students         classroom_students[]
-  student_enrollment         student_enrollment[]
-  attendance_record_student  attendance_record_student[]
+  parents                   parents[]
+  classroom_students        classroom_students[]
+  student_enrollment        student_enrollment[]
+  attendance_record_student attendance_record_student[]
 
   @@index([deletedAt])
 }
@@ -254,17 +254,17 @@ model student_enrollment {
 }
 
 model attendance_session {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   camp_camp_id Int
-  camp         camp     @relation(fields: [camp_camp_id], references: [camp_id])
-  round_id     String   @db.VarChar(64) // string id เช่น "l9x3r2ab"
+  camp         camp      @relation(fields: [camp_camp_id], references: [camp_id])
+  round_id     String    @db.VarChar(64) // string id เช่น "l9x3r2ab"
   round_number Int
-  description  String   @db.VarChar(255)
-  nonce        String   @db.VarChar(64)
-  pin          String   @db.VarChar(10)
-  generated_at DateTime @default(now())
+  description  String    @db.VarChar(255)
+  nonce        String    @db.VarChar(64)
+  pin          String    @db.VarChar(10)
+  generated_at DateTime  @default(now())
   expires_at   DateTime
-  is_closed    Boolean  @default(false)
+  is_closed    Boolean   @default(false)
   closed_at    DateTime?
 
   @@index([camp_camp_id])
@@ -353,6 +353,9 @@ model mission {
   mission_result   mission_result[]
   mission_question mission_question[]
   deletedAt        DateTime?
+
+  qr_pin   String? @db.VarChar(10)
+  qr_nonce String? @db.VarChar(64)
 
   @@index([deletedAt])
 }

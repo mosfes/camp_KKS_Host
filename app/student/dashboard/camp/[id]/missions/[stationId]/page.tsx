@@ -696,22 +696,22 @@ export default function StudentStationDetailPage() {
                                 startContent={<ScanLine size={18} />}
                                 onPress={resetQrScan}
                               >
-                                ลองสแกนอีกครั้ง
+                                  ลองสแกนอีกครั้ง
                               </Button>
-                            )}
-                            <Button
-                              className="w-full bg-gray-100 text-gray-700 font-medium"
-                              variant="flat"
-                              onPress={() => {
-                                setQrScanResult(null);
-                                setQrScanMessage("");
-                                setPinInput("");
-                                setShowPinInput(true);
-                              }}
-                            >
-                              กรอกรหัส PIN แทน
-                            </Button>
-                          </div>
+                              )}
+                              <Button
+                                className="w-full bg-gray-100 text-gray-700 font-medium"
+                                variant="flat"
+                                onPress={() => {
+                                  setQrScanResult(null);
+                                  setQrScanMessage("");
+                                  setPinInput("");
+                                  setShowPinInput(true);
+                                }}
+                              >
+                                กรอกรหัส PIN แทน
+                              </Button>
+                            </div>
                         </div>
                       );
                     }

@@ -54,7 +54,6 @@ export default function MonitorMissionModal({
   const [qrGeneratedAt, setQrGeneratedAt] = useState<Date | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [pinCopied, setPinCopied] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     if (isOpen && missionData?.mission_id) {
@@ -102,26 +101,7 @@ export default function MonitorMissionModal({
     }
   };
 
-  const regenerateQr = async () => {
-    try {
-      setRegenerating(true);
-      const res = await fetch(`/api/missions/${missionData.mission_id}/qr`, {
-        method: "POST",
-      });
-
-      if (!res.ok) throw new Error("Failed to regenerate");
-      const data = await res.json();
-
-      setQrPayload(data.qrPayload);
-      setQrPin(data.pin ?? null);
-      setQrGeneratedAt(data.generatedAt ? new Date(data.generatedAt) : null);
-      setPinCopied(false);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setRegenerating(false);
-    }
-  };
+// regenerateQr removed
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
@@ -196,22 +176,9 @@ export default function MonitorMissionModal({
                   {isQrMission && (
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                       <div className="flex items-center gap-2 mb-4">
-                        <QrCode className="text-[#6b857a]" size={20} />
                         <h3 className="font-bold text-gray-900">
                           QR Code สำหรับภารกิจนี้
                         </h3>
-                        <button
-                          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-[#6b857a] bg-[#6b857a]/10 hover:bg-[#6b857a]/20 transition-colors disabled:opacity-50"
-                          disabled={regenerating}
-                          title="สุ่ม QR + PIN ใหม่"
-                          onClick={regenerateQr}
-                        >
-                          <RefreshCw
-                            className={regenerating ? "animate-spin" : ""}
-                            size={13}
-                          />
-                          สุ่มรหัสใหม่
-                        </button>
                       </div>
                       {qrGeneratedAt && (
                         <p className="text-[10px] text-gray-400 text-right -mt-3 mb-2">
