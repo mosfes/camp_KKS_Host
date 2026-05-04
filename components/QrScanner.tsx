@@ -53,7 +53,7 @@ export default function QrScanner({ onScan, onError, active }: QrScannerProps) {
         setStarted(true);
         // Check for zoom
         try {
-          const capabilities = html5QrCode.getRunningTrackCapabilities();
+          const capabilities = html5QrCode.getRunningTrackCapabilities() as any;
           if (capabilities.zoom) {
             setZoomCapabilities({
               min: capabilities.zoom.min,
@@ -91,7 +91,7 @@ export default function QrScanner({ onScan, onError, active }: QrScannerProps) {
         scannerRef.current = html5QrCode;
 
         // Try to get cameras to find the best one
-        let cameras = [];
+        let cameras: Array<{ id: string; label: string }> = [];
         try {
           cameras = await Html5Qrcode.getCameras();
         } catch (e) {
