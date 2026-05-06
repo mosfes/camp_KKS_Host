@@ -12,7 +12,8 @@ import {
   Select,
   SelectItem,
 } from "@heroui/react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Eye,
   Clock,
@@ -48,12 +49,34 @@ export default function MonitorMissionModal({
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Lightbox
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
   // QR Code for QR_CODE_SCANNING missions
   const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [qrPin, setQrPin] = useState<string | null>(null);
   const [qrGeneratedAt, setQrGeneratedAt] = useState<Date | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [pinCopied, setPinCopied] = useState(false);
+
+  // Close lightbox on Escape — use capture phase so we intercept BEFORE HeroUI
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape" && lightboxSrc) {
+        e.stopPropagation();         // stop bubble phase
+        e.stopImmediatePropagation(); // stop other listeners at same element
+        setLightboxSrc(null);
+      }
+    },
+    [lightboxSrc],
+  );
+
+  useEffect(() => {
+    // capture: true  →  our handler fires before any bubble-phase listener (incl. HeroUI)
+    document.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      document.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [handleKeyDown]);
 
   useEffect(() => {
     if (isOpen && missionData?.mission_id) {
@@ -104,15 +127,23 @@ export default function MonitorMissionModal({
 // regenerateQr removed
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return "";
+    if (!dateString) return { date: "", time: "" };
     const localDateString = dateString.endsWith("Z")
       ? dateString.slice(0, -1)
       : dateString;
 
-    return new Date(localDateString).toLocaleString("th-TH", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
+    const d = new Date(localDateString);
+    return {
+      date: d.toLocaleDateString("th-TH", {
+        day: "numeric",
+        month: "numeric",
+        year: "2-digit",
+      }),
+      time: d.toLocaleTimeString("th-TH", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
   };
 
   const filteredResults = useMemo(() => {
@@ -138,7 +169,59 @@ export default function MonitorMissionModal({
     missionData?.type === "POST_TEST";
   const totalMcqQuestions = missionData?.mission_question?.length || 0;
 
+  // Render lightbox via portal so it always sits above HeroUI Modal portal
+  const lightbox =
+    lightboxSrc && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+              setLightboxSrc(null);
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <button
+              className="absolute top-4 right-4 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+                setLightboxSrc(null);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <svg
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <line x1="18" x2="6" y1="6" y2="18" />
+                <line x1="6" x2="18" y1="6" y2="18" />
+              </svg>
+            </button>
+            <img
+              alt="ภาพขนาดใหญ่"
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-2xl shadow-2xl"
+              src={lightboxSrc}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
+    <>
+      {lightbox}
     <Modal
       backdrop="blur"
       classNames={{
@@ -348,35 +431,40 @@ export default function MonitorMissionModal({
                       {filteredResults.map((result) => (
                         <div
                           key={result.enrollmentId}
-                          className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4"
+                          className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
                         >
-                          <div className="w-10 h-10 bg-[#6b857a]/10 rounded-full flex items-center justify-center text-[#6b857a] shrink-0">
-                            <User size={20} />
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-10 h-10 bg-[#6b857a]/10 rounded-full flex items-center justify-center text-[#6b857a] shrink-0">
+                              <User size={20} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-gray-900 truncate">
+                                {result.studentName}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                รหัส: {result.studentId}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-gray-900 truncate">
-                              {result.studentName}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              รหัส: {result.studentId}
-                            </p>
-                          </div>
-                          {result.isSubmitted ? (
-                            <div className="flex items-center gap-2 shrink-0">
-                              <div className="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-100 px-3 py-1.5 rounded-full text-xs font-bold">
-                                <CheckCircle2 size={14} />
-                                แสกนแล้ว
+                          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 ml-[52px] sm:ml-0">
+                            {result.isSubmitted ? (
+                              <>
+                                <div className="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-100 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold">
+                                  <CheckCircle2 size={14} />
+                                  แสกนแล้ว
+                                </div>
+                                <div className="flex flex-col items-end text-[10px] text-gray-400 leading-tight">
+                                  <span>{formatDate(result.submittedAt).date}</span>
+                                  <span>{formatDate(result.submittedAt).time}</span>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="flex items-center gap-1.5 bg-gray-100 text-gray-500 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-medium">
+                                <XCircle size={14} />
+                                ยังไม่แสกน
                               </div>
-                              <span className="text-xs text-gray-400">
-                                {formatDate(result.submittedAt)}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5 bg-gray-100 text-gray-500 px-3 py-1.5 rounded-full text-xs font-medium shrink-0">
-                              <XCircle size={14} />
-                              ยังไม่แสกน
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -411,13 +499,13 @@ export default function MonitorMissionModal({
                             </div>
                           )}
                           title={
-                            <div className="flex items-center justify-between w-full pr-2">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-[#6b857a]/10 rounded-full flex items-center justify-center text-[#6b857a]">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full pr-2 gap-2 sm:gap-4">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 bg-[#6b857a]/10 rounded-full flex items-center justify-center text-[#6b857a] shrink-0">
                                   <User size={20} />
                                 </div>
-                                <div className="text-left">
-                                  <p className="font-bold text-gray-900 leading-tight">
+                                <div className="text-left min-w-0">
+                                  <p className="font-bold text-gray-900 leading-tight truncate">
                                     {result.studentName}
                                   </p>
                                   <p className="text-xs text-gray-500 mt-0.5">
@@ -425,31 +513,32 @@ export default function MonitorMissionModal({
                                   </p>
                                 </div>
                               </div>
-                              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full">
+
+                              <div className="flex items-center gap-3 shrink-0 ml-[52px] sm:ml-0">
                                 {isMcqMission && result.isSubmitted && (
-                                  <div className="sm:mr-2 flex items-center gap-1.5 bg-[#6b857a]/10 text-[#6b857a] px-3 py-1 rounded-full border border-[#6b857a]/20">
-                                    <span className="font-bold">
-                                      คะแนน:{" "}
+                                  <div className="flex items-center gap-1.5 bg-[#6b857a]/10 text-[#6b857a] px-3 py-1 sm:py-1.5 rounded-xl border border-[#6b857a]/20">
+                                    <span className="text-[10px] sm:text-xs font-medium opacity-70">คะแนน</span>
+                                    <span className="text-xs sm:text-sm font-bold">
                                       {result.answers?.filter(
                                         (ans: any) => ans.isCorrect === true,
-                                      ).length || 0}{" "}
-                                      / {totalMcqQuestions}
+                                      ).length || 0} / {totalMcqQuestions}
                                     </span>
                                   </div>
                                 )}
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-2">
                                   {result.isSubmitted ? (
-                                    <>
+                                    <div className="flex flex-row items-center gap-1.5 bg-green-50/50 px-2 py-1 rounded-lg border border-green-100/50">
                                       <Clock
-                                        className="text-green-600"
-                                        size={12}
+                                        className="text-green-600 shrink-0"
+                                        size={14}
                                       />
-                                      <span className="text-green-700">
-                                        {formatDate(result.submittedAt)}
-                                      </span>
-                                    </>
+                                      <div className="flex flex-col text-[10px] sm:text-[11px] font-bold text-green-700 leading-tight">
+                                        <span>{formatDate(result.submittedAt).date}</span>
+                                        <span>{formatDate(result.submittedAt).time}</span>
+                                      </div>
+                                    </div>
                                   ) : (
-                                    <span className="text-gray-500">
+                                    <span className="text-[11px] font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
                                       ยังไม่ส่งงาน
                                     </span>
                                   )}
@@ -476,7 +565,7 @@ export default function MonitorMissionModal({
                                       </p>
                                     </div>
 
-                                    <div className="bg-[#6b857a]/5 p-4 rounded-xl text-sm text-gray-800 border border-[#6b857a]/10 ml-7">
+                                    <div className="bg-[#6b857a]/5 p-3 sm:p-4 rounded-xl text-sm text-gray-800 border border-[#6b857a]/10 ml-6 sm:ml-7">
                                       {ans.type === "TEXT" && (
                                         <span className="whitespace-pre-wrap leading-relaxed">
                                           {ans.answerText}
@@ -508,14 +597,14 @@ export default function MonitorMissionModal({
                                           <div className="relative group">
                                             <img
                                               alt="Student submission"
-                                              className="w-full max-w-md rounded-lg shadow-sm border border-gray-200 cursor-zoom-in hover:opacity-90 transition-opacity"
+                                              className="w-full max-w-md rounded-lg shadow-sm border border-gray-200 cursor-zoom-in hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
                                               src={ans.answerText}
-                                              onClick={() =>
-                                                window.open(
-                                                  ans.answerText,
-                                                  "_blank",
-                                                )
-                                              }
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                e.nativeEvent.stopImmediatePropagation();
+                                                setLightboxSrc(ans.answerText);
+                                              }}
+                                              onPointerDown={(e) => e.stopPropagation()}
                                             />
                                             <p className="text-[10px] text-gray-400 mt-1">
                                               คลิกที่รูปเพื่อดูขนาดใหญ่
@@ -555,5 +644,6 @@ export default function MonitorMissionModal({
         )}
       </ModalContent>
     </Modal>
+    </>
   );
 }
