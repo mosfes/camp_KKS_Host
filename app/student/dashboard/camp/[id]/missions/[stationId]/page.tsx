@@ -944,7 +944,6 @@ export default function StudentStationDetailPage() {
                                   <div className="flex flex-col gap-3">
                                     <input
                                       accept="image/*"
-                                      capture="environment"
                                       className="hidden"
                                       id={`file-${q.question_id}`}
                                       type="file"
