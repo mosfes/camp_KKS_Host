@@ -97,9 +97,9 @@ const TeacherManager = () => {
         try {
             const result = await studentService.getTeachersPaginated(pageNum, 20, searchTerm);
             const newData = Array.isArray(result) ? result : (result.data || []);
-            
+
             setTeachers(newData);
-            
+
             if (result.pagination) {
                 setHasMore(pageNum < result.pagination.totalPages);
                 setTotalPages(result.pagination.totalPages || 1);
@@ -229,27 +229,27 @@ const TeacherManager = () => {
             };
 
             if (cols.length >= 4 && cols[3].includes('@')) {
-               prefix_name = cols[0];
-               firstname = cols[1];
-               lastname = cols[2];
-               email = cols[3];
-               tel = cols[4] || "";
+                prefix_name = cols[0];
+                firstname = cols[1];
+                lastname = cols[2];
+                email = cols[3];
+                tel = cols[4] || "";
             } else if (cols.length >= 3 && cols[2].includes('@')) {
-               const extracted = extractPrefix(cols[0]);
-               prefix_name = extracted.prefix_name;
-               firstname = extracted.cleanName;
-               lastname = cols[1];
-               email = cols[2];
-               tel = cols[3] || "";
+                const extracted = extractPrefix(cols[0]);
+                prefix_name = extracted.prefix_name;
+                firstname = extracted.cleanName;
+                lastname = cols[1];
+                email = cols[2];
+                tel = cols[3] || "";
             } else {
-               const combined = cols[0];
-               const extracted = extractPrefix(combined);
-               prefix_name = extracted.prefix_name;
-               const nameParts = extracted.cleanName.split(' ');
-               firstname = nameParts[0];
-               lastname = nameParts.slice(1).join(' ');
-               email = cols[1];
-               tel = cols[2] || "";
+                const combined = cols[0];
+                const extracted = extractPrefix(combined);
+                prefix_name = extracted.prefix_name;
+                const nameParts = extracted.cleanName.split(' ');
+                firstname = nameParts[0];
+                lastname = nameParts.slice(1).join(' ');
+                email = cols[1];
+                tel = cols[2] || "";
             }
 
             if (!firstname || !email) return null;
@@ -372,7 +372,7 @@ const TeacherManager = () => {
     }
 
     return (
-        <div className="flex flex-col gap-6 w-full pt-4">
+        <div className="flex flex-col gap-6 w-full pt-4 light">
             <Card className="border border-gray-100 shadow-sm rounded-2xl bg-white" radius="none">
                 <CardBody className="p-4 md:p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 w-full">
@@ -434,9 +434,10 @@ const TeacherManager = () => {
                             shadow="none"
                             isHeaderSticky
                             classNames={{
-                                wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[700px] md:min-w-full",
+                                wrapper: "bg-white text-gray-800 border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[700px] md:min-w-full",
                                 th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
-                                td: "py-4 border-b border-gray-50/50",
+                                td: "py-4 border-b border-gray-50/50 text-gray-800 bg-white",
+                                tr: "bg-white",
                             }}
                         >
                             <TableHeader>
@@ -457,7 +458,7 @@ const TeacherManager = () => {
                                 }
                             >
                                 {teachers.map((t) => (
-                                    <TableRow key={t.teachers_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
+                                    <TableRow key={t.teachers_id} className="bg-white text-gray-800 border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
                                         <TableCell>{t.prefix_name ? `${t.prefix_name}${t.firstname}` : t.firstname} {t.lastname}</TableCell>
                                         <TableCell>{t.email}</TableCell>
                                         <TableCell>{t.tel || "-"}</TableCell>
@@ -465,16 +466,15 @@ const TeacherManager = () => {
                                             <Chip
                                                 size="sm"
                                                 variant="flat"
-                                                className={`border font-medium ${
-                                                    t.role?.toUpperCase() === "ADMIN"
+                                                className={`border font-medium ${t.role?.toUpperCase() === "ADMIN"
                                                         ? "bg-[#f7f2fa] text-[#8e6ba8] border-[#e9dff2]"
                                                         : "bg-[#eff2f0] text-[#5d7c6f] border-[#dbe6e1]"
-                                                }`}
+                                                    }`}
                                             >
-                                                {t.role?.toUpperCase() === "ADMIN" 
-                                                    ? "ผู้ดูแลระบบ" 
-                                                    : (t.classrooms && t.classrooms.length > 0) 
-                                                        ? "ครูประจำชั้น" 
+                                                {t.role?.toUpperCase() === "ADMIN"
+                                                    ? "ผู้ดูแลระบบ"
+                                                    : (t.classrooms && t.classrooms.length > 0)
+                                                        ? "ครูประจำชั้น"
                                                         : (t.camp && t.camp.length > 0)
                                                             ? "ครูหัวหน้าค่าย"
                                                             : "ครู"
@@ -508,7 +508,7 @@ const TeacherManager = () => {
                             แสดง {teachers.length} จาก {totalTeachers} รายการ
                         </div>
                         <div className="flex-1 flex justify-center order-1 md:order-2 w-full">
-                        {totalPages > 1 && (
+                            {totalPages > 1 && (
                                 <Pagination
                                     isCompact
                                     showControls
@@ -524,7 +524,7 @@ const TeacherManager = () => {
                                         cursor: "bg-[#5d7c6f] text-white",
                                     }}
                                 />
-                        )}
+                            )}
                         </div>
                     </div>
                 </CardBody>
@@ -694,81 +694,86 @@ const TeacherManager = () => {
                 <ModalContent>
                     {(onClose) => {
                         const isAllSelected = selectedImportKeys === "all";
-                        const selectedCount = isAllSelected 
-                            ? importPreviewData.filter(item => !item.isDuplicate && item.isEmailValid).length 
+                        const selectedCount = isAllSelected
+                            ? importPreviewData.filter(item => !item.isDuplicate && item.isEmailValid).length
                             : selectedImportKeys.size;
-                        
+
                         return (
-                        <>
-                            <ModalHeader>ยืนยันการนำเข้าข้อมูล (เลือก {selectedCount} จาก {importPreviewData.length} รายการ)</ModalHeader>
-                            <ModalBody>
-                                <div className="overflow-x-auto w-full">
-                                    <Table
-                                        aria-label="Import Preview"
-                                        selectionMode="multiple"
-                                        selectedKeys={selectedImportKeys}
-                                        onSelectionChange={setSelectedImportKeys}
-                                        disabledKeys={importPreviewData.filter(item => item.isDuplicate || !item.isEmailValid).map(item => String(item.id))}
-                                        color="primary"
-                                        classNames={{ wrapper: "min-w-fit" }}
-                                    >
-                                        <TableHeader>
-                                            <TableColumn>ชื่อ-นามสกุล</TableColumn>
-                                            <TableColumn>อีเมล</TableColumn>
-                                            <TableColumn>เบอร์โทร</TableColumn>
-                                            <TableColumn>สถานะ</TableColumn>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {importPreviewData.map((t) => (
-                                                <TableRow key={t.id}>
-                                                    <TableCell>
-                                                        <div className="whitespace-nowrap">
-                                                            {t.prefix_name ? `${t.prefix_name}${t.firstname}` : t.firstname} {t.lastname}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className={!t.isEmailValid ? "text-red-500" : ""}>{t.email}</TableCell>
-                                                    <TableCell>{t.tel || "-"}</TableCell>
-                                                    <TableCell>
-                                                        {!t.isEmailValid ? (
-                                                            <span className="text-orange-500 text-xs bg-orange-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
-                                                                รูปแบบอีเมลไม่ถูกต้อง
-                                                            </span>
-                                                        ) : t.isDuplicate ? (
-                                                            <span className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
-                                                                มีอีเมลนี้แล้ว
-                                                            </span>
-                                                        ) : (
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
-                                                                    พร้อมนำเข้า
-                                                                </span>
-                                                                {t.suggestion && (
-                                                                    <Tooltip content={t.suggestion} color="warning" className="text-white">
-                                                                        <span className="cursor-help text-orange-400 hover:text-orange-600">
-                                                                            <HelpCircle size={16} />
-                                                                        </span>
-                                                                    </Tooltip>
-                                                                )}
+                            <>
+                                <ModalHeader>ยืนยันการนำเข้าข้อมูล (เลือก {selectedCount} จาก {importPreviewData.length} รายการ)</ModalHeader>
+                                <ModalBody>
+                                    <div className="overflow-x-auto w-full">
+                                        <Table
+                                            aria-label="Import Preview"
+                                            selectionMode="multiple"
+                                            selectedKeys={selectedImportKeys}
+                                            onSelectionChange={setSelectedImportKeys}
+                                            disabledKeys={importPreviewData.filter(item => item.isDuplicate || !item.isEmailValid).map(item => String(item.id))}
+                                            color="primary"
+                                            classNames={{ 
+                                                wrapper: "bg-white text-gray-800 min-w-fit",
+                                                th: "bg-gray-50 text-gray-800",
+                                                td: "bg-white text-gray-800",
+                                                tr: "bg-white",
+                                            }}
+                                        >
+                                            <TableHeader>
+                                                <TableColumn>ชื่อ-นามสกุล</TableColumn>
+                                                <TableColumn>อีเมล</TableColumn>
+                                                <TableColumn>เบอร์โทร</TableColumn>
+                                                <TableColumn>สถานะ</TableColumn>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {importPreviewData.map((t) => (
+                                                    <TableRow key={t.id} className="bg-white text-gray-800 border-b border-gray-100">
+                                                        <TableCell>
+                                                            <div className="whitespace-nowrap">
+                                                                {t.prefix_name ? `${t.prefix_name}${t.firstname}` : t.firstname} {t.lastname}
                                                             </div>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </ModalBody>
-                            <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
-                                <Button
-                                    className="bg-sage text-white shadow-sm rounded-full"
-                                    onPress={confirmImport}
-                                    isLoading={isLoadingImport}
-                                >
-                                    ยืนยันนำเข้า
-                                </Button>
-                            </ModalFooter>
-                        </>
+                                                        </TableCell>
+                                                        <TableCell className={!t.isEmailValid ? "text-red-500" : ""}>{t.email}</TableCell>
+                                                        <TableCell>{t.tel || "-"}</TableCell>
+                                                        <TableCell>
+                                                            {!t.isEmailValid ? (
+                                                                <span className="text-orange-500 text-xs bg-orange-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
+                                                                    รูปแบบอีเมลไม่ถูกต้อง
+                                                                </span>
+                                                            ) : t.isDuplicate ? (
+                                                                <span className="text-red-500 text-xs bg-red-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
+                                                                    มีอีเมลนี้แล้ว
+                                                                </span>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-md font-medium whitespace-nowrap">
+                                                                        พร้อมนำเข้า
+                                                                    </span>
+                                                                    {t.suggestion && (
+                                                                        <Tooltip content={t.suggestion} color="warning" className="text-white">
+                                                                            <span className="cursor-help text-orange-400 hover:text-orange-600">
+                                                                                <HelpCircle size={16} />
+                                                                            </span>
+                                                                        </Tooltip>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </ModalBody>
+                                <ModalFooter>
+                                    <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
+                                    <Button
+                                        className="bg-sage text-white shadow-sm rounded-full"
+                                        onPress={confirmImport}
+                                        isLoading={isLoadingImport}
+                                    >
+                                        ยืนยันนำเข้า
+                                    </Button>
+                                </ModalFooter>
+                            </>
                         );
                     }}
                 </ModalContent>

@@ -514,6 +514,17 @@ export default {
         return await res.json();
     } catch (e) { throw e; }
   },
+  updateClassroomType : async (data) => {
+    try {
+        const res = await fetch(API_URL_CLASSROOM_TYPES, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Failed to update classroom type');
+        return await res.json();
+    } catch (e) { throw e; }
+  },
 
   getDeletedStudents: async (page = 1, limit = 20, search = "") => {
     try {

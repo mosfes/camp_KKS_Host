@@ -56,12 +56,17 @@ const ClassroomManager = () => {
     const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onOpenChange: onSettingsChange } = useDisclosure();
     const [classroomTypes, setClassroomTypes] = useState([]);
     const [newTypeData, setNewTypeData] = useState({ name: "", valid_grades: [] });
+    const [isEditingType, setIsEditingType] = useState(false);
+    const [editTypeId, setEditTypeId] = useState(null);
 
     const handleOpenSettings = async () => {
         setIsLoading(true);
         try {
             const types = await studentService.getClassroomTypes();
             setClassroomTypes(types);
+            setIsEditingType(false);
+            setEditTypeId(null);
+            setNewTypeData({ name: "", valid_grades: [] });
             onSettingsOpen();
         } catch (error) {
             console.error(error);
@@ -75,17 +80,37 @@ const ClassroomManager = () => {
         if (newTypeData.valid_grades.length === 0) return showError("ข้อมูลไม่ครบ", "กรุณาเลือกอย่างน้อย 1 ระดับชั้น");
 
         try {
-            await studentService.addClassroomType({
-                name: newTypeData.name,
-                valid_grades: newTypeData.valid_grades.join(",")
-            });
-            showSuccess("สำเร็จ", "เพิ่มข้อมูลสำเร็จ");
+            if (isEditingType) {
+                await studentService.updateClassroomType({
+                    classroom_type_id: editTypeId,
+                    name: newTypeData.name,
+                    valid_grades: newTypeData.valid_grades.join(",")
+                });
+                showSuccess("สำเร็จ", "แก้ไขข้อมูลสำเร็จ");
+            } else {
+                await studentService.addClassroomType({
+                    name: newTypeData.name,
+                    valid_grades: newTypeData.valid_grades.join(",")
+                });
+                showSuccess("สำเร็จ", "เพิ่มข้อมูลสำเร็จ");
+            }
             setNewTypeData({ name: "", valid_grades: [] });
+            setIsEditingType(false);
+            setEditTypeId(null);
             const types = await studentService.getClassroomTypes();
             setClassroomTypes(types);
         } catch (e) {
             showError("เกิดข้อผิดพลาด", e.message);
         }
+    };
+
+    const handleEditType = (type) => {
+        setIsEditingType(true);
+        setEditTypeId(type.classroom_type_id);
+        setNewTypeData({
+            name: type.name,
+            valid_grades: type.valid_grades.split(',')
+        });
     };
 
     const handleDeleteClassroomType = (id) => {
@@ -615,14 +640,29 @@ const ClassroomManager = () => {
                                     </Tab>
                                     <Tab key="types" title="ประเภทห้องเรียน">
                                         <div className="border p-4 rounded-lg mb-4 bg-gray-50">
-                                            <h4 className="font-semibold mb-2">เพิ่มประเภทห้องใหม่</h4>
+                                            <h4 className="font-semibold mb-2">{isEditingType ? "แก้ไขประเภทห้อง" : "เพิ่มประเภทห้องใหม่"}</h4>
                                             <div className="flex gap-2 mb-2">
                                                 <Input
                                                     placeholder="ชื่อประเภท (เช่น ห้อง Gifted)"
                                                     value={newTypeData.name}
                                                     onChange={(e) => setNewTypeData({ ...newTypeData, name: e.target.value })}
                                                 />
-                                                <Button onClick={handleAddClassroomType} className="bg-sage text-white shadow-sm rounded-full">บันทึก</Button>
+                                                <Button onClick={handleAddClassroomType} className="bg-sage text-white shadow-sm rounded-full">
+                                                    {isEditingType ? "แก้ไข" : "บันทึก"}
+                                                </Button>
+                                                {isEditingType && (
+                                                    <Button 
+                                                        variant="light" 
+                                                        onClick={() => {
+                                                            setIsEditingType(false);
+                                                            setEditTypeId(null);
+                                                            setNewTypeData({ name: "", valid_grades: [] });
+                                                        }} 
+                                                        className="rounded-full"
+                                                    >
+                                                        ยกเลิก
+                                                    </Button>
+                                                )}
                                             </div>
                                             <div className="flex gap-4">
                                                 <span className="text-sm pt-1">ใช้กับระดับชั้น:</span>
@@ -657,12 +697,20 @@ const ClassroomManager = () => {
                                                             {type.valid_grades.split(',').map(g => `ม.${g}`).join(', ')}
                                                         </TableCell>
                                                         <TableCell>
-                                                            <span
-                                                                className="text-[#E84A5F] cursor-pointer hover:text-[#FF847C] transition-colors"
-                                                                onClick={() => handleDeleteClassroomType(type.classroom_type_id)}
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </span>
+                                                            <div className="flex items-center gap-3">
+                                                                <span
+                                                                    className="text-sage cursor-pointer hover:text-sage-dark transition-colors"
+                                                                    onClick={() => handleEditType(type)}
+                                                                >
+                                                                    <SquarePen size={16} />
+                                                                </span>
+                                                                <span
+                                                                    className="text-[#E84A5F] cursor-pointer hover:text-[#FF847C] transition-colors"
+                                                                    onClick={() => handleDeleteClassroomType(type.classroom_type_id)}
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </span>
+                                                            </div>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}

@@ -67,3 +67,30 @@ export async function DELETE(request) {
     );
   }
 }
+
+export async function PATCH(request) {
+  try {
+    const body = await request.json();
+    const { classroom_type_id, name, valid_grades } = body;
+
+    if (!classroom_type_id) {
+      return NextResponse.json({ error: "ID required" }, { status: 400 });
+    }
+
+    const updatedType = await prisma.classroom_types.update({
+      where: { classroom_type_id: parseInt(classroom_type_id) },
+      data: {
+        name,
+        valid_grades,
+      },
+    });
+
+    return NextResponse.json(updatedType);
+  } catch (error) {
+    // console.error("Update type error:", error);
+    return NextResponse.json(
+      { error: "เกิดข้อผิดพลาดภายในระบบ" },
+      { status: 500 },
+    );
+  }
+}
