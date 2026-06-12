@@ -3,6 +3,7 @@ import { Metadata, Viewport } from "next";
 import clsx from "clsx";
 import { thTH } from "@clerk/localizations";
 import { ClerkProvider } from "@clerk/nextjs";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { Providers } from "./providers";
 
@@ -69,6 +70,7 @@ export default function LoginLayout({
           <Providers themeProps={{ attribute: "class", defaultTheme: "light" }}>
             {children}
           </Providers>
+          <SpeedInsights />
         </body>
       </html>
     </ClerkProvider>
