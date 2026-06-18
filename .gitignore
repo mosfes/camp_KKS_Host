@@ -45,3 +45,6 @@ bun.lockb
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# config files
+new-config.yaml
