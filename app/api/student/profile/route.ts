@@ -27,8 +27,6 @@ export async function GET() {
 
     return NextResponse.json(student);
   } catch {
-    //     console.error("Profile GET Error:", error);
-
     return NextResponse.json(
       { _error: "Internal Server Error" },
       { status: 500 },
@@ -49,13 +47,23 @@ export async function PUT(req: any) {
     const { payload: studentSession } = await jwtVerify(session.value, secret);
     const body = await req.json();
 
-    const updateData = {
+    const updateData: any = {
       chronic_disease: body.chronic_disease || null,
       food_allergy: body.food_allergy || null,
       birthday: body.birthday ? new Date(body.birthday) : null,
       remark: body.remark || null,
       tel: body.student_tel || null,
     };
+
+    // อัปเดตชื่อเล่นถ้ามี
+    if (body.nickname !== undefined) {
+      updateData.nickname = body.nickname?.trim() || null;
+    }
+
+    // อัปเดต profile_image_url ถ้ามี
+    if (body.profile_image_url !== undefined) {
+      updateData.profile_image_url = body.profile_image_url || null;
+    }
 
     const updatedStudent = await prisma.students.update({
       where: { students_id: Number(studentSession.students_id) },
@@ -76,8 +84,6 @@ export async function PUT(req: any) {
           data: { tel: parentTelDigits },
         });
       } else {
-        // Create a placeholder parent record so the tel is saved for when they log in
-        // We'll use "รอระบุ" (To be specified) as placeholder name
         await prisma.parents.create({
           data: {
             firstname: "รอระบุ",
@@ -86,7 +92,7 @@ export async function PUT(req: any) {
             password: await require("bcryptjs").hash(
               `kks${studentSession.students_id}`,
               10,
-            ), // Default hashed password
+            ),
             username_student_id: Number(studentSession.students_id),
           },
         });
@@ -95,8 +101,6 @@ export async function PUT(req: any) {
 
     return NextResponse.json({ success: true, data: updatedStudent });
   } catch {
-    //     console.error("Profile PUT Error:", error);
-
     return NextResponse.json(
       { _error: "Internal Server Error" },
       { status: 500 },

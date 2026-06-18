@@ -39,17 +39,19 @@ model teachers {
 }
 
 model students {
-  students_id     Int       @id
-  prefix_name     String?   @db.VarChar(255)
-  firstname       String    @db.VarChar(255)
-  lastname        String    @db.VarChar(255)
-  birthday        DateTime?
-  food_allergy    String?   @db.VarChar(255)
-  chronic_disease String?   @db.VarChar(255)
-  remark          String?   @db.VarChar(255)
-  tel             String?   @db.VarChar(10)
-  email           String    @db.VarChar(255)
-  deletedAt       DateTime?
+  students_id              Int       @id
+  prefix_name              String?   @db.VarChar(255)
+  firstname                String    @db.VarChar(255)
+  lastname                 String    @db.VarChar(255)
+  nickname                 String?   @db.VarChar(100)
+  profile_image_url        String?   @db.VarChar(500)
+  birthday                 DateTime?
+  food_allergy             String?   @db.VarChar(255)
+  chronic_disease          String?   @db.VarChar(255)
+  remark                   String?   @db.VarChar(255)
+  tel                      String?   @db.VarChar(10)
+  email                    String    @db.VarChar(255)
+  deletedAt                DateTime?
 
   parents                   parents[]
   classroom_students        classroom_students[]
@@ -491,6 +493,7 @@ model survey_question {
   question_text String               @db.VarChar(255)
   question_type survey_question_type
   scale_max     Int?
+  options       String?              @db.Text
 
   survey_survey_id Int
   survey           survey @relation(fields: [survey_survey_id], references: [survey_id], onDelete: Cascade)
@@ -545,6 +548,7 @@ model survey_template_question {
   question_text String               @db.VarChar(255)
   question_type survey_question_type
   scale_max     Int?
+  options       String?              @db.Text
 
   template_id Int
   template    survey_template @relation(fields: [template_id], references: [template_id], onDelete: Cascade)
@@ -554,4 +558,5 @@ enum survey_question_type {
   text
   scale
   header
+  grid
 }

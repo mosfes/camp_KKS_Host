@@ -19,11 +19,27 @@ export async function GET() {
     }
     const { jwtVerify } = await import("jose");
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload: student } = await jwtVerify(session.value, secret);
+    const { payload: studentSession } = await jwtVerify(session.value, secret);
+
+    const dbStudent = await prisma.students.findUnique({
+      where: { students_id: Number(studentSession.students_id) },
+      select: {
+        students_id: true,
+        firstname: true,
+        lastname: true,
+        nickname: true,
+        profile_image_url: true,
+        email: true,
+      }
+    });
+
+    if (!dbStudent) {
+       return NextResponse.json({ error: "ไม่พบข้อมูลนักเรียน" }, { status: 404 });
+    }
 
     // ดึงข้อมูลห้องเรียนเพิ่มเติม
     const classroomInfo = await prisma.classroom_students.findFirst({
-      where: { student_students_id: Number(student.students_id) },
+      where: { student_students_id: Number(dbStudent.students_id) },
       include: {
         classroom: {
           include: {
@@ -68,7 +84,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      ...student,
+      ...dbStudent,
       classroom: classroom
         ? {
             classroom_id: classroom.classroom_id,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
@@ -14,6 +14,7 @@ import {
   CalendarDays,
   MessageSquare,
   ChevronLeft,
+  Camera,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -22,6 +23,8 @@ interface StudentProfile {
   prefix_name: string | null;
   firstname: string;
   lastname: string;
+  nickname: string | null;
+  profile_image_url: string | null;
   email: string;
   birthday: string | null;
   food_allergy: string | null;
@@ -42,6 +45,7 @@ interface StudentProfile {
 }
 
 interface FormData {
+  nickname: string;
   chronic_disease: string;
   food_allergy: string;
   birthday: string;
@@ -161,6 +165,7 @@ const SectionCard = ({
 export default function StudentProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -169,7 +174,13 @@ export default function StudentProfilePage() {
   const [apiError, setApiError] = useState("");
   const [fieldError, setFieldError] = useState<Record<string, string>>({});
 
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   const [form, setForm] = useState<FormData>({
+    nickname: "",
     chronic_disease: "",
     food_allergy: "",
     birthday: "",
@@ -205,6 +216,7 @@ export default function StudentProfilePage() {
             day: parts[2] ?? "",
           });
           setForm({
+            nickname: data.nickname ?? "",
             chronic_disease: data.chronic_disease ?? "",
             food_allergy: data.food_allergy ?? "",
             birthday: birthdayISO,
@@ -212,6 +224,11 @@ export default function StudentProfilePage() {
             parent_tel: parentTel,
             remark: data.remark ?? "",
           });
+
+          // Since we use public URLs, we don't need to fetch a signed URL anymore
+          if (data.profile_image_url) {
+             setAvatarUrl(data.profile_image_url);
+          }
         }
       })
       .catch(() => {})
@@ -254,6 +271,44 @@ export default function StudentProfilePage() {
     return errors;
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+       setApiError("กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น");
+       return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+       setApiError("ขนาดไฟล์ต้องไม่เกิน 5MB");
+       return;
+    }
+
+    setApiError("");
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewImage(objectUrl);
+    
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/student/profile/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setPendingImageUrl(data.url);
+    } catch (err: any) {
+      setApiError(err.message || "อัปโหลดรูปล้มเหลว");
+      setPreviewImage(null);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSave = async () => {
     setApiError("");
     const errors = validate();
@@ -263,33 +318,48 @@ export default function StudentProfilePage() {
 
     setSaving(true);
     try {
+      const submitData: any = { ...form };
+      if (pendingImageUrl) {
+        submitData.profile_image_url = pendingImageUrl;
+      }
+
       const res = await fetch("/api/student/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(submitData),
       });
       const data = await res.json();
 
       if (!res.ok) {
         setApiError(data.error ?? "เกิดข้อผิดพลาด");
-
         return;
       }
 
       setSuccess(true);
       setShowToast(true);
+      
       // Refresh profile data
       const refreshed = await fetch("/api/student/profile").then((r) =>
         r.ok ? r.json() : null,
       );
 
-      if (refreshed) setProfile(refreshed);
+      if (refreshed) {
+        setProfile(refreshed);
+        if (pendingImageUrl) {
+           setAvatarUrl(pendingImageUrl);
+        }
+      }
+      setPendingImageUrl(null);
+      setPreviewImage(null);
+
       setTimeout(() => {
         setSuccess(false);
         setEditing(false);
       }, 1500);
       setTimeout(() => {
         setShowToast(false);
+        // Refresh page after a short delay to update Navbar
+        window.location.reload();
       }, 3000);
     } catch {
       setApiError("เกิดข้อผิดพลาด กรุณาลองใหม่");
@@ -310,6 +380,7 @@ export default function StudentProfilePage() {
       day: parts[2] ?? "",
     });
     setForm({
+      nickname: profile.nickname ?? "",
       chronic_disease: profile.chronic_disease ?? "",
       food_allergy: profile.food_allergy ?? "",
       birthday: birthdayISO,
@@ -317,6 +388,8 @@ export default function StudentProfilePage() {
       parent_tel: parentTel,
       remark: profile.remark ?? "",
     });
+    setPendingImageUrl(null);
+    setPreviewImage(null);
     setFieldError({});
     setApiError("");
     setEditing(false);
@@ -362,12 +435,45 @@ export default function StudentProfilePage() {
       {/* ── Avatar Card ── */}
       <div className="bg-[#5d7c6f] rounded-2xl p-6 text-white relative overflow-hidden">
         <div className="flex items-center gap-4 relative z-10">
-          <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold select-none">
-            {initials}
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-3xl font-bold select-none overflow-hidden border-2 border-white/40">
+              {previewImage || avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={(previewImage || avatarUrl) as string} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+            {editing && (
+              <>
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="absolute bottom-0 right-0 w-7 h-7 bg-white rounded-full flex items-center justify-center text-[#5d7c6f] shadow-md hover:bg-gray-100 disabled:opacity-50"
+                  title="เปลี่ยนรูปโปรไฟล์"
+                >
+                  {uploadingImage ? (
+                    <div className="w-3 h-3 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Camera size={14} />
+                  )}
+                </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleImageUpload} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+              </>
+            )}
           </div>
           <div>
-            <p className="font-bold text-lg">{displayName}</p>
-            <p className="text-sm opacity-80">{profile.email}</p>
+            <p className="font-bold text-xl">{displayName}</p>
+            {(form.nickname || profile.nickname) && !editing ? (
+               <p className="text-sm opacity-90 font-medium">น้อง{form.nickname || profile.nickname}</p>
+            ) : null}
+            <p className="text-sm opacity-80 mt-1">{profile.email}</p>
             <p className="text-xs opacity-70 mt-0.5">
               รหัสนักเรียน: {profile.students_id}
             </p>
@@ -415,6 +521,19 @@ export default function StudentProfilePage() {
           </div>
         )}
         <InfoRow label="ชื่อ-นามสกุล" value={displayName} />
+        {editing ? (
+          <div className="mt-3">
+            <FieldInput
+               label="ชื่อเล่น"
+               placeholder="เช่น กุ๊กไก่"
+               value={form.nickname}
+               onChange={(v) => setForm((f) => ({ ...f, nickname: v }))}
+               error={fieldError.nickname}
+            />
+          </div>
+        ) : (
+          <InfoRow label="ชื่อเล่น" value={displayVal(profile.nickname)} />
+        )}
         <InfoRow label="อีเมล" value={profile.email} />
         <InfoRow label="วันเกิด" value={formatBirthdayThai(profile.birthday)} />
       </SectionCard>
@@ -567,14 +686,14 @@ export default function StudentProfilePage() {
           <div className="flex gap-3">
             <button
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border border-gray-200 bg-white text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
-              disabled={saving}
+              disabled={saving || uploadingImage}
               onClick={handleCancelEdit}
             >
               <X size={16} /> ยกเลิก
             </button>
             <button
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#5d7c6f] text-white font-semibold text-sm hover:bg-[#4a6659] transition-colors disabled:opacity-60 shadow-md"
-              disabled={saving}
+              disabled={saving || uploadingImage}
               onClick={handleSave}
             >
               {saving ? (

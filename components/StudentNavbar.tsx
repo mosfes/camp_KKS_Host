@@ -22,7 +22,9 @@ export function AppNavbar() {
     students_id: number;
     firstname: string;
     lastname: string;
+    nickname: string | null;
     email: string;
+    profile_image_url: string | null;
   } | null>(null);
 
   const [mounted, setMounted] = useState(false);
@@ -47,6 +49,7 @@ export function AppNavbar() {
   const displayName = student
     ? `${student.firstname} ${student.lastname}`
     : "...";
+  const displayNickname = student?.nickname ?? null;
   const displayEmail = student?.email ?? "";
   const initials = student
     ? `${student.firstname[0]}${student.lastname[0]}`
@@ -79,24 +82,47 @@ export function AppNavbar() {
                   suppressHydrationWarning
                   className="flex items-center gap-2 cursor-pointer"
                 >
+                  {/* แสดงชื่อเล่น + badge นักเรียน */}
                   {student && (
-                    <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]">
-                      นักเรียน
-                    </span>
+                    <div className="hidden sm:flex items-center gap-2">
+                      {displayNickname && (
+                        <span className="text-sm font-semibold text-gray-700">
+                          น้อง{displayNickname}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]">
+                        นักเรียน
+                      </span>
+                    </div>
                   )}
-                  <Avatar
-                    as="button"
-                    className="bg-[#5d7c6f] text-white transition-transform"
-                    name={initials}
-                    size="sm"
-                  />
+
+                  {/* Avatar — แสดงรูปถ้ามี url */}
+                  {student?.profile_image_url ? (
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#5d7c6f]/30 flex-shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        alt="โปรไฟล์"
+                        className="w-full h-full object-cover"
+                        src={student.profile_image_url}
+                      />
+                    </div>
+                  ) : (
+                    <Avatar
+                      as="button"
+                      className="bg-[#5d7c6f] text-white transition-transform"
+                      name={initials}
+                      size="sm"
+                    />
+                  )}
                 </div>
               </DropdownTrigger>
 
               <DropdownMenu aria-label="Profile Actions" variant="flat">
                 <DropdownItem key="profile" className="h-14 gap-2">
                   <div>
-                    <p className="font-semibold">{displayName}</p>
+                    <p className="font-semibold">
+                      {displayNickname ? `น้อง${displayNickname}` : displayName}
+                    </p>
                     <p className="text-xs text-gray-500">{displayEmail}</p>
                   </div>
                 </DropdownItem>
@@ -136,6 +162,7 @@ export function AppNavbar() {
           )}
         </NavbarItem>
       </NavbarContent>
+
       {/* Loading Overlay for Logout */}
       {isLoggingOut && (
         <div className="fixed inset-0 z-[9999] bg-white/50 backdrop-blur-sm flex items-center justify-center">
