@@ -187,7 +187,7 @@ function DashboardContent() {
   };
 
   const camps = useMemo(() => {
-    if (!rawCamps) return [];
+    if (!rawCamps || !Array.isArray(rawCamps)) return [];
 
     return rawCamps.map((camp: any) => {
       // Determine status label
@@ -239,7 +239,7 @@ function DashboardContent() {
   // Handled by SWR
 
   useEffect(() => {
-    if (dbAcademicYears) {
+    if (dbAcademicYears && Array.isArray(dbAcademicYears)) {
       const activeYear = dbAcademicYears.find(
         (y: any) =>
           y.status === "แอคทีฟ" ||
