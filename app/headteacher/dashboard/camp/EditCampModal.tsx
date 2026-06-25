@@ -95,6 +95,7 @@ export default function EditCampModal({
   ]);
   const [campImage, setCampImage] = useState<string | null>(null);
   const [campImageFile, setCampImageFile] = useState<File | null>(null);
+
   const [formData, setFormData] = useState<FormData>({
     name: "",
     location: "",
@@ -1160,9 +1161,16 @@ export default function EditCampModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t bg-gray-50">
+        <div className="p-6 border-t bg-gray-50 flex gap-2">
           <button
-            className="w-full py-4 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-bold shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-transparent text-gray-600 rounded-xl hover:bg-gray-100 transition-all font-bold flex items-center justify-center gap-2"
+            disabled={isLoading}
+            onClick={onClose}
+          >
+            ยกเลิก
+          </button>
+          <button
+            className="w-full py-4 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-bold shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading}
             onClick={handleSubmit}
           >

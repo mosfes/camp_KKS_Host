@@ -122,7 +122,7 @@ export default function StudentSurveyPage() {
 
   if (loading || isCompleted) {
     return (
-      <div className="p-8 text-center bg-[#F5F1E8] min-h-screen flex items-center justify-center">
+      <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
         {loading ? "กำลังโหลดแบบประเมิน..." : "กำลังพากลับหน้าภารกิจ..."}
       </div>
     );
@@ -131,7 +131,7 @@ export default function StudentSurveyPage() {
   if (!survey) return null;
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
+    <div className="min-h-screen bg-[#f5f5f2]">
       {/* Header */}
       <div className="bg-white px-4 py-4 shadow-sm flex items-center gap-4 sticky top-0 z-50">
         <Button isIconOnly variant="light" onPress={() => router.back()}>
@@ -182,48 +182,50 @@ export default function StudentSurveyPage() {
               </h3>
 
               {q.question_type === "scale" && (
-                <div className="mt-2">
-                  <div className="flex items-center gap-2">
-                    {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
-                      const value = i + 1;
-                      const selected = Number(answers[q.question_id]) >= value;
+                <div className="mt-4 overflow-x-auto pb-2">
+                  <div className="inline-block min-w-full sm:min-w-[auto]">
+                    <div className="flex items-center justify-between sm:justify-start gap-4 sm:gap-6 pb-6">
+                      {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
+                        const scaleMax = q.scale_max || 5;
+                        const value = scaleMax - i;
+                        const isSelected = Number(answers[q.question_id]) === value;
 
-                      return (
-                        <button
-                          key={value}
-                          aria-label={`ให้คะแนน ${value}`}
-                          className="flex flex-col items-center gap-1 group focus:outline-none"
-                          type="button"
-                          onClick={() =>
-                            handleAnswerChange(q.question_id, value.toString())
-                          }
-                        >
-                          <Star
-                            className={`transition-all duration-150 ${
-                              selected
-                                ? "fill-amber-400 text-amber-400 scale-110"
-                                : "fill-none text-gray-300 group-hover:text-amber-300 group-hover:scale-110"
-                            }`}
-                            size={36}
-                          />
-                          <span
-                            className={`text-xs font-medium transition-colors ${selected ? "text-amber-500" : "text-gray-400"}`}
+                        return (
+                          <button
+                            key={value}
+                            aria-label={`ให้คะแนน ${value}`}
+                            className="flex flex-col items-center gap-3 group focus:outline-none flex-shrink-0 w-10 relative"
+                            type="button"
+                            onClick={() =>
+                              handleAnswerChange(q.question_id, value.toString())
+                            }
                           >
-                            {value}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div
-                    className="flex justify-between text-xs text-gray-400 mt-1 px-1"
-                    style={{
-                      width: `${(q.scale_max || 5) * 52}px`,
-                      maxWidth: "100%",
-                    }}
-                  >
-                    <span>น้อยที่สุด</span>
-                    <span>มากที่สุด</span>
+                            <span
+                              className={`text-sm font-medium transition-colors ${isSelected ? "text-[#5d7c6f]" : "text-gray-500"}`}
+                            >
+                              {value}
+                            </span>
+                            <div
+                              className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                isSelected
+                                  ? "border-[#5d7c6f]"
+                                  : "border-gray-300 group-hover:border-gray-400"
+                              }`}
+                            >
+                              {isSelected && (
+                                <div className="w-3 h-3 bg-[#5d7c6f] rounded-full" />
+                              )}
+                            </div>
+                            {i === 0 && (
+                              <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">มากที่สุด</span>
+                            )}
+                            {i === scaleMax - 1 && (
+                              <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">น้อยที่สุด</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}

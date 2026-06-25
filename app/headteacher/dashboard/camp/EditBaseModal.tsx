@@ -7,6 +7,7 @@ import {
   ModalBody,
   ModalFooter,
   Button,
+  Switch,
 } from "@heroui/react";
 import { useState, useEffect } from "react";
 import { Save } from "lucide-react";
@@ -20,6 +21,7 @@ interface EditBaseModalProps {
     station_id: number;
     name: string;
     description: string;
+    is_required_for_cert?: boolean;
   } | null;
   onSuccess: () => void;
 }
@@ -33,12 +35,14 @@ export default function EditBaseModal({
   const { showError, showSuccess } = useStatusModal();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [isRequiredForCert, setIsRequiredForCert] = useState(true);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (baseData) {
       setName(baseData.name || "");
       setDescription(baseData.description || "");
+      setIsRequiredForCert(baseData.is_required_for_cert ?? true);
     }
   }, [baseData]);
 
@@ -54,7 +58,7 @@ export default function EditBaseModal({
       const response = await fetch(`/api/stations/${baseData?.station_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description }),
+        body: JSON.stringify({ name, description, is_required_for_cert: isRequiredForCert }),
       });
 
       if (!response.ok) throw new Error("Failed to update base");
@@ -118,9 +122,34 @@ export default function EditBaseModal({
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    จำเป็นต้องผ่านฐานนี้
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    นักเรียนต้องผ่านฐานนี้ถึงจะสามารถดาวน์โหลดเกียรติบัตรได้
+                  </p>
+                </div>
+                <Switch
+                  isSelected={isRequiredForCert}
+                  onValueChange={setIsRequiredForCert}
+                  color="success"
+                />
+              </div>
             </ModalBody>
 
-            <ModalFooter className="p-6 pt-2 flex-col gap-2">
+            <ModalFooter className="p-6 pt-2 flex-row gap-2">
+              <Button
+                fullWidth
+                className="font-medium text-gray-600"
+                size="lg"
+                variant="light"
+                onPress={onClose}
+              >
+                ยกเลิก
+              </Button>
               <Button
                 fullWidth
                 className="bg-[#6b857a] text-white rounded-xl font-bold shadow-lg hover:bg-[#5a7268]"
@@ -130,15 +159,6 @@ export default function EditBaseModal({
                 onPress={handleSubmit}
               >
                 บันทึกการแก้ไข
-              </Button>
-              <Button
-                fullWidth
-                className="font-medium text-gray-600"
-                size="lg"
-                variant="light"
-                onPress={onClose}
-              >
-                ยกเลิก
               </Button>
             </ModalFooter>
           </>

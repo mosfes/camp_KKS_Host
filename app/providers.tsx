@@ -20,12 +20,17 @@ declare module "@react-types/shared" {
   }
 }
 
+import { Toaster } from "react-hot-toast";
+
 export function Providers({ children, themeProps }: ProvidersProps) {
   const router = useRouter();
 
   return (
     <HeroUIProvider locale="en-GB" navigate={router.push}>
-      <NextThemesProvider {...themeProps}>{children}</NextThemesProvider>
+      <NextThemesProvider {...themeProps}>
+        {children}
+        <Toaster position="top-center" reverseOrder={false} />
+      </NextThemesProvider>
     </HeroUIProvider>
   );
 }

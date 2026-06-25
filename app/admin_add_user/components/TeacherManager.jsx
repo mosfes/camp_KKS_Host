@@ -652,9 +652,22 @@ const TeacherManager = () => {
                                     </Select>
                                 </div>
                             </ModalBody>
-                            <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
-                                <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmit(onClose)}>บันทึก</Button>
+                            <ModalFooter className="p-6 pt-2 flex gap-2">
+                                <Button
+                                    fullWidth
+                                    className="font-medium text-gray-600"
+                                    variant="light"
+                                    onPress={onClose}
+                                >
+                                    ยกเลิก
+                                </Button>
+                                <Button
+                                    fullWidth
+                                    className="bg-[#6b857a] text-white rounded-xl font-bold shadow-sm hover:bg-[#5a7268]"
+                                    onPress={() => handleSubmit(onClose)}
+                                >
+                                    บันทึก
+                                </Button>
                             </ModalFooter>
                         </>
                     )}
@@ -680,9 +693,22 @@ const TeacherManager = () => {
                                     />
                                 </div>
                             </ModalBody>
-                            <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClosePaste} className="rounded-full">ยกเลิก</Button>
-                                <Button className="bg-sage text-white shadow-sm rounded-full" onPress={handlePastePreview}>ตรวจสอบข้อมูล</Button>
+                            <ModalFooter className="p-6 pt-2 flex gap-2">
+                                <Button
+                                    fullWidth
+                                    className="font-medium text-gray-600"
+                                    variant="light"
+                                    onPress={onClosePaste}
+                                >
+                                    ยกเลิก
+                                </Button>
+                                <Button
+                                    fullWidth
+                                    className="bg-[#6b857a] text-white rounded-xl font-bold shadow-sm hover:bg-[#5a7268]"
+                                    onPress={handlePastePreview}
+                                >
+                                    ตรวจสอบข้อมูล
+                                </Button>
                             </ModalFooter>
                         </>
                     )}
@@ -763,10 +789,18 @@ const TeacherManager = () => {
                                         </Table>
                                     </div>
                                 </ModalBody>
-                                <ModalFooter>
-                                    <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
+                                <ModalFooter className="p-6 pt-2 flex gap-2">
                                     <Button
-                                        className="bg-sage text-white shadow-sm rounded-full"
+                                        fullWidth
+                                        className="font-medium text-gray-600"
+                                        variant="light"
+                                        onPress={onClose}
+                                    >
+                                        ยกเลิก
+                                    </Button>
+                                    <Button
+                                        fullWidth
+                                        className="bg-[#6b857a] text-white rounded-xl font-bold shadow-sm hover:bg-[#5a7268]"
                                         onPress={confirmImport}
                                         isLoading={isLoadingImport}
                                     >

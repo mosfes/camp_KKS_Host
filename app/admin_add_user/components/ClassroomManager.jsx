@@ -828,9 +828,22 @@ const ClassroomManager = () => {
                                 </div>
 
                             </ModalBody>
-                            <ModalFooter>
-                                <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
-                                <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmit(onClose)}>บันทึก</Button>
+                            <ModalFooter className="p-6 pt-2 flex gap-2">
+                                <Button
+                                    fullWidth
+                                    className="font-medium text-gray-600"
+                                    variant="light"
+                                    onPress={onClose}
+                                >
+                                    ยกเลิก
+                                </Button>
+                                <Button
+                                    fullWidth
+                                    className="bg-[#6b857a] text-white rounded-xl font-bold shadow-sm hover:bg-[#5a7268]"
+                                    onPress={() => handleSubmit(onClose)}
+                                >
+                                    บันทึก
+                                </Button>
                             </ModalFooter>
                         </>
                     )}

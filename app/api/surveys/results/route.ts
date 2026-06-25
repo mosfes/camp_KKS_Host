@@ -119,11 +119,59 @@ export async function GET(request) {
       }
     });
 
+    const responses = await prisma.survey_response.findMany({
+      where: { survey_survey_id: survey.survey_id },
+      include: {
+        student_enrollment: {
+          include: {
+            student: {
+              include: {
+                classroom_students: {
+                  include: {
+                    classroom: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const demographics = {
+      gender: { male: 0, female: 0, other: 0 },
+      grade: {} as Record<string, number>,
+    };
+
+    responses.forEach((r) => {
+      const student = r.student_enrollment?.student;
+      if (student) {
+        // Gender
+        const prefix = student.prefix_name?.trim() || "";
+        if (["เด็กชาย", "ด.ช.", "นาย"].includes(prefix)) {
+          demographics.gender.male++;
+        } else if (["เด็กหญิง", "ด.ญ.", "นางสาว", "นาง"].includes(prefix)) {
+          demographics.gender.female++;
+        } else {
+          demographics.gender.other++;
+        }
+        // Grade
+        const cls = student.classroom_students?.[0]?.classroom;
+        if (cls?.grade) {
+          const gradeStr = String(cls.grade).replace("Level_", "ม.");
+          demographics.grade[gradeStr] = (demographics.grade[gradeStr] || 0) + 1;
+        } else {
+          demographics.grade["ไม่ระบุ"] = (demographics.grade["ไม่ระบุ"] || 0) + 1;
+        }
+      }
+    });
+
     const summaryData = {
       surveyId: survey.survey_id,
       title: survey.title,
       totalResponses,
       questions: summaryQuestions,
+      demographics,
     };
 
     return NextResponse.json(summaryData);

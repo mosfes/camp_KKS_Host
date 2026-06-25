@@ -22,6 +22,21 @@ const campSchema = z
     has_shirt: z.boolean().optional(),
     img_shirt_url: z.string().optional(),
     img_camp_url: z.string().optional(),
+    img_certificate_url: z.string().optional().nullable(),
+    cert_name_x: z.number().optional().nullable(),
+    cert_name_y: z.number().optional().nullable(),
+    cert_font_size: z.number().optional().nullable(),
+    cert_font_color: z.string().optional().nullable(),
+    cert_show_number: z.boolean().optional(),
+    cert_number_start: z.number().int().optional().nullable(),
+    cert_number_end: z.number().int().optional().nullable(),
+    cert_number_x: z.number().optional().nullable(),
+    cert_number_y: z.number().optional().nullable(),
+    cert_number_size: z.number().optional().nullable(),
+    cert_number_color: z.string().optional().nullable(),
+    cert_number_prefix: z.string().optional().nullable(),
+    cert_number_is_thai: z.boolean().optional(),
+    cert_year: z.string().optional().nullable(),
     dailySchedule: z.array(z.any()).optional(),
     classroom_ids: z.array(z.number()).optional(),
   })
@@ -239,7 +254,7 @@ export async function PUT(request, context) {
           ? new Date(body.end_shirt_date)
           : undefined,
         description: body.description,
-        status: body.status || "OPEN",
+        status: body.status,
         has_shirt: body.has_shirt,
         ...(body.img_shirt_url !== undefined && {
           img_shirt_url: body.img_shirt_url,
@@ -247,55 +262,102 @@ export async function PUT(request, context) {
         ...(body.img_camp_url !== undefined && {
           img_camp_url: body.img_camp_url,
         }),
+        ...(body.img_certificate_url !== undefined && {
+          img_certificate_url: body.img_certificate_url,
+        }),
+        ...(body.cert_name_x !== undefined && {
+          cert_name_x: body.cert_name_x,
+        }),
+        ...(body.cert_name_y !== undefined && {
+          cert_name_y: body.cert_name_y,
+        }),
+        ...(body.cert_font_size !== undefined && {
+          cert_font_size: body.cert_font_size,
+        }),
+        ...(body.cert_font_color !== undefined && {
+          cert_font_color: body.cert_font_color,
+        }),
+        ...(body.cert_show_number !== undefined && {
+          cert_show_number: body.cert_show_number,
+        }),
+        ...(body.cert_number_start !== undefined && {
+          cert_number_start: body.cert_number_start,
+        }),
+        ...(body.cert_number_end !== undefined && {
+          cert_number_end: body.cert_number_end,
+        }),
+        ...(body.cert_number_x !== undefined && {
+          cert_number_x: body.cert_number_x,
+        }),
+        ...(body.cert_number_y !== undefined && {
+          cert_number_y: body.cert_number_y,
+        }),
+        ...(body.cert_number_size !== undefined && {
+          cert_number_size: body.cert_number_size,
+        }),
+        ...(body.cert_number_color !== undefined && {
+          cert_number_color: body.cert_number_color,
+        }),
+        ...(body.cert_number_prefix !== undefined && {
+          cert_number_prefix: body.cert_number_prefix,
+        }),
+        ...(body.cert_number_is_thai !== undefined && {
+          cert_number_is_thai: body.cert_number_is_thai,
+        }),
+        ...(body.cert_year !== undefined && {
+          cert_year: body.cert_year,
+        }),
       },
     });
 
-    // Delete existing time slots first (foreign key constraint)
-    // Find schedules for this camp first
-    const schedules = await prisma.camp_daily_schedule.findMany({
-      where: { camp_camp_id: campId },
-      select: { daily_schedule_id: true },
-    });
-
-    const scheduleIds = schedules.map((s) => s.daily_schedule_id);
-
-    if (scheduleIds.length > 0) {
-      await prisma.camp_time_slot.deleteMany({
-        where: { daily_schedule_id: { in: scheduleIds } },
+    // อัพเดท daily schedule (ทำเมื่อส่ง dailySchedule มาเท่านั้น)
+    if (body.dailySchedule !== undefined) {
+      // Delete existing time slots first (foreign key constraint)
+      const schedules = await prisma.camp_daily_schedule.findMany({
+        where: { camp_camp_id: campId },
+        select: { daily_schedule_id: true },
       });
-    }
 
-    // Now delete daily schedules
-    await prisma.camp_daily_schedule.deleteMany({
-      where: { camp_camp_id: campId },
-    });
+      const scheduleIds = schedules.map((s) => s.daily_schedule_id);
 
-    // เพิ่ม daily schedule ใหม่ (Optimize using transaction)
-    if (body.dailySchedule && body.dailySchedule.length > 0) {
-      await prisma.$transaction(async (tx) => {
-        for (const daySchedule of body.dailySchedule) {
-          const createdSchedule = await tx.camp_daily_schedule.create({
-            data: {
-              camp_camp_id: campId,
-              day: daySchedule.day,
-            },
-          });
+      if (scheduleIds.length > 0) {
+        await prisma.camp_time_slot.deleteMany({
+          where: { daily_schedule_id: { in: scheduleIds } },
+        });
+      }
 
-          // เพิ่ม time slots
-          if (daySchedule.timeSlots && daySchedule.timeSlots.length > 0) {
-            const timeSlotsData = daySchedule.timeSlots.map((timeSlot) => ({
-              daily_schedule_id: createdSchedule.daily_schedule_id,
-              startTime: timeSlot.startTime,
-              endTime: timeSlot.endTime,
-              activity: timeSlot.activity,
-            }));
+      // Now delete daily schedules
+      await prisma.camp_daily_schedule.deleteMany({
+        where: { camp_camp_id: campId },
+      });
 
-            await tx.camp_time_slot.createMany({
-              data: timeSlotsData,
+      // เพิ่ม daily schedule ใหม่ (Optimize using transaction)
+      if (body.dailySchedule.length > 0) {
+        await prisma.$transaction(async (tx) => {
+          for (const daySchedule of body.dailySchedule!) {
+            const createdSchedule = await tx.camp_daily_schedule.create({
+              data: {
+                camp_camp_id: campId,
+                day: daySchedule.day,
+              },
             });
+
+            // เพิ่ม time slots
+            if (daySchedule.timeSlots && daySchedule.timeSlots.length > 0) {
+              const timeSlotsData = daySchedule.timeSlots.map((timeSlot: any) => ({
+                daily_schedule_id: createdSchedule.daily_schedule_id,
+                startTime: timeSlot.startTime,
+                endTime: timeSlot.endTime,
+                activity: timeSlot.activity,
+              }));
+
+              await tx.camp_time_slot.createMany({
+                data: timeSlotsData,
+              });
+            }
           }
-        }
-      });
+        });
+      }
     }
 
     // อัพเดทห้องเรียน (Optimize using createMany)
@@ -317,11 +379,11 @@ export async function PUT(request, context) {
     }
 
     return NextResponse.json(updatedCamp, { status: 200 });
-  } catch {
-    //     console.error("Error updating camp:", error);
+  } catch (error) {
+    console.error("Error updating camp:", error);
 
     return NextResponse.json(
-      { _error: "Failed to update camp" },
+      { _error: "Failed to update camp", details: error instanceof Error ? error.message : String(error) },
       { status: 500 },
     );
   }

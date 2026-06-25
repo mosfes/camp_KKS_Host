@@ -143,7 +143,7 @@ export default function StudentDashboard() {
 
   if (loading)
     return (
-      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f5f2] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
           <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
@@ -152,7 +152,7 @@ export default function StudentDashboard() {
     );
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
+    <div className="min-h-screen bg-[#f5f5f2]">
       {/* Profile Completion Overlay */}
       {showProfileModal && (
         <StudentProfileSetupModal

@@ -1,8 +1,8 @@
-import { SignedIn, SignedOut, SignIn, UserButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignIn, UserButton, ClerkLoading, ClerkLoaded } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Users, Loader2 } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import AutoLogout from "@/components/AutoLogout";
@@ -24,7 +24,7 @@ export default async function Home() {
 
     if (teacher) {
       if (teacher.role === "ADMIN") {
-        redirect("/api/auth/sync-session?to=/admin_add_user");
+        redirect("/api/auth/sync-session?to=/headteacher/dashboard");
       } else {
         redirect("/api/auth/sync-session?to=/headteacher/dashboard");
       }
@@ -46,29 +46,37 @@ export default async function Home() {
       <SignedOut>
         <div className="flex min-h-screen items-center justify-center bg-[#f5f0e7]">
           <div className="flex flex-col items-center gap-4">
-            <SignIn
-              appearance={{
-                elements: {
-                  logoImage: {
-                    width: "100px",
-                    height: "auto",
+            <ClerkLoading>
+              <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[400px] w-full max-w-[400px]">
+                <Loader2 className="w-10 h-10 animate-spin text-sage mb-4" />
+                <p className="text-gray-500 font-medium">กำลังโหลดเข้าสู่ระบบ...</p>
+              </div>
+            </ClerkLoading>
+            <ClerkLoaded>
+              <SignIn
+                appearance={{
+                  elements: {
+                    logoImage: {
+                      width: "100px",
+                      height: "auto",
+                    },
+                    socialButtonsBlockButton: "h-[40px] text-base",
+                    formButtonPrimary: "!bg-sage hover:bg-blue-700 ",
+                    footerAction: "!hidden",
+                    footer: "!hidden",
                   },
-                  socialButtonsBlockButton: "h-[40px] text-base",
-                  formButtonPrimary: "!bg-sage hover:bg-blue-700 ",
-                  footerAction: "!hidden",
-                  footer: "!hidden",
-                },
-              }}
-              routing="hash"
-            />
+                }}
+                routing="hash"
+              />
+            </ClerkLoaded>
             {/* ปุ่มไปหน้าล็อคอินผู้ปกครอง */}
-            <Link
+            {/* <Link
               className="w-full max-w-[400px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-[#a0b8af] bg-white text-[#5d7c6f] text-sm font-medium shadow-sm hover:bg-[#eaf1ee] hover:border-[#5d7c6f] transition-all"
               href="/login"
             >
               <Users size={18} />
               เข้าสู่ระบบสำหรับผู้ปกครอง
-            </Link>
+            </Link> */}
           </div>
         </div>
       </SignedOut>

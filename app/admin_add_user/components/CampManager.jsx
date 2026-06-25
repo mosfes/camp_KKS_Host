@@ -718,9 +718,22 @@ const CampManager = () => {
                                     </div>
 
                         </div>
-                        <div className="flex justify-end gap-2 pt-4 border-t mt-auto">
-                            <Button color="danger" variant="light" onPress={onClose} className="rounded-full">ยกเลิก</Button>
-                            <Button className="bg-sage text-white shadow-sm rounded-full" onPress={() => handleSubmitEdit(onClose)}>บันทึก</Button>
+                        <div className="flex gap-2 pt-4 border-t mt-auto">
+                            <Button
+                                fullWidth
+                                className="font-medium text-gray-600"
+                                variant="light"
+                                onPress={onClose}
+                            >
+                                ยกเลิก
+                            </Button>
+                            <Button
+                                fullWidth
+                                className="bg-[#6b857a] text-white rounded-xl font-bold shadow-sm hover:bg-[#5a7268]"
+                                onPress={() => handleSubmitEdit(onClose)}
+                            >
+                                บันทึก
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -39,19 +39,19 @@ model teachers {
 }
 
 model students {
-  students_id              Int       @id
-  prefix_name              String?   @db.VarChar(255)
-  firstname                String    @db.VarChar(255)
-  lastname                 String    @db.VarChar(255)
-  nickname                 String?   @db.VarChar(100)
-  profile_image_url        String?   @db.VarChar(500)
-  birthday                 DateTime?
-  food_allergy             String?   @db.VarChar(255)
-  chronic_disease          String?   @db.VarChar(255)
-  remark                   String?   @db.VarChar(255)
-  tel                      String?   @db.VarChar(10)
-  email                    String    @db.VarChar(255)
-  deletedAt                DateTime?
+  students_id       Int       @id
+  prefix_name       String?   @db.VarChar(255)
+  firstname         String    @db.VarChar(255)
+  lastname          String    @db.VarChar(255)
+  nickname          String?   @db.VarChar(100)
+  profile_image_url String?   @db.VarChar(500)
+  birthday          DateTime?
+  food_allergy      String?   @db.VarChar(255)
+  chronic_disease   String?   @db.VarChar(255)
+  remark            String?   @db.VarChar(255)
+  tel               String?   @db.VarChar(10)
+  email             String    @db.VarChar(255)
+  deletedAt         DateTime?
 
   parents                   parents[]
   classroom_students        classroom_students[]
@@ -136,21 +136,38 @@ model classroom_students {
 }
 
 model camp {
-  camp_id          Int         @id @default(autoincrement())
-  deletedAt        DateTime?
-  location         String      @db.VarChar(255)
-  name             String      @db.VarChar(255)
-  start_date       DateTime
-  end_date         DateTime
-  start_shirt_date DateTime
-  end_shirt_date   DateTime
-  start_regis_date DateTime
-  end_regis_date   DateTime
-  description      String      @db.Text
-  status           camp_status @default(OPEN)
-  has_shirt        Boolean     @default(false)
-  img_camp_url     String      @db.VarChar(500)
-  img_shirt_url    String      @db.VarChar(500)
+  camp_id             Int         @id @default(autoincrement())
+  deletedAt           DateTime?
+  location            String      @db.VarChar(255)
+  name                String      @db.VarChar(255)
+  start_date          DateTime
+  end_date            DateTime
+  start_shirt_date    DateTime
+  end_shirt_date      DateTime
+  start_regis_date    DateTime
+  end_regis_date      DateTime
+  description         String      @db.Text
+  status              camp_status @default(OPEN)
+  has_shirt           Boolean     @default(false)
+  img_camp_url        String      @db.VarChar(500)
+  img_shirt_url       String      @db.VarChar(500)
+  img_certificate_url String?     @db.VarChar(500)
+  cert_name_x         Float?
+  cert_name_y         Float?
+  cert_font_size      Float?
+  cert_font_color     String?     @db.VarChar(50)
+
+  // เลขที่เกียรติบัตรแบบรัน
+  cert_show_number    Boolean @default(false)
+  cert_number_start   Int?
+  cert_number_end     Int?
+  cert_number_x       Float?
+  cert_number_y       Float?
+  cert_number_size    Float?
+  cert_number_color   String? @db.VarChar(50)
+  cert_number_prefix  String? @db.VarChar(20)
+  cert_number_is_thai Boolean @default(false)
+  cert_year           String? @db.VarChar(20)
 
   // plan_type_plane_id Int
   // plan_type          plan_type @relation(fields: [plan_type_plane_id], references: [plane_id])
@@ -320,9 +337,10 @@ model certificate {
 }
 
 model station {
-  station_id  Int    @id @default(autoincrement())
-  name        String @db.VarChar(255)
-  description String @db.VarChar(255)
+  station_id           Int     @id @default(autoincrement())
+  name                 String  @db.VarChar(255)
+  description          String  @db.VarChar(255)
+  is_required_for_cert Boolean @default(true)
 
   camp_camp_id Int
   camp         camp @relation(fields: [camp_camp_id], references: [camp_id])
@@ -480,6 +498,7 @@ model survey {
   title       String   @db.VarChar(255)
   description String?  @db.Text
   created_at  DateTime @default(now())
+  is_required_for_cert Boolean @default(true)
 
   camp_camp_id Int  @unique
   camp         camp @relation(fields: [camp_camp_id], references: [camp_id])

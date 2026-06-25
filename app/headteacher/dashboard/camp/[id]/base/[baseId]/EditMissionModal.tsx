@@ -456,7 +456,16 @@ export default function EditMissionModal({
               )}
             </ModalBody>
 
-            <ModalFooter className="p-6 pt-2 flex-col gap-2">
+            <ModalFooter className="p-6 pt-2 flex-row gap-2">
+              <Button
+                fullWidth
+                className="font-medium text-gray-600"
+                size="lg"
+                variant="light"
+                onPress={onClose}
+              >
+                ยกเลิก
+              </Button>
               <Button
                 fullWidth
                 className="bg-[#6b857a] text-white rounded-xl font-bold shadow-lg hover:bg-[#5a7268]"
@@ -466,15 +475,6 @@ export default function EditMissionModal({
                 onPress={handleSubmit}
               >
                 บันทึกการแก้ไข
-              </Button>
-              <Button
-                fullWidth
-                className="font-medium text-gray-600"
-                size="lg"
-                variant="light"
-                onPress={onClose}
-              >
-                ยกเลิก
               </Button>
             </ModalFooter>
           </>

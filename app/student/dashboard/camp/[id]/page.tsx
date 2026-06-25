@@ -23,6 +23,7 @@ import {
   ScanLine,
   QrCode,
   KeyRound,
+  Loader2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
@@ -101,6 +102,11 @@ export default function StudentCampDetailPage() {
 
   // Schedule Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  
+  // Certificate Preview Modal State
+  const [isCertPreviewModalOpen, setIsCertPreviewModalOpen] = useState(false);
+  const [certImageLoading, setCertImageLoading] = useState(true);
+  const [downloadingFormat, setDownloadingFormat] = useState<"pdf" | "png" | null>(null);
 
   // Shirt Selection Modal State (Auto-open after register)
   const [isShirtSelectionModalOpen, setIsShirtSelectionModalOpen] = useState(false);
@@ -313,13 +319,50 @@ export default function StudentCampDetailPage() {
 
   const openAttendanceModal = () => {
     setQrScanActive(false);
-    setQrScanResult(null);
-    setQrScanMessage("");
-    setShowPinInput(false);
-    setPinInput("");
-    setCameraError(null);
-    qrProcessingRef.current = false;
     setIsAttendanceModalOpen(true);
+    if (!attendanceCheckedIn && !showPinInput) {
+      setTimeout(() => {
+        requestCameraAndStartScan();
+      }, 500);
+    }
+  };
+
+  const handleCertDownload = async (format: "pdf" | "png") => {
+    if (downloadingFormat) return;
+    setDownloadingFormat(format);
+    
+    try {
+      const response = await fetch(`/api/camps/${id}/certificate?format=${format}&download=true`);
+      
+      if (!response.ok) {
+        if (response.status === 429) {
+          toast.error("คุณดาวน์โหลดบ่อยเกินไป กรุณารอสักครู่ก่อนดาวน์โหลดใหม่");
+        } else {
+          toast.error("เกิดข้อผิดพลาดในการดาวน์โหลดเกียรติบัตร");
+        }
+        setDownloadingFormat(null);
+        return;
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = `certificate_${id}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      // Disable buttons for a few seconds to prevent spam
+      setTimeout(() => {
+        setDownloadingFormat(null);
+      }, 3000);
+    } catch (error) {
+      toast.error("เกิดข้อผิดพลาดในการดาวน์โหลด");
+      setDownloadingFormat(null);
+    }
   };
 
   const handleRegister = async () => {
@@ -760,13 +803,40 @@ export default function StudentCampDetailPage() {
                   ),
                 );
 
+                const hasCertTemplate = !!camp?.img_certificate_url;
+                
+                const requiredStations = camp?.station?.filter((s: any) => s.is_required_for_cert) || [];
+                const areRequiredStationsCompleted = requiredStations.every((station: any) => {
+                  const stationMissions = station.mission || [];
+                  if (stationMissions.length === 0) return true;
+                  const completedMissions = stationMissions.filter((m: any) => 
+                    camp.missionResults?.some(
+                      (r: any) => r.mission_mission_id === m.mission_id && r.status === "completed"
+                    )
+                  );
+                  return completedMissions.length === stationMissions.length;
+                });
+
+                const isSurveyRequiredAndNotCompleted = surveyData?.is_required_for_cert && !surveyCompleted;
+                const canDownloadCert = hasCertTemplate && !(hasPostTest && !isPostTestCompleted) && areRequiredStationsCompleted && !isSurveyRequiredAndNotCompleted;
+
                 const certText =
                   hasPostTest && !isPostTestCompleted
                     ? "เกียรติบัตร (ต้องทำ Post-Test)"
+                    : !areRequiredStationsCompleted
+                    ? "เกียรติบัตร (ต้องผ่านฐานที่บังคับ)"
+                    : isSurveyRequiredAndNotCompleted
+                    ? "เกียรติบัตร (ต้องทำแบบประเมิน)"
                     : "เกียรติบัตร";
                 const certTextEnded =
-                  hasPostTest && !isPostTestCompleted
+                  !hasCertTemplate
+                    ? "เกียรติบัตร"
+                    : hasPostTest && !isPostTestCompleted
                     ? "ดาวน์โหลด (ต้องทำ Post-Test)"
+                    : !areRequiredStationsCompleted
+                    ? "ดาวน์โหลด (ต้องผ่านฐานที่บังคับ)"
+                    : isSurveyRequiredAndNotCompleted
+                    ? "ดาวน์โหลด (ต้องทำแบบประเมิน)"
                     : "ดาวน์โหลดเกียรติบัตร";
 
                 return (
@@ -801,14 +871,28 @@ export default function StudentCampDetailPage() {
                           >
                             สรุปผลการทำภารกิจ
                           </Button>
-                          <Button
-                            fullWidth
-                            isDisabled
-                            className="bg-gray-50 text-gray-400 border border-gray-100 font-bold text-lg h-14 rounded-2xl opacity-80"
-                            startContent={<Ticket size={22} />}
-                          >
-                            {certTextEnded}
-                          </Button>
+                          {!canDownloadCert ? (
+                            <Button
+                              fullWidth
+                              isDisabled
+                              className="font-bold text-lg h-14 rounded-2xl bg-gray-50 text-gray-400 border border-gray-100 opacity-80"
+                              startContent={<Ticket size={22} />}
+                            >
+                              {certTextEnded}
+                            </Button>
+                          ) : (
+                            <Button
+                              fullWidth
+                              className="font-bold text-lg h-14 rounded-2xl bg-[#1A202C] text-white shadow-lg shadow-gray-900/20"
+                              startContent={<Ticket size={22} />}
+                              onPress={() => {
+                                setCertImageLoading(true);
+                                setIsCertPreviewModalOpen(true);
+                              }}
+                            >
+                              {certTextEnded}
+                            </Button>
+                          )}
                         </>
                       ) : (
                         <>
@@ -860,6 +944,29 @@ export default function StudentCampDetailPage() {
                               {attendanceCheckedIn ? "เช็คชื่อแล้ว" : "เช็คชื่อ"}
                             </Button>
                           </div>
+                          
+                          {!canDownloadCert ? (
+                            <Button
+                              fullWidth
+                              isDisabled
+                              className="font-bold text-lg h-14 rounded-2xl mt-1 bg-gray-50 text-gray-400 border border-gray-100 opacity-80"
+                              startContent={<Ticket size={22} />}
+                            >
+                              {certTextEnded}
+                            </Button>
+                          ) : (
+                            <Button
+                              fullWidth
+                              className="font-bold text-lg h-14 rounded-2xl mt-1 bg-[#1A202C] text-white shadow-lg shadow-gray-900/20"
+                              startContent={<Ticket size={22} />}
+                              onPress={() => {
+                                setCertImageLoading(true);
+                                setIsCertPreviewModalOpen(true);
+                              }}
+                            >
+                              {certTextEnded}
+                            </Button>
+                          )}
                         </>
                       )}
                     </div>
@@ -1175,6 +1282,86 @@ export default function StudentCampDetailPage() {
               >
                 ปิดหน้าต่าง
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Certificate Preview Modal */}
+      {isCertPreviewModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-md p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-10 duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#1A202C] rounded-xl flex items-center justify-center shadow-lg shadow-gray-900/20">
+                  <Ticket className="text-white" size={22} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-gray-900">
+                    เกียรติบัตรของคุณ
+                  </h2>
+                  <p className="text-xs text-gray-500 font-bold">
+                    สามารถดาวน์โหลดเก็บไว้เป็นไฟล์ PDF หรือ PNG
+                  </p>
+                </div>
+              </div>
+              <button
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-500"
+                onClick={() => setIsCertPreviewModalOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto p-6 flex flex-col items-center">
+              <div className="w-full bg-gray-50 rounded-2xl overflow-hidden border border-gray-200 shadow-inner flex items-center justify-center min-h-[250px] relative p-2">
+                <img
+                  alt="Certificate Preview"
+                  className={`w-full h-auto object-contain rounded-xl shadow-md transition-opacity duration-300 ${certImageLoading ? 'opacity-0' : 'opacity-100'}`}
+                  src={`/api/camps/${id}/certificate?format=png&v=2`}
+                  onLoad={() => setCertImageLoading(false)}
+                />
+                {certImageLoading && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/50 backdrop-blur-sm z-10">
+                    <Loader2 className="animate-spin text-[#5d7c6f]" size={32} />
+                    <p className="text-sm font-bold text-gray-500 animate-pulse">กำลังสร้างเกียรติบัตร รอสักครู่....</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-100 bg-gray-50/50">
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  fullWidth
+                  className="font-bold text-base h-14 rounded-2xl bg-[#5d7c6f] text-white shadow-lg shadow-[#5d7c6f]/20"
+                  startContent={downloadingFormat !== "pdf" && <FileText size={20} />}
+                  isLoading={downloadingFormat === "pdf"}
+                  isDisabled={!!downloadingFormat}
+                  onPress={() => handleCertDownload("pdf")}
+                >
+                  โหลด PDF
+                </Button>
+                <Button
+                  fullWidth
+                  className="font-bold text-base h-14 rounded-2xl bg-[#1A202C] text-white shadow-lg shadow-gray-900/20"
+                  startContent={downloadingFormat !== "png" && <Ticket size={20} />}
+                  isLoading={downloadingFormat === "png"}
+                  isDisabled={!!downloadingFormat}
+                  onPress={() => handleCertDownload("png")}
+                >
+                  โหลด PNG
+                </Button>
+              </div>
+              <button 
+                className="w-full mt-4 text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={() => setIsCertPreviewModalOpen(false)}
+              >
+                ปิดหน้าต่าง
+              </button>
             </div>
           </div>
         </div>

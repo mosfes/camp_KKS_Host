@@ -2,17 +2,17 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
+import { requireTeacher } from "@/lib/auth";
 
-// GET /api/surveys/templates?teacherId=<id>  — ดึงรายการเทมเพลตของครู
+// GET /api/surveys/templates  — ดึงรายการเทมเพลตของครู
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const teacherId = searchParams.get("teacherId");
+    const { teacher, error: authError } = await requireTeacher();
+
+    if (authError) return authError;
 
     const templates = await prisma.survey_template.findMany({
-      where: teacherId
-        ? { created_by_teacher_id: parseInt(teacherId) }
-        : undefined,
+      where: { created_by_teacher_id: teacher.teachers_id },
       include: {
         survey_template_question: { orderBy: { question_id: "asc" } },
       },
@@ -33,6 +33,10 @@ export async function GET(request) {
 // DELETE /api/surveys/templates?templateId=<id>
 export async function DELETE(request) {
   try {
+    const { teacher, error: authError } = await requireTeacher();
+
+    if (authError) return authError;
+
     const { searchParams } = new URL(request.url);
     const templateId = searchParams.get("templateId");
 
@@ -40,6 +44,21 @@ export async function DELETE(request) {
       return NextResponse.json(
         { error: "templateId is required" },
         { status: 400 },
+      );
+    }
+
+    const existing = await prisma.survey_template.findUnique({
+      where: { template_id: parseInt(templateId) },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Template not found" }, { status: 404 });
+    }
+
+    if (existing.created_by_teacher_id !== teacher.teachers_id && teacher.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Unauthorized to delete this template" },
+        { status: 403 }
       );
     }
 

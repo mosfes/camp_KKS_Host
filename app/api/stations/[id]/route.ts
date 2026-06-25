@@ -43,13 +43,14 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, description } = body;
+    const { name, description, is_required_for_cert } = body;
 
     const updatedStation = await prisma.station.update({
       where: { station_id: parseInt(id) },
       data: {
         name,
         description,
+        ...(is_required_for_cert !== undefined && { is_required_for_cert }),
       },
     });
 

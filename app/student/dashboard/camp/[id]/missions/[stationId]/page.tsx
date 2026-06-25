@@ -474,19 +474,19 @@ export default function StudentStationDetailPage() {
 
   if (loading)
     return (
-      <div className="p-8 text-center bg-[#F5F2E9] min-h-screen flex items-center justify-center">
+      <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
         <div className="text-gray-400 font-bold">กำลังโหลด...</div>
       </div>
     );
   if (!station)
     return (
-      <div className="p-8 text-center bg-[#F5F2E9] min-h-screen flex items-center justify-center">
+      <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
         <div className="text-gray-400 font-bold">ไม่พบฐานกิจกรรม</div>
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#F5F2E9] pb-12">
+    <div className="min-h-screen bg-[#f5f5f2] pb-12">
       {/* Station Header */}
       <div className="bg-white px-4 py-6 flex items-center gap-4 border-b border-gray-100/50">
         <Button 

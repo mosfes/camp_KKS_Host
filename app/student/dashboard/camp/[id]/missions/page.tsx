@@ -91,13 +91,13 @@ export default function StudentMissionsPage() {
 
   if (loading)
     return (
-      <div className="p-8 text-center bg-[#F5F2E9] min-h-screen flex items-center justify-center">
+      <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
         <div className="text-gray-400 font-bold">กำลังโหลด...</div>
       </div>
     );
   if (!camp)
     return (
-      <div className="p-8 text-center bg-[#F5F2E9] min-h-screen flex items-center justify-center">
+      <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
         <div className="text-gray-400 font-bold">ไม่พบค่าย</div>
       </div>
     );
@@ -128,7 +128,7 @@ export default function StudentMissionsPage() {
       : 0;
 
   return (
-    <div className="min-h-screen bg-[#F5F2E9] pb-12">
+    <div className="min-h-screen bg-[#f5f5f2] pb-12">
       {/* Header */}
       <div className="bg-white px-4 py-6 flex items-center gap-4 border-b border-gray-100/50">
         <Button 
@@ -206,8 +206,13 @@ export default function StudentMissionsPage() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
-                      <h4 className="font-bold text-[#2D3648] text-lg truncate">
+                      <h4 className="font-bold text-[#2D3648] text-lg truncate flex items-center gap-2">
                         {station.name}
+                        {station.is_required_for_cert && (
+                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            บังคับ
+                          </span>
+                        )}
                       </h4>
                       <div className="bg-[#EEEADF] text-[#8C8471] text-[13px] font-bold px-3 py-1 rounded-full">
                         {completedInStation}/{stationMissions.length}

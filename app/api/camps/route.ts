@@ -72,6 +72,10 @@ export async function POST(req) {
         status: "OPEN",
         img_camp_url: body.img_camp_url || "",
         img_shirt_url: body.img_shirt_url || "",
+        img_certificate_url: body.img_certificate_url || null,
+        cert_name_x: body.cert_name_x ? parseFloat(body.cert_name_x) : null,
+        cert_name_y: body.cert_name_y ? parseFloat(body.cert_name_y) : null,
+        cert_font_size: body.cert_font_size ? parseFloat(body.cert_font_size) : null,
         created_by_teacher_id: teacher.teachers_id,
         camp_daily_schedule: {
           create: body.dailySchedule.map((day) => ({

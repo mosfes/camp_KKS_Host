@@ -40,7 +40,7 @@ import HomeroomStudentModal from "./HomeroomStudentModal";
 /* ---------- Default SVG Component ---------- */
 function DefaultCampImage() {
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-[#f1ede6] text-[#9c9488]">
+    <div className="w-full h-full flex flex-col items-center justify-center bg-[#f5f5f2] text-[#9c9488]">
       <ImageOff size={48} />
       <span className="mt-2 text-sm">ไม่มีรูปภาพ</span>
     </div>
@@ -70,7 +70,7 @@ function DashboardContent() {
 
       return await imageCompression(file, {
         maxSizeMB: 2,
-        maxWidthOrHeight: 1920,
+        maxWidthOrHeight: 2000,
         useWebWorker: true,
       });
     } catch (e) {

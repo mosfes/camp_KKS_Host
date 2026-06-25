@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { name, description, campId } = body;
+    const { name, description, campId, is_required_for_cert } = body;
 
     if (!name || !campId) {
       return NextResponse.json(
@@ -22,6 +22,7 @@ export async function POST(request) {
         name,
         description: description || "",
         camp_camp_id: parseInt(campId),
+        is_required_for_cert: is_required_for_cert !== undefined ? is_required_for_cert : true,
       },
     });
 

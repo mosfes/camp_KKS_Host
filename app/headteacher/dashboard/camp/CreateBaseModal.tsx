@@ -7,6 +7,7 @@ import {
   ModalBody,
   ModalFooter,
   Button,
+  Switch,
 } from "@heroui/react";
 import { useState } from "react";
 import { Save } from "lucide-react";
@@ -29,6 +30,7 @@ export default function CreateBaseModal({
   const { showError, showSuccess } = useStatusModal();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [isRequiredForCert, setIsRequiredForCert] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -43,7 +45,7 @@ export default function CreateBaseModal({
       const response = await fetch("/api/stations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, campId }),
+        body: JSON.stringify({ name, description, campId, is_required_for_cert: isRequiredForCert }),
       });
 
       if (!response.ok) throw new Error("Failed to create base");
@@ -111,9 +113,34 @@ export default function CreateBaseModal({
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    จำเป็นต้องผ่านฐานนี้
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    นักเรียนต้องผ่านฐานนี้ถึงจะสามารถดาวน์โหลดเกียรติบัตรได้
+                  </p>
+                </div>
+                <Switch
+                  isSelected={isRequiredForCert}
+                  onValueChange={setIsRequiredForCert}
+                  color="success"
+                />
+              </div>
             </ModalBody>
 
-            <ModalFooter className="p-6 pt-2 flex-col gap-2">
+            <ModalFooter className="p-6 pt-2 flex gap-2">
+              <Button
+                fullWidth
+                className="font-medium text-gray-600"
+                size="lg"
+                variant="light"
+                onPress={onClose}
+              >
+                ยกเลิก
+              </Button>
               <Button
                 fullWidth
                 className="bg-[#6b857a] text-white rounded-xl font-bold shadow-lg hover:bg-[#5a7268]"
@@ -123,15 +150,6 @@ export default function CreateBaseModal({
                 onPress={handleSubmit}
               >
                 สร้างฐานกิจกรรม
-              </Button>
-              <Button
-                fullWidth
-                className="font-medium text-gray-600"
-                size="lg"
-                variant="light"
-                onPress={onClose}
-              >
-                ยกเลิก
               </Button>
             </ModalFooter>
           </>

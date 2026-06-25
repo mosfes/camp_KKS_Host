@@ -28,6 +28,7 @@ import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 
 import EditCampModal from "./EditCampModal";
+import EditCertificateModal from "./EditCertificateModal";
 import CreateBaseModal from "./CreateBaseModal";
 import EditBaseModal from "./EditBaseModal";
 import CreateSurveyModal from "./CreateSurveyModal";
@@ -68,6 +69,20 @@ interface CampDetail {
   end_shirt_date?: string;
   img_shirt_url?: string;
   img_camp_url?: string;
+  img_certificate_url?: string;
+  cert_name_x?: number;
+  cert_name_y?: number;
+  cert_font_size?: number;
+  cert_font_color?: string;
+  cert_show_number?: boolean;
+  cert_number_start?: number | null;
+  cert_number_end?: number | null;
+  cert_number_x?: number | null;
+  cert_number_y?: number | null;
+  cert_number_size?: number | null;
+  cert_number_color?: string | null;
+  cert_number_prefix?: string | null;
+  cert_number_is_thai?: boolean;
   daily_schedule: any;
   status: string;
   plan_type?: any;
@@ -95,7 +110,7 @@ export default function CampDetailPage() {
 
       return await imageCompression(file, {
         maxSizeMB: 2,
-        maxWidthOrHeight: 1920,
+        maxWidthOrHeight: 2000,
         useWebWorker: true,
       });
     } catch (e) {
@@ -114,6 +129,7 @@ export default function CampDetailPage() {
     useStatusModal();
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditCertificateModalOpen, setIsEditCertificateModalOpen] = useState(false);
   const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
   const [isEditBaseModalOpen, setIsEditBaseModalOpen] = useState(false);
   const [selectedBase, setSelectedBase] = useState<any>(null);
@@ -360,6 +376,7 @@ export default function CampDetailPage() {
 
       let img_shirt_url = formData.shirtImage || "";
       let img_camp_url = formData.campImage || "";
+      let img_certificate_url = formData.certImage || "";
 
       // Upload new shirt images if files were picked
       let finalShirtUrls: (string | null)[] = [];
@@ -428,6 +445,30 @@ export default function CampDetailPage() {
         }
       }
 
+      // Upload new certificate image if a file was picked
+      if (formData.certImageFile) {
+        try {
+          const compressedFile = await compressImage(formData.certImageFile);
+          const uploadForm = new FormData();
+
+          uploadForm.append("file", compressedFile);
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: uploadForm,
+          });
+
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+
+            img_certificate_url = uploadData.url;
+          } else {
+            showError("อัปโหลดรูปล้มเหลว", "ไม่สามารถอัปโหลดรูปเกียรติบัตรได้");
+          }
+        } catch (uploadErr) {
+          console.error("Error during certificate image upload:", uploadErr);
+        }
+      }
+
       const response = await fetch(`/api/camps/${campId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -435,6 +476,10 @@ export default function CampDetailPage() {
           ...formData,
           img_shirt_url,
           img_camp_url,
+          img_certificate_url,
+          cert_name_x: formData.certNameX,
+          cert_name_y: formData.certNameY,
+          cert_font_size: formData.certFontSize,
         }),
       });
 
@@ -749,16 +794,16 @@ export default function CampDetailPage() {
 
             {camp.isOwner && (
               <button
-                disabled
-                className="bg-gray-50 border-gray-100 rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-not-allowed opacity-70"
+                className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                onClick={() => setIsEditCertificateModalOpen(true)}
               >
-                <div className="text-gray-300 transition-transform">
+                <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
                   <Award size={32} />
                 </div>
-                <span className="font-semibold text-sm text-center text-gray-400">
-                  ประกาศนียบัตร
+                <span className="font-semibold text-sm text-center text-gray-700">
+                  ตั้งค่า
                   <br />
-                  (กำลังพัฒนา)
+                  เกียรติบัตร
                 </span>
               </button>
             )}
@@ -1352,6 +1397,13 @@ export default function CampDetailPage() {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleEditSubmit}
+      />
+      
+      <EditCertificateModal
+        campData={camp}
+        isOpen={isEditCertificateModalOpen}
+        onClose={() => setIsEditCertificateModalOpen(false)}
+        onSuccess={fetchCampDetail}
       />
 
       <CreateBaseModal

@@ -341,11 +341,20 @@ export default function VulgarWordsManager() {
                   />
                 </div>
               </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={onClose} className="rounded-xl font-medium text-gray-500 hover:bg-gray-100">
+              <ModalFooter className="p-6 pt-2 flex gap-2">
+                <Button
+                  fullWidth
+                  className="font-medium text-gray-600"
+                  variant="light"
+                  onPress={onClose}
+                >
                   ยกเลิก
                 </Button>
-                <Button className="bg-sage text-white shadow-sm rounded-xl font-medium px-6 hover:bg-sage-dark" onPress={() => handleSaveWord(onClose)}>
+                <Button
+                  fullWidth
+                  className="bg-[#6b857a] text-white rounded-xl font-bold shadow-sm hover:bg-[#5a7268]"
+                  onPress={() => handleSaveWord(onClose)}
+                >
                   บันทึก
                 </Button>
               </ModalFooter>

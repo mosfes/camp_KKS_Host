@@ -9,7 +9,7 @@ import {
   ModalFooter,
   Button,
 } from "@heroui/react";
-import { ClipboardList, Star, Heading } from "lucide-react";
+import { ClipboardList, Star, Heading, Info } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 interface Question {
@@ -164,6 +164,13 @@ export default function TakeSurveyModal({
                   {survey.description}
                 </p>
               )}
+              
+              <div className="mt-4 bg-blue-50/80 border border-blue-100 rounded-xl p-3 flex items-start gap-3">
+                <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-700 leading-relaxed">
+                  <span className="font-semibold">แบบสอบถามไม่ระบุตัวตน:</span> จะไม่มีการแสดงชื่อหรือข้อมูลส่วนตัวของผู้ตอบแบบสอบถาม
+                </p>
+              </div>
             </ModalHeader>
 
             <ModalBody className="px-8 py-4 space-y-6">
@@ -224,51 +231,53 @@ export default function TakeSurveyModal({
                             }
                           />
                         ) : (
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              {Array.from({ length: q.scale_max || 5 }).map(
-                                (_, i) => {
-                                  const val = i + 1;
-                                  const filled =
-                                    Number(answers[q.question_id]) >= val;
+                          <div className="mt-4 overflow-x-auto pb-2">
+                            <div className="inline-block min-w-full sm:min-w-[auto]">
+                              <div className="flex items-center justify-between sm:justify-start gap-4 sm:gap-6 pb-6">
+                                {Array.from({ length: q.scale_max || 5 }).map(
+                                  (_, i) => {
+                                    const scaleMax = q.scale_max || 5;
+                                    const value = scaleMax - i;
+                                    const isSelected =
+                                      Number(answers[q.question_id]) === value;
 
-                                  return (
-                                    <button
-                                      key={val}
-                                      aria-label={`ให้คะแนน ${val}`}
-                                      className="flex flex-col items-center gap-0.5 group focus:outline-none flex-shrink-0"
-                                      type="button"
-                                      onClick={() =>
-                                        handleAnswerChange(q.question_id, val)
-                                      }
-                                    >
-                                      <Star
-                                        className={`transition-all duration-150 ${
-                                          filled
-                                            ? "fill-amber-400 text-amber-400"
-                                            : "fill-none text-gray-300 group-hover:text-amber-300"
-                                        }`}
-                                        size={32}
-                                      />
-                                      <span
-                                        className={`text-[10px] font-semibold leading-none ${filled ? "text-amber-500" : "text-gray-400"}`}
+                                    return (
+                                      <button
+                                        key={value}
+                                        aria-label={`ให้คะแนน ${value}`}
+                                        className="flex flex-col items-center gap-3 group focus:outline-none flex-shrink-0 w-10 relative"
+                                        type="button"
+                                        onClick={() =>
+                                          handleAnswerChange(q.question_id, value)
+                                        }
                                       >
-                                        {val}
-                                      </span>
-                                    </button>
-                                  );
-                                },
-                              )}
-                            </div>
-                            <div
-                              className="flex justify-between text-[10px] text-gray-400 mt-1"
-                              style={{
-                                width: `${(q.scale_max || 5) * 44}px`,
-                                maxWidth: "100%",
-                              }}
-                            >
-                              <span>น้อยที่สุด</span>
-                              <span>มากที่สุด</span>
+                                        <span
+                                          className={`text-sm font-medium transition-colors ${isSelected ? "text-[#5d7c6f]" : "text-gray-500"}`}
+                                        >
+                                          {value}
+                                        </span>
+                                        <div
+                                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                            isSelected
+                                              ? "border-[#5d7c6f]"
+                                              : "border-gray-300 group-hover:border-gray-400"
+                                          }`}
+                                        >
+                                          {isSelected && (
+                                            <div className="w-3 h-3 bg-[#5d7c6f] rounded-full" />
+                                          )}
+                                        </div>
+                                        {i === 0 && (
+                                          <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">มากที่สุด</span>
+                                        )}
+                                        {i === scaleMax - 1 && (
+                                          <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">น้อยที่สุด</span>
+                                        )}
+                                      </button>
+                                    );
+                                  },
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}

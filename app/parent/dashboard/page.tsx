@@ -142,7 +142,7 @@ export default function ParentDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f5f2] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
           <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
@@ -153,7 +153,7 @@ export default function ParentDashboard() {
 
   if (error || !student) {
     return (
-      <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f5f2] flex items-center justify-center">
         <p className="text-red-500">{error || "ไม่พบข้อมูล"}</p>
       </div>
     );
@@ -184,7 +184,7 @@ export default function ParentDashboard() {
   ).sort((a: any, b: any) => b - a);
 
   return (
-    <div className="min-h-screen bg-[#F5F1E8]">
+    <div className="min-h-screen bg-[#f5f5f2]">
       <ParentNavbar />
 
       {/* Profile Setup Modal (บังคับกรอกครั้งแรก) */}

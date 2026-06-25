@@ -62,11 +62,11 @@ export default function LoginLayout({
       <html suppressHydrationWarning lang="en">
         <body
           className={clsx(
-            "min-h-screen text-foreground bg-[#fff8f2] font-sans antialiased",
+            "min-h-screen text-foreground bg-[#f5f5f2] font-sans antialiased",
             fontSans.variable,
           )}
         >
-          <Providers themeProps={{ attribute: "class", defaultTheme: "light" }}>
+          <Providers themeProps={{ attribute: "class", defaultTheme: "light", forcedTheme: "light" }}>
             {children}
           </Providers>
         </body>

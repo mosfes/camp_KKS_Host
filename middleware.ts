@@ -79,8 +79,11 @@ export default clerkMiddleware(async (auth, req) => {
 
   // API Route Protection
   if (isProtectedApiRoute(req)) {
-    // Special case for upload: allow both teachers and students
-    if (req.nextUrl.pathname.startsWith("/api/upload")) {
+    // Special case for upload and certificate: allow both teachers and students
+    if (
+      req.nextUrl.pathname.startsWith("/api/upload") ||
+      req.nextUrl.pathname.match(/^\/api\/camps\/\d+\/certificate/)
+    ) {
       if (!isTeacherRole(role) && role !== "student") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }

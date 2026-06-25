@@ -78,7 +78,7 @@ export default function HomeroomStudentModal({
                   </div>
                 </div>
               ) : (
-                <div className="bg-[#f1ede6] border border-[#d4c5b0] rounded-xl p-4 flex gap-3">
+                <div className="bg-[#f5f5f2] border border-[#d4c5b0] rounded-xl p-4 flex gap-3">
                   <HeartPulse
                     className="text-[#6b857a] flex-shrink-0"
                     size={20}

@@ -26,8 +26,9 @@ function uploadBuffer(
         {
           folder: "camp-uploads",
           resource_type: "image",
+          timeout: 120000,
           transformation: [
-            { width: 1200, height: 1200, crop: "limit" },
+            { width: 2000, height: 2000, crop: "limit" },
             { quality: "auto" },
             { fetch_format: "auto" },
           ],

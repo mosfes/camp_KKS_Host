@@ -134,6 +134,7 @@ export async function GET() {
         station: camp.station,
         img_camp_url: camp.img_camp_url,
         img_shirt_url: camp.img_shirt_url,
+        img_certificate_url: camp.img_certificate_url,
         enrolledAt: myEnrollment?.enrolled_at,
         startRegisDate: camp.start_regis_date,
         endRegisDate: camp.end_regis_date,

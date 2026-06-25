@@ -9,8 +9,6 @@ import {
   ModalFooter,
   Button,
   Progress,
-  Accordion,
-  AccordionItem,
 } from "@heroui/react";
 import toast from "react-hot-toast";
 import {
@@ -21,8 +19,20 @@ import {
   Sparkles,
   CheckCircle2,
   Lightbulb,
-  ChevronDown,
+  Book,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  CartesianGrid,
+} from "recharts";
 
 interface SurveyResultsModalProps {
   isOpen: boolean;
@@ -45,6 +55,10 @@ interface SurveySummary {
   title: string;
   totalResponses: number;
   questions: QuestionSummary[];
+  demographics?: {
+    gender: { male: number; female: number; other: number };
+    grade: Record<string, number>;
+  };
 }
 
 export default function SurveyResultsModal({
@@ -126,12 +140,12 @@ export default function SurveyResultsModal({
     <Modal
       backdrop="blur"
       classNames={{
-        base: "bg-white rounded-3xl shadow-xl",
+        base: "bg-white shadow-xl",
         backdrop: "bg-black/40 backdrop-blur-sm",
       }}
       isOpen={isOpen}
       scrollBehavior="inside"
-      size="3xl"
+      size="full"
       onOpenChange={onClose}
     >
       <ModalContent>
@@ -299,6 +313,95 @@ export default function SurveyResultsModal({
                     </div>
                   )}
 
+                  {data.demographics && data.totalResponses > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+                      {/* Gender Summary */}
+                      <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                            <Users size={16} />
+                          </div>
+                          <h3 className="font-semibold text-gray-900 text-sm">สัดส่วนผู้ตอบตามเพศ</h3>
+                        </div>
+                        <div className="h-[180px] w-full">
+                          {(() => {
+                            const { male, female, other } = data.demographics!.gender;
+                            const total = male + female + other;
+                            const genderData = [
+                              { name: "ชาย", value: male, color: "#60a5fa" },
+                              { name: "หญิง", value: female, color: "#f472b6" },
+                            ];
+                            if (other > 0) {
+                              genderData.push({ name: "อื่นๆ", value: other, color: "#9ca3af" });
+                            }
+
+                            return (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={genderData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={40}
+                                    outerRadius={70}
+                                    paddingAngle={2}
+                                    dataKey="value"
+                                  >
+                                    {genderData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                  </Pie>
+                                  <RechartsTooltip 
+                                    formatter={(value: any) => [`${value} คน`, 'จำนวน']}
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            );
+                          })()}
+                        </div>
+                        <div className="flex justify-center gap-4 mt-2">
+                          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-blue-400"></div><span className="text-xs text-gray-600">ชาย</span></div>
+                          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-pink-400"></div><span className="text-xs text-gray-600">หญิง</span></div>
+                          {data.demographics!.gender.other > 0 && <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-gray-400"></div><span className="text-xs text-gray-600">อื่นๆ</span></div>}
+                        </div>
+                      </div>
+
+                      {/* Grade Summary */}
+                      <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                            <Book size={16} />
+                          </div>
+                          <h3 className="font-semibold text-gray-900 text-sm">สัดส่วนผู้ตอบตามระดับชั้น</h3>
+                        </div>
+                        <div className="h-[200px] w-full">
+                          {(() => {
+                            const gradeData = Object.entries(data.demographics!.grade).sort().map(([grade, count]) => ({
+                              name: grade,
+                              count,
+                            }));
+                            return (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={gradeData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                                  <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                                  <RechartsTooltip 
+                                    cursor={{ fill: '#f3f4f6' }}
+                                    formatter={(value: any) => [`${value} คน`, 'จำนวน']}
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                  />
+                                  <Bar dataKey="count" fill="#818cf8" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {(() => {
                     let qNum = 0;
 
@@ -320,122 +423,86 @@ export default function SurveyResultsModal({
                       qNum++;
 
                       return (
-                        <Accordion
+                        <div
                           key={q.id}
-                          className="px-0"
-                          selectionMode="multiple"
-                          variant="splitted"
+                          className="bg-white border border-gray-200 shadow-sm rounded-2xl p-5 my-3 flex flex-col"
                         >
-                          <AccordionItem
-                            key={q.id}
-                            aria-label={q.text}
-                            classNames={{
-                              base: "bg-white !shadow-sm border border-gray-100 rounded-2xl overflow-hidden",
-                              title: "w-full",
-                              trigger: "py-4 px-5",
-                              content: "pt-0 pb-5 px-5",
-                            }}
-                            indicator={({ isOpen }) => (
-                              <div
-                                className={`p-1 rounded-full transition-colors ${isOpen ? "bg-indigo-100 text-indigo-600" : "bg-gray-100 text-gray-400"}`}
-                              >
-                                <ChevronDown
-                                  className={`transition-transform duration-0 ${isOpen ? "rotate-270" : ""}`}
-                                  size={18}
+                          <div className="flex items-start justify-between w-full mb-4">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5">
+                                {qNum}
+                              </span>
+                              <h3 className="flex-1 min-w-0 font-semibold text-gray-900 text-sm leading-snug whitespace-normal break-words pt-0.5 text-left">
+                                {q.text}
+                              </h3>
+                            </div>
+                            {q.type === "scale" && q.average != null && (
+                              <div className="flex-shrink-0 flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 ml-4">
+                                <Star
+                                  className="text-amber-400 fill-amber-400"
+                                  size={11}
                                 />
+                                <span className="text-amber-700 font-bold text-xs leading-none">
+                                  {q.average}
+                                </span>
                               </div>
                             )}
-                            title={
-                              <div className="flex items-center justify-between w-full pr-2">
-                                <div className="flex items-start gap-3 flex-1 min-w-0">
-                                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold mt-0.5">
-                                    {qNum}
-                                  </span>
-                                  <h3 className="flex-1 min-w-0 font-semibold text-gray-900 text-sm leading-snug whitespace-normal break-words pt-0.5 text-left">
-                                    {q.text}
-                                  </h3>
-                                </div>
-                                {q.type === "scale" && q.average != null && (
-                                  <div className="flex-shrink-0 flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 ml-4">
-                                    <Star
-                                      className="text-amber-400 fill-amber-400"
-                                      size={11}
+                          </div>
+
+                          {/* Scale distribution */}
+                          {q.type === "scale" && q.distribution && (
+                            <div className="h-[180px] w-full mt-2 ml-4 md:ml-6 pr-4">
+                              {(() => {
+                                const chartData = [1, 2, 3, 4, 5].map((star) => ({
+                                  star: star.toString(),
+                                  count: q.distribution![star] || 0,
+                                }));
+                                return (
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                      <XAxis dataKey="star" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                                      <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                                      <RechartsTooltip 
+                                        cursor={{ fill: '#fffbeb' }}
+                                        formatter={(value: any) => [`${value} คน`, 'จำนวน']}
+                                        labelFormatter={(label) => `คะแนน ${label}`}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                      />
+                                      <Bar dataKey="count" fill="#fbbf24" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                    </BarChart>
+                                  </ResponsiveContainer>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          {/* Text answers */}
+                          {q.type === "text" && q.answers && (
+                            <div className="ml-9 space-y-2.5 mt-2">
+                              {q.answers.length > 0 ? (
+                                q.answers.map((ans, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="bg-gray-50 p-3 rounded-xl text-gray-700 text-sm border border-gray-100 relative pr-8"
+                                  >
+                                    <MessageSquare
+                                      className="absolute top-3 right-3 text-gray-300"
+                                      size={14}
                                     />
-                                    <span className="text-amber-700 font-bold text-xs leading-none">
-                                      {q.average}
-                                    </span>
+                                    {ans}
                                   </div>
-                                )}
-                              </div>
-                            }
-                          >
-                            <div className="divider h-px bg-gray-50 w-full mb-5 ml-0" />
-
-                            {/* Scale distribution */}
-                            {q.type === "scale" && q.distribution && (
-                              <div className="ml-10 flex flex-col gap-2.5">
-                                {[5, 4, 3, 2, 1].map((star) => {
-                                  const count = q.distribution![star] || 0;
-                                  const percentage =
-                                    q.total > 0 ? (count / q.total) * 100 : 0;
-
-                                  return (
-                                    <div
-                                      key={star}
-                                      className="flex items-center gap-3"
-                                    >
-                                      <span className="w-7 text-xs font-medium text-gray-500 flex items-center gap-1 flex-shrink-0">
-                                        {star}{" "}
-                                        <Star
-                                          className="text-gray-400 fill-gray-400"
-                                          size={10}
-                                        />
-                                      </span>
-                                      <Progress
-                                        className="flex-1"
-                                        classNames={{
-                                          indicator: "bg-amber-400",
-                                          track: "bg-gray-100",
-                                        }}
-                                        size="sm"
-                                        value={percentage}
-                                      />
-                                      <span className="w-7 text-xs text-gray-500 text-right flex-shrink-0">
-                                        {count}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-
-                            {/* Text answers */}
-                            {q.type === "text" && q.answers && (
-                              <div className="ml-10 space-y-2.5">
-                                {q.answers.length > 0 ? (
-                                  q.answers.map((ans, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="bg-gray-50 p-3 rounded-xl text-gray-700 text-sm border border-gray-100 relative pr-8"
-                                    >
-                                      <MessageSquare
-                                        className="absolute top-3 right-3 text-gray-300"
-                                        size={14}
-                                      />
-                                      {ans}
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="text-center py-5 bg-gray-50 rounded-xl border border-gray-100 border-dashed">
-                                    <p className="text-gray-400 text-sm">
-                                      ไม่มีข้อเสนอแนะ
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </AccordionItem>
-                        </Accordion>
+                                ))
+                              ) : (
+                                <div className="text-center py-5 bg-gray-50 rounded-xl border border-gray-100 border-dashed">
+                                  <p className="text-gray-400 text-sm">
+                                    ไม่มีข้อเสนอแนะ
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       );
                     });
                   })()}
