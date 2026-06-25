@@ -50,6 +50,22 @@ export async function POST(req) {
       );
     }
 
+    // Date Validation
+    const requiredDates = [
+      { name: "วันที่เริ่มค่าย", value: body.campStartDate },
+      { name: "วันสิ้นสุดค่าย", value: body.campEndDate },
+      { name: "วันที่เริ่มลงทะเบียน", value: body.registrationStartDate },
+      { name: "วันสิ้นสุดลงทะเบียน", value: body.registrationEndDate },
+    ];
+    for (const d of requiredDates) {
+      if (!d.value || isNaN(new Date(d.value).getTime())) {
+        return NextResponse.json(
+          { error: `ข้อมูล ${d.name} ไม่ถูกต้อง หรือยังไม่ได้ระบุ` },
+          { status: 400 },
+        );
+      }
+    }
+
     // สร้าง camp
     const newCamp = await prisma.camp.create({
       data: {
@@ -141,12 +157,18 @@ export async function POST(req) {
       },
       { status: 201 },
     );
-  } catch {
-    //     console.error("Error creating camp:", error);
+  } catch (error) {
+    console.error("Error creating camp:", error);
+
+    // ส่งข้อความที่เป็นมิตรกับผู้ใช้งาน
+    let friendlyMessage = "เกิดข้อผิดพลาดในการสร้างค่าย กรุณาลองใหม่อีกครั้ง";
+    if (error.message && error.message.includes("Invalid Date")) {
+      friendlyMessage = "ข้อมูลวันที่ไม่ถูกต้อง กรุณาตรวจสอบข้อมูลวันที่อีกครั้ง";
+    }
 
     return NextResponse.json(
       {
-        _error: "สร้างค่ายไม่สำเร็จ",
+        error: friendlyMessage,
       },
       { status: 500 },
     );
