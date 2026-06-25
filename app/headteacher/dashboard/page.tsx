@@ -564,6 +564,7 @@ function DashboardContent() {
     if (campRoleFilter === "related" && camp.isOwner) return false;
     if (
       campAcademicYearFilter !== "all" &&
+      camp.academicYear && // ถ้าไม่มีปีการศึกษา (ค่าว่าง) ให้แสดงไปเลย จะได้ไม่หายไปดื้อๆ
       String(camp.academicYear) !== String(campAcademicYearFilter)
     )
       return false;
