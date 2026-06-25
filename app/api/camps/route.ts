@@ -162,13 +162,14 @@ export async function POST(req) {
 
     // ส่งข้อความที่เป็นมิตรกับผู้ใช้งาน
     let friendlyMessage = "เกิดข้อผิดพลาดในการสร้างค่าย กรุณาลองใหม่อีกครั้ง";
-    if (error.message && error.message.includes("Invalid Date")) {
+    if (error?.message && error.message.includes("Invalid Date")) {
       friendlyMessage = "ข้อมูลวันที่ไม่ถูกต้อง กรุณาตรวจสอบข้อมูลวันที่อีกครั้ง";
     }
 
     return NextResponse.json(
       {
         error: friendlyMessage,
+        details: error?.message || String(error)
       },
       { status: 500 },
     );

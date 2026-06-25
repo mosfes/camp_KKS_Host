@@ -411,7 +411,7 @@ function DashboardContent() {
         setSelectedProjectType(null);
       } else {
         console.error("Failed to create camp:", result);
-        const errorMessage = result?.error || result?.message || JSON.stringify(result);
+        const errorMessage = result?.details || result?.error || result?.message || JSON.stringify(result);
         showError("ล้มเหลว", `สร้างค่ายไม่สำเร็จ: ${errorMessage}`);
       }
     } catch (error) {
