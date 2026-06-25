@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Textarea } from "@heroui/input";
-import { ChevronLeft, ClipboardList, Star } from "lucide-react";
+import { ChevronLeft, ClipboardList } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export default function StudentSurveyPage() {
@@ -188,7 +188,8 @@ export default function StudentSurveyPage() {
                       {Array.from({ length: q.scale_max || 5 }).map((_, i) => {
                         const scaleMax = q.scale_max || 5;
                         const value = scaleMax - i;
-                        const isSelected = Number(answers[q.question_id]) === value;
+                        const isSelected =
+                          Number(answers[q.question_id]) === value;
 
                         return (
                           <button
@@ -197,7 +198,10 @@ export default function StudentSurveyPage() {
                             className="flex flex-col items-center gap-3 group focus:outline-none flex-shrink-0 w-10 relative"
                             type="button"
                             onClick={() =>
-                              handleAnswerChange(q.question_id, value.toString())
+                              handleAnswerChange(
+                                q.question_id,
+                                value.toString(),
+                              )
                             }
                           >
                             <span
@@ -217,10 +221,14 @@ export default function StudentSurveyPage() {
                               )}
                             </div>
                             {i === 0 && (
-                              <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">มากที่สุด</span>
+                              <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">
+                                มากที่สุด
+                              </span>
                             )}
                             {i === scaleMax - 1 && (
-                              <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">น้อยที่สุด</span>
+                              <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">
+                                น้อยที่สุด
+                              </span>
                             )}
                           </button>
                         );

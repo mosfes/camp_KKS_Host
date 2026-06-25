@@ -88,14 +88,14 @@ const FieldInput = ({
             error
               ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
               : disabled
-              ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
+                ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
           }`}
+        disabled={disabled}
         placeholder={placeholder}
         type="text"
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
-        disabled={disabled}
       />
     </div>
     {error && (
@@ -354,23 +354,25 @@ export default function TeacherProfilePage() {
         {editing ? (
           <div className="space-y-3">
             <FieldInput
-              label="อีเมล"
-              value={profile.email}
               disabled={true}
               icon={<Mail size={14} />}
+              label="อีเมล"
+              value={profile.email}
             />
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">สิทธิ์การใช้งาน</label>
-              <input 
-                className="w-full pl-3 pr-3 py-2.5 rounded-xl border text-sm outline-none transition-all border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed" 
-                value={roleLabel(profile.role)} 
-                disabled 
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                สิทธิ์การใช้งาน
+              </label>
+              <input
+                disabled
+                className="w-full pl-3 pr-3 py-2.5 rounded-xl border text-sm outline-none transition-all border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                value={roleLabel(profile.role)}
               />
             </div>
             <FieldInput
+              disabled={true}
               label="รหัสครู"
               value={String(profile.teachers_id)}
-              disabled={true}
             />
           </div>
         ) : (

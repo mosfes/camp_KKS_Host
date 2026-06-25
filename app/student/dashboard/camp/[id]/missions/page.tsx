@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
-import { Progress } from "@heroui/progress";
-import { ChevronLeft, ChevronRight, Target } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 // Helper to calculate progress
@@ -47,7 +46,7 @@ export default function StudentMissionsPage() {
             Pragma: "no-cache",
           },
         }),
-        fetch("/api/auth/student/me")
+        fetch("/api/auth/student/me"),
       ]);
 
       if (studentRes.ok) {
@@ -66,7 +65,12 @@ export default function StudentMissionsPage() {
             return;
           }
           // ตรวจสอบว่าค่ายเริ่มแล้วหรือยัง
-          if (found.rawStartDate && new Date() < new Date(found.rawStartDate)) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const startDate = found.rawStartDate ? new Date(found.rawStartDate) : null;
+          if (startDate) startDate.setHours(0, 0, 0, 0);
+
+          if (startDate && today < startDate) {
             toast.error("ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
             router.replace(`/student/dashboard/camp/${id}`);
 
@@ -131,25 +135,31 @@ export default function StudentMissionsPage() {
     <div className="min-h-screen bg-[#f5f5f2] pb-12">
       {/* Header */}
       <div className="bg-white px-4 py-6 flex items-center gap-4 border-b border-gray-100/50">
-        <Button 
-          isIconOnly 
+        <Button
+          isIconOnly
           className="bg-transparent text-gray-400 hover:bg-gray-50 min-w-0 w-8 h-8"
-          variant="light" 
+          variant="light"
           onPress={() => router.back()}
         >
           <ChevronLeft size={24} />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-[#2D3648] leading-tight">ภารกิจค่าย</h1>
-          <p className="text-[13px] text-gray-400 font-medium leading-tight line-clamp-2 mt-1">{camp.title}</p>
+          <h1 className="text-2xl font-bold text-[#2D3648] leading-tight">
+            ภารกิจค่าย
+          </h1>
+          <p className="text-[13px] text-gray-400 font-medium leading-tight line-clamp-2 mt-1">
+            {camp.title}
+          </p>
         </div>
       </div>
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
         {/* Overall Progress Card */}
         <div className="bg-[#EEEADF] rounded-2xl p-8">
-          <h3 className="text-[#2D3648] font-bold text-lg mb-8">ความคืบหน้าโดยรวม</h3>
-          
+          <h3 className="text-[#2D3648] font-bold text-lg mb-8">
+            ความคืบหน้าโดยรวม
+          </h3>
+
           <div className="flex justify-between items-end mb-2">
             <div className="text-[56px] font-bold text-[#2D3648] leading-none">
               {overallProgress}%
@@ -160,7 +170,7 @@ export default function StudentMissionsPage() {
           </div>
 
           <div className="w-full h-4 bg-gray-300/50 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-[#5D7C6F] rounded-full transition-all duration-1000 ease-out"
               style={{ width: `${overallProgress}%` }}
             />
@@ -168,7 +178,9 @@ export default function StudentMissionsPage() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-[#2D3648] font-bold text-lg px-1">เลือกฐานกิจกรรม</h3>
+          <h3 className="text-[#2D3648] font-bold text-lg px-1">
+            เลือกฐานกิจกรรม
+          </h3>
 
           {/* Stations List */}
           <div className="space-y-4">
@@ -202,30 +214,30 @@ export default function StudentMissionsPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-1">
-                      <h4 className="font-bold text-[#2D3648] text-lg truncate flex items-center gap-2">
-                        {station.name}
+                    <div className="flex justify-between items-center mb-1 gap-4">
+                      <h4 className="font-bold text-[#2D3648] text-lg flex items-center gap-2 min-w-0">
+                        <span className="truncate">{station.name}</span>
                         {station.is_required_for_cert && (
-                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                             บังคับ
                           </span>
                         )}
                       </h4>
-                      <div className="bg-[#EEEADF] text-[#8C8471] text-[13px] font-bold px-3 py-1 rounded-full">
+                      <div className="bg-[#EEEADF] text-[#8C8471] text-[13px] font-bold px-3 py-1 rounded-full shrink-0">
                         {completedInStation}/{stationMissions.length}
                       </div>
                     </div>
-                    
-                    <p className="text-[14px] text-gray-400 mb-4">
+
+                    <p className="text-[14px] text-gray-400 mb-4 line-clamp-2 break-words">
                       {station.description || "ทำภารกิจในฐานนี้ให้สำเร็จ"}
                     </p>
 
                     <div className="flex items-center gap-4">
                       <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-[#5D7C6F] rounded-full transition-all duration-700"
                           style={{ width: `${progress}%` }}
                         />
@@ -235,7 +247,7 @@ export default function StudentMissionsPage() {
                       </span>
                     </div>
                   </div>
-                  
+
                   <ChevronRight className="text-gray-300 shrink-0" size={24} />
                 </div>
               );

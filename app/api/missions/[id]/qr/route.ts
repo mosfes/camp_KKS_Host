@@ -26,6 +26,7 @@ async function getOrCreate(missionId) {
         qr_nonce: generateNonce(),
       },
     });
+
     return updated;
   }
 
@@ -70,6 +71,7 @@ export async function GET(request, { params }) {
     });
   } catch (error) {
     console.error("QR GET error:", error);
+
     return NextResponse.json({ _error: "Failed to get QR" }, { status: 500 });
   }
 }

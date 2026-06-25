@@ -15,10 +15,7 @@ export async function POST(request) {
     const { campId } = await request.json();
 
     if (!campId) {
-      return NextResponse.json(
-        { error: "กรุณาระบุ campId" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "กรุณาระบุ campId" }, { status: 400 });
     }
 
     const cId = parseInt(campId);
@@ -30,14 +27,20 @@ export async function POST(request) {
     });
 
     if (!camp) {
-      return NextResponse.json({ error: "ไม่พบค่ายนี้ในระบบ" }, { status: 404 });
+      return NextResponse.json(
+        { error: "ไม่พบค่ายนี้ในระบบ" },
+        { status: 404 },
+      );
     }
 
     if (
       camp.created_by_teacher_id !== teacher.teachers_id &&
       teacher.role !== "ADMIN"
     ) {
-      return NextResponse.json({ error: "ไม่มีสิทธิ์ใช้งานฟีเจอร์นี้" }, { status: 403 });
+      return NextResponse.json(
+        { error: "ไม่มีสิทธิ์ใช้งานฟีเจอร์นี้" },
+        { status: 403 },
+      );
     }
 
     // Fetch survey and texts

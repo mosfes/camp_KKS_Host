@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
 import type { ReactNode } from "react";
+
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { HeadteacherNavbar } from "@/components/Headteacher";
-import { StatusModalProvider } from "@/components/StatusModalProvider";
 import {
   PieChart,
   Users,
@@ -14,6 +13,9 @@ import {
   LayoutDashboard,
   X,
 } from "lucide-react";
+
+import { HeadteacherNavbar } from "@/components/Headteacher";
+import { StatusModalProvider } from "@/components/StatusModalProvider";
 
 const menuItems = [
   { id: "overview", label: "ภาพรวมระบบ", icon: PieChart },
@@ -44,23 +46,22 @@ function TeacherSidebar({
     >
       {/* Header */}
       <div
-        className={`flex items-center px-3 py-4 border-b border-gray-100 ${collapsed ? "justify-center" : "justify-between"
-          }`}
+        className={`flex items-center px-3 py-4 border-b border-gray-100 ${
+          collapsed ? "justify-center" : "justify-between"
+        }`}
       >
         {!collapsed && (
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#5d7c6f] flex items-center justify-center">
-              <LayoutDashboard size={14} className="text-white" />
+              <LayoutDashboard className="text-white" size={14} />
             </div>
-            <span className="text-sm font-semibold text-gray-700">
-              เมนูครู
-            </span>
+            <span className="text-sm font-semibold text-gray-700">เมนูครู</span>
           </div>
         )}
         <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0"
           aria-label="Toggle sidebar"
+          className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0"
+          onClick={() => setCollapsed(!collapsed)}
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
@@ -70,24 +71,24 @@ function TeacherSidebar({
       <nav className="flex flex-col gap-1 p-2 flex-1">
         {menuItems.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;
+
           return (
             <button
               key={id}
-              onClick={() =>
-                router.push(`/headteacher/dashboard?tab=${id}`)
-              }
-              title={collapsed ? label : undefined}
               className={`
                 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
                 transition-all duration-150 w-full
                 ${collapsed ? "justify-center" : "text-left"}
-                ${isActive
-                  ? "bg-[#5d7c6f] text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                ${
+                  isActive
+                    ? "bg-[#5d7c6f] text-white shadow-sm"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }
               `}
+              title={collapsed ? label : undefined}
+              onClick={() => router.push(`/headteacher/dashboard?tab=${id}`)}
             >
-              <Icon size={18} className="shrink-0" />
+              <Icon className="shrink-0" size={18} />
               {!collapsed && <span className="truncate">{label}</span>}
             </button>
           );
@@ -117,33 +118,34 @@ function MobileSidebar({
 
   return (
     <div
-      className={`md:hidden fixed inset-0 z-[9999] transition-all duration-300 ease-in-out ${isOpen ? "visible" : "invisible delay-300"
-        }`}
+      className={`md:hidden fixed inset-0 z-[9999] transition-all duration-300 ease-in-out ${
+        isOpen ? "visible" : "invisible delay-300"
+      }`}
     >
       {/* Overlay */}
       <div
-        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${isOpen ? "opacity-100" : "opacity-0"
-          }`}
+        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+          isOpen ? "opacity-100" : "opacity-0"
+        }`}
         onClick={() => setIsOpen(false)}
       />
 
       {/* Drawer */}
       <aside
-        className={`absolute top-0 left-0 w-64 max-w-[80%] bg-white h-full flex flex-col shadow-xl transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+        className={`absolute top-0 left-0 w-64 max-w-[80%] bg-white h-full flex flex-col shadow-xl transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
         <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[#5d7c6f] flex items-center justify-center">
-              <LayoutDashboard size={16} className="text-white" />
+              <LayoutDashboard className="text-white" size={16} />
             </div>
-            <span className="text-sm font-semibold text-gray-700">
-              เมนูครู
-            </span>
+            <span className="text-sm font-semibold text-gray-700">เมนูครู</span>
           </div>
           <button
-            onClick={() => setIsOpen(false)}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            onClick={() => setIsOpen(false)}
           >
             <X size={18} />
           </button>
@@ -152,23 +154,25 @@ function MobileSidebar({
         <nav className="flex flex-col gap-1 p-3 flex-1 overflow-y-auto">
           {menuItems.map(({ id, label, icon: Icon }) => {
             const isActive = activeTab === id;
+
             return (
               <button
                 key={id}
+                className={`
+                  flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium
+                  transition-all duration-150 w-full text-left
+                  ${
+                    isActive
+                      ? "bg-[#5d7c6f] text-white shadow-sm"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  }
+                `}
                 onClick={() => {
                   router.push(`/headteacher/dashboard?tab=${id}`);
                   setIsOpen(false);
                 }}
-                className={`
-                  flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium
-                  transition-all duration-150 w-full text-left
-                  ${isActive
-                    ? "bg-[#5d7c6f] text-white shadow-sm"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }
-                `}
               >
-                <Icon size={20} className="shrink-0" />
+                <Icon className="shrink-0" size={20} />
                 <span className="truncate">{label}</span>
               </button>
             );

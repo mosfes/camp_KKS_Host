@@ -177,7 +177,9 @@ export async function GET(request, context) {
     return NextResponse.json(
       {
         ...camp,
-        isOwner: camp.created_by_teacher_id === teacher.teachers_id || teacher.role === "ADMIN",
+        isOwner:
+          camp.created_by_teacher_id === teacher.teachers_id ||
+          teacher.role === "ADMIN",
         isHomeroomTeacher,
         total_eligible_students: totalEligibleStudents,
         grades: sortedGrades,
@@ -344,12 +346,14 @@ export async function PUT(request, context) {
 
             // เพิ่ม time slots
             if (daySchedule.timeSlots && daySchedule.timeSlots.length > 0) {
-              const timeSlotsData = daySchedule.timeSlots.map((timeSlot: any) => ({
-                daily_schedule_id: createdSchedule.daily_schedule_id,
-                startTime: timeSlot.startTime,
-                endTime: timeSlot.endTime,
-                activity: timeSlot.activity,
-              }));
+              const timeSlotsData = daySchedule.timeSlots.map(
+                (timeSlot: any) => ({
+                  daily_schedule_id: createdSchedule.daily_schedule_id,
+                  startTime: timeSlot.startTime,
+                  endTime: timeSlot.endTime,
+                  activity: timeSlot.activity,
+                }),
+              );
 
               await tx.camp_time_slot.createMany({
                 data: timeSlotsData,
@@ -383,7 +387,10 @@ export async function PUT(request, context) {
     console.error("Error updating camp:", error);
 
     return NextResponse.json(
-      { _error: "Failed to update camp", details: error instanceof Error ? error.message : String(error) },
+      {
+        _error: "Failed to update camp",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }

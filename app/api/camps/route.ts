@@ -57,6 +57,7 @@ export async function POST(req) {
       { name: "วันที่เริ่มลงทะเบียน", value: body.registrationStartDate },
       { name: "วันสิ้นสุดลงทะเบียน", value: body.registrationEndDate },
     ];
+
     for (const d of requiredDates) {
       if (!d.value || isNaN(new Date(d.value).getTime())) {
         return NextResponse.json(
@@ -91,7 +92,9 @@ export async function POST(req) {
         img_certificate_url: body.img_certificate_url || null,
         cert_name_x: body.cert_name_x ? parseFloat(body.cert_name_x) : null,
         cert_name_y: body.cert_name_y ? parseFloat(body.cert_name_y) : null,
-        cert_font_size: body.cert_font_size ? parseFloat(body.cert_font_size) : null,
+        cert_font_size: body.cert_font_size
+          ? parseFloat(body.cert_font_size)
+          : null,
         created_by_teacher_id: teacher.teachers_id,
         camp_daily_schedule: {
           create: body.dailySchedule.map((day) => ({
@@ -162,14 +165,16 @@ export async function POST(req) {
 
     // ส่งข้อความที่เป็นมิตรกับผู้ใช้งาน
     let friendlyMessage = "เกิดข้อผิดพลาดในการสร้างค่าย กรุณาลองใหม่อีกครั้ง";
+
     if (error?.message && error.message.includes("Invalid Date")) {
-      friendlyMessage = "ข้อมูลวันที่ไม่ถูกต้อง กรุณาตรวจสอบข้อมูลวันที่อีกครั้ง";
+      friendlyMessage =
+        "ข้อมูลวันที่ไม่ถูกต้อง กรุณาตรวจสอบข้อมูลวันที่อีกครั้ง";
     }
 
     return NextResponse.json(
       {
         error: friendlyMessage,
-        details: error?.message || String(error)
+        details: error?.message || String(error),
       },
       { status: 500 },
     );
@@ -299,7 +304,9 @@ export async function GET(request) {
       for (const f of dateFields) {
         if (updated[f]) updated[f] = toThaiISOString(updated[f]);
       }
-      updated.isOwner = camp.created_by_teacher_id === teacher.teachers_id || teacher.role === "ADMIN";
+      updated.isOwner =
+        camp.created_by_teacher_id === teacher.teachers_id ||
+        teacher.role === "ADMIN";
 
       // Extract Grades, Types, and Academic Year
       const typeMap = new Map();

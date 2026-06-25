@@ -20,6 +20,7 @@ function buildPayload(campId, nonce) {
 /** ดึง active session ของค่าย (ยังไม่หมดเวลา ยังไม่ปิด) */
 async function getActiveSession(campId) {
   const now = new Date();
+
   return prisma.attendance_session.findFirst({
     where: {
       camp_camp_id: campId,
@@ -51,6 +52,7 @@ async function getAllRounds(campId) {
 // GET: session ปัจจุบัน + ประวัติรอบทั้งหมด
 export async function GET(request, { params }) {
   const { error: authError } = await requireTeacher();
+
   if (authError) return authError;
 
   const { campId } = await params;
@@ -77,6 +79,7 @@ export async function GET(request, { params }) {
 // POST: สร้างรอบเช็คชื่อใหม่
 export async function POST(request, { params }) {
   const { teacher, error: authError } = await requireTeacher();
+
   if (authError) return authError;
 
   const { campId } = await params;
@@ -87,12 +90,14 @@ export async function POST(request, { params }) {
 
   try {
     const body = await request.json();
+
     description = body.description || "";
     if (body.durationMinutes) durationMinutes = parseInt(body.durationMinutes);
   } catch {}
 
   // ปิดรอบเก่าที่ยังเปิดอยู่
   const now = new Date();
+
   await prisma.attendance_session.updateMany({
     where: {
       camp_camp_id: cid,
@@ -158,7 +163,8 @@ export async function POST(request, { params }) {
   await prisma.attendance_teachers.create({
     data: {
       camp_camp_id: cid,
-      teacher_enrollment_teacher_enrollment_id: teacherEnrollment.teacher_enrollment_id,
+      teacher_enrollment_teacher_enrollment_id:
+        teacherEnrollment.teacher_enrollment_id,
       description: roundDescription,
       method: "QR",
       round_id: roundId,
@@ -186,6 +192,7 @@ export async function POST(request, { params }) {
 // DELETE: ปิดรอบปัจจุบัน
 export async function DELETE(request, { params }) {
   const { error: authError } = await requireTeacher();
+
   if (authError) return authError;
 
   const { campId } = await params;

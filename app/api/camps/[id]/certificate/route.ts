@@ -1,12 +1,14 @@
+import fs from "fs";
+import path from "path";
+
 import { NextResponse } from "next/server";
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
-import fs from "fs";
-import path from "path";
-import { prisma } from "@/lib/db";
-import { requireStudent } from "@/lib/auth";
 import { ImageResponse } from "next/og";
 import React from "react";
+
+import { prisma } from "@/lib/db";
+import { requireStudent } from "@/lib/auth";
 
 // In-memory rate limiter to prevent rapid spam requests
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
@@ -16,6 +18,7 @@ const MAX_REQUESTS_PER_WINDOW = 5;
 // แปลงเลขอาราบิกเป็นเลขไทย
 function toThaiNumerals(str: string): string {
   const thaiDigits = ["๐", "๑", "๒", "๓", "๔", "๕", "๖", "๗", "๘", "๙"];
+
   return str.replace(/[0-9]/g, (d) => thaiDigits[parseInt(d)]);
 }
 
@@ -24,18 +27,21 @@ function buildCertNumberText(
   prefix: string,
   certNo: number,
   isThai: boolean,
-  certYear?: string | null
+  certYear?: string | null,
 ): string {
   const padded = String(certNo).padStart(4, "0");
   let text = prefix ? `${prefix} ${padded}` : padded;
+
   if (certYear) {
     text = `${text}/${certYear}`;
   }
+
   return isThai ? toThaiNumerals(text) : text;
 }
 
 export async function GET(request: Request, context: any) {
   const { student, error } = await requireStudent();
+
   if (error) return error;
 
   const params = await context.params;
@@ -60,8 +66,11 @@ export async function GET(request: Request, context: any) {
     } else {
       if (limitRecord.count >= MAX_REQUESTS_PER_WINDOW) {
         return NextResponse.json(
-          { error: "ระบบจำกัดการดาวน์โหลดที่ 5 ครั้งต่อนาที กรุณารอสักครู่ก่อนดาวน์โหลดใหม่" },
-          { status: 429 }
+          {
+            error:
+              "ระบบจำกัดการดาวน์โหลดที่ 5 ครั้งต่อนาที กรุณารอสักครู่ก่อนดาวน์โหลดใหม่",
+          },
+          { status: 429 },
         );
       }
       limitRecord.count += 1;
@@ -98,23 +107,28 @@ export async function GET(request: Request, context: any) {
     if (!enrollment) {
       return NextResponse.json(
         { error: "Student not enrolled in this camp" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     const camp = enrollment.camp;
+
     if (!camp.img_certificate_url) {
       return NextResponse.json(
         { error: "This camp does not have a certificate template." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    if (camp.survey && camp.survey.length > 0 && camp.survey[0].is_required_for_cert) {
+    if (
+      camp.survey &&
+      camp.survey.length > 0 &&
+      camp.survey[0].is_required_for_cert
+    ) {
       if (enrollment.survey_response.length === 0) {
         return NextResponse.json(
           { error: "กรุณาทำแบบประเมินให้เสร็จสิ้นก่อนดาวน์โหลดเกียรติบัตร" },
-          { status: 403 }
+          { status: 403 },
         );
       }
     }
@@ -143,9 +157,7 @@ export async function GET(request: Request, context: any) {
 
           const currentMax = maxResult._max.certificate_no;
           const newNo =
-            currentMax != null
-              ? currentMax + 1
-              : camp.cert_number_start!;
+            currentMax != null ? currentMax + 1 : camp.cert_number_start!;
 
           // บันทึกเลขที่ใหม่
           await tx.certificate.create({
@@ -173,10 +185,11 @@ export async function GET(request: Request, context: any) {
 
     // Fetch the image
     const imageRes = await fetch(camp.img_certificate_url);
+
     if (!imageRes.ok) {
       return NextResponse.json(
         { error: "Failed to load certificate template image." },
-        { status: 500 }
+        { status: 500 },
       );
     }
     const imageBuffer = await imageRes.arrayBuffer();
@@ -196,7 +209,7 @@ export async function GET(request: Request, context: any) {
           camp.cert_number_prefix || "",
           assignedCertNo!,
           camp.cert_number_is_thai,
-          camp.cert_year
+          camp.cert_year,
         )
       : null;
     const numFontSize = camp.cert_number_size || 36;
@@ -208,26 +221,34 @@ export async function GET(request: Request, context: any) {
       // First, get the image dimensions by parsing the image via pdf-lib
       const tempPdfDoc = await PDFDocument.create();
       let embeddedImage;
-      if (contentType.includes("png") || camp.img_certificate_url.toLowerCase().endsWith(".png")) {
+
+      if (
+        contentType.includes("png") ||
+        camp.img_certificate_url.toLowerCase().endsWith(".png")
+      ) {
         embeddedImage = await tempPdfDoc.embedPng(imageBuffer);
       } else {
         embeddedImage = await tempPdfDoc.embedJpg(imageBuffer);
       }
       const { width, height } = embeddedImage.scale(1);
 
-      const fontPath = path.join(process.cwd(), "public/fonts/THSarabunNew.ttf");
+      const fontPath = path.join(
+        process.cwd(),
+        "public/fonts/THSarabunNew.ttf",
+      );
       let fontBytes;
+
       try {
         fontBytes = fs.readFileSync(fontPath);
       } catch (e) {
         return NextResponse.json(
           { error: "Font file not found on server." },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
       // Convert image buffer to base64 for reliable rendering in ImageResponse
-      const base64Image = `data:${contentType || 'image/jpeg'};base64,${Buffer.from(imageBuffer).toString('base64')}`;
+      const base64Image = `data:${contentType || "image/jpeg"};base64,${Buffer.from(imageBuffer).toString("base64")}`;
 
       const imageResponse = new ImageResponse(
         React.createElement(
@@ -269,7 +290,7 @@ export async function GET(request: Request, context: any) {
                 justifyContent: "center",
               },
             },
-            fullName
+            fullName,
           ),
           // เลขที่เกียรติบัตร (ถ้าเปิดใช้)
           ...(showNumber && numberText
@@ -291,10 +312,10 @@ export async function GET(request: Request, context: any) {
                       justifyContent: "center",
                     },
                   },
-                  numberText
+                  numberText,
                 ),
               ]
-            : [])
+            : []),
         ),
         {
           width: width,
@@ -306,12 +327,19 @@ export async function GET(request: Request, context: any) {
               style: "normal",
             },
           ],
-        }
+        },
       );
 
       const resHeaders = new Headers(imageResponse.headers);
-      resHeaders.set("Content-Disposition", `${disposition}; filename="certificate_${student.students_id}_${campId}.png"`);
-      resHeaders.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+
+      resHeaders.set(
+        "Content-Disposition",
+        `${disposition}; filename="certificate_${student.students_id}_${campId}.png"`,
+      );
+      resHeaders.set(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      );
       resHeaders.set("Pragma", "no-cache");
       resHeaders.set("Expires", "0");
       if (isOverflow) {
@@ -327,11 +355,16 @@ export async function GET(request: Request, context: any) {
 
     // Load PDF
     const pdfDoc = await PDFDocument.create();
+
     pdfDoc.registerFontkit(fontkit);
 
     // Embed Image
     let embeddedImage;
-    if (contentType.includes("png") || camp.img_certificate_url.toLowerCase().endsWith(".png")) {
+
+    if (
+      contentType.includes("png") ||
+      camp.img_certificate_url.toLowerCase().endsWith(".png")
+    ) {
       embeddedImage = await pdfDoc.embedPng(imageBuffer);
     } else {
       embeddedImage = await pdfDoc.embedJpg(imageBuffer);
@@ -339,7 +372,7 @@ export async function GET(request: Request, context: any) {
 
     const { width, height } = embeddedImage.scale(1);
     const page = pdfDoc.addPage([width, height]);
-    
+
     page.drawImage(embeddedImage, {
       x: 0,
       y: 0,
@@ -350,29 +383,33 @@ export async function GET(request: Request, context: any) {
     // Embed Font
     const fontPath = path.join(process.cwd(), "public/fonts/THSarabunNew.ttf");
     let fontBytes;
+
     try {
       fontBytes = fs.readFileSync(fontPath);
     } catch (e) {
       return NextResponse.json(
         { error: "Font file not found on server." },
-        { status: 500 }
+        { status: 500 },
       );
     }
     const customFont = await pdfDoc.embedFont(fontBytes);
 
     const hexToRgb = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result ? {
-        r: parseInt(result[1], 16) / 255,
-        g: parseInt(result[2], 16) / 255,
-        b: parseInt(result[3], 16) / 255
-      } : { r: 0, g: 0, b: 0 };
+
+      return result
+        ? {
+            r: parseInt(result[1], 16) / 255,
+            g: parseInt(result[2], 16) / 255,
+            b: parseInt(result[3], 16) / 255,
+          }
+        : { r: 0, g: 0, b: 0 };
     };
 
     // วาดชื่อนักเรียน
     const textWidth = customFont.widthOfTextAtSize(fullName, fontSize);
-    const x = (xPercent / 100) * width - (textWidth / 2);
-    const y = (1 - (yPercent / 100)) * height - (fontSize / 3);
+    const x = (xPercent / 100) * width - textWidth / 2;
+    const y = (1 - yPercent / 100) * height - fontSize / 3;
     const fontColorRgb = hexToRgb(fontColorHex);
 
     page.drawText(fullName, {
@@ -385,9 +422,12 @@ export async function GET(request: Request, context: any) {
 
     // วาดเลขที่เกียรติบัตร (ถ้าเปิดใช้)
     if (showNumber && numberText) {
-      const numTextWidth = customFont.widthOfTextAtSize(numberText, numFontSize);
-      const numX = (numXPercent / 100) * width - (numTextWidth / 2);
-      const numY = (1 - (numYPercent / 100)) * height - (numFontSize / 3);
+      const numTextWidth = customFont.widthOfTextAtSize(
+        numberText,
+        numFontSize,
+      );
+      const numX = (numXPercent / 100) * width - numTextWidth / 2;
+      const numY = (1 - numYPercent / 100) * height - numFontSize / 3;
       const numColorRgb = hexToRgb(numColorHex);
 
       page.drawText(numberText, {
@@ -405,6 +445,7 @@ export async function GET(request: Request, context: any) {
       "Content-Type": "application/pdf",
       "Content-Disposition": `${disposition}; filename="certificate_${student.students_id}_${campId}.pdf"`,
     };
+
     if (isOverflow) {
       pdfHeaders["X-Certificate-Overflow"] = String(overflowAmount);
     }
@@ -415,9 +456,10 @@ export async function GET(request: Request, context: any) {
     });
   } catch (error) {
     console.error("Error generating certificate:", error);
+
     return NextResponse.json(
       { error: "Failed to generate certificate." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

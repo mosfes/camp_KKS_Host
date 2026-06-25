@@ -398,27 +398,30 @@ export async function PUT(req) {
         const newClassroomId = parseInt(body.classroom_id);
         const newClassroom = await prisma.classrooms.findUnique({
           where: { classroom_id: newClassroomId },
-          select: { academic_years_years_id: true }
+          select: { academic_years_years_id: true },
         });
 
         if (newClassroom) {
-          const oldClassroomsInSameYear = await prisma.classroom_students.findMany({
-            where: {
-              student_students_id: id,
-              classroom: {
-                academic_years_years_id: newClassroom.academic_years_years_id
-              }
-            },
-            select: { classroom_students_id: true }
-          });
+          const oldClassroomsInSameYear =
+            await prisma.classroom_students.findMany({
+              where: {
+                student_students_id: id,
+                classroom: {
+                  academic_years_years_id: newClassroom.academic_years_years_id,
+                },
+              },
+              select: { classroom_students_id: true },
+            });
 
           if (oldClassroomsInSameYear.length > 0) {
             await prisma.classroom_students.deleteMany({
               where: {
                 classroom_students_id: {
-                  in: oldClassroomsInSameYear.map(c => c.classroom_students_id)
-                }
-              }
+                  in: oldClassroomsInSameYear.map(
+                    (c) => c.classroom_students_id,
+                  ),
+                },
+              },
             });
           }
 

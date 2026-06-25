@@ -51,16 +51,19 @@ export async function GET(
 
     if (filter === "allergy") {
       const allergyCondition = notSignificant("food_allergy");
+
       studentCondition = search
         ? { AND: [studentCondition, allergyCondition] }
         : allergyCondition;
     } else if (filter === "disease") {
       const diseaseCondition = notSignificant("chronic_disease");
+
       studentCondition = search
         ? { AND: [studentCondition, diseaseCondition] }
         : diseaseCondition;
     } else if (filter === "remark") {
       const remarkCondition = notSignificant("remark");
+
       studentCondition = search
         ? { AND: [studentCondition, remarkCondition] }
         : remarkCondition;
@@ -102,6 +105,7 @@ export async function GET(
 
     // Summary: use DB-level aggregation (COUNT) instead of loading all records
     let summary = null;
+
     if (includeSummary) {
       const significantWhere = (field: string) => ({
         camp_camp_id: campId,
@@ -118,19 +122,27 @@ export async function GET(
         remarkSamples,
       ] = await Promise.all([
         prisma.student_enrollment.count({ where: { camp_camp_id: campId } }),
-        prisma.student_enrollment.count({ where: significantWhere("food_allergy") }),
-        prisma.student_enrollment.count({ where: significantWhere("chronic_disease") }),
+        prisma.student_enrollment.count({
+          where: significantWhere("food_allergy"),
+        }),
+        prisma.student_enrollment.count({
+          where: significantWhere("chronic_disease"),
+        }),
         prisma.student_enrollment.count({ where: significantWhere("remark") }),
         // Only fetch 5 samples for display chips — not all records!
         prisma.student_enrollment.findMany({
           where: significantWhere("food_allergy"),
           take: 5,
-          select: { student: { select: { students_id: true, food_allergy: true } } },
+          select: {
+            student: { select: { students_id: true, food_allergy: true } },
+          },
         }),
         prisma.student_enrollment.findMany({
           where: significantWhere("chronic_disease"),
           take: 5,
-          select: { student: { select: { students_id: true, chronic_disease: true } } },
+          select: {
+            student: { select: { students_id: true, chronic_disease: true } },
+          },
         }),
         prisma.student_enrollment.findMany({
           where: significantWhere("remark"),

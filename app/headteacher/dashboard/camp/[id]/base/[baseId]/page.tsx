@@ -122,10 +122,10 @@ export default function BaseDetailPage() {
 
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2 break-words">
               {base.name}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 break-words whitespace-pre-wrap">
               {base.description || "ไม่มีคำอธิบาย"}
             </p>
           </div>
@@ -161,13 +161,19 @@ export default function BaseDetailPage() {
                         {mission.title || "ภารกิจไม่มีชื่อ"}
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 shrink-0">
-                        {mission.type === "MULTIPLE_CHOICE_QUIZ" ? "แบบเลือกตอบ" : 
-                         mission.type === "QUESTION_ANSWERING" ? "ตอบคำถาม" :
-                         mission.type === "PHOTO_SUBMISSION" ? "ส่งรูปภาพ" :
-                         mission.type === "QR_CODE_SCANNING" ? "สแกน QR Code" :
-                         mission.type === "PRE_TEST" ? "แบบทดสอบก่อนเรียน" :
-                         mission.type === "POST_TEST" ? "แบบทดสอบหลังเรียน" :
-                         mission.type?.replace(/_/g, " ")}
+                        {mission.type === "MULTIPLE_CHOICE_QUIZ"
+                          ? "แบบเลือกตอบ"
+                          : mission.type === "QUESTION_ANSWERING"
+                            ? "ตอบคำถาม"
+                            : mission.type === "PHOTO_SUBMISSION"
+                              ? "ส่งรูปภาพ"
+                              : mission.type === "QR_CODE_SCANNING"
+                                ? "สแกน QR Code"
+                                : mission.type === "PRE_TEST"
+                                  ? "แบบทดสอบก่อนเรียน"
+                                  : mission.type === "POST_TEST"
+                                    ? "แบบทดสอบหลังเรียน"
+                                    : mission.type?.replace(/_/g, " ")}
                       </span>
                     </div>
                     <div className="flex gap-1 shrink-0">
@@ -223,21 +229,17 @@ export default function BaseDetailPage() {
                     mission.mission_question &&
                     mission.mission_question.length > 0 && (
                       <div className="mt-2 space-y-1 w-full">
-                        {mission.mission_question.map(
-                          (q: any, idx: number) => (
-                            <div
-                              key={q.question_id}
-                              className="bg-[#6b857a]/5 p-2 rounded-lg border border-[#6b857a]/10 w-full"
-                            >
-                              <p className="text-sm text-[#6b857a] font-medium break-words">
-                                <span className="mr-2 font-bold">
-                                  {idx + 1}.
-                                </span>
-                                {q.question_text}
-                              </p>
-                            </div>
-                          ),
-                        )}
+                        {mission.mission_question.map((q: any, idx: number) => (
+                          <div
+                            key={q.question_id}
+                            className="bg-[#6b857a]/5 p-2 rounded-lg border border-[#6b857a]/10 w-full"
+                          >
+                            <p className="text-sm text-[#6b857a] font-medium break-words">
+                              <span className="mr-2 font-bold">{idx + 1}.</span>
+                              {q.question_text}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     )}
                 </div>

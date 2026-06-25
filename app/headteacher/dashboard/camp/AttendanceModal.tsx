@@ -304,7 +304,7 @@ export default function AttendanceModal({
 
           if (res.ok) fetchResults(selectedRoundId);
           close();
-        } catch { }
+        } catch {}
       },
       confirmText,
     );
@@ -349,6 +349,7 @@ export default function AttendanceModal({
   const paginatedResults = useMemo(() => {
     const start = (page - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
+
     return filteredResults?.slice(start, end);
   }, [page, filteredResults]);
 
@@ -398,7 +399,6 @@ export default function AttendanceModal({
                     </div>
                     {qrPayload && (
                       <div className="sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
-
                         <button
                           className="flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors whitespace-nowrap"
                           onClick={handleCloseSession}
@@ -568,12 +568,13 @@ export default function AttendanceModal({
                         return (
                           <button
                             key={round.roundId}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${isSelected
-                              ? "bg-[#6b857a] text-white border-[#6b857a]"
-                              : isActive
-                                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                                : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
-                              }`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                              isSelected
+                                ? "bg-[#6b857a] text-white border-[#6b857a]"
+                                : isActive
+                                  ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                                  : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                            }`}
                             onClick={() => handleSelectRound(round.roundId)}
                           >
                             {isActive && (

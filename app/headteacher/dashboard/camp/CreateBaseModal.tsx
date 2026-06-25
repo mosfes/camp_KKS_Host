@@ -45,11 +45,21 @@ export default function CreateBaseModal({
       const response = await fetch("/api/stations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, campId, is_required_for_cert: isRequiredForCert }),
+        body: JSON.stringify({
+          name,
+          description,
+          campId,
+          is_required_for_cert: isRequiredForCert,
+        }),
       });
 
-      if (!response.ok) throw new Error("Failed to create base");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
 
+        throw new Error(
+          errorData._error || errorData.error || "Failed to create base",
+        );
+      }
       const newBase = await response.json();
 
       showSuccess("สำเร็จ", "สร้างฐานกิจกรรมสำเร็จ");
@@ -57,9 +67,9 @@ export default function CreateBaseModal({
       router.push(
         `/headteacher/dashboard/camp/${campId}/base/${newBase.station_id}`,
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating base:", error);
-      showError("ข้อผิดพลาด", "สร้างฐานกิจกรรมไม่สำเร็จ");
+      showError("ข้อผิดพลาด", error.message || "สร้างฐานกิจกรรมไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
@@ -90,26 +100,38 @@ export default function CreateBaseModal({
 
             <ModalBody className="py-6 space-y-4 px-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ชื่อฐานกิจกรรม <span className="text-red-500">*</span>
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    ชื่อฐานกิจกรรม <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-xs text-gray-500">
+                    {name.length}/255
+                  </span>
+                </div>
                 <input
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors"
                   placeholder="เช่น ฐานสำรวจธรรมชาติ"
                   value={name}
+                  maxLength={255}
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  รายละเอียด
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    รายละเอียด
+                  </label>
+                  <span className="text-xs text-gray-500">
+                    {description.length}/255
+                  </span>
+                </div>
                 <textarea
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors resize-none"
                   placeholder="อธิบายกิจกรรมและเป้าหมายของฐานนี้"
                   rows={3}
                   value={description}
+                  maxLength={255}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
@@ -124,9 +146,9 @@ export default function CreateBaseModal({
                   </p>
                 </div>
                 <Switch
+                  color="success"
                   isSelected={isRequiredForCert}
                   onValueChange={setIsRequiredForCert}
-                  color="success"
                 />
               </div>
             </ModalBody>

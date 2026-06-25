@@ -309,11 +309,21 @@ export default function CampStudentsPage() {
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="bg-gray-50 text-gray-600 text-sm border-y border-gray-100">
-                  <th className="p-4 font-semibold rounded-tl-lg whitespace-nowrap">รหัส</th>
-                  <th className="p-4 font-semibold whitespace-nowrap">ชื่อ - นามสกุล</th>
-                  <th className="p-4 font-semibold whitespace-nowrap">เบอร์โทร</th>
-                  <th className="p-4 font-semibold whitespace-nowrap">แพ้อาหาร</th>
-                  <th className="p-4 font-semibold whitespace-nowrap">โรคประจำตัว</th>
+                  <th className="p-4 font-semibold rounded-tl-lg whitespace-nowrap">
+                    รหัส
+                  </th>
+                  <th className="p-4 font-semibold whitespace-nowrap">
+                    ชื่อ - นามสกุล
+                  </th>
+                  <th className="p-4 font-semibold whitespace-nowrap">
+                    เบอร์โทร
+                  </th>
+                  <th className="p-4 font-semibold whitespace-nowrap">
+                    แพ้อาหาร
+                  </th>
+                  <th className="p-4 font-semibold whitespace-nowrap">
+                    โรคประจำตัว
+                  </th>
                   <th className="p-4 font-semibold rounded-tr-lg whitespace-nowrap">
                     เงื่อนไขพิเศษ/อื่นๆ
                   </th>

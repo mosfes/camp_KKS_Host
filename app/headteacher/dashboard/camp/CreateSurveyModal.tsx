@@ -5,13 +5,24 @@ import {
   ModalContent,
   ModalHeader,
   ModalBody,
-  ModalFooter,
   Button,
   Select,
   SelectItem,
+  Switch,
 } from "@heroui/react";
 import { useState, useEffect } from "react";
-import { Save, Plus, Trash2, FileText, Star, BookTemplate, ChevronDown, ChevronUp, CircleDot, LayoutGrid, AlignLeft, Heading } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  FileText,
+  BookTemplate,
+  ChevronDown,
+  ChevronUp,
+  CircleDot,
+  LayoutGrid,
+  AlignLeft,
+  Heading,
+} from "lucide-react";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 
@@ -76,23 +87,33 @@ export default function CreateSurveyModal({
       if (isEditing && initialData) {
         setTitle(initialData.title || "");
         setDescription(initialData.description || "");
-        if (initialData.survey_question && initialData.survey_question.length > 0) {
+        if (
+          initialData.survey_question &&
+          initialData.survey_question.length > 0
+        ) {
           setQuestions(
             initialData.survey_question.map((q: any) => ({
               text: q.question_text,
               type: q.question_type,
               scaleMax: q.scale_max || 5,
               options: q.options ? JSON.parse(q.options) : [],
-            }))
+            })),
           );
-          const scaleQ = initialData.survey_question.find((q: any) => q.question_type === 'scale');
+          const scaleQ = initialData.survey_question.find(
+            (q: any) => q.question_type === "scale",
+          );
+
           if (scaleQ && scaleQ.scale_max) {
             setGlobalScaleMax(scaleQ.scale_max);
           } else {
             setGlobalScaleMax(5);
           }
         }
-        setIsRequiredForCert(initialData.is_required_for_cert !== undefined ? initialData.is_required_for_cert : true);
+        setIsRequiredForCert(
+          initialData.is_required_for_cert !== undefined
+            ? initialData.is_required_for_cert
+            : true,
+        );
       } else {
         // Reset for create mode
         setTitle("");
@@ -127,6 +148,7 @@ export default function CreateSurveyModal({
     try {
       const res = await fetch(`/api/surveys/templates`);
       const data = await res.json();
+
       if (Array.isArray(data)) {
         setTemplates(data);
       } else {
@@ -148,9 +170,12 @@ export default function CreateSurveyModal({
         type: q.question_type,
         scaleMax: q.scale_max || 5,
         options: q.options ? JSON.parse(q.options) : [],
-      }))
+      })),
     );
-    const scaleQ = tpl.survey_template_question.find((q) => q.question_type === 'scale');
+    const scaleQ = tpl.survey_template_question.find(
+      (q) => q.question_type === "scale",
+    );
+
     if (scaleQ && scaleQ.scale_max) {
       setGlobalScaleMax(scaleQ.scale_max);
     } else {
@@ -165,11 +190,17 @@ export default function CreateSurveyModal({
       "คุณต้องการลบเทมเพลตนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้",
       async () => {
         try {
-          const res = await fetch(`/api/surveys/templates?templateId=${templateId}`, {
-            method: "DELETE",
-          });
+          const res = await fetch(
+            `/api/surveys/templates?templateId=${templateId}`,
+            {
+              method: "DELETE",
+            },
+          );
+
           if (res.ok) {
-            setTemplates((prev) => prev.filter((t) => t.template_id !== templateId));
+            setTemplates((prev) =>
+              prev.filter((t) => t.template_id !== templateId),
+            );
             showSuccess("สำเร็จ", "ลบเทมเพลตเรียบร้อยแล้ว");
           } else {
             showError("ข้อผิดพลาด", "ไม่สามารถลบเทมเพลตได้");
@@ -178,12 +209,20 @@ export default function CreateSurveyModal({
           showError("ข้อผิดพลาด", "ไม่สามารถลบเทมเพลตได้");
         }
       },
-      "ลบเทมเพลต"
+      "ลบเทมเพลต",
     );
   };
 
   const addQuestion = (type: "text" | "scale" | "header" | "grid") => {
-    setQuestions([...questions, { text: "", type, scaleMax: 5, options: type === "grid" ? ["รายการที่ 1"] : undefined }]);
+    setQuestions([
+      ...questions,
+      {
+        text: "",
+        type,
+        scaleMax: 5,
+        options: type === "grid" ? ["รายการที่ 1"] : undefined,
+      },
+    ]);
   };
 
   const removeQuestion = (i: number) => {
@@ -195,6 +234,7 @@ export default function CreateSurveyModal({
     if (i + dir < 0 || i + dir >= questions.length) return;
     const newQ = [...questions];
     const temp = newQ[i];
+
     newQ[i] = newQ[i + dir];
     newQ[i + dir] = temp;
     setQuestions(newQ);
@@ -202,19 +242,22 @@ export default function CreateSurveyModal({
 
   const updateQuestion = (i: number, field: keyof Question, val: any) => {
     const q = [...questions];
+
     (q[i] as any)[field] = val;
     setQuestions(q);
   };
 
   const addGridRow = (i: number) => {
     const q = [...questions];
+
     if (!q[i].options) q[i].options = [];
-    q[i].options!.push(`รายการที่ ${(q[i].options!.length) + 1}`);
+    q[i].options!.push(`รายการที่ ${q[i].options!.length + 1}`);
     setQuestions(q);
   };
 
   const updateGridRow = (qi: number, ri: number, val: string) => {
     const q = [...questions];
+
     if (!q[qi].options) return;
     q[qi].options![ri] = val;
     setQuestions(q);
@@ -222,6 +265,7 @@ export default function CreateSurveyModal({
 
   const removeGridRow = (qi: number, ri: number) => {
     const q = [...questions];
+
     if (!q[qi].options) return;
     q[qi].options = q[qi].options!.filter((_, idx) => idx !== ri);
     setQuestions(q);
@@ -233,15 +277,20 @@ export default function CreateSurveyModal({
 
   const handleSubmit = async () => {
     const finalTitle = title.trim() || "แบบสอบถาม";
-    const realQuestions = questions.filter(q => q.type !== "header");
+    const realQuestions = questions.filter((q) => q.type !== "header");
+
     if (realQuestions.length === 0) {
       showError("ข้อผิดพลาด", "กรุณาเพิ่มคำถามอย่างน้อย 1 ข้อ");
+
       return;
     }
     for (let i = 0; i < questions.length; i++) {
       if (!questions[i].text.trim()) {
-        const itemType = questions[i].type === "header" ? "หัวข้อ" : "คำถามข้อที่";
+        const itemType =
+          questions[i].type === "header" ? "หัวข้อ" : "คำถามข้อที่";
+
         showError("ข้อผิดพลาด", `กรุณากรอก${itemType} ${i + 1} ให้ครบถ้วน`);
+
         return;
       }
     }
@@ -274,15 +323,26 @@ export default function CreateSurveyModal({
 
       if (!res.ok) {
         const data = await res.json();
-        showError("ข้อผิดพลาด", data.error || `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามไม่สำเร็จ`);
+
+        showError(
+          "ข้อผิดพลาด",
+          data.error || `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามไม่สำเร็จ`,
+        );
+
         return;
       }
 
-      showSuccess("สำเร็จ", `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามเรียบร้อยแล้ว`);
+      showSuccess(
+        "สำเร็จ",
+        `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามเรียบร้อยแล้ว`,
+      );
       handleClose();
       onSurveyCreated();
     } catch {
-      showError("ข้อผิดพลาด", `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามไม่สำเร็จ`);
+      showError(
+        "ข้อผิดพลาด",
+        `${isEditing ? "แก้ไข" : "สร้าง"}แบบสอบถามไม่สำเร็จ`,
+      );
     } finally {
       setLoading(false);
     }
@@ -298,7 +358,7 @@ export default function CreateSurveyModal({
         }}
         isOpen={isOpen}
         scrollBehavior="inside"
-        size="full"
+        size="5xl"
         onOpenChange={handleClose}
       >
         <ModalContent>
@@ -335,17 +395,6 @@ export default function CreateSurveyModal({
               </ModalHeader>
 
               <ModalBody className="py-6 px-4 sm:px-12 space-y-6">
-                {/* ── Load Templates Button ── */}
-                <div className="flex justify-center -mt-2">
-                  <button
-                    className="flex items-center gap-2 text-sm text-gray-600 font-medium hover:text-gray-900 bg-white px-5 py-2.5 rounded-full shadow-sm border border-gray-200 transition-colors"
-                    onClick={() => setShowTemplates(true)}
-                  >
-                    <BookTemplate size={16} />
-                    เทมเพลต
-                  </button>
-                </div>
-
                 {/* ── Header Card ── */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden relative">
                   <div className="absolute top-0 left-0 right-0 h-2.5 bg-[#6b857a]" />
@@ -366,13 +415,83 @@ export default function CreateSurveyModal({
                   </div>
                 </div>
 
+                {/* ── Template Banner ── */}
+                <div
+                  className="bg-gradient-to-r from-[#6b857a]/10 to-transparent border border-[#6b857a]/20 hover:border-[#6b857a]/50 rounded-xl p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer group transition-all gap-4"
+                  onClick={() => setShowTemplates(true)}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="bg-[#6b857a] p-3 rounded-xl text-white shadow-sm group-hover:scale-105 transition-transform">
+                      <BookTemplate size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 group-hover:text-[#6b857a] transition-colors text-base sm:text-lg">
+                        เลือกจากเทมเพลตแบบสอบถาม
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        ใช้โครงสร้างและคำถามที่เคยบันทึกไว้
+                        เพื่อความรวดเร็วในการสร้างแบบสอบถาม
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    className="bg-white text-[#6b857a] font-medium shadow-sm hover:bg-gray-50 shrink-0 border border-gray-200"
+                    variant="flat"
+                    onPress={() => setShowTemplates(true)}
+                  >
+                    เลือกเทมเพลต
+                  </Button>
+                </div>
+
+                {/* ── Settings Card ── */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8">
+                    <div className="flex items-center justify-between w-full">
+                      <label className="text-sm font-medium text-gray-700">
+                        บันทึกเป็นเทมเพลตสำหรับใช้ในครั้งต่อไป
+                      </label>
+                      <Switch
+                        color="success"
+                        isSelected={saveAsTemplate}
+                        size="sm"
+                        onValueChange={setSaveAsTemplate}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between w-full">
+                      <label className="text-sm font-medium text-gray-700">
+                        จำเป็นต้องทำแบบสอบถามก่อนรับเกียรติบัตร
+                      </label>
+                      <Switch
+                        color="success"
+                        isSelected={isRequiredForCert}
+                        size="sm"
+                        onValueChange={setIsRequiredForCert}
+                      />
+                    </div>
+                  </div>
+
+                  {saveAsTemplate && (
+                    <div className="pt-2 border-t border-gray-100">
+                      <input
+                        className="w-full sm:w-1/2 text-sm bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#6b857a] outline-none px-4 py-2.5 rounded-lg transition-all"
+                        placeholder="ชื่อเทมเพลต (ค่าเริ่มต้นจะใช้ชื่อฟอร์ม)"
+                        value={templateTitle}
+                        onChange={(e) => setTemplateTitle(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+
                 {/* ── Questions List ── */}
                 <div className="space-y-4 pb-4">
                   {questions.map((q, i) => (
                     <div
                       key={i}
                       className={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col gap-5 relative group ${
-                        q.type === "header" ? "border-l-4 border-l-purple-500" : ""
+                        q.type === "header"
+                          ? "border-l-4 border-l-purple-500"
+                          : ""
                       }`}
                     >
                       {/* Left Accent Bar on Hover */}
@@ -388,19 +507,56 @@ export default function CreateSurveyModal({
                             q.type === "scale"
                               ? "คำถามความพึงพอใจ"
                               : q.type === "text"
-                              ? "คำถามปลายเปิด"
-                              : "ชื่อส่วน/หัวข้อ"
+                                ? "คำถามปลายเปิด"
+                                : "ชื่อส่วน/หัวข้อ"
                           }
                           value={q.text}
-                          onChange={(e) => updateQuestion(i, "text", e.target.value)}
+                          onChange={(e) =>
+                            updateQuestion(i, "text", e.target.value)
+                          }
                         />
                         <div className="relative w-full sm:w-56 shrink-0">
                           <Select
                             aria-label="ประเภทคำถาม"
                             className="w-full"
                             classNames={{
-                              trigger: "border border-gray-300 rounded-md outline-none focus-within:border-[#6b857a] bg-white h-[46px] shadow-none hover:bg-white data-[hover=true]:bg-white",
+                              trigger:
+                                "border border-gray-300 rounded-md outline-none focus-within:border-[#6b857a] bg-white h-[46px] shadow-none hover:bg-white data-[hover=true]:bg-white",
                               value: "text-sm text-gray-700 font-medium",
+                            }}
+                            renderValue={(items) => {
+                              return items.map((item) => (
+                                <div
+                                  key={item.key}
+                                  className="flex items-center gap-2"
+                                >
+                                  {item.key === "scale" && (
+                                    <CircleDot
+                                      className="text-gray-500"
+                                      size={16}
+                                    />
+                                  )}
+                                  {item.key === "grid" && (
+                                    <LayoutGrid
+                                      className="text-gray-500"
+                                      size={16}
+                                    />
+                                  )}
+                                  {item.key === "text" && (
+                                    <AlignLeft
+                                      className="text-gray-500"
+                                      size={16}
+                                    />
+                                  )}
+                                  {item.key === "header" && (
+                                    <Heading
+                                      className="text-gray-500"
+                                      size={16}
+                                    />
+                                  )}
+                                  <span>{item.textValue}</span>
+                                </div>
+                              ));
                             }}
                             selectedKeys={[q.type]}
                             onChange={(e) => {
@@ -408,37 +564,42 @@ export default function CreateSurveyModal({
                                 updateQuestion(
                                   i,
                                   "type",
-                                  e.target.value as "text" | "scale" | "header" | "grid"
+                                  e.target.value as
+                                    | "text"
+                                    | "scale"
+                                    | "header"
+                                    | "grid",
                                 );
                               }
                             }}
-                            renderValue={(items) => {
-                              return items.map((item) => (
-                                <div key={item.key} className="flex items-center gap-2">
-                                  {item.key === "scale" && <CircleDot size={16} className="text-gray-500" />}
-                                  {item.key === "grid" && <LayoutGrid size={16} className="text-gray-500" />}
-                                  {item.key === "text" && <AlignLeft size={16} className="text-gray-500" />}
-                                  {item.key === "header" && <Heading size={16} className="text-gray-500" />}
-                                  <span>{item.textValue}</span>
-                                </div>
-                              ));
-                            }}
                           >
-                            <SelectItem key="scale" textValue="ระดับความพึงพอใจ">
+                            <SelectItem
+                              key="scale"
+                              textValue="ระดับความพึงพอใจ"
+                            >
                               <div className="flex items-center gap-2">
-                                <CircleDot size={16} className="text-gray-500" />
+                                <CircleDot
+                                  className="text-gray-500"
+                                  size={16}
+                                />
                                 <span>ระดับความพึงพอใจ</span>
                               </div>
                             </SelectItem>
-                            <SelectItem key="text" textValue="ข้อความ (ปลายเปิด)">
+                            <SelectItem
+                              key="text"
+                              textValue="ข้อความ (ปลายเปิด)"
+                            >
                               <div className="flex items-center gap-2">
-                                <AlignLeft size={16} className="text-gray-500" />
+                                <AlignLeft
+                                  className="text-gray-500"
+                                  size={16}
+                                />
                                 <span>ข้อความ (ปลายเปิด)</span>
                               </div>
                             </SelectItem>
                             <SelectItem key="header" textValue="ส่วนแบ่งหัวข้อ">
                               <div className="flex items-center gap-2">
-                                <Heading size={16} className="text-gray-500" />
+                                <Heading className="text-gray-500" size={16} />
                                 <span>ส่วนแบ่งหัวข้อ</span>
                               </div>
                             </SelectItem>
@@ -450,14 +611,23 @@ export default function CreateSurveyModal({
                       <div className="pl-2 pt-2">
                         {q.type === "scale" && (
                           <div className="flex items-center gap-4 text-gray-500">
-                            <span className="text-sm font-medium">{globalScaleMax}</span>
+                            <span className="text-sm font-medium">
+                              {globalScaleMax}
+                            </span>
                             <div className="flex gap-4">
-                              {Array.from({ length: globalScaleMax }).map((_, idx) => (
-                                <div key={idx} className="flex flex-col items-center gap-2">
-                                  <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
-                                  <span className="text-xs text-gray-400">{globalScaleMax - idx}</span>
-                                </div>
-                              ))}
+                              {Array.from({ length: globalScaleMax }).map(
+                                (_, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex flex-col items-center gap-2"
+                                  >
+                                    <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
+                                    <span className="text-xs text-gray-400">
+                                      {globalScaleMax - idx}
+                                    </span>
+                                  </div>
+                                ),
+                              )}
                             </div>
                             <span className="text-sm font-medium">1</span>
                           </div>
@@ -469,25 +639,35 @@ export default function CreateSurveyModal({
                         )}
                         {q.type === "header" && (
                           <div className="border-b-2 border-purple-200 w-full pb-2 text-sm text-purple-600 font-medium italic">
-                            (ส่วนนี้จะแสดงเป็นตัวหนาขนาดใหญ่ เพื่อคั่นเนื้อหาแบบสอบถาม)
+                            (ส่วนนี้จะแสดงเป็นตัวหนาขนาดใหญ่
+                            เพื่อคั่นเนื้อหาแบบสอบถาม)
                           </div>
                         )}
                         {q.type === "grid" && (
                           <div className="w-full space-y-2 mt-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <p className="text-sm font-medium text-gray-700 mb-2">หัวข้อย่อยที่จะให้คะแนน 1-5 (แถว)</p>
+                            <p className="text-sm font-medium text-gray-700 mb-2">
+                              หัวข้อย่อยที่จะให้คะแนน 1-5 (แถว)
+                            </p>
                             {q.options?.map((opt, rIdx) => (
-                              <div key={rIdx} className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-gray-400 w-4 text-right">{rIdx + 1}.</span>
+                              <div
+                                key={rIdx}
+                                className="flex items-center gap-3"
+                              >
+                                <span className="text-sm font-medium text-gray-400 w-4 text-right">
+                                  {rIdx + 1}.
+                                </span>
                                 <input
                                   className="flex-1 text-sm bg-white border border-gray-300 focus:border-[#6b857a] outline-none px-3 py-2 rounded-md transition-all"
-                                  value={opt}
-                                  onChange={(e) => updateGridRow(i, rIdx, e.target.value)}
                                   placeholder="เช่น ความสะอาดของสถานที่"
+                                  value={opt}
+                                  onChange={(e) =>
+                                    updateGridRow(i, rIdx, e.target.value)
+                                  }
                                 />
                                 <button
                                   className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-30 disabled:hover:text-gray-400"
-                                  onClick={() => removeGridRow(i, rIdx)}
                                   disabled={(q.options?.length || 0) <= 1}
+                                  onClick={() => removeGridRow(i, rIdx)}
                                 >
                                   <Trash2 size={16} />
                                 </button>
@@ -508,16 +688,16 @@ export default function CreateSurveyModal({
                         <button
                           className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30"
                           disabled={i === 0}
-                          onClick={() => moveQuestion(i, -1)}
                           title="เลื่อนขึ้น"
+                          onClick={() => moveQuestion(i, -1)}
                         >
                           <ChevronUp size={20} />
                         </button>
                         <button
                           className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30"
                           disabled={i === questions.length - 1}
-                          onClick={() => moveQuestion(i, 1)}
                           title="เลื่อนลง"
+                          onClick={() => moveQuestion(i, 1)}
                         >
                           <ChevronDown size={20} />
                         </button>
@@ -525,8 +705,8 @@ export default function CreateSurveyModal({
                         <button
                           className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors disabled:opacity-30"
                           disabled={questions.length === 1}
-                          onClick={() => removeQuestion(i)}
                           title="ลบคำถาม"
+                          onClick={() => removeQuestion(i)}
                         >
                           <Trash2 size={18} />
                         </button>
@@ -541,7 +721,7 @@ export default function CreateSurveyModal({
                         className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
                         onClick={() => addQuestion("scale")}
                       >
-                        <Plus size={16} className="text-[#6b857a]" />
+                        <Plus className="text-[#6b857a]" size={16} />
                         ระดับคะแนน
                       </button>
                       <div className="w-px h-6 bg-gray-200 mx-1" />
@@ -549,7 +729,7 @@ export default function CreateSurveyModal({
                         className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
                         onClick={() => addQuestion("text")}
                       >
-                        <Plus size={16} className="text-[#6b857a]" />
+                        <Plus className="text-[#6b857a]" size={16} />
                         ข้อความ
                       </button>
                       <div className="w-px h-6 bg-gray-200 mx-1" />
@@ -557,50 +737,15 @@ export default function CreateSurveyModal({
                         className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
                         onClick={() => addQuestion("header")}
                       >
-                        <Plus size={16} className="text-[#6b857a]" />
+                        <Plus className="text-[#6b857a]" size={16} />
                         หัวข้อ
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* ── Settings ── */}
-                <div className="border-t border-gray-200 pt-6 pb-4 flex flex-col items-end text-right gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 text-[#6b857a] rounded focus:ring-[#6b857a] border-gray-300 transition-colors"
-                      checked={isRequiredForCert}
-                      onChange={(e) => setIsRequiredForCert(e.target.checked)}
-                    />
-                    <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
-                      จำเป็นต้องทำแบบสอบถามก่อนรับเกียรติบัตร
-                    </span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 text-[#6b857a] rounded focus:ring-[#6b857a] border-gray-300 transition-colors"
-                      checked={saveAsTemplate}
-                      onChange={(e) => setSaveAsTemplate(e.target.checked)}
-                    />
-                    <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
-                      บันทึกเป็นเทมเพลตสำหรับใช้ในครั้งต่อไป
-                    </span>
-                  </label>
-
-                  {saveAsTemplate && (
-                    <div className="w-full sm:w-1/2">
-                      <input
-                        className="w-full text-sm bg-white border border-gray-300 focus:border-[#6b857a] outline-none px-4 py-2.5 rounded-lg transition-all"
-                        placeholder="ชื่อเทมเพลต (ค่าเริ่มต้นจะใช้ชื่อฟอร์ม)"
-                        value={templateTitle}
-                        onChange={(e) => setTemplateTitle(e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
+                {/* ── Bottom Padding ── */}
+                <div className="pb-4" />
               </ModalBody>
             </>
           )}
@@ -612,13 +757,19 @@ export default function CreateSurveyModal({
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1 text-lg font-medium">เลือกเทมเพลต</ModalHeader>
+              <ModalHeader className="flex flex-col gap-1 text-lg font-medium">
+                เลือกเทมเพลต
+              </ModalHeader>
               <ModalBody className="pb-6">
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                   {loadingTemplates ? (
-                    <p className="text-sm text-gray-400 p-4 text-center">กำลังโหลด...</p>
+                    <p className="text-sm text-gray-400 p-4 text-center">
+                      กำลังโหลด...
+                    </p>
                   ) : templates.length === 0 ? (
-                    <p className="text-sm text-gray-400 p-4 text-center">ยังไม่มีเทมเพลต</p>
+                    <p className="text-sm text-gray-400 p-4 text-center">
+                      ยังไม่มีเทมเพลต
+                    </p>
                   ) : (
                     templates.map((tpl) => (
                       <div
@@ -630,18 +781,20 @@ export default function CreateSurveyModal({
                         }}
                       >
                         <div className="flex-1 text-left">
-                          <p className="text-sm font-medium text-gray-900">{tpl.title}</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {tpl.title}
+                          </p>
                           <p className="text-xs text-gray-500 mt-0.5">
                             {tpl.survey_template_question.length} รายการ
                           </p>
                         </div>
                         <button
                           className="p-2 text-red-400 opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 rounded-full transition-all"
+                          title="ลบเทมเพลต"
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteTemplate(tpl.template_id);
                           }}
-                          title="ลบเทมเพลต"
                         >
                           <Trash2 size={18} />
                         </button>

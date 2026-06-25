@@ -8,7 +8,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Progress,
 } from "@heroui/react";
 import toast from "react-hot-toast";
 import {
@@ -87,6 +86,7 @@ export default function SurveyResultsModal({
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
+
         throw new Error(errorData.error || "ไม่สามารถดึงข้อมูลผลแบบประเมินได้");
       }
       const json = await res.json();
@@ -321,39 +321,58 @@ export default function SurveyResultsModal({
                           <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
                             <Users size={16} />
                           </div>
-                          <h3 className="font-semibold text-gray-900 text-sm">สัดส่วนผู้ตอบตามเพศ</h3>
+                          <h3 className="font-semibold text-gray-900 text-sm">
+                            สัดส่วนผู้ตอบตามเพศ
+                          </h3>
                         </div>
                         <div className="h-[180px] w-full">
                           {(() => {
-                            const { male, female, other } = data.demographics!.gender;
+                            const { male, female, other } =
+                              data.demographics!.gender;
                             const total = male + female + other;
                             const genderData = [
                               { name: "ชาย", value: male, color: "#60a5fa" },
                               { name: "หญิง", value: female, color: "#f472b6" },
                             ];
+
                             if (other > 0) {
-                              genderData.push({ name: "อื่นๆ", value: other, color: "#9ca3af" });
+                              genderData.push({
+                                name: "อื่นๆ",
+                                value: other,
+                                color: "#9ca3af",
+                              });
                             }
 
                             return (
-                              <ResponsiveContainer width="100%" height="100%">
+                              <ResponsiveContainer height="100%" width="100%">
                                 <PieChart>
                                   <Pie
-                                    data={genderData}
                                     cx="50%"
                                     cy="50%"
+                                    data={genderData}
+                                    dataKey="value"
                                     innerRadius={40}
                                     outerRadius={70}
                                     paddingAngle={2}
-                                    dataKey="value"
                                   >
                                     {genderData.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={entry.color} />
+                                      <Cell
+                                        key={`cell-${index}`}
+                                        fill={entry.color}
+                                      />
                                     ))}
                                   </Pie>
-                                  <RechartsTooltip 
-                                    formatter={(value: any) => [`${value} คน`, 'จำนวน']}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                  <RechartsTooltip
+                                    contentStyle={{
+                                      borderRadius: "8px",
+                                      border: "none",
+                                      boxShadow:
+                                        "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                                    }}
+                                    formatter={(value: any) => [
+                                      `${value} คน`,
+                                      "จำนวน",
+                                    ]}
                                   />
                                 </PieChart>
                               </ResponsiveContainer>
@@ -361,9 +380,22 @@ export default function SurveyResultsModal({
                           })()}
                         </div>
                         <div className="flex justify-center gap-4 mt-2">
-                          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-blue-400"></div><span className="text-xs text-gray-600">ชาย</span></div>
-                          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-pink-400"></div><span className="text-xs text-gray-600">หญิง</span></div>
-                          {data.demographics!.gender.other > 0 && <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-gray-400"></div><span className="text-xs text-gray-600">อื่นๆ</span></div>}
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-full bg-blue-400" />
+                            <span className="text-xs text-gray-600">ชาย</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-full bg-pink-400" />
+                            <span className="text-xs text-gray-600">หญิง</span>
+                          </div>
+                          {data.demographics!.gender.other > 0 && (
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-3 h-3 rounded-full bg-gray-400" />
+                              <span className="text-xs text-gray-600">
+                                อื่นๆ
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -373,26 +405,68 @@ export default function SurveyResultsModal({
                           <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
                             <Book size={16} />
                           </div>
-                          <h3 className="font-semibold text-gray-900 text-sm">สัดส่วนผู้ตอบตามระดับชั้น</h3>
+                          <h3 className="font-semibold text-gray-900 text-sm">
+                            สัดส่วนผู้ตอบตามระดับชั้น
+                          </h3>
                         </div>
                         <div className="h-[200px] w-full">
                           {(() => {
-                            const gradeData = Object.entries(data.demographics!.grade).sort().map(([grade, count]) => ({
-                              name: grade,
-                              count,
-                            }));
+                            const gradeData = Object.entries(
+                              data.demographics!.grade,
+                            )
+                              .sort()
+                              .map(([grade, count]) => ({
+                                name: grade,
+                                count,
+                              }));
+
                             return (
-                              <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={gradeData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                                  <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                                  <RechartsTooltip 
-                                    cursor={{ fill: '#f3f4f6' }}
-                                    formatter={(value: any) => [`${value} คน`, 'จำนวน']}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              <ResponsiveContainer height="100%" width="100%">
+                                <BarChart
+                                  data={gradeData}
+                                  margin={{
+                                    top: 10,
+                                    right: 10,
+                                    left: -25,
+                                    bottom: 0,
+                                  }}
+                                >
+                                  <CartesianGrid
+                                    stroke="#f3f4f6"
+                                    strokeDasharray="3 3"
+                                    vertical={false}
                                   />
-                                  <Bar dataKey="count" fill="#818cf8" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                  <XAxis
+                                    axisLine={false}
+                                    dataKey="name"
+                                    tick={{ fontSize: 12, fill: "#6b7280" }}
+                                    tickLine={false}
+                                  />
+                                  <YAxis
+                                    allowDecimals={false}
+                                    axisLine={false}
+                                    tick={{ fontSize: 12, fill: "#6b7280" }}
+                                    tickLine={false}
+                                  />
+                                  <RechartsTooltip
+                                    contentStyle={{
+                                      borderRadius: "8px",
+                                      border: "none",
+                                      boxShadow:
+                                        "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                                    }}
+                                    cursor={{ fill: "#f3f4f6" }}
+                                    formatter={(value: any) => [
+                                      `${value} คน`,
+                                      "จำนวน",
+                                    ]}
+                                  />
+                                  <Bar
+                                    dataKey="count"
+                                    fill="#818cf8"
+                                    maxBarSize={40}
+                                    radius={[4, 4, 0, 0]}
+                                  />
                                 </BarChart>
                               </ResponsiveContainer>
                             );
@@ -453,23 +527,66 @@ export default function SurveyResultsModal({
                           {q.type === "scale" && q.distribution && (
                             <div className="h-[180px] w-full mt-2 ml-4 md:ml-6 pr-4">
                               {(() => {
-                                const chartData = [1, 2, 3, 4, 5].map((star) => ({
-                                  star: star.toString(),
-                                  count: q.distribution![star] || 0,
-                                }));
+                                const chartData = [1, 2, 3, 4, 5].map(
+                                  (star) => ({
+                                    star: star.toString(),
+                                    count: q.distribution![star] || 0,
+                                  }),
+                                );
+
                                 return (
-                                  <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                      <XAxis dataKey="star" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                                      <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                                      <RechartsTooltip 
-                                        cursor={{ fill: '#fffbeb' }}
-                                        formatter={(value: any) => [`${value} คน`, 'จำนวน']}
-                                        labelFormatter={(label) => `คะแนน ${label}`}
-                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                  <ResponsiveContainer
+                                    height="100%"
+                                    width="100%"
+                                  >
+                                    <BarChart
+                                      data={chartData}
+                                      margin={{
+                                        top: 10,
+                                        right: 10,
+                                        left: -25,
+                                        bottom: 0,
+                                      }}
+                                    >
+                                      <CartesianGrid
+                                        stroke="#f3f4f6"
+                                        strokeDasharray="3 3"
+                                        vertical={false}
                                       />
-                                      <Bar dataKey="count" fill="#fbbf24" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                      <XAxis
+                                        axisLine={false}
+                                        dataKey="star"
+                                        tick={{ fontSize: 12, fill: "#6b7280" }}
+                                        tickLine={false}
+                                      />
+                                      <YAxis
+                                        allowDecimals={false}
+                                        axisLine={false}
+                                        tick={{ fontSize: 12, fill: "#6b7280" }}
+                                        tickLine={false}
+                                      />
+                                      <RechartsTooltip
+                                        contentStyle={{
+                                          borderRadius: "8px",
+                                          border: "none",
+                                          boxShadow:
+                                            "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                                        }}
+                                        cursor={{ fill: "#fffbeb" }}
+                                        formatter={(value: any) => [
+                                          `${value} คน`,
+                                          "จำนวน",
+                                        ]}
+                                        labelFormatter={(label) =>
+                                          `คะแนน ${label}`
+                                        }
+                                      />
+                                      <Bar
+                                        dataKey="count"
+                                        fill="#fbbf24"
+                                        maxBarSize={40}
+                                        radius={[4, 4, 0, 0]}
+                                      />
                                     </BarChart>
                                   </ResponsiveContainer>
                                 );

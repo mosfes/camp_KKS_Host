@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import {
-  MapPin,
   Calendar,
   Clock,
   ChevronLeft,
@@ -102,14 +101,17 @@ export default function StudentCampDetailPage() {
 
   // Schedule Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  
+
   // Certificate Preview Modal State
   const [isCertPreviewModalOpen, setIsCertPreviewModalOpen] = useState(false);
   const [certImageLoading, setCertImageLoading] = useState(true);
-  const [downloadingFormat, setDownloadingFormat] = useState<"pdf" | "png" | null>(null);
+  const [downloadingFormat, setDownloadingFormat] = useState<
+    "pdf" | "png" | null
+  >(null);
 
   // Shirt Selection Modal State (Auto-open after register)
-  const [isShirtSelectionModalOpen, setIsShirtSelectionModalOpen] = useState(false);
+  const [isShirtSelectionModalOpen, setIsShirtSelectionModalOpen] =
+    useState(false);
 
   // Attendance State
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
@@ -330,10 +332,12 @@ export default function StudentCampDetailPage() {
   const handleCertDownload = async (format: "pdf" | "png") => {
     if (downloadingFormat) return;
     setDownloadingFormat(format);
-    
+
     try {
-      const response = await fetch(`/api/camps/${id}/certificate?format=${format}&download=true`);
-      
+      const response = await fetch(
+        `/api/camps/${id}/certificate?format=${format}&download=true`,
+      );
+
       if (!response.ok) {
         if (response.status === 429) {
           toast.error("คุณดาวน์โหลดบ่อยเกินไป กรุณารอสักครู่ก่อนดาวน์โหลดใหม่");
@@ -341,12 +345,14 @@ export default function StudentCampDetailPage() {
           toast.error("เกิดข้อผิดพลาดในการดาวน์โหลดเกียรติบัตร");
         }
         setDownloadingFormat(null);
+
         return;
       }
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
+
       a.style.display = "none";
       a.href = url;
       a.download = `certificate_${id}.${format}`;
@@ -354,7 +360,7 @@ export default function StudentCampDetailPage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       // Disable buttons for a few seconds to prevent spam
       setTimeout(() => {
         setDownloadingFormat(null);
@@ -378,7 +384,7 @@ export default function StudentCampDetailPage() {
         toast.success("ลงทะเบียนสำเร็จ!");
         await fetchCamp();
         fetchSurvey();
-        
+
         // ถ้าค่ายมีเสื้อ ให้เปิด Modal จองเสื้อทันที
         if (camp?.hasShirt) {
           setIsShirtSelectionModalOpen(true);
@@ -454,10 +460,10 @@ export default function StudentCampDetailPage() {
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-[#2d3748] to-[#1a202c] flex items-center justify-center text-white/20">
-            <Flag size={80} className="animate-pulse" />
+            <Flag className="animate-pulse" size={80} />
           </div>
         )}
-        
+
         <div className="absolute top-6 left-6 z-20">
           <Button
             isIconOnly
@@ -482,7 +488,8 @@ export default function StudentCampDetailPage() {
             <div className="flex flex-wrap gap-2 mb-8">
               {camp.isRegistered && !camp.isEnded && (
                 <span className="inline-flex items-center gap-1.5 bg-[#E6F4EA] text-[#1E8E3E] text-[13px] font-bold px-4 py-2 rounded-full">
-                  <CheckCircle2 size={16} className="text-[#1E8E3E]" /> ลงทะเบียนแล้ว
+                  <CheckCircle2 className="text-[#1E8E3E]" size={16} />{" "}
+                  ลงทะเบียนแล้ว
                 </span>
               )}
               {camp.isEnded && (
@@ -497,7 +504,9 @@ export default function StudentCampDetailPage() {
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-4">
               <FileText className="text-gray-400" size={22} />
-              <h2 className="text-base font-black text-gray-900">รายละเอียดค่าย</h2>
+              <h2 className="text-base font-black text-gray-900">
+                รายละเอียดค่าย
+              </h2>
             </div>
             <p className="text-gray-600 text-sm leading-relaxed font-medium opacity-90 pl-1">
               {camp.description}
@@ -512,9 +521,12 @@ export default function StudentCampDetailPage() {
                 <Calendar className="text-[#5d7c6f]" size={20} />
               </div>
               <div className="flex-1">
-                <p className="text-xs font-bold text-gray-400 mb-0.5">วันจัดค่าย</p>
+                <p className="text-xs font-bold text-gray-400 mb-0.5">
+                  วันจัดค่าย
+                </p>
                 <p className="text-[#1A202C] font-black text-base">
-                  {formatDate(camp.rawStartDate)} – {formatDate(camp.rawEndDate)}
+                  {formatDate(camp.rawStartDate)} –{" "}
+                  {formatDate(camp.rawEndDate)}
                 </p>
               </div>
             </div>
@@ -526,16 +538,20 @@ export default function StudentCampDetailPage() {
                   <Users className="text-[#5d7c6f]" size={20} />
                 </div>
                 <div className="flex-1 flex items-center justify-between">
-                  <p className="text-base font-black text-gray-900">จำนวนผู้ลงทะเบียน</p>
+                  <p className="text-base font-black text-gray-900">
+                    จำนวนผู้ลงทะเบียน
+                  </p>
                   <p className="text-base font-black text-[#5d7c6f]">
                     {camp.totalEnrolled} / {camp.totalCapacity} คน
                   </p>
                 </div>
               </div>
               <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-[#5d7c6f] rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, (camp.totalEnrolled / camp.totalCapacity) * 100)}%` }}
+                  style={{
+                    width: `${Math.min(100, (camp.totalEnrolled / camp.totalCapacity) * 100)}%`,
+                  }}
                 />
               </div>
             </div>
@@ -574,20 +590,20 @@ export default function StudentCampDetailPage() {
         {camp.isRegistered && (
           <div className="mt-3 bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
             <h2 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-              <LayoutDashboard size={20} className="text-[#5d7c6f]" />
+              <LayoutDashboard className="text-[#5d7c6f]" size={20} />
               ความคืบหน้าภารกิจ
             </h2>
             <div className="space-y-4">
               <div className="flex justify-between text-sm font-bold text-gray-700">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-[#5d7c6f]" />
+                  <CheckCircle2 className="text-[#5d7c6f]" size={16} />
                   <span>ฐานที่ทำเสร็จ</span>
                 </div>
                 <span>0/{camp.station?.length || 0}</span>
               </div>
               <div className="flex justify-between text-sm font-bold text-gray-700">
                 <div className="flex items-center gap-2">
-                  <Flag size={16} className="text-[#5d7c6f]" />
+                  <Flag className="text-[#5d7c6f]" size={16} />
                   <span>ภารกิจทั้งหมด</span>
                 </div>
                 <span>{completedMissions} สำเร็จ</span>
@@ -804,40 +820,52 @@ export default function StudentCampDetailPage() {
                 );
 
                 const hasCertTemplate = !!camp?.img_certificate_url;
-                
-                const requiredStations = camp?.station?.filter((s: any) => s.is_required_for_cert) || [];
-                const areRequiredStationsCompleted = requiredStations.every((station: any) => {
-                  const stationMissions = station.mission || [];
-                  if (stationMissions.length === 0) return true;
-                  const completedMissions = stationMissions.filter((m: any) => 
-                    camp.missionResults?.some(
-                      (r: any) => r.mission_mission_id === m.mission_id && r.status === "completed"
-                    )
-                  );
-                  return completedMissions.length === stationMissions.length;
-                });
 
-                const isSurveyRequiredAndNotCompleted = surveyData?.is_required_for_cert && !surveyCompleted;
-                const canDownloadCert = hasCertTemplate && !(hasPostTest && !isPostTestCompleted) && areRequiredStationsCompleted && !isSurveyRequiredAndNotCompleted;
+                const requiredStations =
+                  camp?.station?.filter((s: any) => s.is_required_for_cert) ||
+                  [];
+                const areRequiredStationsCompleted = requiredStations.every(
+                  (station: any) => {
+                    const stationMissions = station.mission || [];
+
+                    if (stationMissions.length === 0) return true;
+                    const completedMissions = stationMissions.filter((m: any) =>
+                      camp.missionResults?.some(
+                        (r: any) =>
+                          r.mission_mission_id === m.mission_id &&
+                          r.status === "completed",
+                      ),
+                    );
+
+                    return completedMissions.length === stationMissions.length;
+                  },
+                );
+
+                const isSurveyRequiredAndNotCompleted =
+                  surveyData?.is_required_for_cert && !surveyCompleted;
+                const canDownloadCert =
+                  hasCertTemplate &&
+                  !(hasPostTest && !isPostTestCompleted) &&
+                  areRequiredStationsCompleted &&
+                  !isSurveyRequiredAndNotCompleted;
 
                 const certText =
                   hasPostTest && !isPostTestCompleted
                     ? "เกียรติบัตร (ต้องทำ Post-Test)"
                     : !areRequiredStationsCompleted
-                    ? "เกียรติบัตร (ต้องผ่านฐานที่บังคับ)"
-                    : isSurveyRequiredAndNotCompleted
-                    ? "เกียรติบัตร (ต้องทำแบบประเมิน)"
-                    : "เกียรติบัตร";
-                const certTextEnded =
-                  !hasCertTemplate
-                    ? "เกียรติบัตร"
-                    : hasPostTest && !isPostTestCompleted
+                      ? "เกียรติบัตร (ต้องผ่านฐานที่บังคับ)"
+                      : isSurveyRequiredAndNotCompleted
+                        ? "เกียรติบัตร (ต้องทำแบบประเมิน)"
+                        : "เกียรติบัตร";
+                const certTextEnded = !hasCertTemplate
+                  ? "เกียรติบัตร"
+                  : hasPostTest && !isPostTestCompleted
                     ? "ดาวน์โหลด (ต้องทำ Post-Test)"
                     : !areRequiredStationsCompleted
-                    ? "ดาวน์โหลด (ต้องผ่านฐานที่บังคับ)"
-                    : isSurveyRequiredAndNotCompleted
-                    ? "ดาวน์โหลด (ต้องทำแบบประเมิน)"
-                    : "ดาวน์โหลดเกียรติบัตร";
+                      ? "ดาวน์โหลด (ต้องผ่านฐานที่บังคับ)"
+                      : isSurveyRequiredAndNotCompleted
+                        ? "ดาวน์โหลด (ต้องทำแบบประเมิน)"
+                        : "ดาวน์โหลดเกียรติบัตร";
 
                 return (
                   <>
@@ -915,8 +943,8 @@ export default function StudentCampDetailPage() {
                             <Button
                               fullWidth
                               className={`h-12 rounded-xl font-bold border ${
-                                surveyData && !surveyCompleted 
-                                  ? "bg-[#FFECC9] text-yellow-800 border-yellow-300" 
+                                surveyData && !surveyCompleted
+                                  ? "bg-[#FFECC9] text-yellow-800 border-yellow-300"
                                   : "bg-gray-50 text-gray-500 border-gray-200"
                               }`}
                               isDisabled={!surveyData || surveyCompleted}
@@ -941,10 +969,12 @@ export default function StudentCampDetailPage() {
                               }
                               onPress={openAttendanceModal}
                             >
-                              {attendanceCheckedIn ? "เช็คชื่อแล้ว" : "เช็คชื่อ"}
+                              {attendanceCheckedIn
+                                ? "เช็คชื่อแล้ว"
+                                : "เช็คชื่อ"}
                             </Button>
                           </div>
-                          
+
                           {!canDownloadCert ? (
                             <Button
                               fullWidth
@@ -1319,14 +1349,19 @@ export default function StudentCampDetailPage() {
               <div className="w-full bg-gray-50 rounded-2xl overflow-hidden border border-gray-200 shadow-inner flex items-center justify-center min-h-[250px] relative p-2">
                 <img
                   alt="Certificate Preview"
-                  className={`w-full h-auto object-contain rounded-xl shadow-md transition-opacity duration-300 ${certImageLoading ? 'opacity-0' : 'opacity-100'}`}
+                  className={`w-full h-auto object-contain rounded-xl shadow-md transition-opacity duration-300 ${certImageLoading ? "opacity-0" : "opacity-100"}`}
                   src={`/api/camps/${id}/certificate?format=png&v=2`}
                   onLoad={() => setCertImageLoading(false)}
                 />
                 {certImageLoading && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/50 backdrop-blur-sm z-10">
-                    <Loader2 className="animate-spin text-[#5d7c6f]" size={32} />
-                    <p className="text-sm font-bold text-gray-500 animate-pulse">กำลังสร้างเกียรติบัตร รอสักครู่....</p>
+                    <Loader2
+                      className="animate-spin text-[#5d7c6f]"
+                      size={32}
+                    />
+                    <p className="text-sm font-bold text-gray-500 animate-pulse">
+                      กำลังสร้างเกียรติบัตร รอสักครู่....
+                    </p>
                   </div>
                 )}
               </div>
@@ -1338,9 +1373,11 @@ export default function StudentCampDetailPage() {
                 <Button
                   fullWidth
                   className="font-bold text-base h-14 rounded-2xl bg-[#5d7c6f] text-white shadow-lg shadow-[#5d7c6f]/20"
-                  startContent={downloadingFormat !== "pdf" && <FileText size={20} />}
-                  isLoading={downloadingFormat === "pdf"}
                   isDisabled={!!downloadingFormat}
+                  isLoading={downloadingFormat === "pdf"}
+                  startContent={
+                    downloadingFormat !== "pdf" && <FileText size={20} />
+                  }
                   onPress={() => handleCertDownload("pdf")}
                 >
                   โหลด PDF
@@ -1348,15 +1385,17 @@ export default function StudentCampDetailPage() {
                 <Button
                   fullWidth
                   className="font-bold text-base h-14 rounded-2xl bg-[#1A202C] text-white shadow-lg shadow-gray-900/20"
-                  startContent={downloadingFormat !== "png" && <Ticket size={20} />}
-                  isLoading={downloadingFormat === "png"}
                   isDisabled={!!downloadingFormat}
+                  isLoading={downloadingFormat === "png"}
+                  startContent={
+                    downloadingFormat !== "png" && <Ticket size={20} />
+                  }
                   onPress={() => handleCertDownload("png")}
                 >
                   โหลด PNG
                 </Button>
               </div>
-              <button 
+              <button
                 className="w-full mt-4 text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors"
                 onClick={() => setIsCertPreviewModalOpen(false)}
               >
@@ -1433,26 +1472,40 @@ export default function StudentCampDetailPage() {
               {/* Shirt Preview Images */}
               {(() => {
                 let shirtUrls: string[] = [];
+
                 if (camp?.img_shirt_url) {
                   try {
                     const parsed = JSON.parse(camp.img_shirt_url);
-                    shirtUrls = Array.isArray(parsed) ? parsed.filter(Boolean) : [camp.img_shirt_url];
+
+                    shirtUrls = Array.isArray(parsed)
+                      ? parsed.filter(Boolean)
+                      : [camp.img_shirt_url];
                   } catch {
                     shirtUrls = [camp.img_shirt_url];
                   }
                 }
-                
+
                 if (shirtUrls.length > 0) {
                   return (
-                    <div className={`grid gap-3 ${shirtUrls.length === 1 ? "grid-cols-1 max-w-[200px] mx-auto" : "grid-cols-2"}`}>
+                    <div
+                      className={`grid gap-3 ${shirtUrls.length === 1 ? "grid-cols-1 max-w-[200px] mx-auto" : "grid-cols-2"}`}
+                    >
                       {shirtUrls.map((url, idx) => (
-                        <div key={idx} className="bg-gray-50 rounded-2xl overflow-hidden aspect-square border border-gray-200 shadow-sm">
-                          <img alt="Shirt Preview" className="w-full h-full object-cover" src={url} />
+                        <div
+                          key={idx}
+                          className="bg-gray-50 rounded-2xl overflow-hidden aspect-square border border-gray-200 shadow-sm"
+                        >
+                          <img
+                            alt="Shirt Preview"
+                            className="w-full h-full object-cover"
+                            src={url}
+                          />
                         </div>
                       ))}
                     </div>
                   );
                 }
+
                 return null;
               })()}
 
@@ -1465,8 +1518,8 @@ export default function StudentCampDetailPage() {
                     <button
                       key={size}
                       className={`py-4 px-2 rounded-2xl border-2 text-base font-black transition-all ${
-                        selectedSize === size 
-                          ? "bg-[#5d7c6f] text-white border-[#5d7c6f] shadow-xl shadow-[#5d7c6f]/30 scale-105" 
+                        selectedSize === size
+                          ? "bg-[#5d7c6f] text-white border-[#5d7c6f] shadow-xl shadow-[#5d7c6f]/30 scale-105"
                           : "bg-white text-gray-700 border-gray-100 hover:border-[#5d7c6f]/30"
                       }`}
                       onClick={() => setSelectedSize(size)}
@@ -1482,7 +1535,7 @@ export default function StudentCampDetailPage() {
                   <CalendarCheck className="text-blue-600" size={14} />
                 </div>
                 <p className="text-xs text-blue-700 font-bold leading-relaxed">
-                  คุณสามารถแก้ไขไซส์เสื้อได้ในภายหลังที่หน้าข้อมูลค่าย 
+                  คุณสามารถแก้ไขไซส์เสื้อได้ในภายหลังที่หน้าข้อมูลค่าย
                   ภายในวันที่ {formatDate(camp?.endShirtDate)}
                 </p>
               </div>
@@ -1499,7 +1552,7 @@ export default function StudentCampDetailPage() {
               >
                 ยืนยันการจองเสื้อ
               </Button>
-              <button 
+              <button
                 className="w-full mt-4 text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors"
                 onClick={() => setIsShirtSelectionModalOpen(false)}
               >

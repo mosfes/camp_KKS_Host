@@ -7,6 +7,7 @@ import { requireTeacher } from "@/lib/auth";
 // POST /api/attendance/[campId]/manual-checkin
 export async function POST(req, { params }) {
   const { error: authError } = await requireTeacher();
+
   if (authError) return authError;
 
   const { campId } = await params;
@@ -61,6 +62,7 @@ export async function POST(req, { params }) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("Manual check-in error:", e);
+
     return NextResponse.json(
       { _error: "เกิดข้อผิดพลาดในการเช็คชื่อ" },
       { status: 500 },

@@ -66,7 +66,13 @@ export default function LoginLayout({
             fontSans.variable,
           )}
         >
-          <Providers themeProps={{ attribute: "class", defaultTheme: "light", forcedTheme: "light" }}>
+          <Providers
+            themeProps={{
+              attribute: "class",
+              defaultTheme: "light",
+              forcedTheme: "light",
+            }}
+          >
             {children}
           </Providers>
         </body>

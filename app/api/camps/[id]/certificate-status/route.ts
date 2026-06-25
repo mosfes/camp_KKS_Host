@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
 
 export async function GET(request: Request, context: any) {
   const { teacher, error: authError } = await requireTeacher();
+
   if (authError) return authError;
 
   const params = await context.params;
@@ -58,7 +60,9 @@ export async function GET(request: Request, context: any) {
 
     const latestNo = maxResult._max.certificate_no;
     const overflowAmount =
-      camp.cert_number_end != null && latestNo != null && latestNo > camp.cert_number_end
+      camp.cert_number_end != null &&
+      latestNo != null &&
+      latestNo > camp.cert_number_end
         ? latestNo - camp.cert_number_end
         : 0;
 
@@ -75,9 +79,10 @@ export async function GET(request: Request, context: any) {
     });
   } catch (error) {
     console.error("Error fetching certificate status:", error);
+
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลสถานะเกียรติบัตรได้" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

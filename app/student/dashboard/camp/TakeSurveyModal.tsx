@@ -9,7 +9,7 @@ import {
   ModalFooter,
   Button,
 } from "@heroui/react";
-import { ClipboardList, Star, Heading, Info } from "lucide-react";
+import { ClipboardList, Heading, Info } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 interface Question {
@@ -164,11 +164,12 @@ export default function TakeSurveyModal({
                   {survey.description}
                 </p>
               )}
-              
+
               <div className="mt-4 bg-blue-50/80 border border-blue-100 rounded-xl p-3 flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-blue-700 leading-relaxed">
-                  <span className="font-semibold">แบบสอบถามไม่ระบุตัวตน:</span> จะไม่มีการแสดงชื่อหรือข้อมูลส่วนตัวของผู้ตอบแบบสอบถาม
+                  <span className="font-semibold">แบบสอบถามไม่ระบุตัวตน:</span>{" "}
+                  จะไม่มีการแสดงชื่อหรือข้อมูลส่วนตัวของผู้ตอบแบบสอบถาม
                 </p>
               </div>
             </ModalHeader>
@@ -248,7 +249,10 @@ export default function TakeSurveyModal({
                                         className="flex flex-col items-center gap-3 group focus:outline-none flex-shrink-0 w-10 relative"
                                         type="button"
                                         onClick={() =>
-                                          handleAnswerChange(q.question_id, value)
+                                          handleAnswerChange(
+                                            q.question_id,
+                                            value,
+                                          )
                                         }
                                       >
                                         <span
@@ -268,10 +272,14 @@ export default function TakeSurveyModal({
                                           )}
                                         </div>
                                         {i === 0 && (
-                                          <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">มากที่สุด</span>
+                                          <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">
+                                            มากที่สุด
+                                          </span>
                                         )}
                                         {i === scaleMax - 1 && (
-                                          <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">น้อยที่สุด</span>
+                                          <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">
+                                            น้อยที่สุด
+                                          </span>
                                         )}
                                       </button>
                                     );

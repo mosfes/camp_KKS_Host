@@ -285,13 +285,17 @@ export default function EditMissionModal({
             <ModalBody className="py-6 space-y-5 px-6">
               {/* ชื่อภารกิจ */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ชื่อภารกิจ <span className="text-red-500">*</span>
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    ชื่อภารกิจ <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-xs text-gray-400">{title.length}/255</span>
+                </div>
                 <input
                   className={inputCls}
                   placeholder="เช่น ถ่ายรูปสัตว์ป่า"
                   value={title}
+                  maxLength={255}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
@@ -316,13 +320,17 @@ export default function EditMissionModal({
 
               {/* รายละเอียด */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  รายละเอียด
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    รายละเอียด
+                  </label>
+                  <span className="text-xs text-gray-400">{description.length}/1000</span>
+                </div>
                 <textarea
                   className={`${inputCls} resize-none`}
                   placeholder="อธิบายภารกิจนี้โดยย่อ"
                   rows={2}
+                  maxLength={1000}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -345,11 +353,15 @@ export default function EditMissionModal({
                           {i + 1}
                         </span>
                         <input
-                          className={`${inputCls} pl-8`}
+                          className={`${inputCls} pl-8 pr-16`}
                           placeholder="กรอกคำถาม..."
                           value={q.text}
+                          maxLength={255}
                           onChange={(e) => updateTextQ(i, e.target.value)}
                         />
+                        <span className="absolute right-3 top-2.5 text-xs text-gray-400">
+                          {q.text.length}/255
+                        </span>
                       </div>
                       {textQuestions.length > 1 && (
                         <button
@@ -394,13 +406,17 @@ export default function EditMissionModal({
                         </button>
                       )}
 
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                        คำถามที่ {qi + 1}
-                      </p>
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          คำถามที่ {qi + 1}
+                        </p>
+                        <span className="text-xs text-gray-400">{q.text.length}/255</span>
+                      </div>
                       <input
                         className={`${inputCls} mb-3 bg-white`}
                         placeholder="กรอกข้อความคำถาม"
                         value={q.text}
+                        maxLength={255}
                         onChange={(e) => updateQText(qi, e.target.value)}
                       />
 
@@ -418,14 +434,20 @@ export default function EditMissionModal({
                                 <Circle size={20} />
                               )}
                             </button>
-                            <input
-                              className={`flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none transition-colors ${c.isCorrect ? "border-[#6b857a] ring-1 ring-[#6b857a] bg-[#6b857a]/5" : "border-gray-300 focus:border-[#6b857a] focus:ring-1 focus:ring-[#6b857a]"}`}
-                              placeholder={`ตัวเลือกที่ ${ci + 1}`}
-                              value={c.text}
-                              onChange={(e) =>
-                                updateChoiceText(qi, ci, e.target.value)
-                              }
-                            />
+                            <div className="flex-1 relative">
+                              <input
+                                className={`w-full px-3 py-1.5 border rounded-lg text-sm outline-none transition-colors pr-14 ${c.isCorrect ? "border-[#6b857a] ring-1 ring-[#6b857a] bg-[#6b857a]/5" : "border-gray-300 focus:border-[#6b857a] focus:ring-1 focus:ring-[#6b857a]"}`}
+                                placeholder={`ตัวเลือกที่ ${ci + 1}`}
+                                value={c.text}
+                                maxLength={255}
+                                onChange={(e) =>
+                                  updateChoiceText(qi, ci, e.target.value)
+                                }
+                              />
+                              <span className="absolute right-2 top-2 text-[10px] text-gray-400">
+                                {c.text.length}/255
+                              </span>
+                            </div>
                             {q.choices.length > 2 && (
                               <button
                                 className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 p-1 rounded transition-colors"

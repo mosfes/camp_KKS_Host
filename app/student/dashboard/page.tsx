@@ -167,7 +167,7 @@ export default function StudentDashboard() {
           {/* Decorative shapes */}
           <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-black/10 rounded-full blur-2xl pointer-events-none" />
-          
+
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
@@ -178,7 +178,8 @@ export default function StudentDashboard() {
                   สวัสดีน้อง{student?.firstname || "ๆ"}
                 </h1>
                 <p className="text-white text-sm font-medium flex items-center gap-1.5">
-                  ยินดีต้อนรับเข้าสู่ KKS Camp <Sparkles size={14} className="text-white animate-pulse" />
+                  ยินดีต้อนรับเข้าสู่ KKS Camp{" "}
+                  <Sparkles className="text-white animate-pulse" size={14} />
                 </p>
               </div>
             </div>
@@ -188,27 +189,36 @@ export default function StudentDashboard() {
               <div className="flex flex-wrap gap-2">
                 <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm">
                   <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center">
-                    <History size={12} className="text-white" />
+                    <History className="text-white" size={12} />
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-wider">รหัสนักเรียน:</span>
-                  <span className="text-sm font-bold">{student.students_id}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider">
+                    รหัสนักเรียน:
+                  </span>
+                  <span className="text-sm font-bold">
+                    {student.students_id}
+                  </span>
                 </div>
 
                 {student.classroom?.grade_label && (
                   <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm">
                     <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center">
-                      <Flag size={12} className="text-white" />
+                      <Flag className="text-white" size={12} />
                     </div>
-                    <span className="text-sm font-bold">{student.classroom.grade_label}/{student.classroom.class_name}</span>
+                    <span className="text-sm font-bold">
+                      {student.classroom.grade_label}/
+                      {student.classroom.class_name}
+                    </span>
                   </div>
                 )}
-                
+
                 {student.classroom?.homeroom_teacher && (
                   <div className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm">
                     <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-                      <Users size={12} className="text-white" />
+                      <Users className="text-white" size={12} />
                     </div>
-                    <span className="text-xs font-bold whitespace-nowrap">ครู{student.classroom.homeroom_teacher}</span>
+                    <span className="text-xs font-bold whitespace-nowrap">
+                      ครู{student.classroom.homeroom_teacher}
+                    </span>
                   </div>
                 )}
               </div>
@@ -402,7 +412,9 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
   return (
     <Card
       className={`border-none shadow-sm transition-all duration-300 bg-white relative overflow-hidden group ${
-        navigatingTo === camp.id ? "scale-[0.98] opacity-60" : "hover:scale-[1.01] hover:shadow-xl"
+        navigatingTo === camp.id
+          ? "scale-[0.98] opacity-60"
+          : "hover:scale-[1.01] hover:shadow-xl"
       } ${
         isEnded ? "grayscale-[0.5] opacity-80" : ""
       } ${isUpcomingRegis ? "cursor-not-allowed" : ""}`}
@@ -414,7 +426,9 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
           <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center mb-4 ring-1 ring-white/30">
             <Clock className="text-white animate-pulse" size={28} />
           </div>
-          <h3 className="font-extrabold text-xl mb-1 tracking-tight">ยังไม่เปิดรับสมัคร</h3>
+          <h3 className="font-extrabold text-xl mb-1 tracking-tight">
+            ยังไม่เปิดรับสมัคร
+          </h3>
           <p className="text-sm font-medium text-white/80">{countdownText}</p>
         </div>
       )}
@@ -424,7 +438,7 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
           <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin shadow-lg" />
         </div>
       )}
-      
+
       <CardBody className="p-0 flex flex-col sm:flex-row h-auto sm:h-52">
         <div className="w-full h-48 sm:w-56 sm:h-full bg-gray-100 flex-shrink-0 relative overflow-hidden">
           {camp.img_camp_url ? (
@@ -438,7 +452,7 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
               <Flag className="text-[#5d7c6f]/20" size={48} />
             </div>
           )}
-          
+
           {/* Overlay gradient on image */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent sm:hidden" />
         </div>
@@ -462,7 +476,7 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
               </div>
               <span className="font-medium line-clamp-1">{camp.location}</span>
             </div>
-            
+
             <div className="flex items-center gap-2.5 text-gray-600">
               <div className="w-7 h-7 rounded-lg bg-[#5d7c6f]/10 flex items-center justify-center shrink-0">
                 <Calendar className="text-[#5d7c6f]" size={14} />
@@ -476,7 +490,7 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
           <div className="mt-auto pt-2">
             <div className="w-full bg-[#5d7c6f] text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-[#5d7c6f]/20 group-hover:bg-[#4a6358] transition-all transform group-hover:-translate-y-0.5 active:translate-y-0 text-sm">
               <span>{isEnded ? "ดูย้อนหลัง" : "ดูรายละเอียดค่าย"}</span>
-              <History size={16} className={isEnded ? "block" : "hidden"} />
+              <History className={isEnded ? "block" : "hidden"} size={16} />
             </div>
           </div>
         </div>
@@ -599,11 +613,10 @@ function StudentProfileSetupModal({
         <div className="bg-[#5d7c6f] px-6 pt-8 pb-6 text-white text-center">
           <div className="flex flex-col items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-              <Sparkles size={24} className="text-white" />
+              <Sparkles className="text-white" size={24} />
             </div>
             <div>
               <h2 className="text-xl font-bold">มาทำความรู้จักกันอีกนิด</h2>
-
             </div>
           </div>
         </div>

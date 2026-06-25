@@ -9,6 +9,7 @@ async function verifyQR(payload) {
   try {
     if (!payload || typeof payload !== "string") return null;
     const parts = payload.split(":");
+
     if (parts.length !== 3 || parts[0] !== "CAMP_ATTEND") return null;
     const [, campId, nonce] = parts;
     const cid = parseInt(campId);
@@ -23,6 +24,7 @@ async function verifyQR(payload) {
     });
 
     if (!session) return null;
+
     return { campId: cid, roundId: session.round_id, sessionId: session.id };
   } catch {
     return null;
@@ -41,12 +43,14 @@ async function verifyPin(campId, pin) {
   });
 
   if (!session) return null;
+
   return { roundId: session.round_id, sessionId: session.id };
 }
 
 // POST /api/student/attendance/checkin
 export async function POST(req) {
   const { student, error: authError } = await requireStudent();
+
   if (authError) return authError;
 
   const studentId = student.students_id;
@@ -61,6 +65,7 @@ export async function POST(req) {
 
     if (qrPayload) {
       const decoded = await verifyQR(qrPayload);
+
       if (!decoded)
         return NextResponse.json(
           { error: "QR Code ไม่ถูกต้องหรือหมดอายุ กรุณาให้ครูสุ่มรหัสใหม่" },
@@ -72,6 +77,7 @@ export async function POST(req) {
     } else if (pin && pinCampId) {
       const cid = parseInt(pinCampId);
       const result = await verifyPin(cid, pin);
+
       if (!result)
         return NextResponse.json(
           { error: "รหัส PIN ไม่ถูกต้อง" },
@@ -132,6 +138,7 @@ export async function POST(req) {
     }
 
     const checkedAt = new Date();
+
     await prisma.attendance_record_student.create({
       data: {
         attendance_teacher_session_id: teacherSession.session_id,
@@ -148,6 +155,7 @@ export async function POST(req) {
     });
   } catch (e) {
     console.error("Attendance check-in error:", e);
+
     return NextResponse.json(
       { _error: "เกิดข้อผิดพลาดในการเช็คชื่อ" },
       { status: 500 },
@@ -158,6 +166,7 @@ export async function POST(req) {
 // GET /api/student/attendance/checkin?campId=xxx
 export async function GET(req) {
   const { student, error: authError } = await requireStudent();
+
   if (authError) return authError;
 
   const { searchParams } = new URL(req.url);
@@ -186,4 +195,3 @@ export async function GET(req) {
 
   return NextResponse.json({ isCheckedIn: false, checkedAt: null });
 }
-

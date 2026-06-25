@@ -45,6 +45,20 @@ export async function PUT(request, { params }) {
     const body = await request.json();
     const { name, description, is_required_for_cert } = body;
 
+    if (name && name.length > 255) {
+      return NextResponse.json(
+        { error: "ชื่อฐานกิจกรรมต้องไม่เกิน 255 ตัวอักษร" },
+        { status: 400 },
+      );
+    }
+
+    if (description && description.length > 255) {
+      return NextResponse.json(
+        { error: "รายละเอียดต้องไม่เกิน 255 ตัวอักษร" },
+        { status: 400 },
+      );
+    }
+
     const updatedStation = await prisma.station.update({
       where: { station_id: parseInt(id) },
       data: {
@@ -55,11 +69,11 @@ export async function PUT(request, { params }) {
     });
 
     return NextResponse.json(updatedStation);
-  } catch {
-    //     console.error("Error updating station:", error);
+  } catch (error) {
+    console.error("Error updating station:", error);
 
     return NextResponse.json(
-      { _error: "Failed to update station" },
+      { _error: "Failed to update station", details: error instanceof Error ? error.message : String(error) },
       { status: 500 },
     );
   }

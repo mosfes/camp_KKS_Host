@@ -142,7 +142,8 @@ export async function POST(request) {
               question_text: q.text,
               question_type: q.type,
               scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
-              options: q.type === "grid" ? JSON.stringify(q.options || []) : null,
+              options:
+                q.type === "grid" ? JSON.stringify(q.options || []) : null,
             })),
           },
         },
@@ -234,7 +235,8 @@ export async function PUT(request) {
               question_text: q.text,
               question_type: q.type,
               scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
-              options: q.type === "grid" ? JSON.stringify(q.options || []) : null,
+              options:
+                q.type === "grid" ? JSON.stringify(q.options || []) : null,
             })),
           },
         },
@@ -256,7 +258,8 @@ export async function PUT(request) {
               question_text: q.text,
               question_type: q.type,
               scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
-              options: q.type === "grid" ? JSON.stringify(q.options || []) : null,
+              options:
+                q.type === "grid" ? JSON.stringify(q.options || []) : null,
             })),
           },
         },

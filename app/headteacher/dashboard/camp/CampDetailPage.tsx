@@ -129,7 +129,8 @@ export default function CampDetailPage() {
     useStatusModal();
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isEditCertificateModalOpen, setIsEditCertificateModalOpen] = useState(false);
+  const [isEditCertificateModalOpen, setIsEditCertificateModalOpen] =
+    useState(false);
   const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
   const [isEditBaseModalOpen, setIsEditBaseModalOpen] = useState(false);
   const [selectedBase, setSelectedBase] = useState<any>(null);
@@ -248,6 +249,7 @@ export default function CampDetailPage() {
       if (!response.ok) {
         console.error("Failed to fetch camp detail, status:", response.status);
         setCamp(null);
+
         return;
       }
 
@@ -732,18 +734,29 @@ export default function CampDetailPage() {
               </button>
             )}
 
-            {camp.isOwner && (
+            {(camp.isOwner || camp.isHomeroomTeacher) && (
               <button
-                className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                onClick={() => setIsSurveyResultsModalOpen(true)}
+                className={`bg-white rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 border shadow-sm ${
+                  camp.has_shirt
+                    ? "hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] group cursor-pointer"
+                    : "opacity-50 cursor-not-allowed border-gray-100 bg-gray-50"
+                }`}
+                disabled={!camp.has_shirt}
+                onClick={() => setIsShirtModalOpen(true)}
               >
-                <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                  <BarChart3 size={32} />
+                <div
+                  className={`text-[#6b857a] ${
+                    camp.has_shirt
+                      ? "group-hover:scale-110 transition-transform"
+                      : ""
+                  }`}
+                >
+                  <Shirt size={32} />
                 </div>
                 <span className="font-semibold text-sm text-center text-gray-700">
-                  ผลการ
+                  รายการ
                   <br />
-                  ประเมิน
+                  จองเสื้อ
                 </span>
               </button>
             )}
@@ -893,7 +906,8 @@ export default function CampDetailPage() {
                     <p className="text-gray-500 mb-2 font-medium">
                       ประเภทห้องเรียน/แผนการเรียน
                     </p>
-                    {camp.gradeDisplayList && camp.gradeDisplayList.length > 0 ? (
+                    {camp.gradeDisplayList &&
+                    camp.gradeDisplayList.length > 0 ? (
                       <div className="flex flex-wrap gap-2.5">
                         {camp.gradeDisplayList.map(
                           (item: { type: string; grades: string[] }) => (
@@ -922,7 +936,9 @@ export default function CampDetailPage() {
                       </div>
                     ) : (
                       <p className="font-medium text-gray-900 leading-relaxed bg-gray-50 px-3 py-2 rounded-lg inline-block border border-gray-100">
-                        {camp.gradeDisplay || camp.plan_type_name || "ไม่ได้ระบุ"}
+                        {camp.gradeDisplay ||
+                          camp.plan_type_name ||
+                          "ไม่ได้ระบุ"}
                       </p>
                     )}
                   </div>
@@ -1243,10 +1259,10 @@ export default function CampDetailPage() {
                         </div>
                       )}
                     </div>
-                    <h4 className="font-semibold text-gray-900 mb-1">
+                    <h4 className="font-semibold text-gray-900 mb-1 line-clamp-2 break-words">
                       {station.name}
                     </h4>
-                    <p className="text-sm text-gray-500 line-clamp-2">
+                    <p className="text-sm text-gray-500 line-clamp-2 break-words">
                       {station.description || "ไม่มีคำอธิบาย"}
                     </p>
                   </div>
@@ -1398,7 +1414,7 @@ export default function CampDetailPage() {
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleEditSubmit}
       />
-      
+
       <EditCertificateModal
         campData={camp}
         isOpen={isEditCertificateModalOpen}

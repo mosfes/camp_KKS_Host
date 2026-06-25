@@ -411,7 +411,12 @@ function DashboardContent() {
         setSelectedProjectType(null);
       } else {
         console.error("Failed to create camp:", result);
-        const errorMessage = result?.details || result?.error || result?.message || JSON.stringify(result);
+        const errorMessage =
+          result?.details ||
+          result?.error ||
+          result?.message ||
+          JSON.stringify(result);
+
         showError("ล้มเหลว", `สร้างค่ายไม่สำเร็จ: ${errorMessage}`);
       }
     } catch (error) {
@@ -576,7 +581,7 @@ function DashboardContent() {
   const campTotalPages = Math.ceil(filteredMyCamps.length / campsPerPage) || 1;
   const paginatedCamps = filteredMyCamps.slice(
     (campPage - 1) * campsPerPage,
-    campPage * campsPerPage
+    campPage * campsPerPage,
   );
 
   // Reset camp page when filters change
@@ -610,7 +615,8 @@ function DashboardContent() {
               <Sparkles className="text-white" size={28} />
             </h1>
             <p className="opacity-90 mb-6 text-sm sm:text-base">
-              ยินดีต้อนรับเข้าสู่ระบบ KKS Camp | จัดการค่ายและติดตามการเรียนรู้ของนักเรียน
+              ยินดีต้อนรับเข้าสู่ระบบ KKS Camp |
+              จัดการค่ายและติดตามการเรียนรู้ของนักเรียน
             </p>
 
             <div className="flex flex-wrap gap-2">
@@ -622,7 +628,8 @@ function DashboardContent() {
               )}
               <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium border border-white/10">
                 <Tent size={14} />
-                <span>สถานะ:</span> {teacherInfo?.classroomName ? "ครูประจำชั้น" : "ครูทั่วไป"}
+                <span>สถานะ:</span>{" "}
+                {teacherInfo?.classroomName ? "ครูประจำชั้น" : "ครูทั่วไป"}
               </span>
               <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium border border-white/10">
                 <Calendar size={14} />
@@ -784,9 +791,15 @@ function DashboardContent() {
                           <th className="p-4 font-semibold rounded-tl-lg whitespace-nowrap">
                             รหัสนักเรียน
                           </th>
-                          <th className="p-4 font-semibold whitespace-nowrap">ชื่อ-นามสกุล</th>
-                          <th className="p-4 font-semibold whitespace-nowrap">โรคประจำตัว</th>
-                          <th className="p-4 font-semibold whitespace-nowrap">อาหารที่แพ้</th>
+                          <th className="p-4 font-semibold whitespace-nowrap">
+                            ชื่อ-นามสกุล
+                          </th>
+                          <th className="p-4 font-semibold whitespace-nowrap">
+                            โรคประจำตัว
+                          </th>
+                          <th className="p-4 font-semibold whitespace-nowrap">
+                            อาหารที่แพ้
+                          </th>
                           <th className="p-4 font-semibold rounded-tr-lg whitespace-nowrap">
                             หมายเหตุ
                           </th>
@@ -841,8 +854,8 @@ function DashboardContent() {
                               </td>
                               <td className="p-4">
                                 {student.chronicDisease &&
-                                  student.chronicDisease !== "-" &&
-                                  student.chronicDisease !== "ไม่มี" ? (
+                                student.chronicDisease !== "-" &&
+                                student.chronicDisease !== "ไม่มี" ? (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
                                     {student.chronicDisease}
                                   </span>
@@ -852,8 +865,8 @@ function DashboardContent() {
                               </td>
                               <td className="p-4">
                                 {student.foodAllergy &&
-                                  student.foodAllergy !== "-" &&
-                                  student.foodAllergy !== "ไม่มี" ? (
+                                student.foodAllergy !== "-" &&
+                                student.foodAllergy !== "ไม่มี" ? (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
                                     {student.foodAllergy}
                                   </span>
@@ -863,8 +876,8 @@ function DashboardContent() {
                               </td>
                               <td className="p-4">
                                 {student.remark &&
-                                  student.remark !== "-" &&
-                                  student.remark !== "ไม่มี" ? (
+                                student.remark !== "-" &&
+                                student.remark !== "ไม่มี" ? (
                                   <span className="text-sm text-blue-700 font-medium">
                                     {student.remark}
                                   </span>
@@ -1161,7 +1174,8 @@ function DashboardContent() {
                             }}
                           >
                             <span className="text-[#718096] text-sm">
-                              ลงทะเบียนแล้ว {camp.enrolled}/{camp.totalStudents} คน
+                              ลงทะเบียนแล้ว {camp.enrolled}/{camp.totalStudents}{" "}
+                              คน
                             </span>
                             <div className="flex items-center gap-1 text-[#5d7c6f] font-semibold text-sm">
                               ดูรายละเอียด

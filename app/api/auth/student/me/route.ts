@@ -30,11 +30,14 @@ export async function GET() {
         nickname: true,
         profile_image_url: true,
         email: true,
-      }
+      },
     });
 
     if (!dbStudent) {
-       return NextResponse.json({ error: "ไม่พบข้อมูลนักเรียน" }, { status: 404 });
+      return NextResponse.json(
+        { error: "ไม่พบข้อมูลนักเรียน" },
+        { status: 404 },
+      );
     }
 
     // ดึงข้อมูลห้องเรียนเพิ่มเติม

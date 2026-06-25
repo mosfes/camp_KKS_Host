@@ -52,13 +52,19 @@ export async function DELETE(request) {
     });
 
     if (!existing) {
-      return NextResponse.json({ error: "Template not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Template not found" },
+        { status: 404 },
+      );
     }
 
-    if (existing.created_by_teacher_id !== teacher.teachers_id && teacher.role !== "ADMIN") {
+    if (
+      existing.created_by_teacher_id !== teacher.teachers_id &&
+      teacher.role !== "ADMIN"
+    ) {
       return NextResponse.json(
         { error: "Unauthorized to delete this template" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 

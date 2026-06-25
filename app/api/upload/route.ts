@@ -37,7 +37,10 @@ function uploadBuffer(
           if (error || !result) {
             return reject(error ?? new Error("No result from Cloudinary"));
           }
-          resolve({ secure_url: result.secure_url, public_id: result.public_id });
+          resolve({
+            secure_url: result.secure_url,
+            public_id: result.public_id,
+          });
         },
       )
       .end(buffer); // .end() pushes the buffer and closes the stream
@@ -75,11 +78,12 @@ export async function POST(request: Request) {
     const result = await uploadBuffer(buffer);
 
     return NextResponse.json(
-      { url: result.secure_url, public_id: result.public_id }, 
-      { status: 200 }
+      { url: result.secure_url, public_id: result.public_id },
+      { status: 200 },
     );
   } catch (error: any) {
     console.error("[upload] Cloudinary error:", error);
+
     return NextResponse.json(
       { _error: "อัปโหลดล้มเหลว", details: error?.message ?? String(error) },
       { status: 500 },

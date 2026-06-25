@@ -16,22 +16,39 @@ export async function POST(request) {
         { status: 400 },
       );
     }
+    if (name.length > 255) {
+      return NextResponse.json(
+        { error: "ชื่อฐานกิจกรรมต้องไม่เกิน 255 ตัวอักษร" },
+        { status: 400 },
+      );
+    }
+
+    if (description && description.length > 255) {
+      return NextResponse.json(
+        { error: "รายละเอียดต้องไม่เกิน 255 ตัวอักษร" },
+        { status: 400 },
+      );
+    }
 
     const newStation = await prisma.station.create({
       data: {
         name,
         description: description || "",
         camp_camp_id: parseInt(campId),
-        is_required_for_cert: is_required_for_cert !== undefined ? is_required_for_cert : true,
+        is_required_for_cert:
+          is_required_for_cert !== undefined ? is_required_for_cert : true,
       },
     });
 
     return NextResponse.json(newStation, { status: 201 });
-  } catch {
-    //     console.error("Error creating station:", error);
+  } catch (error) {
+    console.error("Error creating station:", error);
 
     return NextResponse.json(
-      { _error: "Failed to create station" },
+      {
+        _error: "Failed to create station",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }

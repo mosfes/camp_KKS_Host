@@ -54,14 +54,16 @@ export default function ParentLoginPage() {
           <div className="flex flex-col items-center mb-1">
             <div className="mb-3">
               <Image
+                priority
                 alt="KKS Camp Logo"
                 height={90}
                 src="/images/logoKKS.png"
                 width={90}
-                priority
               />
             </div>
-            <h1 className="text-2xl font-bold text-[#334155] tracking-tight">KKS Camp</h1>
+            <h1 className="text-2xl font-bold text-[#334155] tracking-tight">
+              KKS Camp
+            </h1>
           </div>
 
           <div className="w-full h-[1px] bg-gray-100" />
@@ -84,7 +86,8 @@ export default function ParentLoginPage() {
               <Input
                 classNames={{
                   inputWrapper: "h-12 bg-[#f1f3f5] border-none rounded-xl",
-                  input: "text-sm text-gray-700 placeholder:text-gray-400 font-medium",
+                  input:
+                    "text-sm text-gray-700 placeholder:text-gray-400 font-medium",
                 }}
                 placeholder="รหัสนักเรียน"
                 type="text"
@@ -104,7 +107,8 @@ export default function ParentLoginPage() {
               <Input
                 classNames={{
                   inputWrapper: "h-12 bg-[#f1f3f5] border-none rounded-xl",
-                  input: "text-sm text-gray-700 placeholder:text-gray-400 font-medium",
+                  input:
+                    "text-sm text-gray-700 placeholder:text-gray-400 font-medium",
                 }}
                 placeholder="รหัสผ่าน"
                 type="password"

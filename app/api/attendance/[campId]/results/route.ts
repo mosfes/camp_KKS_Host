@@ -7,6 +7,7 @@ import { requireTeacher } from "@/lib/auth";
 // GET /api/attendance/[campId]/results?roundId=xxx
 export async function GET(request, { params }) {
   const { error: authError } = await requireTeacher();
+
   if (authError) return authError;
 
   const { campId } = await params;
@@ -48,6 +49,7 @@ export async function GET(request, { params }) {
     const records = await prisma.attendance_record_student.findMany({
       where: { attendance_teacher_session_id: teacherSession.session_id },
     });
+
     checkedMap = new Map(
       records.map((r) => [r.student_students_id, r.checkin_time]),
     );
@@ -66,6 +68,7 @@ export async function GET(request, { params }) {
     if (!a.isCheckedIn && b.isCheckedIn) return 1;
     if (a.isCheckedIn && b.isCheckedIn)
       return new Date(b.checkedAt) - new Date(a.checkedAt);
+
     return a.studentId - b.studentId;
   });
 
@@ -79,6 +82,7 @@ export async function GET(request, { params }) {
 // DELETE /api/attendance/[campId]/results?roundId=xxx (ล้างการเช็คชื่อ)
 export async function DELETE(request, { params }) {
   const { error: authError } = await requireTeacher();
+
   if (authError) return authError;
 
   const { campId } = await params;
@@ -91,6 +95,7 @@ export async function DELETE(request, { params }) {
     const teacherSession = await prisma.attendance_teachers.findFirst({
       where: { camp_camp_id: cid, round_id: roundId },
     });
+
     if (teacherSession) {
       await prisma.attendance_record_student.deleteMany({
         where: { attendance_teacher_session_id: teacherSession.session_id },

@@ -17,10 +17,7 @@ export async function GET(request) {
     const campId = searchParams.get("campId");
 
     if (!campId) {
-      return NextResponse.json(
-        { error: "กรุณาระบุ campId" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "กรุณาระบุ campId" }, { status: 400 });
     }
 
     const cId = parseInt(campId);
@@ -32,7 +29,10 @@ export async function GET(request) {
     });
 
     if (!camp) {
-      return NextResponse.json({ error: "ไม่พบค่ายนี้ในระบบ" }, { status: 404 });
+      return NextResponse.json(
+        { error: "ไม่พบค่ายนี้ในระบบ" },
+        { status: 404 },
+      );
     }
 
     if (
@@ -145,9 +145,11 @@ export async function GET(request) {
 
     responses.forEach((r) => {
       const student = r.student_enrollment?.student;
+
       if (student) {
         // Gender
         const prefix = student.prefix_name?.trim() || "";
+
         if (["เด็กชาย", "ด.ช.", "นาย"].includes(prefix)) {
           demographics.gender.male++;
         } else if (["เด็กหญิง", "ด.ญ.", "นางสาว", "นาง"].includes(prefix)) {
@@ -157,11 +159,15 @@ export async function GET(request) {
         }
         // Grade
         const cls = student.classroom_students?.[0]?.classroom;
+
         if (cls?.grade) {
           const gradeStr = String(cls.grade).replace("Level_", "ม.");
-          demographics.grade[gradeStr] = (demographics.grade[gradeStr] || 0) + 1;
+
+          demographics.grade[gradeStr] =
+            (demographics.grade[gradeStr] || 0) + 1;
         } else {
-          demographics.grade["ไม่ระบุ"] = (demographics.grade["ไม่ระบุ"] || 0) + 1;
+          demographics.grade["ไม่ระบุ"] =
+            (demographics.grade["ไม่ระบุ"] || 0) + 1;
         }
       }
     });

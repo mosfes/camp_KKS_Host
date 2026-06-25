@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { ImageOff, Trash2, Hash, AlertTriangle, CheckCircle, XCircle, Sparkles } from "lucide-react";
+import {
+  ImageOff,
+  Trash2,
+  Hash,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Sparkles,
+} from "lucide-react";
+
 import { useStatusModal } from "@/components/StatusModalProvider";
 
 interface Props {
@@ -89,18 +98,22 @@ export default function CertificateSettings({
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+
     if (file) {
       if (!file.type.startsWith("image/")) {
         showWarning("ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
         showWarning("ขนาดไฟล์เกิน", "ขนาดไฟล์ต้องไม่เกิน 10MB");
+
         return;
       }
 
       try {
-        const imageCompression = (await import("browser-image-compression")).default;
+        const imageCompression = (await import("browser-image-compression"))
+          .default;
         const compressedFile = await imageCompression(file, {
           maxSizeMB: 2,
           maxWidthOrHeight: 2000,
@@ -109,6 +122,7 @@ export default function CertificateSettings({
 
         setCertImageFile(compressedFile);
         const reader = new FileReader();
+
         reader.onloadend = () => {
           setCertImage(reader.result as string);
         };
@@ -117,6 +131,7 @@ export default function CertificateSettings({
         console.error("Compression failed in preview:", err);
         setCertImageFile(file);
         const reader = new FileReader();
+
         reader.onloadend = () => {
           setCertImage(reader.result as string);
         };
@@ -131,10 +146,11 @@ export default function CertificateSettings({
     close();
   };
 
-  const handleMouseDown = (type: "name" | "number") => (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(type);
-  };
+  const handleMouseDown =
+    (type: "name" | "number") => (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsDragging(type);
+    };
 
   const handleMouseUp = () => setIsDragging(null);
 
@@ -143,6 +159,7 @@ export default function CertificateSettings({
     const rect = containerRef.current.getBoundingClientRect();
     let newX = ((e.clientX - rect.left) / rect.width) * 100;
     let newY = ((e.clientY - rect.top) / rect.height) * 100;
+
     newX = Math.max(0, Math.min(100, newX));
     newY = Math.max(0, Math.min(100, newY));
     if (isDragging === "name") {
@@ -160,6 +177,7 @@ export default function CertificateSettings({
     const touch = e.touches[0];
     let newX = ((touch.clientX - rect.left) / rect.width) * 100;
     let newY = ((touch.clientY - rect.top) / rect.height) * 100;
+
     newX = Math.max(0, Math.min(100, newX));
     newY = Math.max(0, Math.min(100, newY));
     if (isDragging === "name") {
@@ -172,7 +190,10 @@ export default function CertificateSettings({
   };
 
   // คำนวณสถานะช่วงเลขที่
-  const isInvalidRange = certNumberStart != null && certNumberEnd != null && certNumberStart > certNumberEnd;
+  const isInvalidRange =
+    certNumberStart != null &&
+    certNumberEnd != null &&
+    certNumberStart > certNumberEnd;
 
   const rangeCount =
     certNumberStart != null && certNumberEnd != null && !isInvalidRange
@@ -183,8 +204,12 @@ export default function CertificateSettings({
   const surplus = rangeCount != null ? rangeCount - enrolledCount : null;
 
   // ตัวอย่างข้อความเลขที่
-  const exampleNumber = certNumberStart != null ? String(certNumberStart).padStart(4, "0") : "0001";
-  let rawExampleText = certNumberPrefix ? `${certNumberPrefix} ${exampleNumber}` : exampleNumber;
+  const exampleNumber =
+    certNumberStart != null ? String(certNumberStart).padStart(4, "0") : "0001";
+  let rawExampleText = certNumberPrefix
+    ? `${certNumberPrefix} ${exampleNumber}`
+    : exampleNumber;
+
   if (certYear) {
     rawExampleText = `${rawExampleText}/${certYear}`;
   }
@@ -196,49 +221,73 @@ export default function CertificateSettings({
     <div className="space-y-4 border rounded-xl p-4 bg-gray-50">
       <div className="flex justify-between items-center">
         <div>
-          <h4 className="font-bold text-sm text-gray-800">เทมเพลตเกียรติบัตร</h4>
-          <p className="text-xs text-gray-500">อัปโหลดภาพพื้นหลังและจัดตำแหน่งชื่อนักเรียน</p>
+          <h4 className="font-bold text-sm text-gray-800">
+            เทมเพลตเกียรติบัตร
+          </h4>
+          <p className="text-xs text-gray-500">
+            อัปโหลดภาพพื้นหลังและจัดตำแหน่งชื่อนักเรียน
+          </p>
         </div>
       </div>
 
       {!certImage ? (
         <label className="block w-full cursor-pointer bg-white">
-          <input accept="image/*" className="hidden" type="file" onChange={handleImageChange} />
+          <input
+            accept="image/*"
+            className="hidden"
+            type="file"
+            onChange={handleImageChange}
+          />
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all">
             <ImageOff className="mx-auto text-gray-400 mb-2" size={28} />
-            <p className="text-sm text-gray-500 font-medium">คลิกเพื่ออัปโหลดภาพเกียรติบัตร</p>
+            <p className="text-sm text-gray-500 font-medium">
+              คลิกเพื่ออัปโหลดภาพเกียรติบัตร
+            </p>
           </div>
         </label>
       ) : (
         <div className="space-y-4 bg-white p-4 rounded-lg border shadow-sm">
           {/* ---- ส่วนตั้งค่าชื่อนักเรียน ---- */}
           <div>
-            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">ชื่อนักเรียน</p>
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+              ชื่อนักเรียน
+            </p>
             <div className="flex justify-between items-center gap-4">
               <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-500 mb-1">ปรับขนาดฟอนต์ ({certFontSize}px)</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  ปรับขนาดฟอนต์ ({certFontSize}px)
+                </label>
                 <input
-                  type="range"
-                  min="16"
+                  className="w-full accent-[#6b857a]"
                   max="300"
+                  min="16"
+                  type="range"
                   value={certFontSize}
                   onChange={(e) => setCertFontSize(Number(e.target.value))}
-                  className="w-full accent-[#6b857a]"
                 />
               </div>
               <div className="w-24">
-                <label className="block text-xs font-medium text-gray-500 mb-1">สีตัวอักษร</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  สีตัวอักษร
+                </label>
                 <input
+                  className="w-full h-8 cursor-pointer border-0 rounded-md p-0 bg-transparent"
                   type="color"
                   value={certFontColor}
                   onChange={(e) => setCertFontColor(e.target.value)}
-                  className="w-full h-8 cursor-pointer border-0 rounded-md p-0 bg-transparent"
                 />
               </div>
               <button
                 className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-1.5 shrink-0"
-                onClick={() => showConfirm("ยืนยันการลบ", "คุณแน่ใจหรือไม่ว่าต้องการลบภาพเกียรติบัตรนี้?", removeImage, "ลบเกียรติบัตร")}
                 type="button"
+                onClick={() =>
+                  showConfirm(
+                    "ยืนยันการลบ",
+                    "คุณแน่ใจหรือไม่ว่าต้องการลบภาพเกียรติบัตรนี้?",
+                    removeImage,
+                    "ลบเกียรติบัตร",
+                  )
+                }
               >
                 <Trash2 size={14} />
                 ลบเกียรติบัตร
@@ -246,15 +295,15 @@ export default function CertificateSettings({
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               <button
-                type="button"
                 className="px-3 py-1.5 text-xs font-medium bg-[#f0f4f2] text-[#1a3a32] rounded-lg hover:bg-[#e2ebe6] transition-colors border border-[#6b857a]/20"
+                type="button"
                 onClick={() => setCertNameX(50)}
               >
                 จัดกึ่งกลางแนวนอน
               </button>
               <button
-                type="button"
                 className="px-3 py-1.5 text-xs font-medium bg-[#f0f4f2] text-[#1a3a32] rounded-lg hover:bg-[#e2ebe6] transition-colors border border-[#6b857a]/20"
+                type="button"
                 onClick={() => setCertNameY(50)}
               >
                 จัดกึ่งกลางแนวตั้ง
@@ -268,19 +317,23 @@ export default function CertificateSettings({
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Hash size={14} className="text-[#6b857a]" />
-                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">เลขที่เกียรติบัตร</p>
+                <Hash className="text-[#6b857a]" size={14} />
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  เลขที่เกียรติบัตร
+                </p>
               </div>
               {/* Toggle Switch */}
               <button
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  certShowNumber ? "bg-[#1a3a32]" : "bg-gray-300"
+                }`}
                 type="button"
                 onClick={() => setCertShowNumber(!certShowNumber)}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${certShowNumber ? "bg-[#1a3a32]" : "bg-gray-300"
-                  }`}
               >
                 <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${certShowNumber ? "translate-x-5" : "translate-x-1"
-                    }`}
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                    certShowNumber ? "translate-x-5" : "translate-x-1"
+                  }`}
                 />
               </button>
             </div>
@@ -289,39 +342,50 @@ export default function CertificateSettings({
               <div className="space-y-3 pl-1">
                 {/* ช่วงตัวเลข */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">ช่วงเลขที่ (เริ่มต้น — สิ้นสุด)</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    ช่วงเลขที่ (เริ่มต้น — สิ้นสุด)
+                  </label>
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6b857a]/30"
                       min="1"
                       placeholder="เช่น 40"
+                      type="number"
                       value={certNumberStart ?? ""}
                       onChange={(e) =>
-                        setCertNumberStart(e.target.value ? parseInt(e.target.value) : null)
+                        setCertNumberStart(
+                          e.target.value ? parseInt(e.target.value) : null,
+                        )
                       }
-                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6b857a]/30"
                     />
                     <span className="text-gray-400 font-bold shrink-0">—</span>
                     <input
-                      type="number"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6b857a]/30"
                       min="1"
                       placeholder="เช่น 120"
+                      type="number"
                       value={certNumberEnd ?? ""}
                       onChange={(e) =>
-                        setCertNumberEnd(e.target.value ? parseInt(e.target.value) : null)
+                        setCertNumberEnd(
+                          e.target.value ? parseInt(e.target.value) : null,
+                        )
                       }
-                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6b857a]/30"
                     />
                   </div>
 
                   {/* แสดงสถานะช่วงเลข */}
                   {rangeCount != null && (
                     <div className="mt-1.5 text-xs">
-                      <span className="text-gray-400">จำนวนใบในช่วงที่กำหนด: <strong>{rangeCount} ใบ</strong></span>
+                      <span className="text-gray-400">
+                        จำนวนใบในช่วงที่กำหนด: <strong>{rangeCount} ใบ</strong>
+                      </span>
                       {enrolledCount > 0 && (
                         <>
                           <span className="text-gray-300 mx-1.5">|</span>
-                          <span className="text-gray-400">นักเรียนลงทะเบียน: <strong>{enrolledCount} คน</strong></span>
+                          <span className="text-gray-400">
+                            นักเรียนลงทะเบียน:{" "}
+                            <strong>{enrolledCount} คน</strong>
+                          </span>
                         </>
                       )}
                     </div>
@@ -330,9 +394,13 @@ export default function CertificateSettings({
                   {/* แจ้งเตือนเมื่อช่วงผิดพลาด */}
                   {isInvalidRange && (
                     <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                      <XCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                      <XCircle
+                        className="text-red-500 mt-0.5 shrink-0"
+                        size={16}
+                      />
                       <p className="text-xs text-red-600 leading-relaxed">
-                        <strong>ช่วงเลขที่กำหนดไม่ถูกต้อง!</strong> เลขสิ้นสุดต้องมีค่ามากกว่าหรือเท่ากับเลขเริ่มต้น
+                        <strong>ช่วงเลขที่กำหนดไม่ถูกต้อง!</strong>{" "}
+                        เลขสิ้นสุดต้องมีค่ามากกว่าหรือเท่ากับเลขเริ่มต้น
                       </p>
                     </div>
                   )}
@@ -340,78 +408,107 @@ export default function CertificateSettings({
                   {/* คำเตือนเมื่อไม่เพียงพอ */}
                   {isInsufficient && (
                     <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                      <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                      <AlertTriangle
+                        className="text-red-500 mt-0.5 shrink-0"
+                        size={16}
+                      />
                       <p className="text-xs text-red-600 leading-relaxed">
-                        <strong>ช่วงเลขที่กำหนดไม่เพียงพอ!</strong> มีนักเรียนลงทะเบียน {enrolledCount} คน แต่ช่วงที่กำหนดมีเพียง {rangeCount} ใบ (ขาดไป {enrolledCount - rangeCount!} ใบ) ระบบยังคงออกเกียรติบัตรให้ได้ต่อไปแต่จะเกินเลขสิ้นสุดที่กำหนด
+                        <strong>ช่วงเลขที่กำหนดไม่เพียงพอ!</strong>{" "}
+                        มีนักเรียนลงทะเบียน {enrolledCount} คน
+                        แต่ช่วงที่กำหนดมีเพียง {rangeCount} ใบ (ขาดไป{" "}
+                        {enrolledCount - rangeCount!} ใบ)
+                        ระบบยังคงออกเกียรติบัตรให้ได้ต่อไปแต่จะเกินเลขสิ้นสุดที่กำหนด
                       </p>
                     </div>
                   )}
 
                   {/* แสดงว่าเหลือเยอะ */}
-                  {!isInsufficient && surplus != null && surplus > 0 && rangeCount != null && enrolledCount > 0 && (
-                    <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                      <CheckCircle size={16} className="text-green-500 shrink-0" />
-                      <p className="text-xs text-green-600">ช่วงที่กำหนดเพียงพอ — เหลืออีก <strong>{surplus} ใบ</strong></p>
-                    </div>
-                  )}
+                  {!isInsufficient &&
+                    surplus != null &&
+                    surplus > 0 &&
+                    rangeCount != null &&
+                    enrolledCount > 0 && (
+                      <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                        <CheckCircle
+                          className="text-green-500 shrink-0"
+                          size={16}
+                        />
+                        <p className="text-xs text-green-600">
+                          ช่วงที่กำหนดเพียงพอ — เหลืออีก{" "}
+                          <strong>{surplus} ใบ</strong>
+                        </p>
+                      </div>
+                    )}
                 </div>
 
                 {/* คำนำหน้าเลขที่ */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">คำนำหน้าเลขที่</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                    คำนำหน้าเลขที่
+                  </label>
                   <div className="flex gap-2">
                     {(["เลขที่", "No.", ""] as const).map((prefix) => (
                       <button
                         key={prefix === "" ? "none" : prefix}
-                        type="button"
-                        onClick={() => setCertNumberPrefix(prefix)}
-                        className={`flex-1 py-1.5 text-xs rounded-lg border transition-colors font-medium ${certNumberPrefix === prefix
+                        className={`flex-1 py-1.5 text-xs rounded-lg border transition-colors font-medium ${
+                          certNumberPrefix === prefix
                             ? "bg-[#1a3a32] text-white border-[#1a3a32]"
                             : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
-                          }`}
+                        }`}
+                        type="button"
+                        onClick={() => setCertNumberPrefix(prefix)}
                       >
                         {prefix === "" ? "ไม่มีคำนำหน้า" : prefix}
                       </button>
                     ))}
                   </div>
                   <p className="mt-1.5 text-xs text-gray-400">
-                    ตัวอย่าง: <span className="font-medium text-gray-600">{displayExampleText}</span>
+                    ตัวอย่าง:{" "}
+                    <span className="font-medium text-gray-600">
+                      {displayExampleText}
+                    </span>
                   </p>
                 </div>
 
                 {/* ปีการศึกษา */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">ปีการศึกษา (ถ้ามี)</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    ปีการศึกษา (ถ้ามี)
+                  </label>
                   <input
-                    type="text"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6b857a]/30"
                     placeholder="เช่น 2567"
+                    type="text"
                     value={certYear ?? ""}
                     onChange={(e) => setCertYear(e.target.value || null)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6b857a]/30"
                   />
                 </div>
 
                 {/* เลขไทย / เลขอาราบิก */}
                 <div className="flex items-center gap-3">
-                  <label className="text-xs font-medium text-gray-500">รูปแบบตัวเลข:</label>
+                  <label className="text-xs font-medium text-gray-500">
+                    รูปแบบตัวเลข:
+                  </label>
                   <div className="flex gap-2">
                     <button
-                      type="button"
-                      onClick={() => setCertNumberIsThai(false)}
-                      className={`px-3 py-1 text-xs rounded-lg border transition-colors ${!certNumberIsThai
+                      className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
+                        !certNumberIsThai
                           ? "bg-[#1a3a32] text-white border-[#1a3a32]"
                           : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
-                        }`}
+                      }`}
+                      type="button"
+                      onClick={() => setCertNumberIsThai(false)}
                     >
                       เลขอาราบิก (0-9)
                     </button>
                     <button
-                      type="button"
-                      onClick={() => setCertNumberIsThai(true)}
-                      className={`px-3 py-1 text-xs rounded-lg border transition-colors ${certNumberIsThai
+                      className={`px-3 py-1 text-xs rounded-lg border transition-colors ${
+                        certNumberIsThai
                           ? "bg-[#1a3a32] text-white border-[#1a3a32]"
                           : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
-                        }`}
+                      }`}
+                      type="button"
+                      onClick={() => setCertNumberIsThai(true)}
                     >
                       เลขไทย (๐-๙)
                     </button>
@@ -421,31 +518,37 @@ export default function CertificateSettings({
                 {/* ขนาดฟอนต์และสีของเลขที่ */}
                 <div className="flex justify-between items-center gap-4">
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">ขนาดฟอนต์ ({certNumberSize}px)</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      ขนาดฟอนต์ ({certNumberSize}px)
+                    </label>
                     <input
-                      type="range"
-                      min="12"
-                      max="200"
-                      value={certNumberSize}
-                      onChange={(e) => setCertNumberSize(Number(e.target.value))}
                       className="w-full accent-[#6b857a]"
+                      max="200"
+                      min="12"
+                      type="range"
+                      value={certNumberSize}
+                      onChange={(e) =>
+                        setCertNumberSize(Number(e.target.value))
+                      }
                     />
                   </div>
                   <div className="w-24">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">สีตัวอักษร</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      สีตัวอักษร
+                    </label>
                     <input
+                      className="w-full h-8 cursor-pointer border-0 rounded-md p-0 bg-transparent"
                       type="color"
                       value={certNumberColor}
                       onChange={(e) => setCertNumberColor(e.target.value)}
-                      className="w-full h-8 cursor-pointer border-0 rounded-md p-0 bg-transparent"
                     />
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
                   <button
-                    type="button"
                     className="px-3 py-1.5 text-xs font-medium bg-[#f0f4f2] text-[#1a3a32] rounded-lg hover:bg-[#e2ebe6] transition-colors border border-[#6b857a]/20"
+                    type="button"
                     onClick={() => setCertNumberX(50)}
                   >
                     จัดกึ่งกลางแนวนอน
@@ -462,24 +565,24 @@ export default function CertificateSettings({
             ref={containerRef}
             className="relative border-2 border-gray-200 rounded-lg overflow-hidden select-none touch-none bg-gray-100"
             style={{ containerType: "inline-size" }}
+            onMouseLeave={handleMouseUp}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onTouchMove={handleTouchMove}
             onTouchEnd={handleMouseUp}
+            onTouchMove={handleTouchMove}
           >
             <img
               ref={imgRef}
-              src={certImage}
               alt="Certificate Preview"
               className="w-full h-auto pointer-events-none"
-              onLoad={(e) => setImageNaturalWidth(e.currentTarget.naturalWidth || 1000)}
+              src={certImage}
+              onLoad={(e) =>
+                setImageNaturalWidth(e.currentTarget.naturalWidth || 1000)
+              }
             />
 
             {/* ตัวอย่างชื่อนักเรียน */}
             <div
-              onMouseDown={handleMouseDown("name")}
-              onTouchStart={() => setIsDragging("name")}
               className="absolute cursor-move flex flex-col items-center justify-center transition-all"
               style={{
                 left: `${certNameX}%`,
@@ -491,6 +594,8 @@ export default function CertificateSettings({
                 whiteSpace: "nowrap",
                 zIndex: 10,
               }}
+              onMouseDown={handleMouseDown("name")}
+              onTouchStart={() => setIsDragging("name")}
             >
               นายตัวอย่าง นามสกุลตัวอย่าง
             </div>
@@ -498,8 +603,6 @@ export default function CertificateSettings({
             {/* ตัวอย่างเลขที่เกียรติบัตร */}
             {certShowNumber && (
               <div
-                onMouseDown={handleMouseDown("number")}
-                onTouchStart={() => setIsDragging("number")}
                 className="absolute cursor-move flex items-center justify-center transition-all"
                 style={{
                   left: `${certNumberX}%`,
@@ -511,13 +614,18 @@ export default function CertificateSettings({
                   whiteSpace: "nowrap",
                   zIndex: 10,
                 }}
+                onMouseDown={handleMouseDown("number")}
+                onTouchStart={() => setIsDragging("number")}
               >
-                {displayExampleText || (certNumberStart ? String(certNumberStart).padStart(4, "0") : "0001")}
+                {displayExampleText ||
+                  (certNumberStart
+                    ? String(certNumberStart).padStart(4, "0")
+                    : "0001")}
               </div>
             )}
           </div>
           <p className="text-xs text-center text-gray-500 font-medium flex items-center justify-center gap-1">
-            <Sparkles size={14} className="text-[#6b857a]" />
+            <Sparkles className="text-[#6b857a]" size={14} />
             คลิกค้างที่ชื่อหรือเลขที่แล้วลากเพื่อเปลี่ยนตำแหน่ง
           </p>
         </div>
