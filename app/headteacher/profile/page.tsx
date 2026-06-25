@@ -62,13 +62,15 @@ const FieldInput = ({
   placeholder,
   error,
   icon,
+  disabled,
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange?: (v: string) => void;
   placeholder?: string;
   error?: string;
   icon?: React.ReactNode;
+  disabled?: boolean;
 }) => (
   <div>
     <label className="block text-xs font-semibold text-gray-600 mb-1">
@@ -85,12 +87,15 @@ const FieldInput = ({
           ${
             error
               ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+              : disabled
+              ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
               : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
           }`}
         placeholder={placeholder}
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange?.(e.target.value)}
+        disabled={disabled}
       />
     </div>
     {error && (
@@ -346,21 +351,47 @@ export default function TeacherProfilePage() {
 
       {/* ── Account Info (read-only) ── */}
       <SectionCard icon={<Mail size={16} />} title="ข้อมูลบัญชี">
-        <InfoRow label="อีเมล" value={profile.email} />
-        <div className="py-3 border-b border-gray-100 last:border-0">
-          <p className="text-xs text-gray-400 mb-1">สิทธิ์การใช้งาน</p>
-          <span
-            className={`text-xs px-2.5 py-1 rounded-full font-medium ${roleBadgeClass(profile.role)}`}
-          >
-            {roleLabel(profile.role)}
-          </span>
-        </div>
-        <div className="py-3">
-          <p className="text-xs text-gray-400 mb-0.5">รหัสครู</p>
-          <p className="text-sm font-medium text-gray-800">
-            {profile.teachers_id}
-          </p>
-        </div>
+        {editing ? (
+          <div className="space-y-3">
+            <FieldInput
+              label="อีเมล"
+              value={profile.email}
+              disabled={true}
+              icon={<Mail size={14} />}
+            />
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">สิทธิ์การใช้งาน</label>
+              <input 
+                className="w-full pl-3 pr-3 py-2.5 rounded-xl border text-sm outline-none transition-all border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed" 
+                value={roleLabel(profile.role)} 
+                disabled 
+              />
+            </div>
+            <FieldInput
+              label="รหัสครู"
+              value={String(profile.teachers_id)}
+              disabled={true}
+            />
+          </div>
+        ) : (
+          <>
+            <InfoRow label="อีเมล" value={profile.email} />
+            <div className="py-3 border-b border-gray-100 last:border-0">
+              <p className="text-xs text-gray-400 mb-1">สิทธิ์การใช้งาน</p>
+              <span
+                className={`text-xs px-2.5 py-1 rounded-full font-medium ${roleBadgeClass(profile.role)}`}
+              >
+                {roleLabel(profile.role)}
+              </span>
+            </div>
+            <div className="py-3">
+              <p className="text-xs text-gray-400 mb-0.5">รหัสครู</p>
+              <p className="text-sm font-medium text-gray-800">
+                {profile.teachers_id}
+              </p>
+            </div>
+          </>
+        )}
       </SectionCard>
 
       {/* ── Action Buttons ── */}

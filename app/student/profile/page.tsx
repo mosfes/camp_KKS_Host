@@ -99,14 +99,16 @@ const FieldInput = ({
   error,
   type = "text",
   icon,
+  disabled,
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange?: (v: string) => void;
   placeholder?: string;
   error?: string;
   type?: string;
   icon?: React.ReactNode;
+  disabled?: boolean;
 }) => (
   <div>
     <label className="block text-xs font-semibold text-gray-600 mb-1">
@@ -123,13 +125,16 @@ const FieldInput = ({
           ${
             error
               ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+              : disabled
+              ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
               : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
           }`}
         maxLength={type === "tel" ? 10 : undefined}
         placeholder={placeholder}
         type={type}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange?.(e.target.value)}
+        disabled={disabled}
       />
     </div>
     {error && (
@@ -520,9 +525,13 @@ export default function StudentProfilePage() {
             )}
           </div>
         )}
-        <InfoRow label="ชื่อ-นามสกุล" value={displayName} />
         {editing ? (
-          <div className="mt-3">
+          <div className="mt-3 space-y-3">
+            <FieldInput
+              label="ชื่อ-นามสกุล"
+              value={displayName}
+              disabled={true}
+            />
             <FieldInput
                label="ชื่อเล่น"
                placeholder="เช่น กุ๊กไก่"
@@ -530,12 +539,20 @@ export default function StudentProfilePage() {
                onChange={(v) => setForm((f) => ({ ...f, nickname: v }))}
                error={fieldError.nickname}
             />
+            <FieldInput
+              label="อีเมล"
+              value={profile.email}
+              disabled={true}
+            />
           </div>
         ) : (
-          <InfoRow label="ชื่อเล่น" value={displayVal(profile.nickname)} />
+          <>
+            <InfoRow label="ชื่อ-นามสกุล" value={displayName} />
+            <InfoRow label="ชื่อเล่น" value={displayVal(profile.nickname)} />
+            <InfoRow label="อีเมล" value={profile.email} />
+            <InfoRow label="วันเกิด" value={formatBirthdayThai(profile.birthday)} />
+          </>
         )}
-        <InfoRow label="อีเมล" value={profile.email} />
-        <InfoRow label="วันเกิด" value={formatBirthdayThai(profile.birthday)} />
       </SectionCard>
 
       {/* ── Medical Info ── */}
