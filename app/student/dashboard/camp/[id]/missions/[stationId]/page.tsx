@@ -574,7 +574,7 @@ export default function StudentStationDetailPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className={`text-lg font-bold text-[#2D3648] truncate`}>
-                      {mission.title || "ภารกิจ"}
+                      {mission.title?.replace(/\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g, '') || "ภารกิจ"}
                     </h3>
                     {mission.type === "PRE_TEST" && (
                       <span className="shrink-0 bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
@@ -635,20 +635,18 @@ export default function StudentStationDetailPage() {
                 </span>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-bold text-gray-900 truncate">
-                    {selectedMission?.title}
+                    {selectedMission?.title?.replace(/\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g, '')}
                   </h2>
-                  {selectedMission?.type === "PRE_TEST" &&
-                    !(selectedMission?.title || "").includes("ก่อนเรียน") && (
-                      <span className="shrink-0 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-bold">
-                        ก่อนเรียน
-                      </span>
-                    )}
-                  {selectedMission?.type === "POST_TEST" &&
-                    !(selectedMission?.title || "").includes("หลังเรียน") && (
-                      <span className="shrink-0 bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-bold">
-                        หลังเรียน
-                      </span>
-                    )}
+                  {selectedMission?.type === "PRE_TEST" && (
+                    <span className="shrink-0 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-bold">
+                      ก่อนเรียน
+                    </span>
+                  )}
+                  {selectedMission?.type === "POST_TEST" && (
+                    <span className="shrink-0 bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-bold">
+                      หลังเรียน
+                    </span>
+                  )}
                 </div>
               </ModalHeader>
 

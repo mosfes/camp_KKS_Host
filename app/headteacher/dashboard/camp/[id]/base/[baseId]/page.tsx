@@ -158,7 +158,7 @@ export default function BaseDetailPage() {
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="flex flex-wrap items-center gap-2 min-w-0">
                       <span className="font-semibold text-gray-900 break-words">
-                        {mission.title || "ภารกิจไม่มีชื่อ"}
+                        {mission.title?.replace(/\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g, '') || "ภารกิจไม่มีชื่อ"}
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 shrink-0">
                         {mission.type === "MULTIPLE_CHOICE_QUIZ"
