@@ -410,8 +410,9 @@ function DashboardContent() {
         setIsCreateCampOpen(false); // Close modal on success
         setSelectedProjectType(null);
       } else {
-        console.error("Failed to create camp:", result.error);
-        showError("ล้มเหลว", `สร้างค่ายไม่สำเร็จ: ${result.error}`);
+        console.error("Failed to create camp:", result);
+        const errorMessage = result?.error || result?.message || JSON.stringify(result);
+        showError("ล้มเหลว", `สร้างค่ายไม่สำเร็จ: ${errorMessage}`);
       }
     } catch (error) {
       console.error("Error creating camp:", error);
