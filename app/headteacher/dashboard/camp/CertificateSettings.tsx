@@ -48,6 +48,7 @@ interface Props {
   setCertYear: (val: string | null) => void;
   // ข้อมูลจำนวนนักเรียน (สำหรับแสดงคำเตือน)
   enrolledCount?: number;
+  hasAttemptedSubmit?: boolean;
 }
 
 export default function CertificateSettings({
@@ -83,6 +84,7 @@ export default function CertificateSettings({
   certYear,
   setCertYear,
   enrolledCount = 0,
+  hasAttemptedSubmit = false,
 }: Props) {
   const { showWarning, showConfirm, close } = useStatusModal();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -194,6 +196,14 @@ export default function CertificateSettings({
     certNumberStart != null &&
     certNumberEnd != null &&
     certNumberStart > certNumberEnd;
+
+  const isMissingRange =
+    hasAttemptedSubmit &&
+    certShowNumber &&
+    (certNumberStart == null ||
+      certNumberEnd == null ||
+      isNaN(certNumberStart) ||
+      isNaN(certNumberEnd));
 
   const rangeCount =
     certNumberStart != null && certNumberEnd != null && !isInvalidRange
@@ -391,8 +401,22 @@ export default function CertificateSettings({
                     </div>
                   )}
 
+                  {/* แจ้งเตือนเมื่อข้อมูลไม่ครบถ้วน */}
+                  {isMissingRange && (
+                    <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      <XCircle
+                        className="text-red-500 mt-0.5 shrink-0"
+                        size={16}
+                      />
+                      <p className="text-xs text-red-600 leading-relaxed">
+                        <strong>ข้อมูลไม่ครบถ้วน!</strong>{" "}
+                        กรุณาระบุช่วงเลขเริ่มต้นและสิ้นสุดของเกียรติบัตรให้ครบถ้วน
+                      </p>
+                    </div>
+                  )}
+
                   {/* แจ้งเตือนเมื่อช่วงผิดพลาด */}
-                  {isInvalidRange && (
+                  {isInvalidRange && !isMissingRange && (
                     <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                       <XCircle
                         className="text-red-500 mt-0.5 shrink-0"

@@ -9,7 +9,9 @@ import {
   ChevronLeft,
   Flag,
   CheckCircle2,
-  Ticket,
+  Award,
+  Download,
+  Lock,
   Shirt,
   LayoutDashboard,
   ClipboardList,
@@ -849,23 +851,15 @@ export default function StudentCampDetailPage() {
                   areRequiredStationsCompleted &&
                   !isSurveyRequiredAndNotCompleted;
 
-                const certText =
-                  hasPostTest && !isPostTestCompleted
-                    ? "เกียรติบัตร (ต้องทำ Post-Test)"
-                    : !areRequiredStationsCompleted
-                      ? "เกียรติบัตร (ต้องผ่านฐานที่บังคับ)"
-                      : isSurveyRequiredAndNotCompleted
-                        ? "เกียรติบัตร (ต้องทำแบบประเมิน)"
-                        : "เกียรติบัตร";
-                const certTextEnded = !hasCertTemplate
-                  ? "เกียรติบัตร"
+                const certLockReason = !hasCertTemplate
+                  ? "ยังไม่มีเทมเพลตเกียรติบัตร"
                   : hasPostTest && !isPostTestCompleted
-                    ? "ดาวน์โหลด (ต้องทำ Post-Test)"
+                    ? "ต้องทำ Post-Test ก่อน"
                     : !areRequiredStationsCompleted
-                      ? "ดาวน์โหลด (ต้องผ่านฐานที่บังคับ)"
+                      ? "ต้องผ่านฐานที่บังคับก่อน"
                       : isSurveyRequiredAndNotCompleted
-                        ? "ดาวน์โหลด (ต้องทำแบบประเมิน)"
-                        : "ดาวน์โหลดเกียรติบัตร";
+                        ? "ต้องทำแบบประเมินก่อน"
+                        : null;
 
                 return (
                   <>
@@ -887,7 +881,7 @@ export default function StudentCampDetailPage() {
                         <>
                           <Button
                             fullWidth
-                            className="bg-[#5d7c6f] text-white font-black text-lg h-14 rounded-2xl"
+                            className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-2xl"
                             isLoading={navigating}
                             startContent={<LayoutDashboard size={22} />}
                             onPress={() => {
@@ -899,34 +893,49 @@ export default function StudentCampDetailPage() {
                           >
                             สรุปผลการทำภารกิจ
                           </Button>
-                          {!canDownloadCert ? (
-                            <Button
-                              fullWidth
-                              isDisabled
-                              className="font-bold text-lg h-14 rounded-2xl bg-gray-50 text-gray-400 border border-gray-100 opacity-80"
-                              startContent={<Ticket size={22} />}
-                            >
-                              {certTextEnded}
-                            </Button>
-                          ) : (
-                            <Button
-                              fullWidth
-                              className="font-bold text-lg h-14 rounded-2xl bg-[#1A202C] text-white shadow-lg shadow-gray-900/20"
-                              startContent={<Ticket size={22} />}
-                              onPress={() => {
-                                setCertImageLoading(true);
-                                setIsCertPreviewModalOpen(true);
-                              }}
-                            >
-                              {certTextEnded}
-                            </Button>
-                          )}
+                          <div className="flex flex-col gap-2 pt-1">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 h-px bg-gray-100" />
+                              <span className="text-[11px] font-semibold text-gray-300 tracking-wider uppercase">เกียรติบัตร</span>
+                              <div className="flex-1 h-px bg-gray-100" />
+                            </div>
+                            {!canDownloadCert ? (
+                              <div className="flex flex-col gap-1.5">
+                                <Button
+                                  fullWidth
+                                  isDisabled
+                                  className="font-bold text-sm h-12 rounded-2xl bg-gray-50 text-gray-400 border border-gray-200 border-dashed"
+                                  startContent={<Award size={18} className="opacity-40" />}
+                                >
+                                  ดาวน์โหลดเกียรติบัตร
+                                </Button>
+                                {certLockReason && (
+                                  <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 font-medium">
+                                    <Lock size={11} />
+                                    <span>{certLockReason}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <Button
+                                fullWidth
+                                className="font-bold text-sm h-12 rounded-2xl bg-slate-700 text-white shadow-md shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
+                                startContent={<Download size={18} />}
+                                onPress={() => {
+                                  setCertImageLoading(true);
+                                  setIsCertPreviewModalOpen(true);
+                                }}
+                              >
+                                ดาวน์โหลดเกียรติบัตร
+                              </Button>
+                            )}
+                          </div>
                         </>
                       ) : (
                         <>
                           <Button
                             fullWidth
-                            className="bg-[#5d7c6f] text-white font-black text-lg h-14 rounded-2xl shadow-lg shadow-[#5d7c6f]/20"
+                            className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-2xl shadow-lg shadow-[#5d7c6f]/20"
                             isDisabled={navigating || !!campNotStarted}
                             isLoading={navigating}
                             startContent={<LayoutDashboard size={22} />}
@@ -939,32 +948,35 @@ export default function StudentCampDetailPage() {
                           >
                             ไปยังหน้าภารกิจ
                           </Button>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 gap-2">
                             <Button
                               fullWidth
-                              className={`h-12 rounded-xl font-bold border ${
+                              className={`h-11 rounded-2xl font-bold text-sm border ${
                                 surveyData && !surveyCompleted
                                   ? "bg-[#FFECC9] text-yellow-800 border-yellow-300"
-                                  : "bg-gray-50 text-gray-500 border-gray-200"
+                                  : surveyCompleted
+                                    ? "bg-green-50 text-green-700 border-green-200"
+                                    : "bg-gray-50 text-gray-400 border-gray-200"
                               }`}
                               isDisabled={!surveyData || surveyCompleted}
-                              startContent={<ClipboardList size={20} />}
+                              startContent={<ClipboardList size={16} />}
                               onPress={() => setIsSurveyModalOpen(true)}
                             >
                               {surveyCompleted ? "ประเมินแล้ว" : "แบบประเมิน"}
                             </Button>
                             <Button
-                              className={`h-12 rounded-xl font-bold ${
+                              fullWidth
+                              className={`h-11 rounded-2xl font-bold text-sm border ${
                                 attendanceCheckedIn
-                                  ? "bg-green-50 text-green-700 border border-green-200"
-                                  : "bg-[#5d7c6f]/10 text-[#5d7c6f] border border-[#5d7c6f]/20"
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : "bg-[#5d7c6f]/10 text-[#5d7c6f] border-[#5d7c6f]/30"
                               }`}
                               isDisabled={!!campNotStarted}
                               startContent={
                                 attendanceCheckedIn ? (
-                                  <CheckCircle2 size={20} />
+                                  <CheckCircle2 size={16} />
                                 ) : (
-                                  <QrCode size={20} />
+                                  <QrCode size={16} />
                                 )
                               }
                               onPress={openAttendanceModal}
@@ -975,28 +987,44 @@ export default function StudentCampDetailPage() {
                             </Button>
                           </div>
 
-                          {!canDownloadCert ? (
-                            <Button
-                              fullWidth
-                              isDisabled
-                              className="font-bold text-lg h-14 rounded-2xl mt-1 bg-gray-50 text-gray-400 border border-gray-100 opacity-80"
-                              startContent={<Ticket size={22} />}
-                            >
-                              {certTextEnded}
-                            </Button>
-                          ) : (
-                            <Button
-                              fullWidth
-                              className="font-bold text-lg h-14 rounded-2xl mt-1 bg-[#1A202C] text-white shadow-lg shadow-gray-900/20"
-                              startContent={<Ticket size={22} />}
-                              onPress={() => {
-                                setCertImageLoading(true);
-                                setIsCertPreviewModalOpen(true);
-                              }}
-                            >
-                              {certTextEnded}
-                            </Button>
-                          )}
+                          {/* Cert section with divider */}
+                          <div className="flex flex-col gap-2 pt-1">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 h-px bg-gray-100" />
+                              <span className="text-[11px] font-semibold text-gray-300 tracking-wider uppercase">เกียรติบัตร</span>
+                              <div className="flex-1 h-px bg-gray-100" />
+                            </div>
+                            {!canDownloadCert ? (
+                              <div className="flex flex-col gap-1.5">
+                                <Button
+                                  fullWidth
+                                  isDisabled
+                                  className="font-bold text-sm h-12 rounded-2xl bg-gray-50 text-gray-400 border border-dashed border-gray-200"
+                                  startContent={<Award size={18} className="opacity-40" />}
+                                >
+                                  ดาวน์โหลดเกียรติบัตร
+                                </Button>
+                                {certLockReason && (
+                                  <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 font-medium">
+                                    <Lock size={11} />
+                                    <span>{certLockReason}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <Button
+                                fullWidth
+                                className="font-bold text-sm h-12 rounded-2xl bg-slate-700 text-white shadow-md shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
+                                startContent={<Download size={18} />}
+                                onPress={() => {
+                                  setCertImageLoading(true);
+                                  setIsCertPreviewModalOpen(true);
+                                }}
+                              >
+                                ดาวน์โหลดเกียรติบัตร
+                              </Button>
+                            )}
+                          </div>
                         </>
                       )}
                     </div>
@@ -1325,7 +1353,7 @@ export default function StudentCampDetailPage() {
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-[#1A202C] rounded-xl flex items-center justify-center shadow-lg shadow-gray-900/20">
-                  <Ticket className="text-white" size={22} />
+                  <Award className="text-white" size={22} />
                 </div>
                 <div>
                   <h2 className="text-lg font-black text-gray-900">
@@ -1388,7 +1416,7 @@ export default function StudentCampDetailPage() {
                   isDisabled={!!downloadingFormat}
                   isLoading={downloadingFormat === "png"}
                   startContent={
-                    downloadingFormat !== "png" && <Ticket size={20} />
+                    downloadingFormat !== "png" && <Download size={20} />
                   }
                   onPress={() => handleCertDownload("png")}
                 >

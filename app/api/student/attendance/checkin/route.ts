@@ -175,22 +175,28 @@ export async function GET(req) {
   if (!campId)
     return NextResponse.json({ error: "กรุณาระบุ campId" }, { status: 400 });
 
-  // ตรวจว่าเช็คชื่อในรอบไหนของค่ายนี้แล้ว
-  const record = await prisma.attendance_record_student.findFirst({
+  // ตรวจสอบว่ามีรอบเช็คชื่อที่เปิดอยู่หรือไม่
+  const activeSession = await prisma.attendance_teachers.findFirst({
     where: {
-      student_students_id: student.students_id,
-      attendance_teachers_session_id: {
-        camp_camp_id: campId,
-      },
+      camp_camp_id: campId,
+      is_closed: false,
     },
-    orderBy: { checkin_time: "desc" },
   });
 
-  if (record) {
-    return NextResponse.json({
-      isCheckedIn: true,
-      checkedAt: record.checkin_time,
+  if (activeSession) {
+    const record = await prisma.attendance_record_student.findFirst({
+      where: {
+        student_students_id: student.students_id,
+        attendance_teacher_session_id: activeSession.session_id,
+      },
     });
+
+    if (record) {
+      return NextResponse.json({
+        isCheckedIn: true,
+        checkedAt: record.checkin_time,
+      });
+    }
   }
 
   return NextResponse.json({ isCheckedIn: false, checkedAt: null });

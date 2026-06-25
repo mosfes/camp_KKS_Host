@@ -67,6 +67,7 @@ export default function EditCertificateModal({
   const [certYear, setCertYear] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   const enrolledCount = campData?.student_enrollment?.length ?? 0;
 
@@ -117,20 +118,32 @@ export default function EditCertificateModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setHasAttemptedSubmit(true);
     if (!campData) return;
 
-    if (
-      certShowNumber &&
-      certNumberStart != null &&
-      certNumberEnd != null &&
-      certNumberStart > certNumberEnd
-    ) {
-      showError(
-        "ข้อมูลไม่ถูกต้อง",
-        "เลขสิ้นสุดต้องมีค่ามากกว่าหรือเท่ากับเลขเริ่มต้น",
-      );
+    if (certShowNumber) {
+      if (
+        certNumberStart == null ||
+        certNumberEnd == null ||
+        isNaN(certNumberStart) ||
+        isNaN(certNumberEnd)
+      ) {
+        showError(
+          "ข้อมูลไม่ครบถ้วน",
+          "กรุณาระบุช่วงเลขเริ่มต้นและสิ้นสุดของเกียรติบัตร",
+        );
 
-      return;
+        return;
+      }
+
+      if (certNumberStart > certNumberEnd) {
+        showError(
+          "ข้อมูลไม่ถูกต้อง",
+          "เลขสิ้นสุดต้องมีค่ามากกว่าหรือเท่ากับเลขเริ่มต้น",
+        );
+
+        return;
+      }
     }
 
     try {
@@ -234,6 +247,7 @@ export default function EditCertificateModal({
               certShowNumber={certShowNumber}
               certYear={certYear}
               enrolledCount={enrolledCount}
+              hasAttemptedSubmit={hasAttemptedSubmit}
               setCertFontColor={setCertFontColor}
               setCertFontSize={setCertFontSize}
               setCertImage={setCertImage}
