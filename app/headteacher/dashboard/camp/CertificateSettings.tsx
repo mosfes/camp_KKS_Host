@@ -10,8 +10,118 @@ import {
   XCircle,
   Sparkles,
 } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@heroui/popover";
+import { Input } from "@heroui/input";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+
+// ---- Color Picker Component ----
+function ColorPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [hexInput, setHexInput] = useState(value);
+
+  React.useEffect(() => {
+    setHexInput(value);
+  }, [value]);
+
+  const handleHexChange = (val: string) => {
+    setHexInput(val);
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+      onChange(val);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="block text-xs font-medium text-gray-500">{label}</label>
+      <Popover placement="bottom">
+        <PopoverTrigger>
+          <button
+            className="flex items-center gap-2 px-2 py-1.5 border border-gray-200 rounded-lg bg-white hover:border-gray-300 transition-colors w-full"
+            type="button"
+          >
+            <span
+              className="w-5 h-5 rounded-md border border-gray-200 shrink-0 shadow-sm"
+              style={{ backgroundColor: value }}
+            />
+            <span className="text-xs font-mono text-gray-600 flex-1 text-left">
+              {value.toUpperCase()}
+            </span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="p-3 w-52">
+          <div className="space-y-3">
+            {/* Native color wheel */}
+            <div className="flex justify-center">
+              <input
+                ref={inputRef}
+                className="w-32 h-32 cursor-pointer rounded-lg border-0 bg-transparent p-0"
+                type="color"
+                value={value}
+                onChange={(e) => {
+                  onChange(e.target.value);
+                  setHexInput(e.target.value);
+                }}
+              />
+            </div>
+            {/* Hex input */}
+            <Input
+              classNames={{
+                input: "font-mono text-sm",
+                inputWrapper: "h-8 min-h-8",
+              }}
+              label=""
+              maxLength={7}
+              placeholder="#000000"
+              size="sm"
+              startContent={
+                <span
+                  className="w-4 h-4 rounded shrink-0 border border-gray-200"
+                  style={{ backgroundColor: value }}
+                />
+              }
+              value={hexInput}
+              variant="bordered"
+              onValueChange={handleHexChange}
+            />
+            {/* Preset colors */}
+            <div>
+              <p className="text-xs text-gray-400 mb-1.5">สีที่ใช้บ่อย</p>
+              <div className="grid grid-cols-7 gap-1">
+                {[
+                  "#000000", "#ffffff", "#1a3a32", "#374151",
+                  "#dc2626", "#2563eb", "#ca8a04", "#16a34a",
+                  "#9333ea", "#ea580c", "#0891b2", "#be185d",
+                  "#6b7280", "#d1d5db",
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    className="w-6 h-6 rounded border border-gray-200 hover:scale-110 transition-transform shadow-sm"
+                    style={{ backgroundColor: preset }}
+                    title={preset}
+                    type="button"
+                    onClick={() => {
+                      onChange(preset);
+                      setHexInput(preset);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 interface Props {
   certImage: string | null;
@@ -228,7 +338,7 @@ export default function CertificateSettings({
     : rawExampleText;
 
   return (
-    <div className="space-y-4 border rounded-xl p-4 bg-gray-50">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
           <h4 className="font-bold text-sm text-gray-800">
@@ -238,6 +348,23 @@ export default function CertificateSettings({
             อัปโหลดภาพพื้นหลังและจัดตำแหน่งชื่อนักเรียน
           </p>
         </div>
+        {certImage && (
+          <button
+            className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-1.5 shrink-0"
+            type="button"
+            onClick={() =>
+              showConfirm(
+                "ยืนยันการลบ",
+                "คุณแน่ใจหรือไม่ว่าต้องการลบภาพเกียรติบัตรนี้?",
+                removeImage,
+                "ลบเกียรติบัตร",
+              )
+            }
+          >
+            <Trash2 size={14} />
+            ลบภาพ
+          </button>
+        )}
       </div>
 
       {!certImage ? (
@@ -256,8 +383,9 @@ export default function CertificateSettings({
           </div>
         </label>
       ) : (
-        <div className="space-y-4 bg-white p-4 rounded-lg border shadow-sm">
-          {/* ---- ส่วนตั้งค่าชื่อนักเรียน ---- */}
+        <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+          {/* ---- ฝั่งตั้งค่า ---- */}
+          <div className="flex-1 min-w-0 space-y-4">
           <div>
             <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
               ชื่อนักเรียน
@@ -276,32 +404,11 @@ export default function CertificateSettings({
                   onChange={(e) => setCertFontSize(Number(e.target.value))}
                 />
               </div>
-              <div className="w-24">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  สีตัวอักษร
-                </label>
-                <input
-                  className="w-full h-8 cursor-pointer border-0 rounded-md p-0 bg-transparent"
-                  type="color"
-                  value={certFontColor}
-                  onChange={(e) => setCertFontColor(e.target.value)}
-                />
-              </div>
-              <button
-                className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-1.5 shrink-0"
-                type="button"
-                onClick={() =>
-                  showConfirm(
-                    "ยืนยันการลบ",
-                    "คุณแน่ใจหรือไม่ว่าต้องการลบภาพเกียรติบัตรนี้?",
-                    removeImage,
-                    "ลบเกียรติบัตร",
-                  )
-                }
-              >
-                <Trash2 size={14} />
-                ลบเกียรติบัตร
-              </button>
+              <ColorPicker
+                label="สีตัวอักษร"
+                value={certFontColor}
+                onChange={setCertFontColor}
+              />
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               <button
@@ -556,17 +663,11 @@ export default function CertificateSettings({
                       }
                     />
                   </div>
-                  <div className="w-24">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                      สีตัวอักษร
-                    </label>
-                    <input
-                      className="w-full h-8 cursor-pointer border-0 rounded-md p-0 bg-transparent"
-                      type="color"
-                      value={certNumberColor}
-                      onChange={(e) => setCertNumberColor(e.target.value)}
-                    />
-                  </div>
+                  <ColorPicker
+                    label="สีตัวอักษร"
+                    value={certNumberColor}
+                    onChange={setCertNumberColor}
+                  />
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -581,13 +682,13 @@ export default function CertificateSettings({
               </div>
             )}
           </div>
+        </div>
 
-          <hr className="border-gray-100" />
-
-          {/* ---- ภาพพรีวิว ---- */}
+        {/* ---- ภาพพรีวิว ---- */}
+        <div className="lg:w-[55%] shrink-0">
           <div
             ref={containerRef}
-            className="relative border-2 border-gray-200 rounded-lg overflow-hidden select-none touch-none bg-gray-100"
+            className="relative border-2 border-gray-200 rounded-lg overflow-hidden select-none touch-none bg-gray-100 lg:sticky lg:top-0"
             style={{ containerType: "inline-size" }}
             onMouseLeave={handleMouseUp}
             onMouseMove={handleMouseMove}
@@ -648,12 +749,13 @@ export default function CertificateSettings({
               </div>
             )}
           </div>
-          <p className="text-xs text-center text-gray-500 font-medium flex items-center justify-center gap-1">
+          <p className="text-xs text-center text-gray-500 font-medium flex items-center justify-center gap-1 mt-2">
             <Sparkles className="text-[#6b857a]" size={14} />
             คลิกค้างที่ชื่อหรือเลขที่แล้วลากเพื่อเปลี่ยนตำแหน่ง
           </p>
         </div>
-      )}
+      </div>
+    )}
     </div>
   );
 }
