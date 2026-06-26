@@ -351,27 +351,63 @@ export default function StudentStationDetailPage() {
       return;
     }
 
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 2000; // 2 วินาที (exponential: 2s, 4s, 6s)
+
     setUploadingQid(questionId);
     try {
       const compressedFile = await compressImage(file);
       const formData = new FormData();
 
       formData.append("file", compressedFile, file.name);
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
 
-      if (res.ok) {
-        const data = await res.json();
+      let lastError: string | null = null;
 
-        handleAnswerChange(questionId, data.url);
-        toast.success("อัปโหลดรูปภาพสำเร็จ");
-      } else {
-        const errorData = await res.json();
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
 
-        toast.error(errorData.error || errorData._error || "อัปโหลดล้มเหลว");
+          if (res.ok) {
+            const data = await res.json();
+
+            handleAnswerChange(questionId, data.url);
+            toast.success("อัปโหลดรูปภาพสำเร็จ");
+
+            return; // สำเร็จ ออกจาก loop
+          }
+
+          // 4xx = validation error, ไม่ retry เพราะแก้ไม่ได้
+          if (res.status >= 400 && res.status < 500) {
+            const errorData = await res.json();
+
+            toast.error(
+              errorData.error || errorData._error || "อัปโหลดล้มเหลว",
+            );
+
+            return;
+          }
+
+          // 5xx = server/Cloudinary overload, retry ได้
+          lastError = `Server error (${res.status})`;
+        } catch (networkError) {
+          // Network timeout หรือ connection reset
+          lastError = "Network error";
+        }
+
+        if (attempt < MAX_RETRIES) {
+          // รอก่อน retry (2s, 4s, 6s)
+          await new Promise((resolve) =>
+            setTimeout(resolve, RETRY_DELAY_MS * attempt),
+          );
+        }
       }
+
+      // หมดทุก retry แล้วยังไม่สำเร็จ
+      toast.error("อัปโหลดล้มเหลว กรุณาลองใหม่อีกครั้ง");
+      console.error("[upload] Failed after", MAX_RETRIES, "attempts:", lastError);
     } catch (error) {
       console.error(error);
       toast.error("เกิดข้อผิดพลาดในการอัปโหลด");
