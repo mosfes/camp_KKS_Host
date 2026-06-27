@@ -332,7 +332,7 @@ model certificate {
   file_url              String             @db.VarChar(500)
   certificate_no        Int
   certificate_no_star   Int
-  student_enrollment_id Int
+  student_enrollment_id Int                @unique
   student_enrollment    student_enrollment @relation(fields: [student_enrollment_id], references: [student_enrollment_id])
 }
 

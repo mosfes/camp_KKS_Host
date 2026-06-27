@@ -10,6 +10,16 @@ import React from "react";
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 
+// Cache Font ไว้ใน Memory เพื่อไม่ต้องอ่านไฟล์ใหม่ทุกครั้งที่กดโหลด
+let cachedFontBytes: Buffer | null = null;
+function getFontBytes(): Buffer {
+  if (!cachedFontBytes) {
+    const fontPath = path.join(process.cwd(), "public/fonts/THSarabunNew.ttf");
+    cachedFontBytes = fs.readFileSync(fontPath);
+  }
+  return cachedFontBytes;
+}
+
 // In-memory rate limiter to prevent rapid spam requests
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
@@ -143,42 +153,116 @@ export async function GET(request: Request, context: any) {
         // นักเรียนเคยได้รับเลขที่แล้ว ใช้เลขเดิม
         assignedCertNo = enrollment.certificate[0].certificate_no;
       } else {
-        // ออกเลขใหม่ด้วย transaction เพื่อป้องกัน race condition
-        assignedCertNo = await prisma.$transaction(async (tx) => {
-          // หาค่าสูงสุดของ certificate_no ในค่ายนี้
-          const maxResult = await tx.certificate.aggregate({
-            where: {
-              student_enrollment: {
-                camp_camp_id: campId,
+        // ออกเลขใหม่ด้วย Pessimistic Transaction (รองรับ TiDB Serverless)
+        // ใช้ retry loop สำหรับ write conflict บน TiDB OCC
+        const MAX_RETRIES = 5;
+        let lastError: any;
+
+        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+          try {
+            // ตรวจสอบก่อนว่า record ถูก insert ไปแล้วหรือยัง (จาก retry รอบก่อน)
+            const existing = await prisma.certificate.findUnique({
+              where: { student_enrollment_id: enrollment.student_enrollment_id },
+              select: { certificate_no: true },
+            });
+            if (existing) {
+              assignedCertNo = existing.certificate_no;
+              break;
+            }
+
+            assignedCertNo = await prisma.$transaction(
+              async (tx) => {
+                // เปิด Pessimistic mode บน TiDB เพื่อให้ FOR UPDATE block จริงๆ
+                // (TiDB default คือ Optimistic ซึ่ง FOR UPDATE ไม่ block)
+                await tx.$executeRaw`SET @@tidb_txn_mode = 'pessimistic'`;
+
+                // ล็อก camp row — เป็น existing row ที่ TiDB lock ได้ทันที
+                await tx.$queryRaw`
+                  SELECT camp_id FROM camp
+                  WHERE camp_id = ${campId}
+                  FOR UPDATE`;
+
+                // หา MAX certificate_no ในค่ายนี้ (ตอนนี้ serialize แล้ว)
+                const [maxRow]: any[] = await tx.$queryRaw`
+                  SELECT MAX(c.certificate_no) AS maxNo
+                  FROM certificate c
+                  INNER JOIN student_enrollment se
+                    ON c.student_enrollment_id = se.student_enrollment_id
+                  WHERE se.camp_camp_id = ${campId}`;
+
+                const currentMax: number | null =
+                  maxRow?.maxNo != null ? Number(maxRow.maxNo) : null;
+                const newNo =
+                  currentMax != null
+                    ? currentMax + 1
+                    : camp.cert_number_start!;
+
+                // บันทึกเลขที่ใหม่ — unique constraint คือ safety net สุดท้าย
+                await tx.certificate.create({
+                  data: {
+                    certificate_no: newNo,
+                    certificate_no_star: newNo,
+                    file_url: "",
+                    student_enrollment_id: enrollment.student_enrollment_id,
+                  },
+                });
+
+                return newNo;
               },
-            },
-            _max: { certificate_no: true },
-          });
+              { isolationLevel: "ReadCommitted" },
+            );
+            break; // สำเร็จ ออกจาก loop
+          } catch (txError: any) {
+            lastError = txError;
+            const errMsg = String(txError?.message ?? "");
 
-          const currentMax = maxResult._max.certificate_no;
-          const newNo =
-            currentMax != null ? currentMax + 1 : camp.cert_number_start!;
+            // กรณี unique constraint ชน (enrollment_id ซ้ำ) — นักเรียนคนนี้มีเลขแล้ว
+            if (
+              errMsg.includes("Unique constraint") ||
+              errMsg.includes("unique") ||
+              errMsg.includes("P2002")
+            ) {
+              const existingCert = await prisma.certificate.findUnique({
+                where: {
+                  student_enrollment_id: enrollment.student_enrollment_id,
+                },
+                select: { certificate_no: true },
+              });
+              if (existingCert) {
+                assignedCertNo = existingCert.certificate_no;
+                lastError = null;
+                break;
+              }
+            }
 
-          // บันทึกเลขที่ใหม่
-          await tx.certificate.create({
-            data: {
-              certificate_no: newNo,
-              certificate_no_star: newNo,
-              file_url: "",
-              student_enrollment_id: enrollment.student_enrollment_id,
-            },
-          });
+            // กรณี TiDB write conflict (OCC retry) — รอสักครู่แล้วลองใหม่
+            if (
+              errMsg.includes("Write conflict") ||
+              errMsg.includes("9007") ||
+              errMsg.includes("Deadlock")
+            ) {
+              await new Promise((r) =>
+                setTimeout(r, 20 + attempt * 30),
+              );
+              continue;
+            }
 
-          return newNo;
-        });
+            // Error อื่นๆ ให้ throw ออกไปเลย
+            throw txError;
+          }
+        }
+
+        if (assignedCertNo == null && lastError) {
+          throw lastError;
+        }
 
         // ตรวจสอบว่าเกินช่วงที่กำหนดไหม
         if (
           camp.cert_number_end != null &&
-          assignedCertNo > camp.cert_number_end
+          assignedCertNo! > camp.cert_number_end
         ) {
           isOverflow = true;
-          overflowAmount = assignedCertNo - camp.cert_number_end;
+          overflowAmount = assignedCertNo! - camp.cert_number_end;
         }
       }
     }
@@ -232,14 +316,10 @@ export async function GET(request: Request, context: any) {
       }
       const { width, height } = embeddedImage.scale(1);
 
-      const fontPath = path.join(
-        process.cwd(),
-        "public/fonts/THSarabunNew.ttf",
-      );
       let fontBytes;
 
       try {
-        fontBytes = fs.readFileSync(fontPath);
+        fontBytes = getFontBytes();
       } catch (e) {
         return NextResponse.json(
           { error: "Font file not found on server." },
@@ -342,6 +422,9 @@ export async function GET(request: Request, context: any) {
       );
       resHeaders.set("Pragma", "no-cache");
       resHeaders.set("Expires", "0");
+      if (assignedCertNo != null) {
+        resHeaders.set("X-Certificate-No", String(assignedCertNo));
+      }
       if (isOverflow) {
         resHeaders.set("X-Certificate-Overflow", String(overflowAmount));
       }
@@ -380,12 +463,10 @@ export async function GET(request: Request, context: any) {
       height: height,
     });
 
-    // Embed Font
-    const fontPath = path.join(process.cwd(), "public/fonts/THSarabunNew.ttf");
     let fontBytes;
 
     try {
-      fontBytes = fs.readFileSync(fontPath);
+      fontBytes = getFontBytes();
     } catch (e) {
       return NextResponse.json(
         { error: "Font file not found on server." },
@@ -446,6 +527,9 @@ export async function GET(request: Request, context: any) {
       "Content-Disposition": `${disposition}; filename="certificate_${student.students_id}_${campId}.pdf"`,
     };
 
+    if (assignedCertNo != null) {
+      pdfHeaders["X-Certificate-No"] = String(assignedCertNo);
+    }
     if (isOverflow) {
       pdfHeaders["X-Certificate-Overflow"] = String(overflowAmount);
     }
