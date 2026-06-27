@@ -26,6 +26,7 @@ interface Student {
     remark: string | null;
     tel: string | null;
   };
+  certificate?: { certificate_no: number }[];
 }
 
 interface Summary {
@@ -324,6 +325,9 @@ export default function CampStudentsPage() {
                   <th className="p-4 font-semibold whitespace-nowrap">
                     โรคประจำตัว
                   </th>
+                  <th className="p-4 font-semibold whitespace-nowrap">
+                    เลขที่เกียรติบัตร
+                  </th>
                   <th className="p-4 font-semibold rounded-tr-lg whitespace-nowrap">
                     เงื่อนไขพิเศษ/อื่นๆ
                   </th>
@@ -332,7 +336,7 @@ export default function CampStudentsPage() {
               <tbody>
                 {!loading && students.length === 0 ? (
                   <tr>
-                    <td className="p-8 text-center text-gray-500" colSpan={6}>
+                    <td className="p-8 text-center text-gray-500" colSpan={7}>
                       ไม่พบข้อมูลนักเรียน
                     </td>
                   </tr>
@@ -379,6 +383,11 @@ export default function CampStudentsPage() {
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}
+                      </td>
+                      <td className="p-4 text-gray-900 font-medium">
+                        {row.certificate && row.certificate.length > 0
+                          ? row.certificate[0].certificate_no
+                          : <span className="text-gray-400">-</span>}
                       </td>
                       <td className="p-4">
                         {row.student.remark &&

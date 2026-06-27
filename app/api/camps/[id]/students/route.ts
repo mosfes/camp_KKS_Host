@@ -96,6 +96,10 @@ export async function GET(
               tel: true,
             },
           },
+          certificate: {
+            select: { certificate_no: true },
+            take: 1,
+          },
         },
         orderBy: {
           student: { firstname: "asc" },
