@@ -135,7 +135,7 @@ export async function GET(request: Request, context: any) {
       camp.survey.length > 0 &&
       camp.survey[0].is_required_for_cert
     ) {
-      if (enrollment.survey_response.length === 0) {
+      if (enrollment.survey_response.length === 0 && enrollment.certificate.length === 0) {
         return NextResponse.json(
           { error: "กรุณาทำแบบประเมินให้เสร็จสิ้นก่อนดาวน์โหลดเกียรติบัตร" },
           { status: 403 },
@@ -182,20 +182,26 @@ export async function GET(request: Request, context: any) {
                   WHERE camp_id = ${campId}
                   FOR UPDATE`;
 
-                // หา MAX certificate_no ในค่ายนี้ (ตอนนี้ serialize แล้ว)
-                const [maxRow]: any[] = await tx.$queryRaw`
-                  SELECT MAX(c.certificate_no) AS maxNo
+                // หา certificate_no ทั้งหมดในค่ายนี้ เฉพาะตั้งแต่ cert_number_start เป็นต้นไป
+                const usedCertificates: any[] = await tx.$queryRaw`
+                  SELECT c.certificate_no
                   FROM certificate c
                   INNER JOIN student_enrollment se
                     ON c.student_enrollment_id = se.student_enrollment_id
-                  WHERE se.camp_camp_id = ${campId}`;
+                  WHERE se.camp_camp_id = ${campId}
+                    AND c.certificate_no >= ${camp.cert_number_start}`;
 
-                const currentMax: number | null =
-                  maxRow?.maxNo != null ? Number(maxRow.maxNo) : null;
-                const newNo =
-                  currentMax != null
-                    ? currentMax + 1
-                    : camp.cert_number_start!;
+                const usedSet = new Set(
+                  usedCertificates
+                    .map((r) => r.certificate_no)
+                    .filter((n) => n != null)
+                    .map(Number)
+                );
+
+                let newNo = camp.cert_number_start!;
+                while (usedSet.has(newNo)) {
+                  newNo++;
+                }
 
                 // บันทึกเลขที่ใหม่ — unique constraint คือ safety net สุดท้าย
                 await tx.certificate.create({

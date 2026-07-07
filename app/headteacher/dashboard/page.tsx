@@ -219,10 +219,13 @@ function DashboardContent() {
           year: "numeric",
         }),
         enrolled: camp._count?.student_enrollment || 0,
-        totalStudents: (camp.camp_classroom || []).reduce(
-          (sum: number, cc: any) =>
-            sum + (cc.classroom?._count?.classroom_students ?? 0),
-          0,
+        totalStudents: Math.max(
+          camp._count?.student_enrollment || 0,
+          (camp.camp_classroom || []).reduce(
+            (sum: number, cc: any) =>
+              sum + (cc.classroom?._count?.classroom_students ?? 0),
+            0,
+          )
         ),
         image: camp.img_camp_url || null,
         isOwner: camp.isOwner,
@@ -1174,8 +1177,9 @@ function DashboardContent() {
                             }}
                           >
                             <span className="text-[#718096] text-sm">
-                              ลงทะเบียนแล้ว {camp.enrolled}/{camp.totalStudents}{" "}
-                              คน
+                              {camp.totalStudents > 0
+                                ? `ลงทะเบียนแล้ว ${camp.enrolled}/${camp.totalStudents} คน`
+                                : `ลงทะเบียนแล้ว ${camp.enrolled} คน`}
                             </span>
                             <div className="flex items-center gap-1 text-[#5d7c6f] font-semibold text-sm">
                               ดูรายละเอียด

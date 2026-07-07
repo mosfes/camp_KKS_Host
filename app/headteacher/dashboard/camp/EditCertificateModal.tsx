@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Save } from "lucide-react";
+import { X, Save, Download } from "lucide-react";
 import { Button } from "@heroui/button";
+import { Select, SelectItem } from "@heroui/react";
 
 import CertificateSettings from "./CertificateSettings";
 
@@ -69,6 +70,9 @@ export default function EditCertificateModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
+  const [exportCondition, setExportCondition] = useState<string>("all");
+  const [isExporting, setIsExporting] = useState(false);
+
   const enrolledCount = campData?.student_enrollment?.length ?? 0;
 
   useEffect(() => {
@@ -97,6 +101,44 @@ export default function EditCertificateModal({
   }, [isOpen, campData]);
 
   if (!isOpen) return null;
+
+  const handleExport = async () => {
+    if (!campData) return;
+    
+    // Check if the current settings differ from saved ones
+    // We assume the user has saved their changes before exporting.
+    
+    try {
+      setIsExporting(true);
+      const url = `/api/camps/${campData.camp_id}/certificate/bulk?condition=${exportCondition}`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "เกิดข้อผิดพลาดในการดาวน์โหลดเกียรติบัตร");
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `certificates_camp_${campData.camp_id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      showSuccess("สำเร็จ", "ดาวน์โหลดเกียรติบัตรเรียบร้อยแล้ว");
+    } catch (error: any) {
+      console.error("Export Error:", error);
+      showError("ข้อผิดพลาด", error.message || "ไม่สามารถดาวน์โหลดเกียรติบัตรได้");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const compressImage = async (file: File) => {
     if (!file || !file.type.startsWith("image/")) return file;
@@ -268,24 +310,47 @@ export default function EditCertificateModal({
           </form>
         </div>
 
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-white sticky bottom-0 z-10">
-          <Button
-            className="font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
-            isDisabled={isSubmitting}
-            variant="flat"
-            onPress={onClose}
-          >
-            ยกเลิก
-          </Button>
-          <Button
-            className="font-medium bg-[#1a3a32] text-white shadow-md shadow-[#1a3a32]/20"
-            form="certForm"
-            isLoading={isSubmitting}
-            startContent={<Save size={18} />}
-            type="submit"
-          >
-            บันทึกการตั้งค่า
-          </Button>
+        <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100 bg-white sticky bottom-0 z-10">
+          <div className="flex gap-2 items-center">
+            <Select 
+               size="sm" 
+               className="w-48"
+               selectedKeys={[exportCondition]}
+               onChange={(e) => setExportCondition(e.target.value)}
+               aria-label="เลือกกลุ่มนักเรียนสำหรับดาวน์โหลดเกียรติบัตร"
+            >
+               <SelectItem key="all">นักเรียนทั้งหมด</SelectItem>
+               <SelectItem key="passed_conditions">เฉพาะผู้ผ่านเงื่อนไข</SelectItem>
+            </Select>
+            <Button
+              className="font-medium bg-[#1a3a32]/10 text-[#1a3a32] hover:bg-[#1a3a32]/20"
+              isLoading={isExporting}
+              onPress={handleExport}
+              startContent={!isExporting && <Download size={16} />}
+              size="sm"
+            >
+              ดาวน์โหลด PDF แบบรวม
+            </Button>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              className="font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+              isDisabled={isSubmitting}
+              variant="flat"
+              onPress={onClose}
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              className="font-medium bg-[#1a3a32] text-white shadow-md shadow-[#1a3a32]/20"
+              form="certForm"
+              isLoading={isSubmitting}
+              startContent={<Save size={18} />}
+              type="submit"
+            >
+              บันทึกการตั้งค่า
+            </Button>
+          </div>
         </div>
       </div>
     </div>

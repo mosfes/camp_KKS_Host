@@ -649,10 +649,14 @@ export default function CampDetailPage() {
           <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
             <p className="text-2xl md:text-3xl font-bold text-[#6b857a] mb-0.5">
               {camp?.student_enrollment?.length ?? 0}
-              <span className="text-xl text-gray-300 mx-1">/</span>
-              <span className="text-xl text-gray-400">
-                {camp?.total_eligible_students ?? 0}
-              </span>
+              {Math.max(camp?.student_enrollment?.length ?? 0, camp?.total_eligible_students ?? 0) > 0 && (
+                <>
+                  <span className="text-xl text-gray-300 mx-1">/</span>
+                  <span className="text-xl text-gray-400">
+                    {Math.max(camp?.student_enrollment?.length ?? 0, camp?.total_eligible_students ?? 0)}
+                  </span>
+                </>
+              )}
             </p>
             <p className="text-gray-400 text-[10px] font-medium mb-1">คน</p>
             <p className="text-[#1a3a32] font-semibold text-sm">ผู้เข้าร่วม</p>
