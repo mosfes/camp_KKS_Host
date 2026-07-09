@@ -94,6 +94,11 @@ export async function GET(request, context) {
                     classroom_students: true,
                   },
                 },
+                classroom_students: {
+                  select: {
+                    student_students_id: true,
+                  },
+                },
               },
             },
           },
@@ -121,10 +126,21 @@ export async function GET(request, context) {
           ),
       ) ?? false;
 
-    const totalEligibleStudents =
-      camp.camp_classroom?.reduce((total, cc) => {
-        return total + (cc.classroom?._count?.classroom_students || 0);
-      }, 0) ?? 0;
+    const eligibleStudentIds = new Set(
+      camp.camp_classroom?.flatMap(
+        (cc) =>
+          cc.classroom?.classroom_students?.map(
+            (student) => student.student_students_id,
+          ) ?? [],
+      ) ?? [],
+    );
+    const certificateCandidateIds = new Set([
+      ...eligibleStudentIds,
+      ...(camp.student_enrollment?.map(
+        (enrollment) => enrollment.student_students_id,
+      ) ?? []),
+    ]);
+    const totalEligibleStudents = eligibleStudentIds.size;
 
     const typeMap = new Map();
     const allGrades = new Set();
@@ -182,6 +198,7 @@ export async function GET(request, context) {
           teacher.role === "ADMIN",
         isHomeroomTeacher,
         total_eligible_students: totalEligibleStudents,
+        certificate_candidate_count: certificateCandidateIds.size,
         grades: sortedGrades,
         gradeDisplay: gradeDisplay,
         gradeDisplayList: gradeDisplayList,

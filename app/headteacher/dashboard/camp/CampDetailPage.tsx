@@ -96,6 +96,7 @@ interface CampDetail {
   isHomeroomTeacher?: boolean;
   created_by_teacher_id?: number;
   total_eligible_students?: number;
+  certificate_candidate_count?: number;
   student_enrollment?: any[];
 }
 

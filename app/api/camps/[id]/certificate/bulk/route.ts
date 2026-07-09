@@ -45,7 +45,7 @@ export async function GET(request: Request, context: any) {
   const params = await context.params;
   const campId = Number(params.id);
   const { searchParams } = new URL(request.url);
-  const condition = searchParams.get("condition") || "all"; // all | passed_conditions
+  const condition = searchParams.get("condition") || "all"; // all | all_students | passed_conditions
 
   if (isNaN(campId)) {
     return NextResponse.json({ error: "Invalid camp id" }, { status: 400 });
@@ -80,6 +80,33 @@ export async function GET(request: Request, context: any) {
       );
     }
 
+    if (condition === "all_students") {
+      // นักเรียนที่อยู่ในห้องที่ผูกกับค่ายอาจยังไม่มี enrollment record
+      // สร้าง record แบบยังไม่ลงทะเบียนไว้ เพื่อให้ certificate อ้างอิงได้
+      const eligibleStudents = await prisma.classroom_students.findMany({
+        where: {
+          classroom: {
+            camp_classroom: {
+              some: { camp_camp_id: campId },
+            },
+          },
+        },
+        select: { student_students_id: true },
+        distinct: ["student_students_id"],
+      });
+
+      if (eligibleStudents.length > 0) {
+        await prisma.student_enrollment.createMany({
+          data: eligibleStudents.map((student) => ({
+            student_students_id: student.student_students_id,
+            camp_camp_id: campId,
+            enrolled_at: null,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
     let enrollments = await prisma.student_enrollment.findMany({
       where: {
         camp_camp_id: campId,
@@ -102,6 +129,12 @@ export async function GET(request: Request, context: any) {
         }
       }
     });
+
+    // "all" และ "passed_conditions" หมายถึงเฉพาะผู้ที่กดลงทะเบียนแล้ว
+    // ส่วน "all_students" รวมผู้ที่ถูกเพิ่มเข้าค่ายไว้ล่วงหน้า (enrolled_at = null)
+    if (condition !== "all_students") {
+      enrollments = enrollments.filter((e) => e.enrolled_at != null);
+    }
 
     if (condition === "passed_conditions") {
       const isSurveyRequired = camp.survey && camp.survey.length > 0 && camp.survey[0].is_required_for_cert;
@@ -144,7 +177,14 @@ export async function GET(request: Request, context: any) {
     }
 
     if (enrollments.length === 0) {
-      return NextResponse.json({ error: "ไม่พบข้อมูลนักเรียนที่ตรงตามเงื่อนไข" }, { status: 404 });
+      const message =
+        condition === "all_students"
+          ? "ค่ายนี้ยังไม่มีนักเรียน กรุณาเพิ่มนักเรียนเข้าห้องหรือค่ายก่อนสร้างเกียรติบัตร"
+          : condition === "passed_conditions"
+            ? "ยังไม่มีนักเรียนที่ผ่านเงื่อนไขการรับเกียรติบัตร"
+            : "ยังไม่มีนักเรียนที่ลงทะเบียนในค่ายนี้";
+
+      return NextResponse.json({ error: message }, { status: 404 });
     }
 
     if (camp.cert_show_number && camp.cert_number_start != null) {

@@ -91,13 +91,26 @@ export function HeadteacherNavbar({
               <Menu size={24} />
             </button>
           )}
-          <div className="w-10 h-10 rounded-full bg-[#5d7c6f] flex items-center justify-center text-white">
-            <GraduationCap size={20} />
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="font-semibold text-sm">KKS Camp</span>
-            <span className="text-xs text-gray-500">ระบบจัดการค่าย</span>
-          </div>
+          <button
+            aria-label="กลับไปหน้าแรก"
+            className="flex items-center gap-3 rounded-lg text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f] focus-visible:ring-offset-2"
+            type="button"
+            onClick={() =>
+              router.push(
+                pathname.startsWith("/admin")
+                  ? "/admin_add_user"
+                  : "/headteacher/dashboard",
+              )
+            }
+          >
+            <div className="w-10 h-10 rounded-full bg-[#5d7c6f] flex items-center justify-center text-white">
+              <GraduationCap size={20} />
+            </div>
+            <div className="flex flex-col leading-tight">
+              <span className="font-semibold text-sm">KKS Camp</span>
+              <span className="text-xs text-gray-500">ระบบจัดการค่าย</span>
+            </div>
+          </button>
         </NavbarBrand>
 
         {/* RIGHT */}

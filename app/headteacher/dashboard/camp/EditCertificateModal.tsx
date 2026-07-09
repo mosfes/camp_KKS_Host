@@ -26,7 +26,8 @@ interface CampDetail {
   cert_number_prefix?: string | null;
   cert_number_is_thai?: boolean;
   cert_year?: string | null;
-  // จำนวนนักเรียนที่ลงทะเบียน
+  // จำนวนนักเรียนที่สามารถออกเกียรติบัตรได้ทั้งหมด
+  certificate_candidate_count?: number;
   student_enrollment?: { student_enrollment_id: number }[];
 }
 
@@ -68,12 +69,16 @@ export default function EditCertificateModal({
   const [certYear, setCertYear] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   const [exportCondition, setExportCondition] = useState<string>("all");
   const [isExporting, setIsExporting] = useState(false);
 
-  const enrolledCount = campData?.student_enrollment?.length ?? 0;
+  const enrolledCount =
+    campData?.certificate_candidate_count ??
+    campData?.student_enrollment?.length ??
+    0;
 
   useEffect(() => {
     if (isOpen && campData) {
@@ -104,37 +109,43 @@ export default function EditCertificateModal({
 
   const handleExport = async () => {
     if (!campData) return;
-    
+
     // Check if the current settings differ from saved ones
     // We assume the user has saved their changes before exporting.
-    
+
     try {
       setIsExporting(true);
       const url = `/api/camps/${campData.camp_id}/certificate/bulk?condition=${exportCondition}`;
-      
+
       const response = await fetch(url, {
         method: "GET",
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "เกิดข้อผิดพลาดในการดาวน์โหลดเกียรติบัตร");
+
+        throw new Error(
+          errorData.error || "เกิดข้อผิดพลาดในการดาวน์โหลดเกียรติบัตร",
+        );
       }
 
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
+
       a.href = downloadUrl;
       a.download = `certificates_camp_${campData.camp_id}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      
+
       showSuccess("สำเร็จ", "ดาวน์โหลดเกียรติบัตรเรียบร้อยแล้ว");
     } catch (error: any) {
-      console.error("Export Error:", error);
-      showError("ข้อผิดพลาด", error.message || "ไม่สามารถดาวน์โหลดเกียรติบัตรได้");
+      showError(
+        "ข้อผิดพลาด",
+        error.message || "ไม่สามารถดาวน์โหลดเกียรติบัตรได้",
+      );
     } finally {
       setIsExporting(false);
     }
@@ -157,6 +168,44 @@ export default function EditCertificateModal({
       return file;
     }
   };
+
+  const uploadCertificateImage = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const uploadForm = new FormData();
+      const request = new XMLHttpRequest();
+
+      uploadForm.append("file", file);
+      request.open("POST", "/api/upload");
+
+      request.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          setUploadProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      });
+
+      request.addEventListener("load", () => {
+        if (request.status >= 200 && request.status < 300) {
+          try {
+            const data = JSON.parse(request.responseText);
+
+            if (!data.url) throw new Error("Upload response has no URL");
+            setUploadProgress(100);
+            resolve(data.url);
+          } catch (error) {
+            reject(error);
+          }
+        } else {
+          reject(new Error("Certificate upload failed"));
+        }
+      });
+      request.addEventListener("error", () =>
+        reject(new Error("Certificate upload failed")),
+      );
+      request.addEventListener("abort", () =>
+        reject(new Error("Certificate upload was cancelled")),
+      );
+      request.send(uploadForm);
+    });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,22 +243,13 @@ export default function EditCertificateModal({
 
       if (certImageFile) {
         const compressedFile = await compressImage(certImageFile);
-        const uploadForm = new FormData();
 
-        uploadForm.append("file", compressedFile);
-
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: uploadForm,
-        });
-
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-
-          finalCertUrl = uploadData.url;
-        } else {
+        try {
+          setUploadProgress(0);
+          finalCertUrl = await uploadCertificateImage(compressedFile);
+        } catch (error) {
+          console.error("Certificate upload error:", error);
           showError("อัปโหลดรูปล้มเหลว", "ไม่สามารถอัปโหลดรูปเกียรติบัตรได้");
-          setIsSubmitting(false);
 
           return;
         }
@@ -252,6 +292,7 @@ export default function EditCertificateModal({
       showError("ข้อผิดพลาด", "ไม่สามารถบันทึกการตั้งค่าเกียรติบัตรได้");
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -310,24 +351,56 @@ export default function EditCertificateModal({
           </form>
         </div>
 
-        <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100 bg-white sticky bottom-0 z-10">
-          <div className="flex gap-2 items-center">
-            <Select 
-               size="sm" 
-               className="w-48"
-               selectedKeys={[exportCondition]}
-               onChange={(e) => setExportCondition(e.target.value)}
-               aria-label="เลือกกลุ่มนักเรียนสำหรับดาวน์โหลดเกียรติบัตร"
+        {uploadProgress !== null && (
+          <div
+            aria-live="polite"
+            className="px-6 pt-3 bg-white border-t border-gray-100"
+          >
+            <div className="flex items-center justify-between mb-1.5 text-xs font-medium text-[#1a3a32]">
+              <span>กำลังอัปโหลดไฟล์เกียรติบัตร...</span>
+              <span>{uploadProgress}%</span>
+            </div>
+            <div
+              aria-label="ความคืบหน้าการอัปโหลดไฟล์เกียรติบัตร"
+              aria-valuemax={100}
+              aria-valuemin={0}
+              aria-valuenow={uploadProgress}
+              className="h-2 w-full overflow-hidden rounded-full bg-gray-200"
+              role="progressbar"
             >
-               <SelectItem key="all">นักเรียนทั้งหมด</SelectItem>
-               <SelectItem key="passed_conditions">เฉพาะผู้ผ่านเงื่อนไข</SelectItem>
+              <div
+                className="h-full rounded-full bg-[#6b857a] transition-[width] duration-200 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div
+          className={`flex flex-wrap justify-between items-center gap-3 px-6 py-4 bg-white sticky bottom-0 z-10 ${uploadProgress === null ? "border-t border-gray-100" : ""}`}
+        >
+          <div className="flex flex-wrap gap-2 items-center">
+            <Select
+              aria-label="เลือกกลุ่มนักเรียนสำหรับดาวน์โหลดเกียรติบัตร"
+              className="w-80 max-w-full shrink-0"
+              selectedKeys={[exportCondition]}
+              size="sm"
+              onChange={(e) => setExportCondition(e.target.value)}
+            >
+              <SelectItem key="all">เฉพาะผู้ลงทะเบียนแล้ว</SelectItem>
+              <SelectItem key="all_students">
+                นักเรียนทั้งหมด (รวมผู้ยังไม่ลงทะเบียน)
+              </SelectItem>
+              <SelectItem key="passed_conditions">
+                เฉพาะผู้ผ่านเงื่อนไข
+              </SelectItem>
             </Select>
             <Button
               className="font-medium bg-[#1a3a32]/10 text-[#1a3a32] hover:bg-[#1a3a32]/20"
               isLoading={isExporting}
-              onPress={handleExport}
-              startContent={!isExporting && <Download size={16} />}
               size="sm"
+              startContent={!isExporting && <Download size={16} />}
+              onPress={handleExport}
             >
               ดาวน์โหลด PDF แบบรวม
             </Button>
