@@ -4,6 +4,19 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 
+function getBangkokDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value;
+
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
 export async function GET() {
   const { student, error: authError } = await requireStudent();
 
@@ -100,7 +113,7 @@ export async function GET() {
     });
 
     // 3. Transform data for frontend
-    const now = new Date();
+    const today = getBangkokDateKey(new Date());
     const studentCamps = camps.map((camp) => {
       const enrollments = camp.student_enrollment;
       const myEnrollment = enrollments.find(
@@ -108,7 +121,7 @@ export async function GET() {
       );
 
       const isRegistered = !!myEnrollment?.enrolled_at;
-      const isEnded = camp.end_date < now;
+      const isEnded = getBangkokDateKey(camp.end_date) < today;
 
       // Total capacity = sum of students in all linked classrooms
       const totalCapacity = camp.camp_classroom.reduce(
