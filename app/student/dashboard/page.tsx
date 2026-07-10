@@ -114,7 +114,7 @@ export default function StudentDashboard() {
 
   const currentDate = new Date();
   const availableCamps = camps
-    .filter((c: any) => !c.isRegistered && !c.isEnded)
+    .filter((c: any) => !c.isRegistered && !c.hasEnrollment && !c.isEnded)
     .sort((a: any, b: any) => {
       const aIsUpcoming = a.startRegisDate
         ? new Date(a.startRegisDate) > currentDate
@@ -128,8 +128,12 @@ export default function StudentDashboard() {
 
       return 0;
     });
-  const myCamps = camps.filter((c: any) => c.isRegistered && !c.isEnded);
-  let endedCamps = camps.filter((c: any) => c.isEnded && c.isRegistered);
+  const myCamps = camps.filter(
+    (c: any) => (c.isRegistered || c.hasEnrollment) && !c.isEnded,
+  );
+  let endedCamps = camps.filter(
+    (c: any) => c.isEnded && (c.isRegistered || c.hasEnrollment || c.hasSurvey),
+  );
 
   if (selectedYear !== "all") {
     endedCamps = endedCamps.filter(

@@ -4,6 +4,89 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 
+async function getStudentClassroomIds(studentId) {
+  const classrooms = await prisma.classrooms.findMany({
+    where: {
+      classroom_students: {
+        some: {
+          student_students_id: studentId,
+        },
+      },
+    },
+    select: { classroom_id: true },
+  });
+
+  if (classrooms.length > 0) {
+    return classrooms.map((c) => c.classroom_id);
+  }
+
+  // Keep the same demo fallback used by /api/student/camps.
+  const demoClassrooms = await prisma.classrooms.findMany({
+    where: { grade: "Level_4" },
+    select: { classroom_id: true },
+  });
+
+  return demoClassrooms.map((c) => c.classroom_id);
+}
+
+async function canStudentAccessCamp(studentId, campId) {
+  const classroomIds = await getStudentClassroomIds(studentId);
+
+  if (classroomIds.length === 0) return false;
+
+  const camp = await prisma.camp.findFirst({
+    where: {
+      camp_id: campId,
+      deletedAt: null,
+      camp_classroom: {
+        some: {
+          classroom_classroom_id: { in: classroomIds },
+        },
+      },
+    },
+    select: { camp_id: true },
+  });
+
+  return !!camp;
+}
+
+async function ensureSurveyEnrollment(studentId, campId) {
+  const existing = await prisma.student_enrollment.findFirst({
+    where: {
+      student_students_id: studentId,
+      camp_camp_id: campId,
+    },
+  });
+
+  if (existing) return existing;
+
+  const canAccess = await canStudentAccessCamp(studentId, campId);
+
+  if (!canAccess) return null;
+
+  try {
+    return await prisma.student_enrollment.create({
+      data: {
+        student: { connect: { students_id: studentId } },
+        camp: { connect: { camp_id: campId } },
+        enrolled_at: null,
+        shirt_size: null,
+      },
+    });
+  } catch (error) {
+    if (error.code === "P2002") {
+      return prisma.student_enrollment.findFirst({
+        where: {
+          student_students_id: studentId,
+          camp_camp_id: campId,
+        },
+      });
+    }
+
+    throw error;
+  }
+}
+
 // GET /api/student/surveys?campId=<id> — ดึงแบบสอบถามเพื่อให้นักเรียนทำ (และเช็คว่าทำไปแล้วหรือยัง)
 export async function GET(request) {
   const { student, error } = await requireStudent();
@@ -21,9 +104,15 @@ export async function GET(request) {
       );
     }
 
+    const cId = parseInt(campId);
+
+    if (isNaN(cId)) {
+      return NextResponse.json({ error: "Invalid campId" }, { status: 400 });
+    }
+
     // หาแบบสอบถามของค่ายนี้
     const survey = await prisma.survey.findUnique({
-      where: { camp_camp_id: parseInt(campId) },
+      where: { camp_camp_id: cId },
       include: {
         survey_question: { orderBy: { question_id: "asc" } },
       },
@@ -39,15 +128,21 @@ export async function GET(request) {
     const enrollment = await prisma.student_enrollment.findFirst({
       where: {
         student_students_id: student.students_id,
-        camp_camp_id: parseInt(campId),
+        camp_camp_id: cId,
       },
     });
 
     if (!enrollment) {
-      return NextResponse.json(
-        { error: "Student not enrolled in this camp" },
-        { status: 403 },
-      );
+      const canAccess = await canStudentAccessCamp(student.students_id, cId);
+
+      if (!canAccess) {
+        return NextResponse.json(
+          { error: "Student cannot access this camp" },
+          { status: 403 },
+        );
+      }
+
+      return NextResponse.json({ survey, isCompleted: false });
     }
 
     // เช็คว่าทำแบบสอบถามไปแล้วหรือยัง
@@ -106,15 +201,28 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
     }
 
-    const enrollment = await prisma.student_enrollment.findFirst({
-      where: {
-        student_students_id: student.students_id,
-        camp_camp_id: cId,
-      },
+    const survey = await prisma.survey.findUnique({
+      where: { survey_id: sId },
+      select: { camp_camp_id: true },
     });
 
+    if (!survey || survey.camp_camp_id !== cId) {
+      return NextResponse.json(
+        { error: "Survey not found for this camp" },
+        { status: 404 },
+      );
+    }
+
+    const enrollment = await ensureSurveyEnrollment(
+      student.students_id,
+      cId,
+    );
+
     if (!enrollment) {
-      return NextResponse.json({ error: "Not enrolled" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Student cannot access this camp" },
+        { status: 403 },
+      );
     }
 
     // --- Vulgar Word Filter ---
@@ -226,18 +334,6 @@ export async function POST(request) {
       }
     }
     // --- End Vulgar Word Filter ---
-
-    const survey = await prisma.survey.findUnique({
-      where: { survey_id: sId },
-      select: { camp_camp_id: true },
-    });
-
-    if (!survey || survey.camp_camp_id !== cId) {
-      return NextResponse.json(
-        { error: "Survey not found for this camp" },
-        { status: 404 },
-      );
-    }
 
     // สร้าง response และ answers ให้ครบใน Transaction
     const result = await prisma.$transaction(async (tx) => {

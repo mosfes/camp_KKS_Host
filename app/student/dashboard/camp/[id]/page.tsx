@@ -449,8 +449,7 @@ export default function StudentCampDetailPage() {
 
   if (startDate) startDate.setHours(0, 0, 0, 0);
   const campNotStarted = startDate && today < startDate;
-  const canShowAssignedSurvey =
-    !camp.isRegistered && camp.hasEnrollment && !!surveyData;
+  const canShowAssignedSurvey = !camp.isRegistered && !!surveyData;
 
   return (
     <div className="min-h-screen bg-[#F5F5F3] pb-72">
@@ -931,6 +930,29 @@ export default function StudentCampDetailPage() {
                           >
                             สรุปผลการทำภารกิจ
                           </Button>
+                          {surveyData && (
+                            <Button
+                              fullWidth
+                              className={`h-12 rounded-2xl font-bold text-sm border ${
+                                surveyCompleted
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : "bg-[#FFECC9] text-yellow-800 border-yellow-300 shadow-md shadow-yellow-200/30"
+                              }`}
+                              isDisabled={surveyCompleted}
+                              startContent={
+                                surveyCompleted ? (
+                                  <CheckCircle2 size={18} />
+                                ) : (
+                                  <ClipboardList size={18} />
+                                )
+                              }
+                              onPress={() => setIsSurveyModalOpen(true)}
+                            >
+                              {surveyCompleted
+                                ? "ประเมินแล้ว"
+                                : "ทำแบบประเมิน"}
+                            </Button>
+                          )}
                           <div className="flex flex-col gap-2 pt-1">
                             <div className="flex items-center gap-3">
                               <div className="flex-1 h-px bg-gray-100" />

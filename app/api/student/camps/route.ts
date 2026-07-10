@@ -77,6 +77,9 @@ export async function GET() {
           include: { time_slots: true },
           orderBy: { day: "asc" },
         },
+        survey: {
+          select: { survey_id: true },
+        },
         station: {
           where: { deletedAt: null },
           include: {
@@ -124,6 +127,7 @@ export async function GET() {
         status: isRegistered ? "Registered" : "Available",
         isRegistered: isRegistered,
         hasEnrollment: !!myEnrollment,
+        hasSurvey: camp.survey.length > 0,
         isEnded: isEnded,
         shirtSize: myEnrollment?.shirt_size || null,
         hasShirt: camp.has_shirt,
