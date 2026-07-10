@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { isBangkokDateBefore } from "@/lib/bangkok-date";
 
 // Helper to calculate progress
 function calculateProgress(station: any) {
@@ -65,12 +66,9 @@ export default function StudentMissionsPage() {
             return;
           }
           // ตรวจสอบว่าค่ายเริ่มแล้วหรือยัง
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
           const startDate = found.rawStartDate ? new Date(found.rawStartDate) : null;
-          if (startDate) startDate.setHours(0, 0, 0, 0);
 
-          if (startDate && today < startDate) {
+          if (startDate && isBangkokDateBefore(new Date(), startDate)) {
             toast.error("ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
             router.replace(`/student/dashboard/camp/${id}`);
 

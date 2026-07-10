@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { getBangkokDateAsUtcMidnight } from "@/lib/bangkok-date";
 
 /** แปลง Date (UTC จาก DB) → ISO string +07:00 สำหรับแสดงผล */
 const toThaiISOString = (date) => {
@@ -59,22 +60,22 @@ export async function GET(request) {
       ];
     }
 
-    const now = new Date();
+    const today = getBangkokDateAsUtcMidnight();
 
     if (!showDeleted && status && status !== "all") {
       if (status === "FINISHED") {
-        where.end_date = { lt: now };
+        where.end_date = { lt: today };
       } else if (status === "ACTIVE") {
-        where.start_date = { lte: now };
-        where.end_date = { gte: now };
+        where.start_date = { lte: today };
+        where.end_date = { gte: today };
       } else if (status === "REGISTRATION_OPEN") {
-        where.start_regis_date = { lte: now };
-        where.end_regis_date = { gte: now };
+        where.start_regis_date = { lte: today };
+        where.end_regis_date = { gte: today };
       } else if (status === "PREPARING") {
-        where.end_regis_date = { lt: now };
-        where.start_date = { gt: now };
+        where.end_regis_date = { lt: today };
+        where.start_date = { gt: today };
       } else if (status === "REGISTRATION_PENDING") {
-        where.start_regis_date = { gt: now };
+        where.start_regis_date = { gt: today };
       } else if (status === "OPEN" || status === "CLOSED") {
         where.status = status;
       }

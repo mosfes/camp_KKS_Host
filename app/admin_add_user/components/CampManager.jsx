@@ -32,6 +32,7 @@ import { useState, useEffect } from "react";
 import { Search, MapPin, Users, Calendar, GraduationCap, SquarePen, Trash2, RotateCcw, Trash, Archive, AlertTriangle, ArrowLeft, X, Eye } from 'lucide-react';
 import { useRouter } from "next/navigation";
 import adminService from "@/app/service/adminService";
+import { isBangkokDateBefore, isBangkokDateInRange } from "@/lib/bangkok-date";
 
 
 
@@ -269,34 +270,24 @@ const CampManager = () => {
     const getCampStatusDisplay = (camp) => {
         if (!camp) return { text: "-", colorClass: "bg-gray-100 text-gray-600 border-gray-200" };
 
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
+        const startRegis = camp.start_regis_date;
+        const endRegis = camp.end_regis_date;
+        const startDate = camp.start_date;
+        const endDate = camp.end_date;
 
-        const parseDate = (d) => {
-            if (!d) return null;
-            const date = new Date(d);
-            date.setHours(0, 0, 0, 0);
-            return date;
-        };
-
-        const startRegis = parseDate(camp.start_regis_date);
-        const endRegis = parseDate(camp.end_regis_date);
-        const startDate = parseDate(camp.start_date);
-        const endDate = parseDate(camp.end_date);
-
-        if (endDate && now > endDate) {
+        if (endDate && isBangkokDateBefore(endDate)) {
             return { text: "สิ้นสุดโครงการ", colorClass: "bg-slate-50 text-slate-400 border-slate-200/50" };
         }
-        if (startDate && endDate && now >= startDate && now <= endDate) {
+        if (startDate && endDate && isBangkokDateInRange(startDate, endDate)) {
             return { text: "กำลังดำเนินโครงการ", colorClass: "bg-slate-50 text-indigo-400/80 border-slate-200/50" };
         }
-        if (startRegis && endRegis && now >= startRegis && now <= endRegis) {
+        if (startRegis && endRegis && isBangkokDateInRange(startRegis, endRegis)) {
             return { text: "กำลังเปิดลงทะเบียน", colorClass: "bg-slate-50 text-teal-500/70 border-slate-200/50" };
         }
-        if (endRegis && startDate && now > endRegis && now < startDate) {
+        if (endRegis && startDate && isBangkokDateBefore(endRegis) && isBangkokDateBefore(new Date(), startDate)) {
             return { text: "เตรียมดำเนินโครงการ", colorClass: "bg-slate-50 text-amber-500/70 border-slate-200/50" };
         }
-        if (startRegis && now < startRegis) {
+        if (startRegis && isBangkokDateBefore(new Date(), startRegis)) {
             return { text: "เตรียมเปิดลงทะเบียน", colorClass: "bg-slate-50 text-gray-400 border-slate-200/50" };
         }
 

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { prisma } from "@/lib/db";
+import { isBangkokDateBefore } from "@/lib/bangkok-date";
 
 /**
  * GET /api/parent/camps
@@ -81,7 +82,6 @@ export async function GET() {
     });
 
     // 3. Transform – same shape as student camps
-    const now = new Date();
     const parentCamps = camps.map((camp) => {
       const enrollments = camp.student_enrollment;
       const myEnrollment = enrollments.find(
@@ -89,7 +89,7 @@ export async function GET() {
       );
 
       const isRegistered = !!myEnrollment?.enrolled_at;
-      const isEnded = camp.end_date < now;
+      const isEnded = isBangkokDateBefore(camp.end_date);
 
       const totalCapacity = camp.camp_classroom.reduce(
         (sum, cc) => sum + (cc.classroom?._count?.classroom_students || 0),

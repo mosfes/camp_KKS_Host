@@ -49,6 +49,10 @@ function DefaultCampImage() {
 
 // ... imports
 import { useStatusModal } from "@/components/StatusModalProvider";
+import {
+  isBangkokDateBefore,
+  isBangkokDateInRange,
+} from "@/lib/bangkok-date";
 
 const fetcher = (url: string) =>
   fetch(url).then((res) => {
@@ -192,13 +196,12 @@ function DashboardContent() {
     return rawCamps.map((camp: any) => {
       // Determine status label
       let statusLabel = "ยังไม่เริ่ม";
-      const now = new Date();
       const start = new Date(camp.start_date);
       const end = new Date(camp.end_date);
 
-      if (now > end) {
+      if (isBangkokDateBefore(end)) {
         statusLabel = "เสร็จสิ้น";
-      } else if (now >= start && now <= end) {
+      } else if (isBangkokDateInRange(start, end)) {
         statusLabel = "กำลังจัด";
       }
 

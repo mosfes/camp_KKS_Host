@@ -21,6 +21,10 @@ import {
 } from "lucide-react";
 
 import { ParentNavbar } from "@/components/ParentNavbar";
+import {
+  getBangkokDaysUntil,
+  isBangkokDateBefore,
+} from "@/lib/bangkok-date";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface Teacher {
@@ -505,13 +509,15 @@ function CampCard({
 
   const regisStart = camp.startRegisDate ? new Date(camp.startRegisDate) : null;
   const isUpcomingRegis =
-    regisStart && now < regisStart && !isEnded && !camp.isRegistered;
+    regisStart &&
+    isBangkokDateBefore(now, regisStart) &&
+    !isEnded &&
+    !camp.isRegistered;
 
   let countdownText = "";
 
   if (isUpcomingRegis && regisStart) {
-    const diffTime = Math.abs(regisStart.getTime() - now.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = getBangkokDaysUntil(regisStart, now);
 
     if (diffDays > 1) {
       countdownText = `อีก ${diffDays} วัน`;

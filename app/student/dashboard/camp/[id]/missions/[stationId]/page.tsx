@@ -23,6 +23,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { isBangkokDateBefore } from "@/lib/bangkok-date";
 import dynamic from "next/dynamic";
 
 const QrScanner = dynamic(() => import("@/components/QrScanner"), {
@@ -87,12 +88,9 @@ export default function StudentStationDetailPage() {
             return;
           }
           // ตรวจสอบว่าค่ายเริ่มแล้วหรือยัง
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
           const startDate = foundCamp.rawStartDate ? new Date(foundCamp.rawStartDate) : null;
-          if (startDate) startDate.setHours(0, 0, 0, 0);
 
-          if (startDate && today < startDate) {
+          if (startDate && isBangkokDateBefore(new Date(), startDate)) {
             toast.error("ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
             router.replace(`/student/dashboard/camp/${id}`);
 

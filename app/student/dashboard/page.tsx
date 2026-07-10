@@ -16,6 +16,10 @@ import {
   Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import {
+  getBangkokDaysUntil,
+  isBangkokDateBefore,
+} from "@/lib/bangkok-date";
 
 // Utility to format date (with optional range)
 const formatDate = (start: string, end?: string) => {
@@ -117,10 +121,10 @@ export default function StudentDashboard() {
     .filter((c: any) => !c.isRegistered && !c.hasEnrollment && !c.isEnded)
     .sort((a: any, b: any) => {
       const aIsUpcoming = a.startRegisDate
-        ? new Date(a.startRegisDate) > currentDate
+        ? isBangkokDateBefore(currentDate, a.startRegisDate)
         : false;
       const bIsUpcoming = b.startRegisDate
-        ? new Date(b.startRegisDate) > currentDate
+        ? isBangkokDateBefore(currentDate, b.startRegisDate)
         : false;
 
       if (aIsUpcoming && !bIsUpcoming) return 1;
@@ -398,13 +402,15 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
 
   const regisStart = camp.startRegisDate ? new Date(camp.startRegisDate) : null;
   const isUpcomingRegis =
-    regisStart && now < regisStart && !isEnded && !camp.isRegistered;
+    regisStart &&
+    isBangkokDateBefore(now, regisStart) &&
+    !isEnded &&
+    !camp.isRegistered;
 
   let countdownText = "";
 
   if (isUpcomingRegis && regisStart) {
-    const diffTime = Math.abs(regisStart.getTime() - now.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = getBangkokDaysUntil(regisStart, now);
 
     if (diffDays > 1) {
       countdownText = `อีก ${diffDays} วัน`;

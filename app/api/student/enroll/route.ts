@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
+import { isBangkokDateInRange } from "@/lib/bangkok-date";
 
 // POST: ลงทะเบียนเข้าร่วมค่าย
 export async function POST(req) {
@@ -107,44 +108,11 @@ export async function PUT(req) {
       );
     }
 
-    const now = new Date();
-    // เปรียบเทียบวันปัจจุบัน (วันเท่านั้น ไม่รวมเวลา) กับช่วงจองเสื้อ
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-
-    if (camp.start_shirt_date) {
-      const shirtStart = new Date(camp.start_shirt_date);
-      const shirtStartDay = new Date(
-        shirtStart.getFullYear(),
-        shirtStart.getMonth(),
-        shirtStart.getDate(),
+    if (!isBangkokDateInRange(camp.start_shirt_date, camp.end_shirt_date)) {
+      return NextResponse.json(
+        { error: "ไม่ได้อยู่ในช่วงเวลาจองเสื้อ" },
+        { status: 400 },
       );
-
-      if (todayStart < shirtStartDay) {
-        return NextResponse.json(
-          { error: "ยังไม่ถึงช่วงเวลาจองเสื้อ" },
-          { status: 400 },
-        );
-      }
-    }
-
-    if (camp.end_shirt_date) {
-      const shirtEnd = new Date(camp.end_shirt_date);
-      const shirtEndDay = new Date(
-        shirtEnd.getFullYear(),
-        shirtEnd.getMonth(),
-        shirtEnd.getDate(),
-      );
-
-      if (todayStart > shirtEndDay) {
-        return NextResponse.json(
-          { error: "หมดช่วงเวลาจองเสื้อแล้ว ไม่สามารถจองย้อนหลังได้" },
-          { status: 400 },
-        );
-      }
     }
 
     const enrollment = await prisma.student_enrollment.findFirst({

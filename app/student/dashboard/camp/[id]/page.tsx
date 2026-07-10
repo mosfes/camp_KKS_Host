@@ -30,6 +30,11 @@ import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
 
 import TakeSurveyModal from "../TakeSurveyModal";
+import {
+  getBangkokDaysUntil,
+  isBangkokDateBefore,
+  isBangkokDateInRange,
+} from "@/lib/bangkok-date";
 
 const QrScanner = dynamic(() => import("@/components/QrScanner"), {
   ssr: false,
@@ -49,37 +54,13 @@ function formatDate(dateString: string) {
 
 function getDaysRemaining(endDate: string) {
   if (!endDate) return null;
-  const end = new Date(endDate);
 
-  end.setHours(0, 0, 0, 0);
-  const now = new Date();
-
-  now.setHours(0, 0, 0, 0);
-  const diff = end.getTime() - now.getTime();
-  const days = Math.round(diff / (1000 * 60 * 60 * 24)); // Use round to avoid -0 issues
-
-  return days >= 0 ? days : 0;
+  return getBangkokDaysUntil(endDate);
 }
 
 /** คืน true ถ้าวันนี้อยู่ในช่วงจองเสื้อ (ไม่ย้อนหลัง ไม่เกินวันหมดเขต) */
 function isInShirtPeriod(startDate?: string, endDate?: string): boolean {
-  const today = new Date();
-
-  today.setHours(0, 0, 0, 0);
-  if (startDate) {
-    const start = new Date(startDate);
-
-    start.setHours(0, 0, 0, 0);
-    if (today < start) return false;
-  }
-  if (endDate) {
-    const end = new Date(endDate);
-
-    end.setHours(0, 0, 0, 0);
-    if (today > end) return false;
-  }
-
-  return true;
+  return isBangkokDateInRange(startDate, endDate);
 }
 
 export default function StudentCampDetailPage() {
@@ -442,13 +423,9 @@ export default function StudentCampDetailPage() {
     camp.endShirtDate,
   );
 
-  const today = new Date();
-
-  today.setHours(0, 0, 0, 0);
   const startDate = camp.rawStartDate ? new Date(camp.rawStartDate) : null;
-
-  if (startDate) startDate.setHours(0, 0, 0, 0);
-  const campNotStarted = startDate && today < startDate;
+  const campNotStarted =
+    startDate && isBangkokDateBefore(new Date(), startDate);
   const canShowAssignedSurvey = !camp.isRegistered && !!surveyData;
 
   return (
