@@ -123,6 +123,7 @@ export async function GET() {
         endDate: camp.end_date.toISOString().split("T")[0],
         status: isRegistered ? "Registered" : "Available",
         isRegistered: isRegistered,
+        hasEnrollment: !!myEnrollment,
         isEnded: isEnded,
         shirtSize: myEnrollment?.shirt_size || null,
         hasShirt: camp.has_shirt,

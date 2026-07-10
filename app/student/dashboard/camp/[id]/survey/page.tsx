@@ -85,7 +85,11 @@ export default function StudentSurveyPage() {
     setSubmitting(true);
 
     try {
-      const formattedAnswers = survey.survey_question.map((q: any) => ({
+      const answerableQuestions = survey.survey_question.filter((q: any) =>
+        ["scale", "text"].includes(q.question_type),
+      );
+
+      const formattedAnswers = answerableQuestions.map((q: any) => ({
         questionId: q.question_id,
         scaleValue:
           q.question_type === "scale" ? Number(answers[q.question_id]) : null,

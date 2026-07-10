@@ -34,11 +34,12 @@ export async function GET(request) {
     }
 
     // หา enrollment ของนักเรียนค่ายนี้
+    // บาง flow ครู/ระบบสร้าง enrollment ไว้ล่วงหน้าโดย enrolled_at ยังเป็น null
+    // นักเรียนที่ถูกผูกกับค่ายแล้วจึงควรเห็นแบบสอบถามได้เหมือนกับตอนส่งคำตอบ
     const enrollment = await prisma.student_enrollment.findFirst({
       where: {
         student_students_id: student.students_id,
         camp_camp_id: parseInt(campId),
-        enrolled_at: { not: null },
       },
     });
 
@@ -225,6 +226,18 @@ export async function POST(request) {
       }
     }
     // --- End Vulgar Word Filter ---
+
+    const survey = await prisma.survey.findUnique({
+      where: { survey_id: sId },
+      select: { camp_camp_id: true },
+    });
+
+    if (!survey || survey.camp_camp_id !== cId) {
+      return NextResponse.json(
+        { error: "Survey not found for this camp" },
+        { status: 404 },
+      );
+    }
 
     // สร้าง response และ answers ให้ครบใน Transaction
     const result = await prisma.$transaction(async (tx) => {

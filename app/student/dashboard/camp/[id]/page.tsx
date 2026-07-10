@@ -449,6 +449,8 @@ export default function StudentCampDetailPage() {
 
   if (startDate) startDate.setHours(0, 0, 0, 0);
   const campNotStarted = startDate && today < startDate;
+  const canShowAssignedSurvey =
+    !camp.isRegistered && camp.hasEnrollment && !!surveyData;
 
   return (
     <div className="min-h-screen bg-[#F5F5F3] pb-72">
@@ -785,7 +787,43 @@ export default function StudentCampDetailPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-2xl border-t border-gray-100 p-6 pb-10 z-50 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
         <div className="max-w-xl mx-auto">
           {!camp.isRegistered ? (
-            camp.isEnded ? (
+            canShowAssignedSurvey ? (
+              <div className="flex flex-col gap-2">
+                <Button
+                  fullWidth
+                  className={`font-black text-lg h-14 rounded-2xl border ${
+                    surveyCompleted
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : "bg-[#FFECC9] text-yellow-800 border-yellow-300 shadow-xl shadow-yellow-200/40"
+                  }`}
+                  isDisabled={surveyCompleted}
+                  startContent={
+                    surveyCompleted ? (
+                      <CheckCircle2 size={20} />
+                    ) : (
+                      <ClipboardList size={20} />
+                    )
+                  }
+                  onPress={() => setIsSurveyModalOpen(true)}
+                >
+                  {surveyCompleted ? "ประเมินแล้ว" : "ทำแบบประเมิน"}
+                </Button>
+                {camp.isEnded ? (
+                  <p className="text-center text-xs font-semibold text-gray-400">
+                    ค่ายจบแล้ว แต่คุณยังทำแบบประเมินของค่ายนี้ได้
+                  </p>
+                ) : (
+                  <Button
+                    fullWidth
+                    className="bg-[#5d7c6f] text-white font-bold text-sm h-11 rounded-2xl shadow-lg shadow-[#5d7c6f]/20"
+                    isLoading={registering}
+                    onPress={handleRegister}
+                  >
+                    เข้าร่วมค่าย
+                  </Button>
+                )}
+              </div>
+            ) : camp.isEnded ? (
               <Button
                 fullWidth
                 isDisabled
