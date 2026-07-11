@@ -29,6 +29,7 @@ import {
 import QRCode from "react-qr-code";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import VideoPlayer from "@/components/VideoPlayer";
 
 interface MonitorMissionModalProps {
   isOpen: boolean;
@@ -228,10 +229,16 @@ export default function MonitorMissionModal({
           base: "bg-white rounded-2xl shadow-xl max-h-[90vh]",
           backdrop: "bg-black/60 backdrop-blur-sm",
         }}
+        // The image viewer is rendered in a portal outside this modal.  While it
+        // is open, interactions with it must not be treated as an outside press
+        // that dismisses the student-answer modal.
+        isDismissable={!lightboxSrc}
         isOpen={isOpen}
         scrollBehavior="inside"
         size="3xl"
-        onOpenChange={onClose}
+        onOpenChange={(open) => {
+          if (!open && !lightboxSrc) onClose();
+        }}
       >
         <ModalContent>
           {(onClose) => (
@@ -635,6 +642,23 @@ export default function MonitorMissionModal({
                                                   คลิกที่รูปเพื่อดูขนาดใหญ่
                                                 </p>
                                               </div>
+                                            </div>
+                                          )}
+
+                                          {ans.type === "VIDEO" && (
+                                            <div className="space-y-3">
+                                              <VideoPlayer
+                                                title={`วิดีโอของ ${result.studentName}`}
+                                                url={ans.answerText}
+                                              />
+                                              <a
+                                                className="inline-flex text-xs font-semibold text-[#5d7c6f] underline underline-offset-2"
+                                                href={ans.answerText}
+                                                rel="noreferrer"
+                                                target="_blank"
+                                              >
+                                                เปิดวิดีโอต้นฉบับ
+                                              </a>
                                             </div>
                                           )}
                                         </div>

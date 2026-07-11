@@ -108,6 +108,45 @@ export async function GET(request) {
           total: answers.length,
           answers,
         };
+      } else if (q.question_type === "checkbox") {
+        const options = (() => {
+          try {
+            const parsed = JSON.parse(q.options || "[]");
+
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })();
+        const counts = new Map(options.map((option) => [option, 0]));
+        let total = 0;
+
+        q.survey_answer.forEach((answer) => {
+          if (!answer.text_answer) return;
+
+          try {
+            const selected = JSON.parse(answer.text_answer);
+
+            if (!Array.isArray(selected)) return;
+            total++;
+            selected.forEach((option) => {
+              if (typeof option === "string") {
+                counts.set(option, (counts.get(option) || 0) + 1);
+              }
+            });
+          } catch {
+            // Ignore legacy or malformed checkbox values without failing the
+            // entire survey results page.
+          }
+        });
+
+        return {
+          id: q.question_id,
+          text: q.question_text,
+          type: "checkbox",
+          total,
+          options: Array.from(counts, ([label, count]) => ({ label, count })),
+        };
       } else {
         // header
         return {

@@ -21,10 +21,13 @@ import {
   QrCode,
   ScanLine,
   KeyRound,
+  Video,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { isBangkokDateBefore } from "@/lib/bangkok-date";
 import dynamic from "next/dynamic";
+import VideoPlayer from "@/components/VideoPlayer";
+import { getVideoSource, supportedVideoUrlMessage } from "@/lib/video";
 
 const QrScanner = dynamic(() => import("@/components/QrScanner"), {
   ssr: false,
@@ -88,7 +91,9 @@ export default function StudentStationDetailPage() {
             return;
           }
           // ตรวจสอบว่าค่ายเริ่มแล้วหรือยัง
-          const startDate = foundCamp.rawStartDate ? new Date(foundCamp.rawStartDate) : null;
+          const startDate = foundCamp.rawStartDate
+            ? new Date(foundCamp.rawStartDate)
+            : null;
 
           if (startDate && isBangkokDateBefore(new Date(), startDate)) {
             toast.error("ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
@@ -405,7 +410,12 @@ export default function StudentStationDetailPage() {
 
       // หมดทุก retry แล้วยังไม่สำเร็จ
       toast.error("อัปโหลดล้มเหลว กรุณาลองใหม่อีกครั้ง");
-      console.error("[upload] Failed after", MAX_RETRIES, "attempts:", lastError);
+      console.error(
+        "[upload] Failed after",
+        MAX_RETRIES,
+        "attempts:",
+        lastError,
+      );
     } catch (error) {
       console.error(error);
       toast.error("เกิดข้อผิดพลาดในการอัปโหลด");
@@ -608,7 +618,10 @@ export default function StudentStationDetailPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className={`text-lg font-bold text-[#2D3648] truncate`}>
-                      {mission.title?.replace(/\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g, '') || "ภารกิจ"}
+                      {mission.title?.replace(
+                        /\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g,
+                        "",
+                      ) || "ภารกิจ"}
                     </h3>
                     {mission.type === "PRE_TEST" && (
                       <span className="shrink-0 bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
@@ -669,7 +682,10 @@ export default function StudentStationDetailPage() {
                 </span>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-bold text-gray-900 truncate">
-                    {selectedMission?.title?.replace(/\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g, '')}
+                    {selectedMission?.title?.replace(
+                      /\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g,
+                      "",
+                    )}
                   </h2>
                   {selectedMission?.type === "PRE_TEST" && (
                     <span className="shrink-0 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-bold">
@@ -918,41 +934,96 @@ export default function StudentStationDetailPage() {
                       const isSubmitted = currentResult?.status === "completed";
 
                       return selectedMission?.mission_question?.map(
-                        (q: any, idx: number) => (
-                          <div key={q.question_id} className="space-y-3">
-                            <label className="block font-semibold text-gray-700 break-words leading-relaxed">
-                              {idx + 1}. {q.question_text}
-                            </label>
+                        (q: any, idx: number) => {
+                          const isVideoSubmission =
+                            selectedMission?.type === "VIDEO_SUBMISSION";
+                          const videoSource = isVideoSubmission
+                            ? getVideoSource(answers[q.question_id] || "")
+                            : null;
 
-                            {q.question_type === "TEXT" && (
-                              <Textarea
-                                classNames={{
-                                  input: "text-gray-900 font-medium",
-                                }}
-                                isReadOnly={isSubmitted}
-                                minRows={3}
-                                placeholder={
-                                  isSubmitted ? "" : "พิมพ์คำตอบของคุณที่นี่..."
-                                }
-                                value={answers[q.question_id] || ""}
-                                variant="bordered"
-                                onValueChange={(val) =>
-                                  handleAnswerChange(q.question_id, val)
-                                }
-                              />
-                            )}
+                          return (
+                            <div key={q.question_id} className="space-y-3">
+                              <label className="block font-semibold text-gray-700 break-words leading-relaxed">
+                                {idx + 1}. {q.question_text}
+                              </label>
 
-                            {q.question_type === "MCQ" && (
-                              <div className="space-y-2">
-                                {q.choices?.map((c: any, choiceIdx: number) => {
-                                  const choiceLetter = String.fromCharCode(
-                                    65 + choiceIdx,
-                                  );
+                              {isVideoSubmission ? (
+                                <div className="space-y-3">
+                                  <div className="relative">
+                                    <Video
+                                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                      size={18}
+                                    />
+                                    <input
+                                      className="w-full rounded-xl border border-gray-300 py-3 pl-10 pr-3 text-sm text-gray-900 outline-none transition-colors focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20 disabled:bg-gray-50"
+                                      disabled={isSubmitted}
+                                      inputMode="url"
+                                      placeholder="วางลิงก์ YouTube, Vimeo, Google Drive หรือ MP4"
+                                      type="url"
+                                      value={answers[q.question_id] || ""}
+                                      onChange={(e) =>
+                                        handleAnswerChange(
+                                          q.question_id,
+                                          e.target.value,
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                  <p className="text-xs text-gray-500">
+                                    {supportedVideoUrlMessage}
+                                  </p>
+                                  {answers[q.question_id] && !videoSource && (
+                                    <p className="text-xs font-medium text-red-500">
+                                      ลิงก์นี้ยังไม่รองรับหรือไม่ใช่ HTTPS
+                                      กรุณาตรวจสอบอีกครั้ง
+                                    </p>
+                                  )}
+                                  {videoSource && (
+                                    <div className="space-y-2 rounded-xl border border-[#5d7c6f]/20 bg-[#5d7c6f]/5 p-3">
+                                      <p className="text-xs font-semibold text-[#5d7c6f]">
+                                        ตัวอย่างวิดีโอ ({videoSource.provider})
+                                      </p>
+                                      <VideoPlayer
+                                        title="ตัวอย่างวิดีโอที่ส่ง"
+                                        url={answers[q.question_id]}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                q.question_type === "TEXT" && (
+                                  <Textarea
+                                    classNames={{
+                                      input: "text-gray-900 font-medium",
+                                    }}
+                                    isReadOnly={isSubmitted}
+                                    minRows={3}
+                                    placeholder={
+                                      isSubmitted
+                                        ? ""
+                                        : "พิมพ์คำตอบของคุณที่นี่..."
+                                    }
+                                    value={answers[q.question_id] || ""}
+                                    variant="bordered"
+                                    onValueChange={(val) =>
+                                      handleAnswerChange(q.question_id, val)
+                                    }
+                                  />
+                                )
+                              )}
 
-                                  return (
-                                    <div
-                                      key={c.choice_id}
-                                      className={`
+                              {q.question_type === "MCQ" && (
+                                <div className="space-y-2">
+                                  {q.choices?.map(
+                                    (c: any, choiceIdx: number) => {
+                                      const choiceLetter = String.fromCharCode(
+                                        65 + choiceIdx,
+                                      );
+
+                                      return (
+                                        <div
+                                          key={c.choice_id}
+                                          className={`
                                       p-3 rounded-lg border flex items-center gap-3 transition-colors
                                       ${
                                         answers[q.question_id] === choiceLetter
@@ -961,109 +1032,114 @@ export default function StudentStationDetailPage() {
                                       }
                                     ${isSubmitted ? "opacity-75 cursor-not-allowed" : "cursor-pointer hover:bg-gray-50"}
                                   `}
-                                      onClick={() =>
-                                        !isSubmitted &&
-                                        handleAnswerChange(
-                                          q.question_id,
-                                          choiceLetter,
-                                        )
-                                      }
-                                    >
-                                      <div
-                                        className={`
+                                          onClick={() =>
+                                            !isSubmitted &&
+                                            handleAnswerChange(
+                                              q.question_id,
+                                              choiceLetter,
+                                            )
+                                          }
+                                        >
+                                          <div
+                                            className={`
                                         w-6 h-6 rounded-full border flex items-center justify-center shrink-0 font-bold text-xs
                                         ${answers[q.question_id] === choiceLetter ? "border-white" : "border-gray-400"}
                                     `}
-                                      >
-                                        {choiceLetter}
-                                      </div>
-                                      <span className="min-w-0 break-words">
-                                        {c.choice_text}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-
-                            {q.question_type === "PHOTO" && (
-                              <div className="space-y-3">
-                                {answers[q.question_id] ? (
-                                  <div className="relative group w-full max-w-sm">
-                                    <img
-                                      alt="Uploaded"
-                                      className="w-full h-48 object-cover rounded-xl border border-gray-200"
-                                      src={answers[q.question_id]}
-                                    />
-                                    {!isSubmitted && (
-                                      <button
-                                        className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors"
-                                        onClick={() =>
-                                          handleAnswerChange(q.question_id, "")
-                                        }
-                                      >
-                                        <X size={16} />
-                                      </button>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col gap-3">
-                                    <input
-                                      accept="image/*"
-                                      className="hidden"
-                                      id={`file-${q.question_id}`}
-                                      type="file"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-
-                                        if (file)
-                                          handleImageUpload(
-                                            q.question_id,
-                                            file,
-                                          );
-                                      }}
-                                    />
-                                    <div className="flex gap-3">
-                                      <Button
-                                        className="flex-1 bg-white border-2 border-dashed border-gray-300 hover:border-[#5d7c6f] hover:text-[#5d7c6f] py-4 h-auto rounded-xl transition-all flex flex-col gap-1"
-                                        isDisabled={
-                                          isSubmitted ||
-                                          uploadingQid === q.question_id
-                                        }
-                                        isLoading={
-                                          uploadingQid === q.question_id
-                                        }
-                                        onPress={() =>
-                                          document
-                                            .getElementById(
-                                              `file-${q.question_id}`,
-                                            )
-                                            ?.click()
-                                        }
-                                      >
-                                        {uploadingQid === q.question_id ? (
-                                          <span className="text-sm font-semibold ml-2">
-                                            กำลังอัปโหลด...
-                                          </span>
-                                        ) : (
-                                          <div className="flex flex-col items-center gap-1">
-                                            <Camera size={24} />
-                                            <span className="text-sm font-semibold">
-                                              ถ่ายรูป / เลือกรูป
-                                            </span>
-                                            <span className="text-[10px] text-gray-600 font-normal">
-                                              ขนาดไฟล์รูปภาพสูงสุด 20MB
-                                            </span>
+                                          >
+                                            {choiceLetter}
                                           </div>
-                                        )}
-                                      </Button>
+                                          <span className="min-w-0 break-words">
+                                            {c.choice_text}
+                                          </span>
+                                        </div>
+                                      );
+                                    },
+                                  )}
+                                </div>
+                              )}
+
+                              {q.question_type === "PHOTO" && (
+                                <div className="space-y-3">
+                                  {answers[q.question_id] ? (
+                                    <div className="relative group w-full max-w-sm">
+                                      <img
+                                        alt="Uploaded"
+                                        className="w-full h-48 object-cover rounded-xl border border-gray-200"
+                                        src={answers[q.question_id]}
+                                      />
+                                      {!isSubmitted && (
+                                        <button
+                                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                                          onClick={() =>
+                                            handleAnswerChange(
+                                              q.question_id,
+                                              "",
+                                            )
+                                          }
+                                        >
+                                          <X size={16} />
+                                        </button>
+                                      )}
                                     </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ),
+                                  ) : (
+                                    <div className="flex flex-col gap-3">
+                                      <input
+                                        accept="image/*"
+                                        className="hidden"
+                                        id={`file-${q.question_id}`}
+                                        type="file"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+
+                                          if (file)
+                                            handleImageUpload(
+                                              q.question_id,
+                                              file,
+                                            );
+                                        }}
+                                      />
+                                      <div className="flex gap-3">
+                                        <Button
+                                          className="flex-1 bg-white border-2 border-dashed border-gray-300 hover:border-[#5d7c6f] hover:text-[#5d7c6f] py-4 h-auto rounded-xl transition-all flex flex-col gap-1"
+                                          isDisabled={
+                                            isSubmitted ||
+                                            uploadingQid === q.question_id
+                                          }
+                                          isLoading={
+                                            uploadingQid === q.question_id
+                                          }
+                                          onPress={() =>
+                                            document
+                                              .getElementById(
+                                                `file-${q.question_id}`,
+                                              )
+                                              ?.click()
+                                          }
+                                        >
+                                          {uploadingQid === q.question_id ? (
+                                            <span className="text-sm font-semibold ml-2">
+                                              กำลังอัปโหลด...
+                                            </span>
+                                          ) : (
+                                            <div className="flex flex-col items-center gap-1">
+                                              <Camera size={24} />
+                                              <span className="text-sm font-semibold">
+                                                ถ่ายรูป / เลือกรูป
+                                              </span>
+                                              <span className="text-[10px] text-gray-600 font-normal">
+                                                ขนาดไฟล์รูปภาพสูงสุด 20MB
+                                              </span>
+                                            </div>
+                                          )}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        },
                       );
                     })()}
                   </div>

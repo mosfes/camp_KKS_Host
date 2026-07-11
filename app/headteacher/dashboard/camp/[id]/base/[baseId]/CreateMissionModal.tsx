@@ -7,6 +7,8 @@ import {
   ModalBody,
   ModalFooter,
   Button,
+  Select,
+  SelectItem,
 } from "@heroui/react";
 import { useState } from "react";
 import { Save, Plus, Trash2, CheckCircle2, Circle } from "lucide-react";
@@ -22,11 +24,36 @@ interface CreateMissionModalProps {
 
 // ประเภทภารกิจ (ตรงกับ MissionType enum ใน schema)
 const MISSION_TYPES = [
-  { key: "QUESTION_ANSWERING", label: "ตอบคำถาม" },
-  { key: "MULTIPLE_CHOICE_QUIZ", label: "แบบทดสอบหลายตัวเลือก" },
-  { key: "PRE_TEST", label: "แบบทดสอบก่อนเรียน/หลังเรียน" },
-  { key: "PHOTO_SUBMISSION", label: "ส่งรูปภาพ" },
-  { key: "QR_CODE_SCANNING", label: "สแกน QR Code" },
+  {
+    key: "QUESTION_ANSWERING",
+    label: "ตอบคำถาม",
+    description: "ให้นักเรียนพิมพ์คำตอบ",
+  },
+  {
+    key: "MULTIPLE_CHOICE_QUIZ",
+    label: "แบบทดสอบหลายตัวเลือก",
+    description: "เลือกคำตอบที่ถูกต้อง",
+  },
+  {
+    key: "PRE_TEST",
+    label: "แบบทดสอบก่อนเรียน/หลังเรียน",
+    description: "สร้างชุดคำถามก่อนและหลังเรียน",
+  },
+  {
+    key: "PHOTO_SUBMISSION",
+    label: "ส่งรูปภาพ",
+    description: "ให้นักเรียนถ่ายหรือเลือกรูป",
+  },
+  {
+    key: "VIDEO_SUBMISSION",
+    label: "ส่งลิงก์วิดีโอ",
+    description: "ฝังวิดีโอจากลิงก์ โดยไม่เก็บไฟล์",
+  },
+  {
+    key: "QR_CODE_SCANNING",
+    label: "สแกน QR Code",
+    description: "ยืนยันการร่วมกิจกรรมด้วย QR",
+  },
 ];
 
 const inputCls =
@@ -54,6 +81,7 @@ export default function CreateMissionModal({
     },
   ]);
   const [loading, setLoading] = useState(false);
+  const selectedType = MISSION_TYPES.find((item) => item.key === type);
 
   // MCQ Handlers
   const addMcqQuestion = () =>
@@ -158,7 +186,11 @@ export default function CreateMissionModal({
           return;
         }
       }
-    } else if (type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION") {
+    } else if (
+      type === "QUESTION_ANSWERING" ||
+      type === "PHOTO_SUBMISSION" ||
+      type === "VIDEO_SUBMISSION"
+    ) {
       for (let i = 0; i < textQuestions.length; i++) {
         if (!textQuestions[i].text.trim()) {
           showError("ข้อผิดพลาด", `คำถามที่ ${i + 1} ยังว่างอยู่`);
@@ -181,7 +213,9 @@ export default function CreateMissionModal({
           questions:
             type === "MULTIPLE_CHOICE_QUIZ" || type === "PRE_TEST"
               ? mcqQuestions
-              : type === "QUESTION_ANSWERING" || type === "PHOTO_SUBMISSION"
+              : type === "QUESTION_ANSWERING" ||
+                  type === "PHOTO_SUBMISSION" ||
+                  type === "VIDEO_SUBMISSION"
                 ? textQuestions
                 : undefined,
           stationId: baseId,
@@ -241,7 +275,9 @@ export default function CreateMissionModal({
                   <label className="block text-sm font-medium text-gray-700">
                     ชื่อภารกิจ <span className="text-red-500">*</span>
                   </label>
-                  <span className="text-xs text-gray-400">{title.length}/255</span>
+                  <span className="text-xs text-gray-400">
+                    {title.length}/255
+                  </span>
                 </div>
                 <input
                   className={inputCls}
@@ -253,22 +289,46 @@ export default function CreateMissionModal({
               </div>
 
               {/* ประเภทภารกิจ */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ประเภทภารกิจ
-                </label>
-                <select
-                  className={inputCls}
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                >
-                  {MISSION_TYPES.map((t) => (
-                    <option key={t.key} value={t.key}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                aria-label="ประเภทภารกิจ"
+                maxListboxHeight={178}
+                showScrollIndicators
+                classNames={{
+                  base: "w-full",
+                  description: "text-xs text-gray-500",
+                  label: "text-sm font-semibold text-gray-700",
+                  listbox: "p-0",
+                  listboxWrapper:
+                    "max-h-[178px] overflow-y-scroll pr-1 scrollbar-thin scrollbar-thumb-[#6b857a]/70 scrollbar-track-transparent",
+                  popoverContent:
+                    "rounded-xl border border-gray-100 p-1 shadow-lg",
+                  trigger:
+                    "min-h-11 rounded-lg border border-gray-200 bg-white px-3 shadow-none data-[hover=true]:border-[#6b857a]",
+                  value: "text-sm font-medium text-gray-900",
+                }}
+                description={selectedType?.description}
+                label="ประเภทภารกิจ"
+                scrollShadowProps={{ hideScrollBar: false, size: 24 }}
+                selectedKeys={[type]}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0];
+                  if (typeof selected === "string") setType(selected);
+                }}
+              >
+                {MISSION_TYPES.map((item) => (
+                  <SelectItem
+                    key={item.key}
+                    classNames={{
+                      base:
+                        "min-h-10 rounded-lg px-3 py-2 data-[hover=true]:bg-[#6b857a]/10",
+                      title: "text-sm font-medium text-gray-800",
+                    }}
+                    textValue={item.label}
+                  >
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </Select>
 
               {/* รายละเอียด */}
               <div>
@@ -276,7 +336,9 @@ export default function CreateMissionModal({
                   <label className="block text-sm font-medium text-gray-700">
                     รายละเอียด
                   </label>
-                  <span className="text-xs text-gray-400">{description.length}/1000</span>
+                  <span className="text-xs text-gray-400">
+                    {description.length}/1000
+                  </span>
                 </div>
                 <textarea
                   className={`${inputCls} resize-none`}
@@ -290,8 +352,14 @@ export default function CreateMissionModal({
 
               {/* ตอบคำถาม / ส่งรูปภาพ */}
               {(type === "QUESTION_ANSWERING" ||
-                type === "PHOTO_SUBMISSION") && (
+                type === "PHOTO_SUBMISSION" ||
+                type === "VIDEO_SUBMISSION") && (
                 <div className="space-y-4">
+                  {type === "VIDEO_SUBMISSION" && (
+                    <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
+                      นักเรียนจะส่งลิงก์ YouTube, Vimeo, Google Drive หรือ MP4
+                    </p>
+                  )}
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-5 bg-[#6b857a] rounded-full" />
                     <label className="text-sm font-semibold text-gray-700">
@@ -397,7 +465,9 @@ export default function CreateMissionModal({
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                           คำถามที่ {qi + 1}
                         </p>
-                        <span className="text-xs text-gray-400">{q.text.length}/255</span>
+                        <span className="text-xs text-gray-400">
+                          {q.text.length}/255
+                        </span>
                       </div>
                       <input
                         className={`${inputCls} mb-3 bg-white`}

@@ -24,7 +24,7 @@ export async function PUT(request, { params }) {
     // Strategy: Delete all existing questions and recreation is safest/easiest for multi-question sets
     // especially to handle reordering or removals without complex diffing.
 
-    if (type === "QUESTION_ANSWERING") {
+    if (type === "QUESTION_ANSWERING" || type === "VIDEO_SUBMISSION") {
       const questionsToUpdate = questions || [];
 
       if (questionsToUpdate.length === 0 && question) {

@@ -11,12 +11,34 @@ export async function GET(request, { params }) {
     const station = await prisma.station.findUnique({
       where: { station_id: parseInt(id) },
       include: {
+        camp: {
+          select: {
+            camp_classroom: {
+              select: {
+                classroom: {
+                  select: {
+                    classroom_students: {
+                      select: { student_students_id: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         mission: {
           where: { deletedAt: null },
           include: {
             mission_question: {
               include: {
                 choices: true,
+              },
+            },
+            _count: {
+              select: {
+                mission_result: {
+                  where: { status: "completed" },
+                },
               },
             },
           },
@@ -28,7 +50,20 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Station not found" }, { status: 404 });
     }
 
-    return NextResponse.json(station);
+    // A student can belong to more than one classroom linked to this camp, so
+    // deduplicate by student ID.  This count is scoped to this station's camp.
+    const participantIds = new Set(
+      station.camp.camp_classroom.flatMap((campClassroom) =>
+        campClassroom.classroom.classroom_students.map(
+          (student) => student.student_students_id,
+        ),
+      ),
+    );
+
+    return NextResponse.json({
+      ...station,
+      participantCount: participantIds.size,
+    });
   } catch {
     //     console.error("Error fetching station:", error);
 
@@ -73,7 +108,10 @@ export async function PUT(request, { params }) {
     console.error("Error updating station:", error);
 
     return NextResponse.json(
-      { _error: "Failed to update station", details: error instanceof Error ? error.message : String(error) },
+      {
+        _error: "Failed to update station",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }

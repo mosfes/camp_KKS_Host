@@ -100,8 +100,20 @@ export async function GET(request, context) {
       },
       include: {
         mission_result: {
-          where: { status: "completed" },
-          select: { mission_result_id: true },
+          // Keep the numerator aligned with `totalMissions`: historical
+          // results for missions (or stations) that were soft-deleted must
+          // not contribute to a student's current camp progress.
+          where: {
+            status: "completed",
+            mission: {
+              deletedAt: null,
+              station: {
+                camp_camp_id: campId,
+                deletedAt: null,
+              },
+            },
+          },
+          select: { mission_mission_id: true },
         },
         certificate: {
           select: { certificate_id: true },
@@ -117,10 +129,19 @@ export async function GET(request, context) {
 
     for (const [id, student] of studentMap) {
       const enr = enrollmentMap.get(id);
-      const completedMissions = enr ? enr.mission_result.length : 0;
+      // A mission can only count once, even if legacy data has duplicate
+      // completion records for the same mission.
+      const completedMissions = Math.min(
+        enr
+          ? new Set(
+              enr.mission_result.map((result) => result.mission_mission_id),
+            ).size
+          : 0,
+        totalMissions,
+      );
       const progressPercentage =
         totalMissions > 0
-          ? Math.round((completedMissions / totalMissions) * 100)
+          ? Math.min(100, Math.round((completedMissions / totalMissions) * 100))
           : 0;
 
       studentsProgress.push({

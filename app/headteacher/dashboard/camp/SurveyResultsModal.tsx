@@ -42,11 +42,12 @@ interface SurveyResultsModalProps {
 interface QuestionSummary {
   id: number;
   text: string;
-  type: "scale" | "text" | "header";
+  type: "scale" | "text" | "checkbox" | "header";
   average?: number;
   total: number;
   distribution?: { [key: string]: number };
   answers?: string[];
+  options?: { label: string; count: number }[];
 }
 
 interface SurveySummary {
@@ -617,6 +618,28 @@ export default function SurveyResultsModal({
                                   </p>
                                 </div>
                               )}
+                            </div>
+                          )}
+
+                          {/* Multiple-choice answers */}
+                          {q.type === "checkbox" && q.options && (
+                            <div className="ml-9 space-y-2.5 mt-2">
+                              {q.options.map((option) => (
+                                <div
+                                  key={option.label}
+                                  className="flex items-center justify-between gap-4 bg-gray-50 p-3 rounded-xl text-sm border border-gray-100"
+                                >
+                                  <span className="text-gray-700 break-words">
+                                    {option.label}
+                                  </span>
+                                  <span className="shrink-0 rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-700">
+                                    {option.count} คน
+                                  </span>
+                                </div>
+                              ))}
+                              <p className="text-xs text-gray-400 pt-1">
+                                มีผู้ตอบข้อนี้ {q.total} คน (เลือกได้มากกว่า 1 ข้อ)
+                              </p>
                             </div>
                           )}
                         </div>

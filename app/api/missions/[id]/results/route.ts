@@ -105,7 +105,7 @@ export async function GET(request, { params }) {
           return {
             questionId: ans.mission_question_question_id,
             questionText: ans.mission_question?.question_text,
-            type: qType,
+            type: mission.type === "VIDEO_SUBMISSION" ? "VIDEO" : qType,
             answerText: answerText,
             isCorrect: isCorrect,
           };

@@ -38,7 +38,7 @@ export async function POST(request) {
     });
 
     // Handle Question(s) based on type
-    if (type === "QUESTION_ANSWERING") {
+    if (type === "QUESTION_ANSWERING" || type === "VIDEO_SUBMISSION") {
       const questionsToCreate = questions || [];
 
       if (questionsToCreate.length === 0 && question) {
@@ -50,6 +50,8 @@ export async function POST(request) {
           await prisma.mission_question.create({
             data: {
               question_text: q.text,
+              // Video links use the existing text-answer storage; this keeps
+              // video data out of our cloud storage entirely.
               question_type: "TEXT",
               mission_mission_id: newMission.mission_id,
             },

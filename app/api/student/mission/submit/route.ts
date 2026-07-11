@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
+import { getVideoSource, supportedVideoUrlMessage } from "@/lib/video";
 
 export async function POST(req) {
   const { student, error: authError } = await requireStudent();
@@ -21,6 +22,30 @@ export async function POST(req) {
         { error: "Missing required fields" },
         { status: 400 },
       );
+    }
+
+    const mission = await prisma.mission.findUnique({
+      where: { mission_id: missionId },
+      select: { type: true, station: { select: { camp_camp_id: true } } },
+    });
+
+    if (!mission || mission.station.camp_camp_id !== campId) {
+      return NextResponse.json({ error: "Mission not found" }, { status: 404 });
+    }
+
+    if (mission.type === "VIDEO_SUBMISSION") {
+      const invalidVideo = answers.some(
+        (answer) =>
+          answer.type !== "TEXT" ||
+          typeof answer.value !== "string" ||
+          !getVideoSource(answer.value),
+      );
+      if (invalidVideo) {
+        return NextResponse.json(
+          { error: supportedVideoUrlMessage },
+          { status: 400 },
+        );
+      }
     }
 
     // 1. Find Student Enrollment
