@@ -10,7 +10,9 @@ import { Avatar } from "@heroui/avatar";
 import { GraduationCap, LogOut, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useClerk } from "@clerk/nextjs";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export function AppNavbar() {
   const router = useRouter();
@@ -56,6 +58,7 @@ export function AppNavbar() {
     : "?";
 
   return (
+    <>
     <Navbar
       className="bg-white border-b border-gray-200"
       height="64px"
@@ -163,17 +166,19 @@ export function AppNavbar() {
         </NavbarItem>
       </NavbarContent>
 
-      {/* Loading Overlay for Logout */}
-      {isLoggingOut && (
-        <div className="fixed inset-0 z-[9999] bg-white/50 backdrop-blur-sm flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-            <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
-            <p className="text-[#5d7c6f] font-medium text-sm">
+    </Navbar>
+    {isLoggingOut &&
+      createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/50 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
+            <LoadingSpinner />
+            <p className="text-sm font-medium text-[#5d7c6f]">
               กำลังออกจากระบบ...
             </p>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
-    </Navbar>
+    </>
   );
 }

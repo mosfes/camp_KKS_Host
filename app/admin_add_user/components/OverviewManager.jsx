@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, Select, SelectItem, Spinner } from "@heroui/react";
+import { Card, CardBody, Select, SelectItem } from "@heroui/react";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import {
   Users,
   BookOpen,
@@ -112,7 +113,7 @@ export default function OverviewManager() {
   if (isLoading && !stats.totalTeachers) {
     return (
       <div className="flex justify-center items-center h-64">
-        <Spinner size="lg" color="success" />
+        <LoadingSpinner />
       </div>
     );
   }

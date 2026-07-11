@@ -8,10 +8,9 @@ import {
 } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { Loader2 } from "lucide-react";
-
 import { prisma } from "@/lib/db";
 import AutoLogout from "@/components/AutoLogout";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default async function Home() {
   const { userId } = await auth();
@@ -54,7 +53,7 @@ export default async function Home() {
           <div className="flex flex-col items-center gap-4">
             <ClerkLoading>
               <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[400px] w-full max-w-[400px]">
-                <Loader2 className="w-10 h-10 animate-spin text-sage mb-4" />
+                <LoadingSpinner className="mb-4" />
                 <p className="text-gray-500 font-medium">
                   กำลังโหลดเข้าสู่ระบบ...
                 </p>

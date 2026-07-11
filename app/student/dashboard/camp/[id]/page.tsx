@@ -24,10 +24,10 @@ import {
   ScanLine,
   QrCode,
   KeyRound,
-  Loader2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 import TakeSurveyModal from "../TakeSurveyModal";
 import {
@@ -1417,10 +1417,7 @@ export default function StudentCampDetailPage() {
                 />
                 {certImageLoading && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/50 backdrop-blur-sm z-10">
-                    <Loader2
-                      className="animate-spin text-[#5d7c6f]"
-                      size={32}
-                    />
+                    <LoadingSpinner size="md" />
                     <p className="text-sm font-bold text-gray-500 animate-pulse">
                       กำลังสร้างเกียรติบัตร รอสักครู่....
                     </p>

@@ -9,13 +9,13 @@ import {
     Accordion,
     AccordionItem,
     Checkbox,
-    Spinner,
     Chip
 } from "@heroui/react";
 import { ArrowLeft, ArrowRight, Save } from 'lucide-react';
 import studentService from "@/app/service/adminService";
 import { useRouter } from "next/navigation";
 import { useStatusModal, StatusModalProvider } from "@/components/StatusModalProvider";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const PromoteStudentsContent = () => {
     const router = useRouter();
@@ -294,7 +294,7 @@ const PromoteStudentsContent = () => {
 
                             {isLoadingPromote ? (
                                 <div className="flex justify-center py-10">
-                                    <Spinner />
+                                    <LoadingSpinner size="md" />
                                 </div>
                             ) : (
                                 <Accordion selectionMode="multiple" variant="splitted" className="px-0">
