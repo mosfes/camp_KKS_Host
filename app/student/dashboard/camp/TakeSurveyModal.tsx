@@ -15,8 +15,9 @@ import { toast } from "react-hot-toast";
 interface Question {
   question_id: number;
   question_text: string;
-  question_type: "text" | "scale" | "header";
+  question_type: "text" | "scale" | "header" | "checkbox";
   scale_max?: number;
+  options?: string | null;
 }
 
 interface TakeSurveyModalProps {
@@ -68,6 +69,19 @@ export default function TakeSurveyModal({
     }));
   };
 
+  const toggleCheckboxAnswer = (qId: number, option: string) => {
+    setAnswers((prev) => {
+      const selected = Array.isArray(prev[qId]) ? prev[qId] : [];
+
+      return {
+        ...prev,
+        [qId]: selected.includes(option)
+          ? selected.filter((item: string) => item !== option)
+          : [...selected, option],
+      };
+    });
+  };
+
   const handleSubmit = async () => {
     const validQuestions = survey.survey_question.filter(
       (q) => q.question_type !== "header",
@@ -87,7 +101,12 @@ export default function TakeSurveyModal({
 
     const formattedAnswers = validQuestions.map((q) => ({
       questionId: q.question_id,
-      textAnswer: q.question_type === "text" ? answers[q.question_id] : null,
+      textAnswer:
+        q.question_type === "text"
+          ? answers[q.question_id]
+          : q.question_type === "checkbox"
+            ? JSON.stringify(answers[q.question_id] || [])
+            : null,
       scaleValue:
         q.question_type === "scale" ? Number(answers[q.question_id]) : null,
     }));
@@ -231,10 +250,43 @@ export default function TakeSurveyModal({
                               handleAnswerChange(q.question_id, e.target.value)
                             }
                           />
+                        ) : q.question_type === "checkbox" ? (
+                          <div className="space-y-3">
+                            {(q.options ? JSON.parse(q.options) : []).map(
+                              (option: string, optionIndex: number) => {
+                                const selected = (
+                                  answers[q.question_id] || []
+                                ).includes(option);
+
+                                return (
+                                  <label
+                                    key={`${option}-${optionIndex}`}
+                                    className="flex cursor-pointer items-center gap-3 text-sm text-gray-700"
+                                  >
+                                    <input
+                                      checked={selected}
+                                      className="h-4 w-4 rounded accent-[#5d7c6f]"
+                                      onChange={() =>
+                                        toggleCheckboxAnswer(
+                                          q.question_id,
+                                          option,
+                                        )
+                                      }
+                                      type="checkbox"
+                                    />
+                                    {option}
+                                  </label>
+                                );
+                              },
+                            )}
+                          </div>
                         ) : (
                           <div className="mt-4 overflow-x-auto pb-2">
                             <div className="inline-block min-w-full sm:min-w-[auto]">
-                              <div className="flex items-center justify-between sm:justify-start gap-4 sm:gap-6 pb-6">
+                              <div className="flex items-center gap-3 sm:gap-5 py-2">
+                                <span className="text-xs font-medium text-[#4f6d5f] whitespace-nowrap">
+                                  มากที่สุด
+                                </span>
                                 {Array.from({ length: q.scale_max || 5 }).map(
                                   (_, i) => {
                                     const scaleMax = q.scale_max || 5;
@@ -271,20 +323,13 @@ export default function TakeSurveyModal({
                                             <div className="w-3 h-3 bg-[#5d7c6f] rounded-full" />
                                           )}
                                         </div>
-                                        {i === 0 && (
-                                          <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">
-                                            มากที่สุด
-                                          </span>
-                                        )}
-                                        {i === scaleMax - 1 && (
-                                          <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap">
-                                            น้อยที่สุด
-                                          </span>
-                                        )}
                                       </button>
                                     );
                                   },
                                 )}
+                                <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
+                                  น้อยที่สุด
+                                </span>
                               </div>
                             </div>
                           </div>

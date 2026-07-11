@@ -20,6 +20,7 @@ import {
   ChevronUp,
   CircleDot,
   LayoutGrid,
+  ListChecks,
   AlignLeft,
   Heading,
 } from "lucide-react";
@@ -28,7 +29,7 @@ import { useStatusModal } from "@/components/StatusModalProvider";
 
 interface Question {
   text: string;
-  type: "text" | "scale" | "header" | "grid";
+  type: "text" | "scale" | "header" | "grid" | "checkbox";
   scaleMax: number;
   options?: string[];
 }
@@ -40,7 +41,7 @@ interface Template {
   survey_template_question: {
     question_id: number;
     question_text: string;
-    question_type: "text" | "scale" | "header" | "grid";
+    question_type: "text" | "scale" | "header" | "grid" | "checkbox";
     scale_max?: number;
     options?: string;
   }[];
@@ -213,14 +214,21 @@ export default function CreateSurveyModal({
     );
   };
 
-  const addQuestion = (type: "text" | "scale" | "header" | "grid") => {
+  const addQuestion = (
+    type: "text" | "scale" | "header" | "grid" | "checkbox",
+  ) => {
     setQuestions([
       ...questions,
       {
         text: "",
         type,
         scaleMax: 5,
-        options: type === "grid" ? ["รายการที่ 1"] : undefined,
+        options:
+          type === "grid"
+            ? ["รายการที่ 1"]
+            : type === "checkbox"
+              ? ["ตัวเลือกที่ 1"]
+              : undefined,
       },
     ]);
   };
@@ -244,6 +252,13 @@ export default function CreateSurveyModal({
     const q = [...questions];
 
     (q[i] as any)[field] = val;
+    if (
+      field === "type" &&
+      (val === "grid" || val === "checkbox") &&
+      !q[i].options?.length
+    ) {
+      q[i].options = [val === "checkbox" ? "ตัวเลือกที่ 1" : "รายการที่ 1"];
+    }
     setQuestions(q);
   };
 
@@ -251,7 +266,8 @@ export default function CreateSurveyModal({
     const q = [...questions];
 
     if (!q[i].options) q[i].options = [];
-    q[i].options!.push(`รายการที่ ${q[i].options!.length + 1}`);
+    const label = q[i].type === "checkbox" ? "ตัวเลือกที่" : "รายการที่";
+    q[i].options!.push(`${label} ${q[i].options!.length + 1}`);
     setQuestions(q);
   };
 
@@ -290,6 +306,14 @@ export default function CreateSurveyModal({
           questions[i].type === "header" ? "หัวข้อ" : "คำถามข้อที่";
 
         showError("ข้อผิดพลาด", `กรุณากรอก${itemType} ${i + 1} ให้ครบถ้วน`);
+
+        return;
+      }
+      if (
+        questions[i].type === "checkbox" &&
+        !questions[i].options?.some((option) => option.trim())
+      ) {
+        showError("ข้อผิดพลาด", `กรุณาเพิ่มตัวเลือกสำหรับคำถามข้อที่ ${i + 1}`);
 
         return;
       }
@@ -501,6 +525,16 @@ export default function CreateSurveyModal({
 
                       {/* Top Row: Title Input & Type Selector */}
                       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                        {q.type !== "header" && (
+                          <span className="shrink-0 rounded-full bg-[#e8f0ec] px-3 py-1.5 text-sm font-semibold text-[#4f6d5f]">
+                            ข้อ{" "}
+                            {
+                              questions
+                                .slice(0, i + 1)
+                                .filter((item) => item.type !== "header").length
+                            }
+                          </span>
+                        )}
                         <input
                           className="flex-1 w-full text-base bg-gray-50 hover:bg-gray-100 focus:bg-gray-50 border-b border-gray-300 focus:border-[#6b857a] focus:border-b-2 outline-none px-4 py-3 rounded-t-md transition-all"
                           placeholder={
@@ -568,7 +602,8 @@ export default function CreateSurveyModal({
                                     | "text"
                                     | "scale"
                                     | "header"
-                                    | "grid",
+                                    | "grid"
+                                    | "checkbox",
                                 );
                               }
                             }}
@@ -597,6 +632,18 @@ export default function CreateSurveyModal({
                                 <span>ข้อความ (ปลายเปิด)</span>
                               </div>
                             </SelectItem>
+                            <SelectItem
+                              key="checkbox"
+                              textValue="เลือกได้หลายข้อ"
+                            >
+                              <div className="flex items-center gap-2">
+                                <ListChecks
+                                  className="text-gray-500"
+                                  size={16}
+                                />
+                                <span>เลือกได้หลายข้อ</span>
+                              </div>
+                            </SelectItem>
                             <SelectItem key="header" textValue="ส่วนแบ่งหัวข้อ">
                               <div className="flex items-center gap-2">
                                 <Heading className="text-gray-500" size={16} />
@@ -610,9 +657,9 @@ export default function CreateSurveyModal({
                       {/* Mock UI Preview */}
                       <div className="pl-2 pt-2">
                         {q.type === "scale" && (
-                          <div className="flex items-center gap-4 text-gray-500">
-                            <span className="text-sm font-medium">
-                              {globalScaleMax}
+                          <div className="flex flex-wrap items-center gap-3 text-gray-500">
+                            <span className="text-sm font-medium text-[#4f6d5f]">
+                              มากที่สุด
                             </span>
                             <div className="flex gap-4">
                               {Array.from({ length: globalScaleMax }).map(
@@ -629,7 +676,9 @@ export default function CreateSurveyModal({
                                 ),
                               )}
                             </div>
-                            <span className="text-sm font-medium">1</span>
+                            <span className="text-sm font-medium text-gray-500">
+                              น้อยที่สุด
+                            </span>
                           </div>
                         )}
                         {q.type === "text" && (
@@ -681,6 +730,55 @@ export default function CreateSurveyModal({
                             </button>
                           </div>
                         )}
+                        {q.type === "checkbox" && (
+                          <div className="w-full space-y-2 mt-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                            <p className="mb-2 text-sm font-medium text-gray-700">
+                              ตัวเลือก (นักเรียนเลือกได้มากกว่าหนึ่งข้อ)
+                            </p>
+                            {q.options?.map((option, optionIndex) => (
+                              <div
+                                key={optionIndex}
+                                className="flex items-center gap-3"
+                              >
+                                <input
+                                  aria-hidden="true"
+                                  checked={false}
+                                  className="h-4 w-4 accent-[#6b857a]"
+                                  readOnly
+                                  tabIndex={-1}
+                                  type="checkbox"
+                                />
+                                <input
+                                  className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition-all focus:border-[#6b857a]"
+                                  placeholder="เช่น ได้รับข้อมูลข่าวสารจากครู"
+                                  value={option}
+                                  onChange={(e) =>
+                                    updateGridRow(
+                                      i,
+                                      optionIndex,
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                                <button
+                                  className="text-gray-400 transition-colors hover:text-red-500 disabled:opacity-30"
+                                  disabled={(q.options?.length || 0) <= 1}
+                                  onClick={() => removeGridRow(i, optionIndex)}
+                                  type="button"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              className="mt-2 flex items-center gap-1 text-sm font-medium text-[#6b857a] transition-colors hover:text-[#5a7268]"
+                              onClick={() => addGridRow(i)}
+                              type="button"
+                            >
+                              <Plus size={14} /> เพิ่มตัวเลือก
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Footer Actions */}
@@ -723,6 +821,14 @@ export default function CreateSurveyModal({
                       >
                         <Plus className="text-[#6b857a]" size={16} />
                         ระดับคะแนน
+                      </button>
+                      <div className="w-px h-6 bg-gray-200 mx-1" />
+                      <button
+                        className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
+                        onClick={() => addQuestion("checkbox")}
+                      >
+                        <Plus className="text-[#6b857a]" size={16} />
+                        เลือกได้หลายข้อ
                       </button>
                       <div className="w-px h-6 bg-gray-200 mx-1" />
                       <button

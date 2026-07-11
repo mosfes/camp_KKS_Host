@@ -578,4 +578,5 @@ enum survey_question_type {
   scale
   header
   grid
+  checkbox
 }

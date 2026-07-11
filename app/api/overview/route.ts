@@ -38,7 +38,47 @@ export async function GET(request) {
       where: { deletedAt: null },
     });
 
-    // 5. Students by Grade Level (for specific year)
+    // 5. Camp operations overview (all active camps)
+    const now = new Date();
+    const [
+      activeCamps,
+      upcomingCamps,
+      totalEnrollments,
+      campsWithoutStations,
+      focusCamps,
+    ] = await Promise.all([
+      prisma.camp.count({
+        where: {
+          deletedAt: null,
+          start_date: { lte: now },
+          end_date: { gte: now },
+        },
+      }),
+      prisma.camp.count({
+        where: { deletedAt: null, start_date: { gt: now } },
+      }),
+      prisma.student_enrollment.count({
+        where: { enrolled_at: { not: null }, camp: { deletedAt: null } },
+      }),
+      prisma.camp.count({
+        where: { deletedAt: null, station: { none: {} } },
+      }),
+      prisma.camp.findMany({
+        where: { deletedAt: null, end_date: { gte: now } },
+        orderBy: { start_date: "asc" },
+        take: 3,
+        select: {
+          camp_id: true,
+          name: true,
+          start_date: true,
+          end_date: true,
+          location: true,
+          _count: { select: { student_enrollment: true, station: true } },
+        },
+      }),
+    ]);
+
+    // 6. Students by Grade Level (for specific year)
     const activeClassrooms = await prisma.classrooms.findMany({
       where: {
         deletedAt: null,
@@ -78,7 +118,7 @@ export async function GET(request) {
       students: studentDataObj[key],
     }));
 
-    // 6. Class Types (for specific year)
+    // 7. Class Types (for specific year)
     const classroomsWithType = await prisma.classrooms.findMany({
       where: {
         deletedAt: null,
@@ -120,7 +160,7 @@ export async function GET(request) {
       };
     });
 
-    // 7. Teacher Roles
+    // 8. Teacher Roles
     // get all active teachers and their classrooms for the year to see if they are homeroom teachers
     const activeTeachers = await prisma.teachers.findMany({
       where: { deletedAt: null },
@@ -161,6 +201,13 @@ export async function GET(request) {
       totalClassrooms,
       totalStudents,
       totalCamps,
+      campOverview: {
+        activeCamps,
+        upcomingCamps,
+        totalEnrollments,
+        campsWithoutStations,
+        focusCamps,
+      },
       studentData,
       classTypesData,
       teacherRolesData,

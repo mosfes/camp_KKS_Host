@@ -118,7 +118,10 @@ export function HeadteacherNavbar({
           <NavbarItem>
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
-                <div className="flex items-center gap-2 cursor-pointer">
+                <div
+                  className="flex items-center gap-2 cursor-pointer"
+                  id="headteacher-profile-menu-trigger"
+                >
                   {mounted &&
                     (
                       teacher?.roles ?? (teacher?.role ? [teacher.role] : [])

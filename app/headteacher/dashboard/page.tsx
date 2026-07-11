@@ -134,7 +134,7 @@ function DashboardContent() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [homeroomFilter, setHomeroomFilter] = useState("all");
   const [homeroomPage, setHomeroomPage] = useState(1);
-  const homeroomItemsPerPage = 5; // Reduced to 5 per user request
+  const homeroomItemsPerPage = 10;
 
   const [campPage, setCampPage] = useState(1);
   const campsPerPage = 6; // 6 looks good on a 3-col grid
@@ -795,6 +795,9 @@ function DashboardContent() {
                       <thead>
                         <tr className="bg-gray-50 text-gray-600 text-sm border-y border-gray-100">
                           <th className="p-4 font-semibold rounded-tl-lg whitespace-nowrap">
+                            ลำดับ
+                          </th>
+                          <th className="p-4 font-semibold whitespace-nowrap">
                             รหัสนักเรียน
                           </th>
                           <th className="p-4 font-semibold whitespace-nowrap">
@@ -816,7 +819,7 @@ function DashboardContent() {
                           <tr>
                             <td
                               className="p-8 text-center text-gray-400"
-                              colSpan={5}
+                              colSpan={6}
                             >
                               กำลังโหลดข้อมูล...
                             </td>
@@ -825,7 +828,7 @@ function DashboardContent() {
                           <tr>
                             <td
                               className="p-12 text-center text-gray-400"
-                              colSpan={5}
+                              colSpan={6}
                             >
                               {homeroomSearch
                                 ? "ไม่พบนักเรียนที่ค้นหา"
@@ -839,60 +842,64 @@ function DashboardContent() {
                               className={`border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${student.isSpecialCare ? "bg-rose-50/20" : ""}`}
                               onClick={() => setSelectedStudent(student)}
                             >
+                              <td className="p-4 text-sm text-gray-600">
+                                {allHomeroomStudents.indexOf(student) + 1}
+                              </td>
                               <td className="p-4 text-sm text-gray-900 font-medium">
                                 {student.id}
                               </td>
-                              <td className="p-4 text-gray-900">
-                                <div className="flex items-center gap-2">
-                                  <span>
-                                    {student.prefix}
-                                    {student.firstname} {student.lastname}
-                                  </span>
-                                  {student.isSpecialCare && (
-                                    <span title="ต้องการดูแลเป็นพิเศษ">
-                                      <ShieldAlert
-                                        className="text-rose-500"
-                                        size={14}
-                                      />
+                                <td className="p-4 text-gray-900">
+                                  <div className="flex items-center gap-2">
+                                    <span>
+                                      {student.prefix}
+                                      {student.firstname} {student.lastname}
                                     </span>
+                                    {student.isSpecialCare && (
+                                      <span title="ต้องการดูแลเป็นพิเศษ">
+                                        <ShieldAlert
+                                          className="text-rose-500"
+                                          size={14}
+                                        />
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-4">
+                                  {student.chronicDisease &&
+                                  student.chronicDisease !== "-" &&
+                                  student.chronicDisease !== "ไม่มี" ? (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                      {student.chronicDisease}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
                                   )}
-                                </div>
-                              </td>
-                              <td className="p-4">
-                                {student.chronicDisease &&
-                                student.chronicDisease !== "-" &&
-                                student.chronicDisease !== "ไม่มี" ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                                    {student.chronicDisease}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </td>
-                              <td className="p-4">
-                                {student.foodAllergy &&
-                                student.foodAllergy !== "-" &&
-                                student.foodAllergy !== "ไม่มี" ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
-                                    {student.foodAllergy}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </td>
-                              <td className="p-4">
-                                {student.remark &&
-                                student.remark !== "-" &&
-                                student.remark !== "ไม่มี" ? (
-                                  <span className="text-sm text-blue-700 font-medium">
-                                    {student.remark}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))
+                                </td>
+                                <td className="p-4">
+                                  {student.foodAllergy &&
+                                    student.foodAllergy !== "-" &&
+                                    student.foodAllergy !== "ไม่มี" ? (
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                                        {student.foodAllergy}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                  </td>
+                                  <td className="p-4">
+                                  {student.remark &&
+                                  student.remark !== "-" &&
+                                  student.remark !== "ไม่มี" ? (
+                                    <span className="text-sm text-blue-700 font-medium">
+                                      {student.remark}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ),
+                          )
                         )}
                       </tbody>
                     </table>

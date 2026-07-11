@@ -15,7 +15,7 @@ const surveySchema = z.object({
     .array(
       z.object({
         text: z.string(),
-        type: z.enum(["text", "scale", "header", "grid"]),
+        type: z.enum(["text", "scale", "header", "grid", "checkbox"]),
         scaleMax: z.number().optional(),
         options: z.array(z.string()).optional(),
       }),
@@ -121,7 +121,9 @@ export async function POST(request) {
             question_text: q.text,
             question_type: q.type,
             scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
-            options: q.type === "grid" ? JSON.stringify(q.options || []) : null,
+            options: ["grid", "checkbox"].includes(q.type)
+              ? JSON.stringify(q.options || [])
+              : null,
           })),
         },
       },
@@ -142,8 +144,9 @@ export async function POST(request) {
               question_text: q.text,
               question_type: q.type,
               scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
-              options:
-                q.type === "grid" ? JSON.stringify(q.options || []) : null,
+              options: ["grid", "checkbox"].includes(q.type)
+                ? JSON.stringify(q.options || [])
+                : null,
             })),
           },
         },
@@ -235,8 +238,9 @@ export async function PUT(request) {
               question_text: q.text,
               question_type: q.type,
               scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
-              options:
-                q.type === "grid" ? JSON.stringify(q.options || []) : null,
+              options: ["grid", "checkbox"].includes(q.type)
+                ? JSON.stringify(q.options || [])
+                : null,
             })),
           },
         },
@@ -258,8 +262,9 @@ export async function PUT(request) {
               question_text: q.text,
               question_type: q.type,
               scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
-              options:
-                q.type === "grid" ? JSON.stringify(q.options || []) : null,
+              options: ["grid", "checkbox"].includes(q.type)
+                ? JSON.stringify(q.options || [])
+                : null,
             })),
           },
         },
