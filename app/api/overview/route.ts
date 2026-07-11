@@ -43,6 +43,7 @@ export async function GET(request) {
     const [
       activeCamps,
       upcomingCamps,
+      completedCamps,
       totalEnrollments,
       campsWithoutStations,
       focusCamps,
@@ -56,6 +57,9 @@ export async function GET(request) {
       }),
       prisma.camp.count({
         where: { deletedAt: null, start_date: { gt: now } },
+      }),
+      prisma.camp.count({
+        where: { deletedAt: null, end_date: { lt: now } },
       }),
       prisma.student_enrollment.count({
         where: { enrolled_at: { not: null }, camp: { deletedAt: null } },
@@ -204,6 +208,7 @@ export async function GET(request) {
       campOverview: {
         activeCamps,
         upcomingCamps,
+        completedCamps,
         totalEnrollments,
         campsWithoutStations,
         focusCamps,

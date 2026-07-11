@@ -14,7 +14,6 @@ import {
   ClipboardList,
   MapPin,
   Route,
-  UserRoundCheck,
 } from "lucide-react";
 import {
   BarChart,
@@ -47,6 +46,7 @@ export default function OverviewManager() {
     campOverview: {
       activeCamps: 0,
       upcomingCamps: 0,
+      completedCamps: 0,
       totalEnrollments: 0,
       campsWithoutStations: 0,
       focusCamps: [],
@@ -93,6 +93,7 @@ export default function OverviewManager() {
             campOverview: data.campOverview || {
               activeCamps: 0,
               upcomingCamps: 0,
+              completedCamps: 0,
               totalEnrollments: 0,
               campsWithoutStations: 0,
               focusCamps: [],
@@ -199,11 +200,11 @@ export default function OverviewManager() {
               <p className="text-[11px] text-emerald-50/75">ค่ายที่รอเริ่ม</p>
             </div>
             <div className="rounded-2xl bg-white/12 border border-white/15 p-3">
-              <UserRoundCheck className="text-[#c8ddc7]" size={17} />
+              <Tent className="text-[#c8ddc7]" size={17} />
               <p className="text-2xl font-bold mt-2">
-                {campOverview.totalEnrollments}
+                {campOverview.completedCamps}
               </p>
-              <p className="text-[11px] text-emerald-50/75">ลงทะเบียนแล้ว</p>
+              <p className="text-[11px] text-emerald-50/75">ค่ายที่เสร็จสิ้น</p>
             </div>
             <div className="rounded-2xl bg-white/12 border border-white/15 p-3">
               <ClipboardList className="text-[#c8ddc7]" size={17} />
