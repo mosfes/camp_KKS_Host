@@ -760,14 +760,14 @@ export default function StudentCampDetailPage() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-2xl border-t border-gray-100 p-6 pb-10 z-50 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
-        <div className="max-w-xl mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100/80 bg-white/90 px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-2xl shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
+        <div className="max-w-xl mx-auto rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
           {!camp.isRegistered ? (
             canShowAssignedSurvey ? (
               <div className="flex flex-col gap-2">
                 <Button
                   fullWidth
-                  className={`font-black text-lg h-14 rounded-2xl border ${
+                  className={`font-black text-base h-12 rounded-xl border ${
                     surveyCompleted
                       ? "bg-green-50 text-green-700 border-green-200"
                       : "bg-[#FFECC9] text-yellow-800 border-yellow-300 shadow-xl shadow-yellow-200/40"
@@ -791,7 +791,7 @@ export default function StudentCampDetailPage() {
                 ) : (
                   <Button
                     fullWidth
-                    className="bg-[#5d7c6f] text-white font-bold text-sm h-11 rounded-2xl shadow-lg shadow-[#5d7c6f]/20"
+                    className="bg-[#5d7c6f] text-white font-bold text-sm h-11 rounded-xl shadow-md shadow-[#5d7c6f]/20"
                     isLoading={registering}
                     onPress={handleRegister}
                   >
@@ -803,14 +803,14 @@ export default function StudentCampDetailPage() {
               <Button
                 fullWidth
                 isDisabled
-                className="bg-gray-100 text-gray-400 font-black text-lg h-14 rounded-2xl cursor-not-allowed border border-gray-200"
+                className="bg-gray-100 text-gray-400 font-black text-base h-12 rounded-xl cursor-not-allowed border border-gray-200"
               >
                 สิ้นสุดการรับสมัครแล้ว
               </Button>
             ) : (
               <Button
                 fullWidth
-                className="bg-[#5d7c6f] text-white font-black text-lg h-14 rounded-2xl shadow-xl shadow-[#5d7c6f]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="bg-[#5d7c6f] text-white font-black text-base h-12 rounded-xl shadow-lg shadow-[#5d7c6f]/25 hover:scale-[1.01] active:scale-[0.98] transition-all"
                 isLoading={registering}
                 onPress={handleRegister}
               >
@@ -895,7 +895,7 @@ export default function StudentCampDetailPage() {
                         <>
                           <Button
                             fullWidth
-                            className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-2xl"
+                            className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-xl shadow-md shadow-[#5d7c6f]/20"
                             isLoading={navigating}
                             startContent={<LayoutDashboard size={22} />}
                             onPress={() => {
@@ -910,7 +910,7 @@ export default function StudentCampDetailPage() {
                           {surveyData && (
                             <Button
                               fullWidth
-                              className={`h-12 rounded-2xl font-bold text-sm border ${
+                              className={`h-11 rounded-xl font-bold text-sm border ${
                                 surveyCompleted
                                   ? "bg-green-50 text-green-700 border-green-200"
                                   : "bg-[#FFECC9] text-yellow-800 border-yellow-300 shadow-md shadow-yellow-200/30"
@@ -930,18 +930,17 @@ export default function StudentCampDetailPage() {
                                 : "ทำแบบประเมิน"}
                             </Button>
                           )}
-                          <div className="flex flex-col gap-2 pt-1">
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1 h-px bg-gray-100" />
-                              <span className="text-[11px] font-semibold text-gray-300 tracking-wider uppercase">เกียรติบัตร</span>
-                              <div className="flex-1 h-px bg-gray-100" />
+                          <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2.5">
+                            <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-gray-400">
+                              <Award size={13} />
+                              <span>เกียรติบัตร</span>
                             </div>
                             {!canDownloadCert ? (
                               <div className="flex flex-col gap-1.5">
                                 <Button
                                   fullWidth
                                   isDisabled
-                                  className="font-bold text-sm h-12 rounded-2xl bg-gray-50 text-gray-400 border border-gray-200 border-dashed"
+                                  className="font-bold text-sm h-10 rounded-xl bg-gray-50 text-gray-400 border border-gray-200 border-dashed"
                                   startContent={<Award size={18} className="opacity-40" />}
                                 >
                                   ดาวน์โหลดเกียรติบัตร
@@ -956,7 +955,7 @@ export default function StudentCampDetailPage() {
                             ) : (
                               <Button
                                 fullWidth
-                                className="font-bold text-sm h-12 rounded-2xl bg-slate-700 text-white shadow-md shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
+                                className="font-bold text-sm h-10 rounded-xl bg-slate-700 text-white shadow-sm shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
                                 startContent={<Download size={18} />}
                                 onPress={() => {
                                   setCertImageLoading(true);
@@ -972,7 +971,7 @@ export default function StudentCampDetailPage() {
                         <>
                           <Button
                             fullWidth
-                            className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-2xl shadow-lg shadow-[#5d7c6f]/20"
+                            className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-xl shadow-md shadow-[#5d7c6f]/20"
                             isDisabled={navigating || !!campNotStarted}
                             isLoading={navigating}
                             startContent={<LayoutDashboard size={22} />}
@@ -988,7 +987,7 @@ export default function StudentCampDetailPage() {
                           <div className="grid grid-cols-2 gap-2">
                             <Button
                               fullWidth
-                              className={`h-11 rounded-2xl font-bold text-sm border ${
+                              className={`h-10 rounded-xl font-bold text-sm border ${
                                 surveyData && !surveyCompleted
                                   ? "bg-[#FFECC9] text-yellow-800 border-yellow-300"
                                   : surveyCompleted
@@ -1003,7 +1002,7 @@ export default function StudentCampDetailPage() {
                             </Button>
                             <Button
                               fullWidth
-                              className={`h-11 rounded-2xl font-bold text-sm border ${
+                              className={`h-10 rounded-xl font-bold text-sm border ${
                                 attendanceCheckedIn
                                   ? "bg-green-50 text-green-700 border-green-200"
                                   : "bg-[#5d7c6f]/10 text-[#5d7c6f] border-[#5d7c6f]/30"
@@ -1024,19 +1023,17 @@ export default function StudentCampDetailPage() {
                             </Button>
                           </div>
 
-                          {/* Cert section with divider */}
-                          <div className="flex flex-col gap-2 pt-1">
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1 h-px bg-gray-100" />
-                              <span className="text-[11px] font-semibold text-gray-300 tracking-wider uppercase">เกียรติบัตร</span>
-                              <div className="flex-1 h-px bg-gray-100" />
+                          <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2.5">
+                            <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-gray-400">
+                              <Award size={13} />
+                              <span>เกียรติบัตร</span>
                             </div>
                             {!canDownloadCert ? (
                               <div className="flex flex-col gap-1.5">
                                 <Button
                                   fullWidth
                                   isDisabled
-                                  className="font-bold text-sm h-12 rounded-2xl bg-gray-50 text-gray-400 border border-dashed border-gray-200"
+                                  className="font-bold text-sm h-10 rounded-xl bg-gray-50 text-gray-400 border border-dashed border-gray-200"
                                   startContent={<Award size={18} className="opacity-40" />}
                                 >
                                   ดาวน์โหลดเกียรติบัตร
@@ -1051,7 +1048,7 @@ export default function StudentCampDetailPage() {
                             ) : (
                               <Button
                                 fullWidth
-                                className="font-bold text-sm h-12 rounded-2xl bg-slate-700 text-white shadow-md shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
+                                className="font-bold text-sm h-10 rounded-xl bg-slate-700 text-white shadow-sm shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
                                 startContent={<Download size={18} />}
                                 onPress={() => {
                                   setCertImageLoading(true);
