@@ -29,11 +29,12 @@ model teachers {
   email       String    @db.VarChar(255)
   deletedAt   DateTime?
 
-  classrooms         classrooms[]
-  classroom_teacher  classroom_teacher[]
-  camp               camp[]
-  teacher_enrollment teacher_enrollment[]
-  survey_template    survey_template[]
+  classrooms           classrooms[]
+  classroom_teacher    classroom_teacher[]
+  camp                 camp[]
+  teacher_enrollment   teacher_enrollment[]
+  survey_template      survey_template[]
+  camp_location_update camp_location_update[]
 
   @@index([deletedAt])
 }
@@ -57,6 +58,7 @@ model students {
   classroom_students        classroom_students[]
   student_enrollment        student_enrollment[]
   attendance_record_student attendance_record_student[]
+  student_location_update   student_location_update[]
 
   @@index([deletedAt])
 }
@@ -169,24 +171,66 @@ model camp {
   cert_number_is_thai Boolean @default(false)
   cert_year           String? @db.VarChar(20)
 
+  // จุดหมายและการตั้งค่าการแชร์ตำแหน่งของนักเรียนในค่าย
+  destination_name         String? @db.VarChar(255)
+  destination_address      String? @db.VarChar(500)
+  destination_latitude     Float?
+  destination_longitude    Float?
+  location_sharing_enabled Boolean @default(false)
+  location_update_interval Int     @default(10)
+
   // plan_type_plane_id Int
   // plan_type          plan_type @relation(fields: [plan_type_plane_id], references: [plane_id])
 
   created_by_teacher_id Int
   created_by            teachers @relation(fields: [created_by_teacher_id], references: [teachers_id])
 
-  camp_template       camp_template[]
-  camp_classroom      camp_classroom[]
-  teacher_enrollment  teacher_enrollment[]
-  student_enrollment  student_enrollment[]
-  attendance_session  attendance_session[]
-  attendance_teachers attendance_teachers[]
-  station             station[]
-  camp_daily_schedule camp_daily_schedule[]
-  survey              survey[]
+  camp_template            camp_template[]
+  camp_classroom           camp_classroom[]
+  teacher_enrollment       teacher_enrollment[]
+  student_enrollment       student_enrollment[]
+  attendance_session       attendance_session[]
+  attendance_teachers      attendance_teachers[]
+  station                  station[]
+  camp_daily_schedule      camp_daily_schedule[]
+  survey                   survey[]
+  location_updates         camp_location_update[]
+  student_location_updates student_location_update[]
 
   @@index([deletedAt])
   @@index([created_by_teacher_id])
+}
+
+model camp_location_update {
+  location_update_id  Int      @id @default(autoincrement())
+  camp_camp_id        Int
+  teacher_teachers_id Int
+  latitude            Float
+  longitude           Float
+  accuracy            Float?
+  recorded_at         DateTime @default(now()) @db.DateTime(3)
+
+  camp    camp     @relation(fields: [camp_camp_id], references: [camp_id], onDelete: Cascade)
+  teacher teachers @relation(fields: [teacher_teachers_id], references: [teachers_id])
+
+  @@index([camp_camp_id, recorded_at])
+  @@index([teacher_teachers_id])
+}
+
+model student_location_update {
+  student_location_update_id Int      @id @default(autoincrement())
+  camp_camp_id               Int
+  student_students_id        Int
+  latitude                   Float
+  longitude                  Float
+  accuracy                   Float?
+  recorded_at                DateTime @default(now()) @db.DateTime(3)
+
+  camp    camp     @relation(fields: [camp_camp_id], references: [camp_id], onDelete: Cascade)
+  student students @relation(fields: [student_students_id], references: [students_id], onDelete: Cascade)
+
+  @@index([camp_camp_id, student_students_id, recorded_at], map: "student_location_update_camp_student_recorded_idx")
+  @@index([student_students_id, recorded_at], map: "student_location_update_student_recorded_idx")
 }
 
 enum camp_status {
@@ -495,11 +539,11 @@ model vulgar_words {
 }
 
 model survey {
-  survey_id   Int      @id @default(autoincrement())
-  title       String   @db.VarChar(255)
-  description String?  @db.Text
-  created_at  DateTime @default(now())
-  is_required_for_cert Boolean @default(true)
+  survey_id            Int      @id @default(autoincrement())
+  title                String   @db.VarChar(255)
+  description          String?  @db.Text
+  created_at           DateTime @default(now())
+  is_required_for_cert Boolean  @default(true)
 
   camp_camp_id Int  @unique
   camp         camp @relation(fields: [camp_camp_id], references: [camp_id])

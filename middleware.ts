@@ -79,8 +79,19 @@ export default clerkMiddleware(async (auth, req) => {
 
   // API Route Protection
   if (isProtectedApiRoute(req)) {
+    const isCampLocationRoute = req.nextUrl.pathname.match(
+      /^\/api\/camps\/\d+\/location$/,
+    );
+
+    // Endpoint นี้ตรวจสิทธิ์สัมพันธ์กับค่ายซ้ำใน route handler และเปิดให้นักเรียน/
+    // ผู้ปกครองอ่านได้ ส่วนการแก้ไขและส่ง GPS จำกัดเฉพาะครูใน route handler
+    if (isCampLocationRoute) {
+      if (!isTeacherRole(role) && role !== "student" && role !== "parent") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
     // Special case for upload and certificate: allow both teachers and students
-    if (
+    else if (
       req.nextUrl.pathname.startsWith("/api/upload") ||
       req.nextUrl.pathname.match(/^\/api\/camps\/\d+\/certificate/)
     ) {

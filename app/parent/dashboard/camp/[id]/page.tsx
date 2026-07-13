@@ -7,6 +7,7 @@ import { Progress } from "@heroui/progress";
 import { ChevronLeft, Target, CheckCircle2, Circle } from "lucide-react";
 
 import { ParentNavbar } from "@/components/ParentNavbar";
+import CampLocationTracker from "@/components/camp-location/CampLocationTracker";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface Mission {
@@ -142,6 +143,8 @@ export default function ParentCampProgressPage() {
             </h1>
           </div>
         </div>
+
+        <CampLocationTracker campId={campId} viewer="parent" />
 
         {/* Overall Progress Summary Card */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 relative overflow-hidden">

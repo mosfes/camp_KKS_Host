@@ -11,6 +11,7 @@
   "dependencies": {
     "@clerk/localizations": "^3.35.2",
     "@clerk/nextjs": "^6.36.10",
+    "@googlemaps/js-api-loader": "^2.1.1",
     "@heroui/accordion": "2.2.26",
     "@heroui/alert": "2.2.29",
     "@heroui/autocomplete": "2.3.31",
@@ -86,6 +87,7 @@
     "@next/eslint-plugin-next": "15.5.9",
     "@react-types/shared": "3.32.1",
     "@tailwindcss/postcss": "4.1.11",
+    "@types/google.maps": "^3.65.2",
     "@types/node": "20.5.7",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",

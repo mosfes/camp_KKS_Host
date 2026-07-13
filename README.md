@@ -1,5 +1,23 @@
 # Next.js & HeroUI Template
 
+## Camp location tracking
+
+The camp tracking screen uses Google Maps JavaScript API and Places API (New)
+for both destination lookup and map display. Create a browser API key restricted
+to the application's HTTPS domains and enable both APIs:
+
+```env
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_browser_key
+NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=your_map_id
+```
+
+Apply Prisma migrations before starting the updated application. Browser GPS
+requires HTTPS in production (localhost is allowed during development).
+Teachers can search or click the Google Map to pin a destination and choose a
+5- or 10-minute update interval. Each registered student publishes only their
+own location while the camp page is open. Teachers can see all registered
+students, while a parent can see only the student linked to their account.
+
 This is a template for creating applications using Next.js 14 (app directory) and HeroUI (v2).
 
 [Try it on CodeSandbox](https://githubbox.com/heroui-inc/heroui/next-app-template)
