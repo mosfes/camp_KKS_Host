@@ -10,7 +10,9 @@ import {
   Button,
   Pagination,
 } from "@heroui/react";
-import { Search, Trophy, Clock, MapPin } from "lucide-react";
+import { Search, Trophy, Clock, MapPin, Users } from "lucide-react";
+
+import CampLocationTracker from "@/components/camp-location/CampLocationTracker";
 
 interface StudentProgress {
   studentId: number;
@@ -44,6 +46,9 @@ export default function TrackingModal({
   const [data, setData] = useState<TrackingData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [activeSection, setActiveSection] = useState<"location" | "progress">(
+    "location",
+  );
   const ITEMS_PER_PAGE = 5;
 
   useEffect(() => {
@@ -51,6 +56,7 @@ export default function TrackingModal({
       fetchTrackingData();
       setSearchQuery("");
       setPage(1);
+      setActiveSection("location");
     }
   }, [isOpen, campId]);
 
@@ -102,7 +108,7 @@ export default function TrackingModal({
       }}
       isOpen={isOpen}
       scrollBehavior="inside"
-      size="2xl"
+      size="4xl"
       onOpenChange={onClose}
     >
       <ModalContent>
@@ -123,41 +129,72 @@ export default function TrackingModal({
                 </div>
               </div>
 
-              {/* Search Bar */}
-              <div className="mt-4 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="text-gray-400" size={16} />
-                </div>
-                <input
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/20 focus:border-[#5d7c6f] transition-all bg-gray-50/50"
-                  placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+              <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-gray-100 p-1">
+                <button
+                  className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                    activeSection === "location"
+                      ? "bg-white text-[#5d7c6f] shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                  type="button"
+                  onClick={() => setActiveSection("location")}
+                >
+                  <MapPin size={16} />
+                  แผนที่และจุดหมาย
+                </button>
+                <button
+                  className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                    activeSection === "progress"
+                      ? "bg-white text-[#5d7c6f] shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                  type="button"
+                  onClick={() => setActiveSection("progress")}
+                >
+                  <Users size={16} />
+                  ความก้าวหน้านักเรียน
+                </button>
               </div>
 
-              {/* Summary Stats */}
-              {data && (
-                <div className="flex items-center gap-4 mt-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-lg">
-                    <span className="font-semibold text-gray-900">
-                      {data.students.length}
-                    </span>{" "}
-                    คนที่ลงทะเบียน
+              {activeSection === "progress" && (
+                <>
+                  <div className="mt-4 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search className="text-gray-400" size={16} />
+                    </div>
+                    <input
+                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/20 focus:border-[#5d7c6f] transition-all bg-gray-50/50"
+                      placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                   </div>
-                  <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-lg">
-                    <span className="font-semibold text-gray-900">
-                      {data.totalMissions}
-                    </span>{" "}
-                    ภารกิจทั้งหมด
-                  </div>
-                </div>
+
+                  {data && (
+                    <div className="flex items-center gap-4 mt-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-lg">
+                        <span className="font-semibold text-gray-900">
+                          {data.students.length}
+                        </span>{" "}
+                        คนที่ลงทะเบียน
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-lg">
+                        <span className="font-semibold text-gray-900">
+                          {data.totalMissions}
+                        </span>{" "}
+                        ภารกิจทั้งหมด
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </ModalHeader>
 
             <ModalBody className="px-6 py-4 bg-gray-50/30">
-              {loading ? (
+              {activeSection === "location" ? (
+                <CampLocationTracker campId={campId} viewer="teacher" />
+              ) : loading ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
                   <p className="mt-4 text-sm text-gray-500">

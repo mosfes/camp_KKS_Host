@@ -28,6 +28,7 @@ import {
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import CampLocationTracker from "@/components/camp-location/CampLocationTracker";
 
 import TakeSurveyModal from "../TakeSurveyModal";
 import {
@@ -564,6 +565,10 @@ export default function StudentCampDetailPage() {
               </button>
             </div>
           )}
+        </div>
+
+        <div className="mt-3">
+          <CampLocationTracker campId={Number(id)} viewer="student" />
         </div>
 
         {/* Mission Progress Section (Only if registered) */}
