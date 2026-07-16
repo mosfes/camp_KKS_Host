@@ -653,10 +653,9 @@ export default function StudentStationDetailPage() {
       {/* Mission Execution Modal */}
       <Modal
         classNames={{
-          base: "overflow-hidden bg-white",
-          header: "relative z-20 border-b border-gray-100 bg-white",
-          body: "relative z-0",
-          footer: "relative z-20 border-t border-gray-100 bg-white",
+          base: "bg-white",
+          header: "border-b border-gray-100",
+          footer: "border-t border-gray-100",
         }}
         isOpen={isOpen}
         scrollBehavior="inside"

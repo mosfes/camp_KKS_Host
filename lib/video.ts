@@ -3,7 +3,6 @@ export type VideoSource =
       kind: "embed";
       provider: "YouTube" | "Vimeo" | "Google Drive";
       embedUrl: string;
-      openUrl?: string;
     }
   | { kind: "file"; provider: "MP4"; embedUrl: string };
 
@@ -77,7 +76,6 @@ export function getVideoSource(value: string): VideoSource | null {
         kind: "embed",
         provider: "Google Drive",
         embedUrl: `https://drive.google.com/file/d/${fileId}/preview`,
-        openUrl: `https://drive.google.com/file/d/${fileId}/view`,
       };
     }
   }
