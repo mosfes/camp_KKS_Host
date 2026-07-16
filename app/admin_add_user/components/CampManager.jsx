@@ -78,11 +78,11 @@ const CampManager = () => {
         const campStart = data.start_date ? new Date(data.start_date) : null;
         const campEnd = data.end_date ? new Date(data.end_date) : null;
 
-        if (regisEnd && campStart && regisEnd >= campStart) {
-            errors.registration = "วันสิ้นสุดรับสมัคร ต้องมาก่อน วันเริ่มค่าย";
+        if (regisEnd && campStart && regisEnd > campStart) {
+            errors.registration = "วันสิ้นสุดรับสมัคร ต้องไม่เกิน วันเริ่มค่าย";
         }
-        if (campStart && regisEnd && campStart <= regisEnd) {
-            errors.camp = "วันเริ่มค่าย ต้องมาหลัง วันปิดรับสมัคร";
+        if (campStart && regisEnd && campStart < regisEnd) {
+            errors.camp = "วันเริ่มค่าย ต้องไม่มาก่อน วันปิดรับสมัคร";
         }
         if (campStart && campEnd && campStart > campEnd) {
             errors.camp = errors.camp || "วันสิ้นสุดค่าย ต้องมาหลัง วันเริ่มค่าย";

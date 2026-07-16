@@ -114,10 +114,10 @@ export default function CampLocationMap({
 
       if (!destinationMarkerRef.current) {
         const pin = new libraries.marker.PinElement({
-          background: "#dc2626",
+          background: "#00a77b",
           borderColor: "#ffffff",
           glyphColor: "#ffffff",
-          glyphText: "★",
+          glyphText: "⌾",
           scale: 1.15,
         });
 

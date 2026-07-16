@@ -95,6 +95,7 @@ interface CampDetail {
   isOwner?: boolean;
   isHomeroomTeacher?: boolean;
   created_by_teacher_id?: number;
+  location_sharing_enabled?: boolean;
   total_eligible_students?: number;
   certificate_candidate_count?: number;
   student_enrollment?: any[];
@@ -1467,6 +1468,7 @@ export default function CampDetailPage() {
         campId={Number(campId)}
         campName={camp?.name || ""}
         isOpen={isTrackingModalOpen}
+        locationTrackingEnabled={Boolean(camp?.location_sharing_enabled)}
         onClose={() => setIsTrackingModalOpen(false)}
       />
 

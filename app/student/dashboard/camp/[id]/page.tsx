@@ -20,6 +20,7 @@ import {
   FileText,
   CalendarCheck,
   CalendarDays,
+  ChevronDown,
   X,
   ScanLine,
   QrCode,
@@ -48,8 +49,8 @@ function formatDate(dateString: string) {
 
   return new Date(dateString).toLocaleDateString("th-TH", {
     year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
+    month: "long",
+    day: "numeric",
   });
 }
 
@@ -77,6 +78,7 @@ export default function StudentCampDetailPage() {
   const [savingShirt, setSavingShirt] = useState(false);
   const [navigating, setNavigating] = useState(false);
   const [isEditingShirt, setIsEditingShirt] = useState(false);
+  const [isBottomMenuExpanded, setIsBottomMenuExpanded] = useState(true);
 
   // Survey State
   const [surveyData, setSurveyData] = useState<any>(null);
@@ -430,7 +432,11 @@ export default function StudentCampDetailPage() {
   const canShowAssignedSurvey = !camp.isRegistered && !!surveyData;
 
   return (
-    <div className="min-h-screen bg-[#F5F5F3] pb-72">
+    <div
+      className={`min-h-screen bg-[#F5F5F3] transition-[padding] duration-300 ${
+        isBottomMenuExpanded ? "pb-72" : "pb-24"
+      }`}
+    >
       {/* Hero Section */}
       <div className="h-64 sm:h-72 bg-gray-200 relative overflow-hidden">
         {camp.img_camp_url ? (
@@ -765,313 +771,376 @@ export default function StudentCampDetailPage() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100/80 bg-white/90 px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-2xl shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100/80 bg-white/90 px-3 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-2xl shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
         <div className="max-w-xl mx-auto rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
-          {!camp.isRegistered ? (
-            canShowAssignedSurvey ? (
-              <div className="flex flex-col gap-2">
-                <Button
-                  fullWidth
-                  className={`font-black text-base h-12 rounded-xl border ${
-                    surveyCompleted
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : "bg-[#FFECC9] text-yellow-800 border-yellow-300 shadow-xl shadow-yellow-200/40"
-                  }`}
-                  isDisabled={surveyCompleted}
-                  startContent={
-                    surveyCompleted ? (
-                      <CheckCircle2 size={20} />
+          <button
+            aria-controls="camp-bottom-menu-content"
+            aria-expanded={isBottomMenuExpanded}
+            className="flex w-full items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40"
+            type="button"
+            onClick={() => setIsBottomMenuExpanded((expanded) => !expanded)}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e8f0ee] text-[#3d6357]">
+                <LayoutDashboard size={17} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-black text-gray-800">
+                  เมนูการทำค่าย
+                </span>
+                {!isBottomMenuExpanded && (
+                  <span className="block truncate text-[11px] font-medium text-gray-400">
+                    แตะเพื่อแสดงภารกิจและเมนูอื่น ๆ
+                  </span>
+                )}
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5 text-xs font-bold text-[#5d7c6f]">
+              {isBottomMenuExpanded ? "พับเมนู" : "กางเมนู"}
+              <ChevronDown
+                aria-hidden="true"
+                className={`transition-transform duration-300 ${
+                  isBottomMenuExpanded ? "rotate-180" : ""
+                }`}
+                size={18}
+              />
+            </span>
+          </button>
+
+          <div
+            aria-hidden={!isBottomMenuExpanded}
+            className={`grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out ${
+              isBottomMenuExpanded
+                ? "mt-3 grid-rows-[1fr] opacity-100"
+                : "mt-0 grid-rows-[0fr] opacity-0"
+            }`}
+            id="camp-bottom-menu-content"
+            inert={!isBottomMenuExpanded}
+          >
+            <div className="min-h-0 overflow-hidden">
+              {!camp.isRegistered ? (
+                canShowAssignedSurvey ? (
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      fullWidth
+                      className={`font-black text-base h-12 rounded-xl border ${
+                        surveyCompleted
+                          ? "bg-green-50 text-green-700 border-green-200"
+                          : "bg-[#FFECC9] text-yellow-800 border-yellow-300 shadow-xl shadow-yellow-200/40"
+                      }`}
+                      isDisabled={surveyCompleted}
+                      startContent={
+                        surveyCompleted ? (
+                          <CheckCircle2 size={20} />
+                        ) : (
+                          <ClipboardList size={20} />
+                        )
+                      }
+                      onPress={() => setIsSurveyModalOpen(true)}
+                    >
+                      {surveyCompleted ? "ประเมินแล้ว" : "ทำแบบประเมิน"}
+                    </Button>
+                    {camp.isEnded ? (
+                      <p className="text-center text-xs font-semibold text-gray-400">
+                        ค่ายจบแล้ว แต่คุณยังทำแบบประเมินของค่ายนี้ได้
+                      </p>
                     ) : (
-                      <ClipboardList size={20} />
-                    )
-                  }
-                  onPress={() => setIsSurveyModalOpen(true)}
-                >
-                  {surveyCompleted ? "ประเมินแล้ว" : "ทำแบบประเมิน"}
-                </Button>
-                {camp.isEnded ? (
-                  <p className="text-center text-xs font-semibold text-gray-400">
-                    ค่ายจบแล้ว แต่คุณยังทำแบบประเมินของค่ายนี้ได้
-                  </p>
+                      <Button
+                        fullWidth
+                        className="bg-[#5d7c6f] text-white font-bold text-sm h-11 rounded-xl shadow-md shadow-[#5d7c6f]/20"
+                        isLoading={registering}
+                        onPress={handleRegister}
+                      >
+                        เข้าร่วมค่าย
+                      </Button>
+                    )}
+                  </div>
+                ) : camp.isEnded ? (
+                  <Button
+                    fullWidth
+                    isDisabled
+                    className="bg-gray-100 text-gray-400 font-black text-base h-12 rounded-xl cursor-not-allowed border border-gray-200"
+                  >
+                    สิ้นสุดการรับสมัครแล้ว
+                  </Button>
                 ) : (
                   <Button
                     fullWidth
-                    className="bg-[#5d7c6f] text-white font-bold text-sm h-11 rounded-xl shadow-md shadow-[#5d7c6f]/20"
+                    className="bg-[#5d7c6f] text-white font-black text-base h-12 rounded-xl shadow-lg shadow-[#5d7c6f]/25 hover:scale-[1.01] active:scale-[0.98] transition-all"
                     isLoading={registering}
                     onPress={handleRegister}
                   >
                     เข้าร่วมค่าย
                   </Button>
-                )}
-              </div>
-            ) : camp.isEnded ? (
-              <Button
-                fullWidth
-                isDisabled
-                className="bg-gray-100 text-gray-400 font-black text-base h-12 rounded-xl cursor-not-allowed border border-gray-200"
-              >
-                สิ้นสุดการรับสมัครแล้ว
-              </Button>
-            ) : (
-              <Button
-                fullWidth
-                className="bg-[#5d7c6f] text-white font-black text-base h-12 rounded-xl shadow-lg shadow-[#5d7c6f]/25 hover:scale-[1.01] active:scale-[0.98] transition-all"
-                isLoading={registering}
-                onPress={handleRegister}
-              >
-                เข้าร่วมค่าย
-              </Button>
-            )
-          ) : (
-            <div className="relative">
-              {(() => {
-                const hasPostTest = camp?.station?.some((s: any) =>
-                  s.mission?.some((m: any) => m.type === "POST_TEST"),
-                );
-                const isPostTestCompleted = camp?.station?.some((s: any) =>
-                  s.mission?.some(
-                    (m: any) =>
-                      m.type === "POST_TEST" &&
-                      camp.missionResults?.some(
-                        (r: any) =>
-                          r.mission_mission_id === m.mission_id &&
-                          r.status === "completed",
-                      ),
-                  ),
-                );
-
-                const hasCertTemplate = !!camp?.img_certificate_url;
-
-                const requiredStations =
-                  camp?.station?.filter((s: any) => s.is_required_for_cert) ||
-                  [];
-                const areRequiredStationsCompleted = requiredStations.every(
-                  (station: any) => {
-                    const stationMissions = station.mission || [];
-
-                    if (stationMissions.length === 0) return true;
-                    const completedMissions = stationMissions.filter((m: any) =>
-                      camp.missionResults?.some(
-                        (r: any) =>
-                          r.mission_mission_id === m.mission_id &&
-                          r.status === "completed",
+                )
+              ) : (
+                <div className="relative">
+                  {(() => {
+                    const hasPostTest = camp?.station?.some((s: any) =>
+                      s.mission?.some((m: any) => m.type === "POST_TEST"),
+                    );
+                    const isPostTestCompleted = camp?.station?.some((s: any) =>
+                      s.mission?.some(
+                        (m: any) =>
+                          m.type === "POST_TEST" &&
+                          camp.missionResults?.some(
+                            (r: any) =>
+                              r.mission_mission_id === m.mission_id &&
+                              r.status === "completed",
+                          ),
                       ),
                     );
 
-                    return completedMissions.length === stationMissions.length;
-                  },
-                );
+                    const hasCertTemplate = !!camp?.img_certificate_url;
 
-                const isSurveyRequiredAndNotCompleted =
-                  surveyData?.is_required_for_cert && !surveyCompleted;
-                const canDownloadCert =
-                  hasCertTemplate &&
-                  !(hasPostTest && !isPostTestCompleted) &&
-                  areRequiredStationsCompleted &&
-                  !isSurveyRequiredAndNotCompleted;
+                    const requiredStations =
+                      camp?.station?.filter(
+                        (s: any) => s.is_required_for_cert,
+                      ) || [];
+                    const areRequiredStationsCompleted = requiredStations.every(
+                      (station: any) => {
+                        const stationMissions = station.mission || [];
 
-                const certLockReason = !hasCertTemplate
-                  ? "ยังไม่มีเทมเพลตเกียรติบัตร"
-                  : hasPostTest && !isPostTestCompleted
-                    ? "ต้องทำ Post-Test ก่อน"
-                    : !areRequiredStationsCompleted
-                      ? "ต้องผ่านฐานที่บังคับก่อน"
-                      : isSurveyRequiredAndNotCompleted
-                        ? "ต้องทำแบบประเมินก่อน"
-                        : null;
+                        if (stationMissions.length === 0) return true;
+                        const completedMissions = stationMissions.filter(
+                          (m: any) =>
+                            camp.missionResults?.some(
+                              (r: any) =>
+                                r.mission_mission_id === m.mission_id &&
+                                r.status === "completed",
+                            ),
+                        );
 
-                return (
-                  <>
-                    {/* Overlay เมื่อค่ายยังไม่เริ่ม */}
-                    {campNotStarted && (
-                      <div className="absolute inset-0 bg-white/90 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center gap-1 border border-gray-100">
-                        <Clock className="text-[#5d7c6f]" size={24} />
-                        <p className="text-sm font-black text-gray-900">
-                          ยังไม่ถึงเวลาเริ่มค่าย
-                        </p>
-                        <p className="text-xs text-gray-400 font-bold">
-                          อีก {daysUntilStart} วัน · เริ่ม{" "}
-                          {formatDate(camp.rawStartDate)}
-                        </p>
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-3">
-                      {camp.isEnded ? (
-                        <>
-                          <Button
-                            fullWidth
-                            className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-xl shadow-md shadow-[#5d7c6f]/20"
-                            isLoading={navigating}
-                            startContent={<LayoutDashboard size={22} />}
-                            onPress={() => {
-                              setNavigating(true);
-                              router.push(
-                                `/student/dashboard/camp/${id}/missions`,
-                              );
-                            }}
-                          >
-                            สรุปผลการทำภารกิจ
-                          </Button>
-                          {surveyData && (
-                            <Button
-                              fullWidth
-                              className={`h-11 rounded-xl font-bold text-sm border ${
-                                surveyCompleted
-                                  ? "bg-green-50 text-green-700 border-green-200"
-                                  : "bg-[#FFECC9] text-yellow-800 border-yellow-300 shadow-md shadow-yellow-200/30"
-                              }`}
-                              isDisabled={surveyCompleted}
-                              startContent={
-                                surveyCompleted ? (
-                                  <CheckCircle2 size={18} />
+                        return (
+                          completedMissions.length === stationMissions.length
+                        );
+                      },
+                    );
+
+                    const isSurveyRequiredAndNotCompleted =
+                      surveyData?.is_required_for_cert && !surveyCompleted;
+                    const canDownloadCert =
+                      hasCertTemplate &&
+                      !(hasPostTest && !isPostTestCompleted) &&
+                      areRequiredStationsCompleted &&
+                      !isSurveyRequiredAndNotCompleted;
+
+                    const certLockReason = !hasCertTemplate
+                      ? "ยังไม่มีเทมเพลตเกียรติบัตร"
+                      : hasPostTest && !isPostTestCompleted
+                        ? "ต้องทำ Post-Test ก่อน"
+                        : !areRequiredStationsCompleted
+                          ? "ต้องผ่านฐานที่บังคับก่อน"
+                          : isSurveyRequiredAndNotCompleted
+                            ? "ต้องทำแบบประเมินก่อน"
+                            : null;
+
+                    return (
+                      <>
+                        {/* Overlay เมื่อค่ายยังไม่เริ่ม */}
+                        {campNotStarted && (
+                          <div className="absolute inset-0 bg-white/90 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center gap-1 border border-gray-100">
+                            <Clock className="text-[#5d7c6f]" size={24} />
+                            <p className="text-sm font-black text-gray-900">
+                              ยังไม่ถึงเวลาเริ่มค่าย
+                            </p>
+                            <p className="text-xs text-gray-400 font-bold">
+                              อีก {daysUntilStart} วัน · เริ่ม{" "}
+                              {formatDate(camp.rawStartDate)}
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex flex-col gap-3">
+                          {camp.isEnded ? (
+                            <>
+                              <Button
+                                fullWidth
+                                className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-xl shadow-md shadow-[#5d7c6f]/20"
+                                isLoading={navigating}
+                                startContent={<LayoutDashboard size={22} />}
+                                onPress={() => {
+                                  setNavigating(true);
+                                  router.push(
+                                    `/student/dashboard/camp/${id}/missions`,
+                                  );
+                                }}
+                              >
+                                สรุปผลการทำภารกิจ
+                              </Button>
+                              {surveyData && (
+                                <Button
+                                  fullWidth
+                                  className={`h-11 rounded-xl font-bold text-sm border ${
+                                    surveyCompleted
+                                      ? "bg-green-50 text-green-700 border-green-200"
+                                      : "bg-[#FFECC9] text-yellow-800 border-yellow-300 shadow-md shadow-yellow-200/30"
+                                  }`}
+                                  isDisabled={surveyCompleted}
+                                  startContent={
+                                    surveyCompleted ? (
+                                      <CheckCircle2 size={18} />
+                                    ) : (
+                                      <ClipboardList size={18} />
+                                    )
+                                  }
+                                  onPress={() => setIsSurveyModalOpen(true)}
+                                >
+                                  {surveyCompleted
+                                    ? "ประเมินแล้ว"
+                                    : "ทำแบบประเมิน"}
+                                </Button>
+                              )}
+                              <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2.5">
+                                <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-gray-400">
+                                  <Award size={13} />
+                                  <span>เกียรติบัตร</span>
+                                </div>
+                                {!canDownloadCert ? (
+                                  <div className="flex flex-col gap-1.5">
+                                    <Button
+                                      fullWidth
+                                      isDisabled
+                                      className="font-bold text-sm h-10 rounded-xl bg-gray-50 text-gray-400 border border-gray-200 border-dashed"
+                                      startContent={
+                                        <Award
+                                          size={18}
+                                          className="opacity-40"
+                                        />
+                                      }
+                                    >
+                                      ดาวน์โหลดเกียรติบัตร
+                                    </Button>
+                                    {certLockReason && (
+                                      <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 font-medium">
+                                        <Lock size={11} />
+                                        <span>{certLockReason}</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 ) : (
-                                  <ClipboardList size={18} />
-                                )
-                              }
-                              onPress={() => setIsSurveyModalOpen(true)}
-                            >
-                              {surveyCompleted
-                                ? "ประเมินแล้ว"
-                                : "ทำแบบประเมิน"}
-                            </Button>
+                                  <Button
+                                    fullWidth
+                                    className="font-bold text-sm h-10 rounded-xl bg-slate-700 text-white shadow-sm shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
+                                    startContent={<Download size={18} />}
+                                    onPress={() => {
+                                      setCertImageLoading(true);
+                                      setIsCertPreviewModalOpen(true);
+                                    }}
+                                  >
+                                    ดาวน์โหลดเกียรติบัตร
+                                  </Button>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                fullWidth
+                                className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-xl shadow-md shadow-[#5d7c6f]/20"
+                                isDisabled={navigating || !!campNotStarted}
+                                isLoading={navigating}
+                                startContent={<LayoutDashboard size={22} />}
+                                onPress={() => {
+                                  setNavigating(true);
+                                  router.push(
+                                    `/student/dashboard/camp/${id}/missions`,
+                                  );
+                                }}
+                              >
+                                ไปยังหน้าภารกิจ
+                              </Button>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                  fullWidth
+                                  className={`h-10 rounded-xl font-bold text-sm border ${
+                                    surveyData && !surveyCompleted
+                                      ? "bg-[#FFECC9] text-yellow-800 border-yellow-300"
+                                      : surveyCompleted
+                                        ? "bg-green-50 text-green-700 border-green-200"
+                                        : "bg-gray-50 text-gray-400 border-gray-200"
+                                  }`}
+                                  isDisabled={!surveyData || surveyCompleted}
+                                  startContent={<ClipboardList size={16} />}
+                                  onPress={() => setIsSurveyModalOpen(true)}
+                                >
+                                  {surveyCompleted
+                                    ? "ประเมินแล้ว"
+                                    : "แบบประเมิน"}
+                                </Button>
+                                <Button
+                                  fullWidth
+                                  className={`h-10 rounded-xl font-bold text-sm border ${
+                                    attendanceCheckedIn
+                                      ? "bg-green-50 text-green-700 border-green-200"
+                                      : "bg-[#5d7c6f]/10 text-[#5d7c6f] border-[#5d7c6f]/30"
+                                  }`}
+                                  isDisabled={!!campNotStarted}
+                                  startContent={
+                                    attendanceCheckedIn ? (
+                                      <CheckCircle2 size={16} />
+                                    ) : (
+                                      <QrCode size={16} />
+                                    )
+                                  }
+                                  onPress={openAttendanceModal}
+                                >
+                                  {attendanceCheckedIn
+                                    ? "เช็คชื่อแล้ว"
+                                    : "เช็คชื่อ"}
+                                </Button>
+                              </div>
+
+                              <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2.5">
+                                <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-gray-400">
+                                  <Award size={13} />
+                                  <span>เกียรติบัตร</span>
+                                </div>
+                                {!canDownloadCert ? (
+                                  <div className="flex flex-col gap-1.5">
+                                    <Button
+                                      fullWidth
+                                      isDisabled
+                                      className="font-bold text-sm h-10 rounded-xl bg-gray-50 text-gray-400 border border-dashed border-gray-200"
+                                      startContent={
+                                        <Award
+                                          size={18}
+                                          className="opacity-40"
+                                        />
+                                      }
+                                    >
+                                      ดาวน์โหลดเกียรติบัตร
+                                    </Button>
+                                    {certLockReason && (
+                                      <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 font-medium">
+                                        <Lock size={11} />
+                                        <span>{certLockReason}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <Button
+                                    fullWidth
+                                    className="font-bold text-sm h-10 rounded-xl bg-slate-700 text-white shadow-sm shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
+                                    startContent={<Download size={18} />}
+                                    onPress={() => {
+                                      setCertImageLoading(true);
+                                      setIsCertPreviewModalOpen(true);
+                                    }}
+                                  >
+                                    ดาวน์โหลดเกียรติบัตร
+                                  </Button>
+                                )}
+                              </div>
+                            </>
                           )}
-                          <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2.5">
-                            <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-gray-400">
-                              <Award size={13} />
-                              <span>เกียรติบัตร</span>
-                            </div>
-                            {!canDownloadCert ? (
-                              <div className="flex flex-col gap-1.5">
-                                <Button
-                                  fullWidth
-                                  isDisabled
-                                  className="font-bold text-sm h-10 rounded-xl bg-gray-50 text-gray-400 border border-gray-200 border-dashed"
-                                  startContent={<Award size={18} className="opacity-40" />}
-                                >
-                                  ดาวน์โหลดเกียรติบัตร
-                                </Button>
-                                {certLockReason && (
-                                  <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 font-medium">
-                                    <Lock size={11} />
-                                    <span>{certLockReason}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <Button
-                                fullWidth
-                                className="font-bold text-sm h-10 rounded-xl bg-slate-700 text-white shadow-sm shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
-                                startContent={<Download size={18} />}
-                                onPress={() => {
-                                  setCertImageLoading(true);
-                                  setIsCertPreviewModalOpen(true);
-                                }}
-                              >
-                                ดาวน์โหลดเกียรติบัตร
-                              </Button>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            fullWidth
-                            className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-xl shadow-md shadow-[#5d7c6f]/20"
-                            isDisabled={navigating || !!campNotStarted}
-                            isLoading={navigating}
-                            startContent={<LayoutDashboard size={22} />}
-                            onPress={() => {
-                              setNavigating(true);
-                              router.push(
-                                `/student/dashboard/camp/${id}/missions`,
-                              );
-                            }}
-                          >
-                            ไปยังหน้าภารกิจ
-                          </Button>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button
-                              fullWidth
-                              className={`h-10 rounded-xl font-bold text-sm border ${
-                                surveyData && !surveyCompleted
-                                  ? "bg-[#FFECC9] text-yellow-800 border-yellow-300"
-                                  : surveyCompleted
-                                    ? "bg-green-50 text-green-700 border-green-200"
-                                    : "bg-gray-50 text-gray-400 border-gray-200"
-                              }`}
-                              isDisabled={!surveyData || surveyCompleted}
-                              startContent={<ClipboardList size={16} />}
-                              onPress={() => setIsSurveyModalOpen(true)}
-                            >
-                              {surveyCompleted ? "ประเมินแล้ว" : "แบบประเมิน"}
-                            </Button>
-                            <Button
-                              fullWidth
-                              className={`h-10 rounded-xl font-bold text-sm border ${
-                                attendanceCheckedIn
-                                  ? "bg-green-50 text-green-700 border-green-200"
-                                  : "bg-[#5d7c6f]/10 text-[#5d7c6f] border-[#5d7c6f]/30"
-                              }`}
-                              isDisabled={!!campNotStarted}
-                              startContent={
-                                attendanceCheckedIn ? (
-                                  <CheckCircle2 size={16} />
-                                ) : (
-                                  <QrCode size={16} />
-                                )
-                              }
-                              onPress={openAttendanceModal}
-                            >
-                              {attendanceCheckedIn
-                                ? "เช็คชื่อแล้ว"
-                                : "เช็คชื่อ"}
-                            </Button>
-                          </div>
-
-                          <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2.5">
-                            <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-gray-400">
-                              <Award size={13} />
-                              <span>เกียรติบัตร</span>
-                            </div>
-                            {!canDownloadCert ? (
-                              <div className="flex flex-col gap-1.5">
-                                <Button
-                                  fullWidth
-                                  isDisabled
-                                  className="font-bold text-sm h-10 rounded-xl bg-gray-50 text-gray-400 border border-dashed border-gray-200"
-                                  startContent={<Award size={18} className="opacity-40" />}
-                                >
-                                  ดาวน์โหลดเกียรติบัตร
-                                </Button>
-                                {certLockReason && (
-                                  <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 font-medium">
-                                    <Lock size={11} />
-                                    <span>{certLockReason}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <Button
-                                fullWidth
-                                className="font-bold text-sm h-10 rounded-xl bg-slate-700 text-white shadow-sm shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
-                                startContent={<Download size={18} />}
-                                onPress={() => {
-                                  setCertImageLoading(true);
-                                  setIsCertPreviewModalOpen(true);
-                                }}
-                              >
-                                ดาวน์โหลดเกียรติบัตร
-                              </Button>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </>
-                );
-              })()}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 

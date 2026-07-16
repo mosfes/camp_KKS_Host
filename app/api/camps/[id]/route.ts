@@ -37,6 +37,17 @@ const campSchema = z
     cert_number_prefix: z.string().optional().nullable(),
     cert_number_is_thai: z.boolean().optional(),
     cert_year: z.string().optional().nullable(),
+    destination: z
+      .object({
+        name: z.string().trim().min(1).max(255),
+        address: z.string().trim().max(500).optional().nullable(),
+        latitude: z.number().finite().min(-90).max(90),
+        longitude: z.number().finite().min(-180).max(180),
+      })
+      .nullable()
+      .optional(),
+    location_sharing_enabled: z.boolean().optional(),
+    location_update_interval: z.union([z.literal(5), z.literal(10)]).optional(),
     dailySchedule: z.array(z.any()).optional(),
     classroom_ids: z.array(z.number()).optional(),
   })
@@ -249,6 +260,31 @@ export async function PUT(request, context) {
     // Validate payload structure using Zod
     const body = campSchema.parse(rawBody);
 
+    if (body.location_sharing_enabled && !body.destination) {
+      return NextResponse.json(
+        { error: "กรุณาปักหมุดจุดหมายก่อนเปิดติดตามตำแหน่ง" },
+        { status: 400 },
+      );
+    }
+
+    const destinationData =
+      body.destination === undefined
+        ? {}
+        : body.destination === null
+          ? {
+              destination_name: null,
+              destination_address: null,
+              destination_latitude: null,
+              destination_longitude: null,
+              location_sharing_enabled: false,
+            }
+          : {
+              destination_name: body.destination.name,
+              destination_address: body.destination.address || null,
+              destination_latitude: body.destination.latitude,
+              destination_longitude: body.destination.longitude,
+            };
+
     // อัพเดทข้อมูลค่าย
     const updatedCamp = await prisma.camp.update({
       where: {
@@ -256,6 +292,7 @@ export async function PUT(request, context) {
         deletedAt: null,
       },
       data: {
+        ...destinationData,
         name: body.name,
         location: body.location,
         start_date: body.start_date ? new Date(body.start_date) : undefined,
@@ -325,6 +362,12 @@ export async function PUT(request, context) {
         }),
         ...(body.cert_year !== undefined && {
           cert_year: body.cert_year,
+        }),
+        ...(body.location_sharing_enabled !== undefined && {
+          location_sharing_enabled: body.location_sharing_enabled,
+        }),
+        ...(body.location_update_interval !== undefined && {
+          location_update_interval: body.location_update_interval,
         }),
       },
     });

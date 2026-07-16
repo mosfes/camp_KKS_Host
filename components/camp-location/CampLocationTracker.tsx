@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 import { searchGooglePlaces } from "@/lib/google-maps-client";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const CampLocationMap = dynamic(() => import("./CampLocationMap"), {
   ssr: false,
@@ -47,12 +48,14 @@ interface LocationUpdate extends MapPoint {
 interface StudentLocation {
   studentId: number;
   name: string;
+  sharingEnabled: boolean;
   latest: LocationUpdate | null;
 }
 
 interface TrackerData {
   destination: Destination | null;
   sharingEnabled: boolean;
+  studentSharingEnabled: boolean;
   updateIntervalMinutes: 5 | 10;
   students: StudentLocation[];
   viewerPath: LocationUpdate[];
@@ -67,9 +70,30 @@ interface PlaceResult extends Destination {
   id: string;
 }
 
+const SEARCH_COOLDOWN_SECONDS = 3;
+const SEARCH_CACHE_LIMIT = 20;
+
+function placeSearchError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  const normalized = message.toLowerCase();
+  const isRateLimited = [
+    "quota",
+    "rate limit",
+    "resource_exhausted",
+    "over_query_limit",
+    "too many requests",
+  ].some((keyword) => normalized.includes(keyword));
+
+  return isRateLimited
+    ? "ค้นหาถี่เกินไป กรุณารอสักครู่แล้วลองใหม่"
+    : message || "ค้นหาสถานที่ไม่สำเร็จ";
+}
+
 interface CampLocationTrackerProps {
   campId: number;
   viewer: "teacher" | "student" | "parent";
+  configureDestination?: boolean;
+  showDestination?: boolean;
 }
 
 function thaiDateTime(value?: string | null) {
@@ -88,6 +112,10 @@ function minutesSince(value: string) {
   );
 }
 
+function formatCoordinates(point: MapPoint) {
+  return `${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}`;
+}
+
 async function responseError(response: Response) {
   const body = await response.json().catch(() => null);
 
@@ -97,26 +125,46 @@ async function responseError(response: Response) {
 export default function CampLocationTracker({
   campId,
   viewer,
+  configureDestination = true,
+  showDestination = true,
 }: CampLocationTrackerProps) {
   const [data, setData] = useState<TrackerData | null>(null);
   const [draftDestination, setDraftDestination] = useState<Destination | null>(
     null,
   );
+  const [destinationConfirmed, setDestinationConfirmed] = useState(false);
   const [sharingEnabled, setSharingEnabled] = useState(false);
-  const [intervalMinutes, setIntervalMinutes] = useState<5 | 10>(10);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmingDestination, setConfirmingDestination] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [savingStudentSharing, setSavingStudentSharing] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
+  const [searchCooldownSeconds, setSearchCooldownSeconds] = useState(0);
   const [places, setPlaces] = useState<PlaceResult[]>([]);
+  const [selectedMapStudentId, setSelectedMapStudentId] = useState<
+    number | null
+  >(null);
+  const [studentMapVisible, setStudentMapVisible] = useState(false);
   const autoStartedRef = useRef(false);
   const publishingRef = useRef(false);
+  const searchCacheRef = useRef(new Map<string, PlaceResult[]>());
+
+  useEffect(() => {
+    if (searchCooldownSeconds <= 0) return;
+
+    const timer = window.setTimeout(() => {
+      setSearchCooldownSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1_000);
+
+    return () => window.clearTimeout(timer);
+  }, [searchCooldownSeconds]);
 
   const fetchLocation = useCallback(
     async ({
@@ -143,8 +191,8 @@ export default function CampLocationTracker({
         // การ poll ข้อมูลล่าสุดต้องไม่เขียนทับค่าที่ครูกำลังแก้แต่ยังไม่ได้บันทึก
         if (syncSettings) {
           setDraftDestination(nextData.destination);
+          setDestinationConfirmed(Boolean(nextData.destination));
           setSharingEnabled(nextData.sharingEnabled);
-          setIntervalMinutes(nextData.updateIntervalMinutes);
         }
       } catch (error) {
         setLoadError(
@@ -233,6 +281,7 @@ export default function CampLocationTracker({
     if (
       viewer !== "student" ||
       !data?.sharingEnabled ||
+      !data.studentSharingEnabled ||
       !data.permissions.canSubmitStudentLocation
     ) {
       autoStartedRef.current = false;
@@ -254,17 +303,78 @@ export default function CampLocationTracker({
     return () => window.clearInterval(timer);
   }, [
     data?.sharingEnabled,
+    data?.studentSharingEnabled,
     data?.updateIntervalMinutes,
     data?.permissions.canSubmitStudentLocation,
     publishStudentLocation,
     viewer,
   ]);
 
+  async function setStudentSharing(enabled: boolean) {
+    setSavingStudentSharing(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/camps/${campId}/location`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+
+      if (!response.ok) throw new Error(await responseError(response));
+
+      autoStartedRef.current = false;
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              studentSharingEnabled: enabled,
+              students: current.students.map((student) => ({
+                ...student,
+                sharingEnabled: enabled,
+              })),
+            }
+          : current,
+      );
+      setMessage({
+        type: "success",
+        text: enabled
+          ? "เปิดแชร์ตำแหน่งแล้ว"
+          : "ปิดแชร์ตำแหน่งแล้ว ระบบจะหยุดส่ง GPS",
+      });
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "บันทึกไม่สำเร็จ",
+      });
+    } finally {
+      setSavingStudentSharing(false);
+    }
+  }
+
   async function searchPlaces(event: FormEvent) {
     event.preventDefault();
     const trimmed = query.trim();
+    const cacheKey = trimmed.toLocaleLowerCase("th-TH");
 
-    if (trimmed.length < 2) return;
+    if (trimmed.length < 2 || searchCooldownSeconds > 0) return;
+
+    const cachedPlaces = searchCacheRef.current.get(cacheKey);
+
+    if (cachedPlaces) {
+      setPlaces(cachedPlaces);
+
+      setMessage(
+        cachedPlaces.length
+          ? null
+          : {
+              type: "error",
+              text: "ไม่พบสถานที่ ลองระบุจังหวัดหรืออำเภอเพิ่ม",
+            },
+      );
+
+      return;
+    }
 
     setSearching(true);
     setPlaces([]);
@@ -273,7 +383,16 @@ export default function CampLocationTracker({
     try {
       const nextPlaces = await searchGooglePlaces(trimmed);
 
+      if (searchCacheRef.current.size >= SEARCH_CACHE_LIMIT) {
+        const oldestQuery = searchCacheRef.current.keys().next().value;
+
+        if (oldestQuery) searchCacheRef.current.delete(oldestQuery);
+      }
+
+      searchCacheRef.current.set(cacheKey, nextPlaces);
+
       setPlaces(nextPlaces);
+
       if (!nextPlaces.length) {
         setMessage({
           type: "error",
@@ -283,19 +402,26 @@ export default function CampLocationTracker({
     } catch (error) {
       setMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "ค้นหาสถานที่ไม่สำเร็จ",
+        text: placeSearchError(error),
       });
     } finally {
       setSearching(false);
+      setSearchCooldownSeconds(SEARCH_COOLDOWN_SECONDS);
     }
   }
 
-  async function saveSettings() {
+  async function saveSettings(nextSharingEnabled: boolean = sharingEnabled) {
     if (!draftDestination) {
       setMessage({
         type: "error",
         text: "กรุณาค้นหาหรือคลิกแผนที่เพื่อปักหมุดจุดหมาย",
       });
+
+      return;
+    }
+
+    if (!destinationConfirmed) {
+      setMessage({ type: "error", text: "กรุณายืนยันหมุดจุดหมายก่อนบันทึก" });
 
       return;
     }
@@ -309,15 +435,16 @@ export default function CampLocationTracker({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           destination: draftDestination,
-          sharingEnabled,
-          updateIntervalMinutes: intervalMinutes,
+          sharingEnabled: nextSharingEnabled,
         }),
       });
 
       if (!response.ok) throw new Error(await responseError(response));
       setMessage({
         type: "success",
-        text: "บันทึกจุดหมายและการแชร์ตำแหน่งแล้ว",
+        text: nextSharingEnabled
+          ? "เปิดการติดตามนักเรียนแล้ว"
+          : "ปิดการติดตามนักเรียนแล้ว",
       });
       await fetchLocation({ syncSettings: true });
     } catch (error) {
@@ -356,13 +483,50 @@ export default function CampLocationTracker({
       name: "จุดหมายที่ปักบนแผนที่",
       address: `${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}`,
     });
+    setDestinationConfirmed(false);
     setPlaces([]);
   }, []);
+
+  async function confirmDestination() {
+    if (!draftDestination) return;
+
+    setConfirmingDestination(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/camps/${campId}/location`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ destination: draftDestination }),
+      });
+
+      if (!response.ok) throw new Error(await responseError(response));
+
+      setDestinationConfirmed(true);
+      setData((current) =>
+        current ? { ...current, destination: draftDestination } : current,
+      );
+      setMessage({ type: "success", text: "บันทึกหมุดจุดหมายแล้ว" });
+    } catch (error) {
+      setDestinationConfirmed(false);
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "บันทึกหมุดไม่สำเร็จ",
+      });
+    } finally {
+      setConfirmingDestination(false);
+    }
+  }
 
   if (loading) {
     return (
       <section className="rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="h-72 animate-pulse rounded-xl bg-slate-100" />
+        <div className="flex h-72 flex-col items-center justify-center rounded-xl bg-slate-50 text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-sm font-medium text-slate-500">
+            กำลังโหลดข้อมูลการติดตามนักเรียน...
+          </p>
+        </div>
       </section>
     );
   }
@@ -388,38 +552,72 @@ export default function CampLocationTracker({
     );
   }
 
-  const mapDestination = data.permissions.canConfigure
-    ? draftDestination
-    : data.destination;
+  const canConfigureDestination =
+    data.permissions.canConfigure && configureDestination;
+  const mapDestination = showDestination
+    ? canConfigureDestination
+      ? draftDestination
+      : data.destination
+    : null;
   const ownLocation = data.students[0] ?? null;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 className="flex items-center gap-2 font-bold text-slate-800">
-            <Navigation className="text-[#5d7c6f]" size={19} />
-            ตำแหน่งนักเรียนระหว่างเดินทาง
-          </h3>
-          <p className="mt-1 text-xs text-slate-500">{data.trackingLabel}</p>
+    <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {viewer !== "teacher" && (
+        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="flex items-center gap-2 font-bold text-slate-800">
+              <Navigation className="text-[#5d7c6f]" size={19} />
+              ตำแหน่งนักเรียนระหว่างเดินทาง
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">{data.trackingLabel}</p>
+          </div>
+          {viewer === "student" && data.permissions.canSubmitStudentLocation ? (
+            <label
+              className={`flex w-fit items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${
+                data.sharingEnabled
+                  ? "cursor-pointer border-slate-200 text-slate-700"
+                  : "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400"
+              }`}
+            >
+              <input
+                checked={data.sharingEnabled && data.studentSharingEnabled}
+                className="peer sr-only"
+                disabled={!data.sharingEnabled || savingStudentSharing}
+                type="checkbox"
+                onChange={(event) =>
+                  void setStudentSharing(event.target.checked)
+                }
+              />
+              <span className="relative h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-[#5d7c6f] after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5 peer-disabled:opacity-60" />
+              {savingStudentSharing
+                ? "กำลังบันทึก..."
+                : !data.sharingEnabled
+                  ? "ครูยังไม่เปิดการแชร์"
+                  : data.studentSharingEnabled
+                    ? "กำลังแชร์ตำแหน่ง"
+                    : "ปิดแชร์ตำแหน่ง"}
+            </label>
+          ) : (
+            <div
+              className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                data.sharingEnabled
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${data.sharingEnabled ? "bg-emerald-500" : "bg-slate-400"}`}
+              />
+              {data.sharingEnabled
+                ? "เปิดติดตามเป็นช่วงเวลา"
+                : "ปิดการติดตามตำแหน่ง"}
+            </div>
+          )}
         </div>
-        <div
-          className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
-            data.sharingEnabled
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-slate-100 text-slate-500"
-          }`}
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${data.sharingEnabled ? "bg-emerald-500" : "bg-slate-400"}`}
-          />
-          {data.sharingEnabled
-            ? "เปิดติดตามเป็นช่วงเวลา"
-            : "ปิดการติดตามตำแหน่ง"}
-        </div>
-      </div>
+      )}
 
-      {data.permissions.canConfigure && (
+      {canConfigureDestination && (
         <div className="space-y-3 border-b border-slate-100 bg-slate-50/70 p-4">
           <form className="flex gap-2" onSubmit={searchPlaces}>
             <div className="relative flex-1">
@@ -436,10 +634,18 @@ export default function CampLocationTracker({
             </div>
             <button
               className="h-11 rounded-xl bg-[#5d7c6f] px-4 text-sm font-semibold text-white disabled:opacity-50"
-              disabled={searching || query.trim().length < 2}
+              disabled={
+                searching ||
+                searchCooldownSeconds > 0 ||
+                query.trim().length < 2
+              }
               type="submit"
             >
-              {searching ? "กำลังค้นหา..." : "ค้นหา"}
+              {searching
+                ? "กำลังค้นหา..."
+                : searchCooldownSeconds > 0
+                  ? `รอ ${searchCooldownSeconds} วิ`
+                  : "ค้นหา"}
             </button>
           </form>
 
@@ -453,6 +659,7 @@ export default function CampLocationTracker({
                     type="button"
                     onClick={() => {
                       setDraftDestination(place);
+                      setDestinationConfirmed(false);
                       setPlaces([]);
                       setQuery(place.name);
                     }}
@@ -478,21 +685,161 @@ export default function CampLocationTracker({
             </div>
           )}
 
-          <p className="text-xs text-slate-500">
-            ค้นหาสถานที่หรือคลิกตำแหน่งบนแผนที่เพื่อย้ายหมุดปลายทาง
-          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-slate-500">
+              ค้นหาสถานที่หรือคลิกตำแหน่งบนแผนที่เพื่อย้ายหมุดปลายทาง
+            </p>
+            <button
+              className="h-8 w-full shrink-0 rounded-md bg-[#5d7c6f] px-3 text-[11px] font-normal text-white transition disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 sm:w-auto"
+              disabled={
+                confirmingDestination ||
+                !draftDestination ||
+                destinationConfirmed
+              }
+              type="button"
+              onClick={() => void confirmDestination()}
+            >
+              {confirmingDestination
+                ? "กำลังบันทึก..."
+                : destinationConfirmed
+                  ? "บันทึกหมุดแล้ว"
+                  : "ยืนยันและบันทึกหมุด"}
+            </button>
+          </div>
+
+          <div
+            className={`rounded-lg border px-2.5 py-2 ${
+              draftDestination
+                ? destinationConfirmed
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-amber-200 bg-amber-50"
+                : "border-slate-200 bg-white"
+            }`}
+          >
+            <p className="text-[11px] font-medium text-slate-500">
+              ตำแหน่งหมุดปัจจุบัน
+            </p>
+            {draftDestination ? (
+              <div className="mt-0.5 flex flex-col gap-0.5">
+                <p className="text-xs font-semibold text-slate-800">
+                  ตอนนี้หมุดปักอยู่ที่ {draftDestination.name}
+                </p>
+                <p className="text-[11px] leading-4 text-slate-500">
+                  {draftDestination.address ||
+                    formatCoordinates(draftDestination)}
+                </p>
+                <p
+                  className={`text-[11px] font-semibold ${
+                    destinationConfirmed ? "text-emerald-700" : "text-amber-700"
+                  }`}
+                >
+                  {destinationConfirmed
+                    ? "ยืนยันหมุดนี้แล้ว"
+                    : "ยังไม่ได้ยืนยันหมุดนี้"}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-0.5 text-xs text-slate-400">
+                ยังไม่ได้ปักหมุดจุดหมาย
+              </p>
+            )}
+          </div>
+
+          {destinationConfirmed && (
+            <div className="rounded-xl border border-[#5d7c6f]/25 bg-white p-3">
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-[#5d7c6f]">
+                  ขั้นตอนที่ 2 · เปิดการติดตามนักเรียน
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  เปิดแล้วนักเรียนจึงจะสามารถส่งตำแหน่ง GPS ให้ครูดูได้
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex flex-wrap items-center gap-4">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-700">
+                    <input
+                      checked={sharingEnabled}
+                      className="h-4 w-4 accent-[#5d7c6f]"
+                      type="checkbox"
+                      onChange={(event) =>
+                        setSharingEnabled(event.target.checked)
+                      }
+                    />
+                    ให้นักเรียนแชร์ตำแหน่ง
+                  </label>
+                </div>
+                <button
+                  className="h-9 rounded-lg bg-[#5d7c6f] px-4 text-xs font-medium text-white disabled:opacity-50"
+                  disabled={saving}
+                  type="button"
+                  onClick={() => {
+                    const nextSharingEnabled = data.sharingEnabled
+                      ? sharingEnabled
+                      : true;
+
+                    setSharingEnabled(nextSharingEnabled);
+                    void saveSettings(nextSharingEnabled);
+                  }}
+                >
+                  {saving
+                    ? "กำลังบันทึก..."
+                    : data.sharingEnabled
+                      ? "บันทึกการเปลี่ยนแปลง"
+                      : "เปิดติดตามนักเรียน"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="h-[320px] w-full bg-slate-100 sm:h-[380px]">
-        <CampLocationMap
-          destination={mapDestination}
-          editable={data.permissions.canConfigure}
-          path={mapPath}
-          students={studentsOnMap}
-          onMapClick={handleMapClick}
-        />
-      </div>
+      {viewer === "student" && (
+        <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <MapPin className="mt-0.5 shrink-0 text-[#5d7c6f]" size={18} />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-slate-500">
+                พิกัดล่าสุดของฉัน
+              </p>
+              <p className="mt-0.5 break-all text-sm font-semibold text-slate-800">
+                {ownLocation?.latest
+                  ? formatCoordinates(ownLocation.latest)
+                  : "ยังไม่มีพิกัดล่าสุด"}
+              </p>
+              {!studentMapVisible && (
+                <p className="mt-1 text-[11px] text-slate-400">
+                  แผนที่จะโหลดเมื่อกดแสดงแผนที่เท่านั้น
+                </p>
+              )}
+            </div>
+          </div>
+          {!studentMapVisible && (
+            <button
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#5d7c6f] px-3 text-xs font-semibold text-[#5d7c6f] transition hover:bg-[#5d7c6f] hover:text-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
+              disabled={!ownLocation?.latest && !mapDestination}
+              type="button"
+              onClick={() => setStudentMapVisible(true)}
+            >
+              <LocateFixed size={15} />
+              แสดงแผนที่
+            </button>
+          )}
+        </div>
+      )}
+
+      {(viewer !== "teacher" || showDestination) &&
+        (viewer !== "student" || studentMapVisible) && (
+          <div className="h-[420px] w-full shrink-0 bg-slate-100 sm:h-[520px] lg:h-[58vh] lg:min-h-[560px] lg:max-h-[680px]">
+            <CampLocationMap
+              destination={mapDestination}
+              editable={canConfigureDestination}
+              path={mapPath}
+              students={studentsOnMap}
+              onMapClick={handleMapClick}
+            />
+          </div>
+        )}
 
       <div className="space-y-4 p-4">
         {loadError && (
@@ -532,16 +879,26 @@ export default function CampLocationTracker({
         )}
 
         {viewer === "teacher" ? (
-          <div className="rounded-xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5">
-              <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                <Users size={17} /> นักเรียนที่ลงทะเบียน
-              </span>
-              <span className="text-xs text-slate-500">
-                มีพิกัด {studentsOnMap.length}/{data.students.length} คน
-              </span>
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                  <Users size={17} /> สถานะตำแหน่งนักเรียน
+                </span>
+                <p className="mt-1 text-xs text-slate-500">
+                  ตำแหน่งจะอัปเดตเมื่อหน้าเว็บของนักเรียนเปิดอยู่
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">
+                  มีพิกัดล่าสุด {studentsOnMap.length} คน
+                </span>
+                <span className="rounded-full bg-slate-200 px-2.5 py-1 text-slate-600">
+                  ยังไม่มีพิกัด {data.students.length - studentsOnMap.length} คน
+                </span>
+              </div>
             </div>
-            <div className="max-h-64 divide-y divide-slate-100 overflow-y-auto">
+            <div className="divide-y divide-slate-100">
               {data.students.length ? (
                 data.students.map((student) => {
                   const age = student.latest
@@ -553,38 +910,120 @@ export default function CampLocationTracker({
                   return (
                     <div
                       key={student.studentId}
-                      className="flex items-center justify-between gap-3 px-3 py-2.5"
+                      className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(260px,1.25fr)] sm:items-center"
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-800">
-                          {student.name}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          รหัส {student.studentId}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-slate-800">
+                            {student.name}
+                          </p>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                              !student.sharingEnabled
+                                ? "bg-amber-50 text-amber-700"
+                                : student.latest
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {!student.sharingEnabled
+                              ? "นักเรียนปิดแชร์"
+                              : student.latest
+                                ? "แชร์ตำแหน่งแล้ว"
+                                : "ยังไม่แชร์ตำแหน่ง"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-400">
+                          รหัสนักเรียน {student.studentId}
                         </p>
                       </div>
-                      <div className="shrink-0 text-right">
+                      <div>
                         {student.latest ? (
-                          <>
-                            <p
-                              className={`text-xs font-semibold ${stale ? "text-amber-600" : "text-emerald-600"}`}
-                            >
-                              {age === 0
-                                ? "ไม่ถึง 1 นาที"
-                                : `${age} นาทีที่แล้ว`}
+                          <div className="space-y-1.5 rounded-lg bg-slate-50 px-3 py-2.5 text-xs">
+                            <p className="flex items-start gap-2 text-slate-700">
+                              <MapPin
+                                className="mt-0.5 shrink-0 text-[#5d7c6f]"
+                                size={14}
+                              />
+                              <span>
+                                <span className="font-semibold">
+                                  พิกัดล่าสุด
+                                </span>{" "}
+                                {formatCoordinates(student.latest)}
+                              </span>
                             </p>
-                            <p className="text-[10px] text-slate-400">
-                              {student.latest.accuracy != null
-                                ? `แม่นยำประมาณ ${Math.round(student.latest.accuracy)} ม.`
-                                : "รับพิกัดแล้ว"}
+                            <p className="flex items-start gap-2 text-slate-500">
+                              <Clock3 className="mt-0.5 shrink-0" size={14} />
+                              <span>
+                                ได้รับเมื่อ{" "}
+                                {thaiDateTime(student.latest.recorded_at)}
+                                <span
+                                  className={`ml-1 font-semibold ${
+                                    stale
+                                      ? "text-amber-600"
+                                      : "text-emerald-600"
+                                  }`}
+                                >
+                                  (
+                                  {age === 0
+                                    ? "ไม่ถึง 1 นาทีที่แล้ว"
+                                    : `${age} นาทีที่แล้ว`}
+                                  )
+                                </span>
+                              </span>
                             </p>
-                          </>
+                            <div className="flex justify-end pt-1">
+                              <button
+                                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#5d7c6f] px-3 text-[11px] font-semibold text-[#5d7c6f] transition hover:bg-[#5d7c6f] hover:text-white"
+                                type="button"
+                                onClick={() =>
+                                  setSelectedMapStudentId((current) =>
+                                    current === student.studentId
+                                      ? null
+                                      : student.studentId,
+                                  )
+                                }
+                              >
+                                <LocateFixed size={14} />
+                                {selectedMapStudentId === student.studentId
+                                  ? "ปิดแผนที่"
+                                  : "ดูบนแผนที่"}
+                              </button>
+                            </div>
+                          </div>
                         ) : (
-                          <p className="text-xs text-slate-400">
-                            ยังไม่มีตำแหน่ง
-                          </p>
+                          <div className="rounded-lg bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                            ยังไม่ได้รับพิกัดจากอุปกรณ์ของนักเรียนคนนี้
+                          </div>
                         )}
                       </div>
+                      {student.latest &&
+                        selectedMapStudentId === student.studentId && (
+                          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 sm:col-span-2">
+                            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-3 py-2">
+                              <p className="text-xs font-semibold text-slate-700">
+                                ตำแหน่งล่าสุดของ {student.name}
+                              </p>
+                              <p className="text-[11px] text-slate-400">
+                                {formatCoordinates(student.latest)}
+                              </p>
+                            </div>
+                            <div className="h-72 w-full sm:h-80">
+                              <CampLocationMap
+                                destination={null}
+                                path={[]}
+                                students={[
+                                  {
+                                    studentId: student.studentId,
+                                    name: student.name,
+                                    latitude: student.latest.latitude,
+                                    longitude: student.latest.longitude,
+                                  },
+                                ]}
+                              />
+                            </div>
+                          </div>
+                        )}
                     </div>
                   );
                 })
@@ -609,8 +1048,6 @@ export default function CampLocationTracker({
                 {minutesSince(ownLocation.latest.recorded_at) === 0
                   ? "ไม่ถึง 1 นาทีที่แล้ว"
                   : `${minutesSince(ownLocation.latest.recorded_at)} นาทีที่แล้ว`}
-                {ownLocation.latest.accuracy != null &&
-                  ` · แม่นยำประมาณ ${Math.round(ownLocation.latest.accuracy)} ม.`}
               </p>
             </div>
           </div>
@@ -620,53 +1057,17 @@ export default function CampLocationTracker({
             {data.sharingEnabled
               ? viewer === "parent"
                 ? "ยังไม่มีตำแหน่งจากอุปกรณ์ของนักเรียน"
-                : "กำลังรอสิทธิ์ GPS หรือยังไม่ได้รับตำแหน่งจากอุปกรณ์นี้"
+                : data.studentSharingEnabled
+                  ? "กำลังรอสิทธิ์ GPS หรือยังไม่ได้รับตำแหน่งจากอุปกรณ์นี้"
+                  : "คุณปิดการแชร์ตำแหน่งอยู่ ระบบจะไม่ส่ง GPS"
               : "ครูยังไม่ได้เปิดการติดตามตำแหน่ง นักเรียนจะยังไม่ส่ง GPS"}
-          </div>
-        )}
-
-        {data.permissions.canConfigure && (
-          <div className="grid gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div className="flex items-center gap-3">
-              <input
-                checked={sharingEnabled}
-                className="h-5 w-5 accent-[#5d7c6f]"
-                id={`camp-location-sharing-${campId}`}
-                type="checkbox"
-                onChange={(event) => setSharingEnabled(event.target.checked)}
-              />
-              <label
-                className="cursor-pointer"
-                htmlFor={`camp-location-sharing-${campId}`}
-              >
-                <span className="block text-sm font-semibold text-slate-800">
-                  เปิดให้นักเรียนแชร์ตำแหน่ง
-                </span>
-                <span className="block text-xs text-slate-500">
-                  นักเรียนแต่ละคนต้องเปิดหน้าค่ายและอนุญาต GPS
-                </span>
-              </label>
-            </div>
-            <label className="text-xs font-medium text-slate-600">
-              อัปเดตทุก
-              <select
-                className="ml-2 h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm"
-                value={intervalMinutes}
-                onChange={(event) =>
-                  setIntervalMinutes(Number(event.target.value) as 5 | 10)
-                }
-              >
-                <option value={5}>5 นาที</option>
-                <option value={10}>10 นาที</option>
-              </select>
-            </label>
           </div>
         )}
 
         {viewer === "parent" && data.sharingEnabled && (
           <div className="rounded-xl bg-amber-50 p-3 text-xs text-amber-700">
             ตำแหน่งจะอัปเดตเมื่อหน้าเว็บของนักเรียนเปิดอยู่เท่านั้น
-            และอาจล่าช้าตามช่วงเวลาที่ครูกำหนด
+            และอาจล่าช้าตามรอบการอัปเดตของระบบ
           </div>
         )}
 
@@ -690,7 +1091,8 @@ export default function CampLocationTracker({
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           {viewer === "student" &&
             data.permissions.canSubmitStudentLocation &&
-            data.sharingEnabled && (
+            data.sharingEnabled &&
+            data.studentSharingEnabled && (
               <button
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#5d7c6f] px-4 text-sm font-semibold text-[#5d7c6f] disabled:opacity-50"
                 disabled={publishing}
@@ -701,16 +1103,6 @@ export default function CampLocationTracker({
                 {publishing ? "กำลังอ่าน GPS..." : "อัปเดตตำแหน่งของฉันตอนนี้"}
               </button>
             )}
-          {data.permissions.canConfigure && (
-            <button
-              className="h-11 rounded-xl bg-[#5d7c6f] px-5 text-sm font-semibold text-white disabled:opacity-50"
-              disabled={saving || !draftDestination}
-              type="button"
-              onClick={() => void saveSettings()}
-            >
-              {saving ? "กำลังบันทึก..." : "บันทึกจุดหมายและการแชร์"}
-            </button>
-          )}
         </div>
       </div>
     </section>

@@ -13,6 +13,7 @@ import {
 import { Search, Trophy, Clock, MapPin, Users } from "lucide-react";
 
 import CampLocationTracker from "@/components/camp-location/CampLocationTracker";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface StudentProgress {
   studentId: number;
@@ -34,6 +35,7 @@ interface TrackingModalProps {
   onClose: () => void;
   campId: number;
   campName: string;
+  locationTrackingEnabled?: boolean;
 }
 
 export default function TrackingModal({
@@ -41,13 +43,14 @@ export default function TrackingModal({
   onClose,
   campId,
   campName,
+  locationTrackingEnabled = false,
 }: TrackingModalProps) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<TrackingData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [activeSection, setActiveSection] = useState<"location" | "progress">(
-    "location",
+    locationTrackingEnabled ? "location" : "progress",
   );
   const ITEMS_PER_PAGE = 5;
 
@@ -56,9 +59,9 @@ export default function TrackingModal({
       fetchTrackingData();
       setSearchQuery("");
       setPage(1);
-      setActiveSection("location");
+      setActiveSection(locationTrackingEnabled ? "location" : "progress");
     }
-  }, [isOpen, campId]);
+  }, [isOpen, campId, locationTrackingEnabled]);
 
   useEffect(() => {
     setPage(1);
@@ -103,15 +106,14 @@ export default function TrackingModal({
     <Modal
       backdrop="blur"
       classNames={{
-        base: "bg-white rounded-3xl shadow-xl",
+        base: "mx-2 my-2 max-h-[98vh] w-[calc(100vw-1rem)] max-w-[1280px] rounded-3xl bg-white shadow-xl sm:w-[calc(100vw-2rem)]",
         backdrop: "bg-black/40 backdrop-blur-sm",
       }}
       isOpen={isOpen}
       scrollBehavior="inside"
-      size="4xl"
       onOpenChange={onClose}
     >
-      <ModalContent>
+      <ModalContent className="max-h-[98vh]">
         {() => (
           <>
             <ModalHeader className="flex flex-col gap-1 px-6 pt-6 pb-4 border-b border-gray-100">
@@ -129,19 +131,25 @@ export default function TrackingModal({
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-gray-100 p-1">
-                <button
-                  className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                    activeSection === "location"
-                      ? "bg-white text-[#5d7c6f] shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                  type="button"
-                  onClick={() => setActiveSection("location")}
-                >
-                  <MapPin size={16} />
-                  แผนที่และจุดหมาย
-                </button>
+              <div
+                className={`mt-4 grid gap-2 rounded-xl bg-gray-100 p-1 ${
+                  locationTrackingEnabled ? "grid-cols-2" : "grid-cols-1"
+                }`}
+              >
+                {locationTrackingEnabled && (
+                  <button
+                    className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                      activeSection === "location"
+                        ? "bg-white text-[#5d7c6f] shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                    type="button"
+                    onClick={() => setActiveSection("location")}
+                  >
+                    <MapPin size={16} />
+                    ตำแหน่งนักเรียน
+                  </button>
+                )}
                 <button
                   className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
                     activeSection === "progress"
@@ -191,12 +199,21 @@ export default function TrackingModal({
               )}
             </ModalHeader>
 
-            <ModalBody className="px-6 py-4 bg-gray-50/30">
+            <ModalBody
+              className={`bg-gray-50/30 px-6 py-4 ${
+                activeSection === "location" ? "flex-1 overflow-y-auto" : ""
+              }`}
+            >
               {activeSection === "location" ? (
-                <CampLocationTracker campId={campId} viewer="teacher" />
+                <CampLocationTracker
+                  campId={campId}
+                  configureDestination={false}
+                  showDestination={false}
+                  viewer="teacher"
+                />
               ) : loading ? (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+                  <LoadingSpinner size="lg" />
                   <p className="mt-4 text-sm text-gray-500">
                     กำลังโหลดข้อมูล...
                   </p>
@@ -288,15 +305,17 @@ export default function TrackingModal({
               )}
             </ModalBody>
 
-            <ModalFooter className="px-6 py-4 bg-white border-t border-gray-100 rounded-b-3xl">
-              <Button
-                className="w-full sm:w-auto font-medium"
-                variant="flat"
-                onPress={onClose}
-              >
-                ปิดหน้าต่าง
-              </Button>
-            </ModalFooter>
+            {activeSection === "progress" && (
+              <ModalFooter className="rounded-b-3xl border-t border-gray-100 bg-white px-6 py-4">
+                <Button
+                  className="w-full font-medium sm:w-auto"
+                  variant="flat"
+                  onPress={onClose}
+                >
+                  ปิดหน้าต่าง
+                </Button>
+              </ModalFooter>
+            )}
           </>
         )}
       </ModalContent>
