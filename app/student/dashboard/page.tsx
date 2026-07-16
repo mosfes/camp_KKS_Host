@@ -26,14 +26,14 @@ const formatDate = (start: string, end?: string) => {
   if (!start) return "";
   const s = new Date(start).toLocaleDateString("th-TH", {
     year: "numeric",
-    month: "short",
+    month: "long",
     day: "numeric",
   });
 
   if (!end || start === end) return s;
   const e = new Date(end).toLocaleDateString("th-TH", {
     year: "numeric",
-    month: "short",
+    month: "long",
     day: "numeric",
   });
 

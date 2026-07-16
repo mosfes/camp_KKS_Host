@@ -64,6 +64,9 @@ function formatDateWithOffset(startDateStr: string, dayOffset: number) {
 }
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import CampDestinationField, {
+  type CampDestination,
+} from "@/components/camp-location/CampDestinationField";
 
 // ... inside component
 export default function CreateCampModal({
@@ -93,6 +96,8 @@ export default function CreateCampModal({
   ]);
   const [campImage, setCampImage] = useState<string | null>(null);
   const [campImageFile, setCampImageFile] = useState<File | null>(null);
+  const [destination, setDestination] = useState<CampDestination | null>(null);
+  const [locationTrackingEnabled, setLocationTrackingEnabled] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -144,8 +149,8 @@ export default function CreateCampModal({
 
     // 1. Registration Logic
     if (regisEnd) {
-      if (campStart && regisEnd >= campStart) {
-        errors.registration = "วันสิ้นสุดรับสมัคร ต้องมาก่อน วันเริ่มค่าย";
+      if (campStart && regisEnd > campStart) {
+        errors.registration = "วันสิ้นสุดรับสมัคร ต้องไม่เกิน วันเริ่มค่าย";
       }
     }
 
@@ -161,8 +166,8 @@ export default function CreateCampModal({
       if (data.hasShirt && shirtEnd && campStart <= shirtEnd) {
         errors.camp = "วันเริ่มค่าย ต้องมาหลัง วันปิดจองเสื้อ";
       }
-      if (regisEnd && campStart <= regisEnd) {
-        errors.camp = "วันเริ่มค่าย ต้องมาหลัง วันปิดรับสมัคร";
+      if (regisEnd && campStart < regisEnd) {
+        errors.camp = "วันเริ่มค่าย ต้องไม่มาก่อน วันปิดรับสมัคร";
       }
     }
 
@@ -270,6 +275,8 @@ export default function CreateCampModal({
         saveAsTemplate: false,
         dailySchedule: dailySchedule,
       });
+      setDestination(null);
+      setLocationTrackingEnabled(false);
 
       // ดึง grade ทุกชั้นจาก camp_classroom
       if (campSource.camp_classroom && campSource.camp_classroom.length > 0) {
@@ -319,6 +326,8 @@ export default function CreateCampModal({
       setCampImage(null);
       setCampImageFile(null);
       setSelectedClassroomIds([]);
+      setDestination(null);
+      setLocationTrackingEnabled(false);
     }
   }, [isOpen, projectType, templateData]);
 
@@ -606,6 +615,15 @@ export default function CreateCampModal({
 
       return;
     }
+
+    if (locationTrackingEnabled && !destination) {
+      showWarning(
+        "ยังไม่ได้ปักหมุด",
+        "กรุณาค้นหาสถานที่หรือคลิกบนแผนที่เพื่อปักหมุดจุดหมาย",
+      );
+
+      return;
+    }
     // ...
 
     const payload = {
@@ -624,6 +642,8 @@ export default function CreateCampModal({
       shirtImageFiles: shirtImageFiles,
       campImage: campImage,
       campImageFile: campImageFile,
+      destination,
+      locationTrackingEnabled,
     };
 
     onSubmit(payload);
@@ -805,6 +825,14 @@ export default function CreateCampModal({
                   value={formData.location}
                   onChange={(e) => handleChange("location", e.target.value)}
                 />
+                <div className="mt-4">
+                  <CampDestinationField
+                    destination={destination}
+                    enabled={locationTrackingEnabled}
+                    onDestinationChange={setDestination}
+                    onEnabledChange={setLocationTrackingEnabled}
+                  />
+                </div>
                 <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
                   รายละเอียด
                 </label>

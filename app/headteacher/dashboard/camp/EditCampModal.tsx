@@ -16,6 +16,9 @@ import { DateRangePicker } from "@heroui/react";
 import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import CampDestinationField, {
+  type CampDestination,
+} from "@/components/camp-location/CampDestinationField";
 
 interface TimeSlot {
   startTime: string;
@@ -95,6 +98,8 @@ export default function EditCampModal({
   ]);
   const [campImage, setCampImage] = useState<string | null>(null);
   const [campImageFile, setCampImageFile] = useState<File | null>(null);
+  const [destination, setDestination] = useState<CampDestination | null>(null);
+  const [locationTrackingEnabled, setLocationTrackingEnabled] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -144,8 +149,8 @@ export default function EditCampModal({
 
     // 1. Registration Logic
     if (regisEnd) {
-      if (campStart && regisEnd >= campStart) {
-        errors.registration = "วันสิ้นสุดรับสมัคร ต้องมาก่อน วันเริ่มค่าย";
+      if (campStart && regisEnd > campStart) {
+        errors.registration = "วันสิ้นสุดรับสมัคร ต้องไม่เกิน วันเริ่มค่าย";
       }
     }
 
@@ -161,8 +166,8 @@ export default function EditCampModal({
       if (data.hasShirt && shirtEnd && campStart <= shirtEnd) {
         errors.camp = "วันเริ่มค่าย ต้องมาหลัง วันปิดจองเสื้อ";
       }
-      if (regisEnd && campStart <= regisEnd) {
-        errors.camp = "วันเริ่มค่าย ต้องมาหลัง วันปิดรับสมัคร";
+      if (regisEnd && campStart < regisEnd) {
+        errors.camp = "วันเริ่มค่าย ต้องไม่มาก่อน วันปิดรับสมัคร";
       }
     }
 
@@ -297,6 +302,18 @@ export default function EditCampModal({
                 },
               ],
       });
+      setDestination(
+        campData.destination_latitude != null &&
+          campData.destination_longitude != null
+          ? {
+              name: campData.destination_name || "จุดหมายค่าย",
+              address: campData.destination_address || "",
+              latitude: campData.destination_latitude,
+              longitude: campData.destination_longitude,
+            }
+          : null,
+      );
+      setLocationTrackingEnabled(Boolean(campData.location_sharing_enabled));
 
       // ตั้งค่ารูปเสื้อ (จาก JSON array ถ้ามี)
       if (campData.img_shirt_url) {
@@ -576,6 +593,15 @@ export default function EditCampModal({
       return;
     }
 
+    if (locationTrackingEnabled && !destination) {
+      showWarning(
+        "ยังไม่ได้ปักหมุด",
+        "กรุณาค้นหาสถานที่หรือคลิกบนแผนที่เพื่อปักหมุดจุดหมาย",
+      );
+
+      return;
+    }
+
     const payload = {
       name: formData.name,
       location: formData.location,
@@ -596,6 +622,8 @@ export default function EditCampModal({
       campImage: campImage,
       campImageFile: campImageFile,
       camp_id: campData.camp_id,
+      destination,
+      location_sharing_enabled: locationTrackingEnabled,
     };
 
     onSubmit(payload);
@@ -772,6 +800,13 @@ export default function EditCampModal({
                   onChange={(e) => handleChange("location", e.target.value)}
                 />
               </div>
+
+              <CampDestinationField
+                destination={destination}
+                enabled={locationTrackingEnabled}
+                onDestinationChange={setDestination}
+                onEnabledChange={setLocationTrackingEnabled}
+              />
 
               {/* Camp Image Upload */}
               <div className="md:col-span-2">

@@ -1,0 +1,2 @@
+ALTER TABLE `student_enrollment`
+  ADD COLUMN `location_sharing_enabled` BOOLEAN NOT NULL DEFAULT true;

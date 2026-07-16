@@ -50,6 +50,25 @@ export async function POST(req) {
       );
     }
 
+    const destination = body.destination;
+    const hasValidDestination =
+      destination &&
+      typeof destination.name === "string" &&
+      destination.name.trim() &&
+      Number.isFinite(destination.latitude) &&
+      destination.latitude >= -90 &&
+      destination.latitude <= 90 &&
+      Number.isFinite(destination.longitude) &&
+      destination.longitude >= -180 &&
+      destination.longitude <= 180;
+
+    if (body.locationTrackingEnabled && !hasValidDestination) {
+      return NextResponse.json(
+        { error: "กรุณาปักหมุดจุดหมายก่อนเปิดติดตามตำแหน่ง" },
+        { status: 400 },
+      );
+    }
+
     // Date Validation
     const requiredDates = [
       { name: "วันที่เริ่มค่าย", value: body.campStartDate },
@@ -95,6 +114,23 @@ export async function POST(req) {
         cert_font_size: body.cert_font_size
           ? parseFloat(body.cert_font_size)
           : null,
+        destination_name: hasValidDestination
+          ? destination.name.trim().slice(0, 255)
+          : null,
+        destination_address: hasValidDestination
+          ? (destination.address || "").trim().slice(0, 500) || null
+          : null,
+        destination_latitude: hasValidDestination
+          ? destination.latitude
+          : null,
+        destination_longitude: hasValidDestination
+          ? destination.longitude
+          : null,
+        location_sharing_enabled: Boolean(
+          body.locationTrackingEnabled && hasValidDestination,
+        ),
+        location_update_interval:
+          body.locationUpdateInterval === 5 ? 5 : 10,
         created_by_teacher_id: teacher.teachers_id,
         camp_daily_schedule: {
           create: body.dailySchedule.map((day) => ({

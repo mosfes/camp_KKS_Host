@@ -54,12 +54,34 @@ import {
   isBangkokDateInRange,
 } from "@/lib/bangkok-date";
 
-const fetcher = (url: string) =>
-  fetch(url).then((res) => {
-    if (res.status === 401) throw new Error("Unauthorized");
+async function readResponseBody(response: Response) {
+  const responseText = await response.text();
 
-    return res.json();
-  });
+  if (!responseText) return null;
+
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    return { error: responseText, message: responseText, _invalidJson: true };
+  }
+}
+
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  const data = await readResponseBody(response);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error || data?._error || data?.message || `Request failed (${response.status})`,
+    );
+  }
+
+  if (data?._invalidJson) {
+    throw new Error(`API ${url} ส่งข้อมูลกลับมาในรูปแบบที่ไม่ถูกต้อง`);
+  }
+
+  return data;
+};
 
 function DashboardContent() {
   const { showSuccess, showError, showConfirm, setIsLoading } =
@@ -106,6 +128,12 @@ function DashboardContent() {
     avgScore: 0,
     surveyResponseRate: 0,
   };
+  const academicYears = useMemo(() => {
+    if (Array.isArray(dbAcademicYears)) return dbAcademicYears;
+    if (Array.isArray(dbAcademicYears?.data)) return dbAcademicYears.data;
+
+    return [];
+  }, [dbAcademicYears]);
 
   const loading = !rawCamps || !statsData || !teacherInfo || !dbAcademicYears;
   const searchParams = useSearchParams();
@@ -245,8 +273,8 @@ function DashboardContent() {
   // Handled by SWR
 
   useEffect(() => {
-    if (dbAcademicYears && Array.isArray(dbAcademicYears)) {
-      const activeYear = dbAcademicYears.find(
+    if (academicYears.length > 0) {
+      const activeYear = academicYears.find(
         (y: any) =>
           y.status === "แอคทีฟ" ||
           y.status === "Active" ||
@@ -257,7 +285,7 @@ function DashboardContent() {
         setCampAcademicYearFilter(activeYear.year.toString());
       }
     }
-  }, [dbAcademicYears]);
+  }, [academicYears]);
 
   // Tab is now driven by URL searchParams via sidebar navigation
 
@@ -283,7 +311,7 @@ function DashboardContent() {
             method: "DELETE",
           });
 
-          const result = await response.json();
+          const result = await readResponseBody(response);
 
           if (response.ok) {
             showSuccess("สำเร็จ", "ลบค่ายสำเร็จ!");
@@ -326,7 +354,7 @@ function DashboardContent() {
           });
 
           if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
+            const uploadData = await readResponseBody(uploadRes);
 
             img_camp_url = uploadData.url;
             console.log("Uploaded camp image:", img_camp_url);
@@ -363,7 +391,7 @@ function DashboardContent() {
               });
 
               if (uploadRes.ok) {
-                const uploadData = await uploadRes.json();
+                const uploadData = await readResponseBody(uploadRes);
 
                 shirtUrls.push(uploadData.url);
               }
@@ -401,10 +429,12 @@ function DashboardContent() {
           templateName: data.templateName,
           img_shirt_url: img_shirt_url,
           img_camp_url: img_camp_url,
+          destination: data.destination,
+          locationTrackingEnabled: data.locationTrackingEnabled,
         }),
       });
 
-      const result = await response.json();
+      const result = await readResponseBody(response);
 
       console.log("API Response:", result); // Debug: ดู response จาก API
 
@@ -439,7 +469,7 @@ function DashboardContent() {
       const response = await fetch(`/api/camps/${campId}`);
 
       if (!response.ok) throw new Error("Failed to fetch camp data");
-      const data = await response.json();
+      const data = await readResponseBody(response);
 
       setEditingCampData(data);
       setIsEditModalOpen(true);
@@ -489,7 +519,7 @@ function DashboardContent() {
               });
 
               if (uploadRes.ok) {
-                const uploadData = await uploadRes.json();
+                const uploadData = await readResponseBody(uploadRes);
 
                 finalShirtUrls[i] = uploadData.url;
               }
@@ -513,7 +543,7 @@ function DashboardContent() {
           });
 
           if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
+            const uploadData = await readResponseBody(uploadRes);
 
             img_camp_url = uploadData.url;
           }
@@ -533,7 +563,7 @@ function DashboardContent() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
+        const result = await readResponseBody(response);
 
         throw new Error(result.error || "Failed to edit camp");
       }
@@ -568,6 +598,11 @@ function DashboardContent() {
   const [campStatusFilter, setCampStatusFilter] = useState("all");
   const [campRoleFilter, setCampRoleFilter] = useState("all"); // "all", "owner", "related"
   const [campAcademicYearFilter, setCampAcademicYearFilter] = useState("all");
+  const [filtersMounted, setFiltersMounted] = useState(false);
+
+  useEffect(() => {
+    setFiltersMounted(true);
+  }, []);
 
   const filteredMyCamps = camps.filter((camp: any) => {
     if (campStatusFilter !== "all" && camp.status !== campStatusFilter)
@@ -949,91 +984,115 @@ function DashboardContent() {
             <div className="grid grid-cols-3 sm:flex sm:flex-row sm:justify-end gap-2 w-full mt-4 sm:mt-0">
               {/* Academic Year Filter */}
               <div className="col-span-1 sm:w-[180px] sm:min-w-[180px]">
-                <Select
-                  aria-label="Select Academic Year"
-                  className="w-full"
-                  classNames={{
-                    trigger:
-                      "bg-white border border-gray-100 text-gray-700 font-medium",
-                  }}
-                  placeholder="ปีการศึกษา"
-                  selectedKeys={[campAcademicYearFilter]}
-                  size="sm"
-                  onChange={(e) => setCampAcademicYearFilter(e.target.value)}
-                >
-                  {[{ year: "all" }, ...(dbAcademicYears || [])].map((item) => (
-                    <SelectItem
-                      key={String(item.year)}
-                      textValue={
-                        item.year === "all"
-                          ? "ปีการศึกษา: ทั้งหมด"
-                          : `ปีการศึกษา: ${(parseInt(item.year) + 543).toString()}`
-                      }
-                    >
-                      {item.year === "all"
-                        ? "ทั้งหมด"
-                        : `${parseInt(item.year) + 543}`}
-                    </SelectItem>
-                  ))}
-                </Select>
+                {filtersMounted ? (
+                  <Select
+                    aria-label="Select Academic Year"
+                    className="w-full"
+                    classNames={{
+                      trigger:
+                        "bg-white border border-gray-100 text-gray-700 font-medium",
+                    }}
+                    placeholder="ปีการศึกษา"
+                    selectedKeys={[campAcademicYearFilter]}
+                    size="sm"
+                    onChange={(e) => setCampAcademicYearFilter(e.target.value)}
+                  >
+                    {[{ year: "all" }, ...academicYears].map((item) => (
+                      <SelectItem
+                        key={String(item.year)}
+                        textValue={
+                          item.year === "all"
+                            ? "ปีการศึกษา: ทั้งหมด"
+                            : `ปีการศึกษา: ${(parseInt(item.year) + 543).toString()}`
+                        }
+                      >
+                        {item.year === "all"
+                          ? "ทั้งหมด"
+                          : `${parseInt(item.year) + 543}`}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="h-8 w-full animate-pulse rounded-lg border border-gray-100 bg-white"
+                  />
+                )}
               </div>
 
               {/* Status Filter */}
               <div className="col-span-1 sm:w-[160px] sm:min-w-[160px]">
-                <Select
-                  aria-label="สถานะ"
-                  className="w-full"
-                  classNames={{
-                    trigger:
-                      "bg-white border border-gray-100 text-gray-700 font-medium",
-                  }}
-                  placeholder="สถานะ"
-                  selectedKeys={[campStatusFilter]}
-                  size="sm"
-                  onChange={(e) => setCampStatusFilter(e.target.value)}
-                >
-                  <SelectItem key="all" textValue="สถานะ: ทั้งหมด">
-                    สถานะ: ทั้งหมด
-                  </SelectItem>
-                  <SelectItem key="กำลังจัด" textValue="สถานะ: กำลังจัด">
-                    กำลังจัด
-                  </SelectItem>
-                  <SelectItem key="ยังไม่เริ่ม" textValue="สถานะ: ยังไม่เริ่ม">
-                    ยังไม่เริ่ม
-                  </SelectItem>
-                  <SelectItem key="เสร็จสิ้น" textValue="สถานะ: เสร็จสิ้น">
-                    เสร็จสิ้น
-                  </SelectItem>
-                </Select>
+                {filtersMounted ? (
+                  <Select
+                    aria-label="สถานะ"
+                    className="w-full"
+                    classNames={{
+                      trigger:
+                        "bg-white border border-gray-100 text-gray-700 font-medium",
+                    }}
+                    placeholder="สถานะ"
+                    selectedKeys={[campStatusFilter]}
+                    size="sm"
+                    onChange={(e) => setCampStatusFilter(e.target.value)}
+                  >
+                    <SelectItem key="all" textValue="สถานะ: ทั้งหมด">
+                      สถานะ: ทั้งหมด
+                    </SelectItem>
+                    <SelectItem key="กำลังจัด" textValue="สถานะ: กำลังจัด">
+                      กำลังจัด
+                    </SelectItem>
+                    <SelectItem
+                      key="ยังไม่เริ่ม"
+                      textValue="สถานะ: ยังไม่เริ่ม"
+                    >
+                      ยังไม่เริ่ม
+                    </SelectItem>
+                    <SelectItem key="เสร็จสิ้น" textValue="สถานะ: เสร็จสิ้น">
+                      เสร็จสิ้น
+                    </SelectItem>
+                  </Select>
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="h-8 w-full animate-pulse rounded-lg border border-gray-100 bg-white"
+                  />
+                )}
               </div>
 
               {/* Role Filter (Dropdown) */}
               <div className="col-span-1 sm:w-[210px] sm:min-w-[210px]">
-                <Select
-                  aria-label="ประเภท"
-                  className="w-full"
-                  classNames={{
-                    trigger:
-                      "bg-white border border-gray-100 text-gray-700 font-medium",
-                  }}
-                  placeholder="ประเภท"
-                  selectedKeys={[campRoleFilter]}
-                  size="sm"
-                  onChange={(e) => setCampRoleFilter(e.target.value)}
-                >
-                  <SelectItem key="all" textValue="ประเภท: ทั้งหมด">
-                    ประเภท: ทั้งหมด
-                  </SelectItem>
-                  <SelectItem key="owner" textValue="ประเภท: ค่ายที่สร้าง">
-                    ค่ายที่สร้าง
-                  </SelectItem>
-                  <SelectItem
-                    key="related"
-                    textValue="ประเภท: ค่ายที่เกี่ยวข้อง"
+                {filtersMounted ? (
+                  <Select
+                    aria-label="ประเภท"
+                    className="w-full"
+                    classNames={{
+                      trigger:
+                        "bg-white border border-gray-100 text-gray-700 font-medium",
+                    }}
+                    placeholder="ประเภท"
+                    selectedKeys={[campRoleFilter]}
+                    size="sm"
+                    onChange={(e) => setCampRoleFilter(e.target.value)}
                   >
-                    ค่ายที่เกี่ยวข้อง
-                  </SelectItem>
-                </Select>
+                    <SelectItem key="all" textValue="ประเภท: ทั้งหมด">
+                      ประเภท: ทั้งหมด
+                    </SelectItem>
+                    <SelectItem key="owner" textValue="ประเภท: ค่ายที่สร้าง">
+                      ค่ายที่สร้าง
+                    </SelectItem>
+                    <SelectItem
+                      key="related"
+                      textValue="ประเภท: ค่ายที่เกี่ยวข้อง"
+                    >
+                      ค่ายที่เกี่ยวข้อง
+                    </SelectItem>
+                  </Select>
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="h-8 w-full animate-pulse rounded-lg border border-gray-100 bg-white"
+                  />
+                )}
               </div>
             </div>
 
