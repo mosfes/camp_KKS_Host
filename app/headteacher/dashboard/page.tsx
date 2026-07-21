@@ -18,9 +18,6 @@ import {
   Users,
   Trash2,
   Pencil,
-  Smile,
-  ClipboardCheck,
-  Star,
   HeartPulse,
   ShieldAlert,
   Info,
@@ -30,7 +27,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import StatsCard from "./StatsCard";
 import CreateCampModal from "./CreateCampModal";
 import SelectProjectTypeModal from "./SelectProjectTypeModal";
 import EditCampModal from "./camp/EditCampModal";
@@ -49,10 +45,7 @@ function DefaultCampImage() {
 
 // ... imports
 import { useStatusModal } from "@/components/StatusModalProvider";
-import {
-  isBangkokDateBefore,
-  isBangkokDateInRange,
-} from "@/lib/bangkok-date";
+import { isBangkokDateBefore, isBangkokDateInRange } from "@/lib/bangkok-date";
 
 async function readResponseBody(response: Response) {
   const responseText = await response.text();
@@ -72,7 +65,10 @@ const fetcher = async (url: string) => {
 
   if (!response.ok) {
     throw new Error(
-      data?.error || data?._error || data?.message || `Request failed (${response.status})`,
+      data?.error ||
+        data?._error ||
+        data?.message ||
+        `Request failed (${response.status})`,
     );
   }
 
@@ -106,10 +102,6 @@ function DashboardContent() {
     }
   };
   const { data: rawCamps, mutate: mutateCamps } = useSWR("/api/camps", fetcher);
-  const { data: statsData, mutate: mutateStats } = useSWR(
-    "/api/camps/stats",
-    fetcher,
-  );
   const { data: teacherInfo } = useSWR("/api/auth/me", fetcher);
   const { data: dbAcademicYears } = useSWR("/api/academic_years", fetcher);
   const { data: homeroomData, isLoading: loadingHomeroom } = useSWR(
@@ -117,17 +109,6 @@ function DashboardContent() {
     fetcher,
   );
 
-  const stats = statsData || {
-    totalCamps: 0,
-    activeCamps: 0,
-    totalStudents: 0,
-    totalEnrollments: 0,
-    totalTeachers: 0,
-    avgEnrollment: 0,
-    avgSatisfaction: 0,
-    avgScore: 0,
-    surveyResponseRate: 0,
-  };
   const academicYears = useMemo(() => {
     if (Array.isArray(dbAcademicYears)) return dbAcademicYears;
     if (Array.isArray(dbAcademicYears?.data)) return dbAcademicYears.data;
@@ -135,9 +116,10 @@ function DashboardContent() {
     return [];
   }, [dbAcademicYears]);
 
-  const loading = !rawCamps || !statsData || !teacherInfo || !dbAcademicYears;
+  const loading = !rawCamps || !teacherInfo || !dbAcademicYears;
   const searchParams = useSearchParams();
-  const selectedTab = searchParams.get("tab") || "camp";
+  const selectedTab =
+    searchParams.get("tab") === "homeroom" ? "homeroom" : "camp";
   const [isSelectTypeOpen, setIsSelectTypeOpen] = useState(false);
   const [isCreateCampOpen, setIsCreateCampOpen] = useState(false);
   const [selectedProjectType, setSelectedProjectType] = useState<string | null>(
@@ -256,7 +238,7 @@ function DashboardContent() {
             (sum: number, cc: any) =>
               sum + (cc.classroom?._count?.classroom_students ?? 0),
             0,
-          )
+          ),
         ),
         image: camp.img_camp_url || null,
         isOwner: camp.isOwner,
@@ -316,7 +298,6 @@ function DashboardContent() {
           if (response.ok) {
             showSuccess("สำเร็จ", "ลบค่ายสำเร็จ!");
             mutateCamps();
-            mutateStats();
           } else {
             showError("ผลการดำเนินงาน", `ลบค่ายไม่สำเร็จ: ${result.error}`);
           }
@@ -442,7 +423,6 @@ function DashboardContent() {
         console.log("Camp created successfully");
         showSuccess("สำเร็จ", "สร้างค่ายสำเร็จ!");
         mutateCamps();
-        mutateStats();
         setIsCreateCampOpen(false); // Close modal on success
         setSelectedProjectType(null);
       } else {
@@ -683,52 +663,6 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Cards */}
-        {selectedTab === "overview" && (
-          <div className="w-full">
-            {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="text-center">
-                  <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-gray-500">กำลังโหลดข้อมูลสถิติ...</p>
-                </div>
-              </div>
-            ) : (
-              <div className="w-full h-full">
-                <div className="grid grid-cols-2 grid-rows-2 lg:gap-6 md:gap-4 gap-3">
-                  <StatsCard
-                    icon={Tent}
-                    subtitle={`${stats.activeCamps} กำลังจัด`}
-                    title="ค่ายทั้งหมด"
-                    value={stats.totalCamps}
-                  />
-
-                  <StatsCard
-                    icon={Star}
-                    subtitle="จากแบบประเมินทั้งหมด"
-                    title="คะแนนค่ายเฉลี่ย"
-                    value={`${stats.avgScore || 0} / 5`}
-                  />
-
-                  <StatsCard
-                    icon={Smile}
-                    subtitle="จากแบบสำรวจความพึงพอใจ"
-                    title="ความพึงพอใจเฉลี่ย"
-                    value={`${stats.avgSatisfaction}%`}
-                  />
-
-                  <StatsCard
-                    icon={ClipboardCheck}
-                    subtitle="สัดส่วนผู้ทำแบบสำรวจ"
-                    title="อัตราการตอบกลับ"
-                    value={`${stats.surveyResponseRate}%`}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Homeroom Tab */}
         {selectedTab === "homeroom" && (
           <div className="w-full space-y-6">
@@ -883,58 +817,57 @@ function DashboardContent() {
                               <td className="p-4 text-sm text-gray-900 font-medium">
                                 {student.id}
                               </td>
-                                <td className="p-4 text-gray-900">
-                                  <div className="flex items-center gap-2">
-                                    <span>
-                                      {student.prefix}
-                                      {student.firstname} {student.lastname}
+                              <td className="p-4 text-gray-900">
+                                <div className="flex items-center gap-2">
+                                  <span>
+                                    {student.prefix}
+                                    {student.firstname} {student.lastname}
+                                  </span>
+                                  {student.isSpecialCare && (
+                                    <span title="ต้องการดูแลเป็นพิเศษ">
+                                      <ShieldAlert
+                                        className="text-rose-500"
+                                        size={14}
+                                      />
                                     </span>
-                                    {student.isSpecialCare && (
-                                      <span title="ต้องการดูแลเป็นพิเศษ">
-                                        <ShieldAlert
-                                          className="text-rose-500"
-                                          size={14}
-                                        />
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="p-4">
-                                  {student.chronicDisease &&
-                                  student.chronicDisease !== "-" &&
-                                  student.chronicDisease !== "ไม่มี" ? (
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                                      {student.chronicDisease}
-                                    </span>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
                                   )}
-                                </td>
-                                <td className="p-4">
-                                  {student.foodAllergy &&
-                                    student.foodAllergy !== "-" &&
-                                    student.foodAllergy !== "ไม่มี" ? (
-                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
-                                        {student.foodAllergy}
-                                      </span>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
-                                  </td>
-                                  <td className="p-4">
-                                  {student.remark &&
-                                  student.remark !== "-" &&
-                                  student.remark !== "ไม่มี" ? (
-                                    <span className="text-sm text-blue-700 font-medium">
-                                      {student.remark}
-                                    </span>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
-                                  )}
-                                </td>
-                              </tr>
-                            ),
-                          )
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                {student.chronicDisease &&
+                                student.chronicDisease !== "-" &&
+                                student.chronicDisease !== "ไม่มี" ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                    {student.chronicDisease}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="p-4">
+                                {student.foodAllergy &&
+                                student.foodAllergy !== "-" &&
+                                student.foodAllergy !== "ไม่มี" ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                                    {student.foodAllergy}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="p-4">
+                                {student.remark &&
+                                student.remark !== "-" &&
+                                student.remark !== "ไม่มี" ? (
+                                  <span className="text-sm text-blue-700 font-medium">
+                                    {student.remark}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
                         )}
                       </tbody>
                     </table>
@@ -1114,7 +1047,18 @@ function DashboardContent() {
                     <div
                       key={camp.id}
                       className="cursor-pointer"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => goToCampDetail(camp.id)}
+                      onKeyDown={(event) => {
+                        if (
+                          event.target === event.currentTarget &&
+                          (event.key === "Enter" || event.key === " ")
+                        ) {
+                          event.preventDefault();
+                          goToCampDetail(camp.id);
+                        }
+                      }}
                     >
                       <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all bg-white relative group h-full">
                         {/* Image */}
@@ -1238,11 +1182,22 @@ function DashboardContent() {
                           {/* Footer */}
                           <div
                             className="flex justify-between items-center pt-4 border-t border-[#e2e8f0] mt-auto cursor-pointer hover:bg-gray-50/50 -mx-4 px-4 -mb-4 pb-4 rounded-b-2xl transition-colors"
+                            role="button"
+                            tabIndex={0}
                             onClick={(e) => {
                               e.stopPropagation();
                               setEnrollmentCampId(camp.id);
                               setEnrollmentCampName(camp.title);
                               setIsEnrollmentModalOpen(true);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setEnrollmentCampId(camp.id);
+                                setEnrollmentCampName(camp.title);
+                                setIsEnrollmentModalOpen(true);
+                              }
                             }}
                           >
                             <span className="text-[#718096] text-sm">

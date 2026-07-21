@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
-  PieChart,
   Users,
   Tent,
   ChevronLeft,
@@ -16,12 +15,6 @@ import {
 
 import { HeadteacherNavbar } from "@/components/Headteacher";
 import { StatusModalProvider } from "@/components/StatusModalProvider";
-
-const overviewMenuItem = {
-  id: "overview",
-  label: "ภาพรวมระบบ",
-  icon: PieChart,
-};
 
 const teacherMenuItems = [
   { id: "homeroom", label: "นักเรียนประจำชั้น", icon: Users },
@@ -197,13 +190,7 @@ function MobileSidebar({
 }
 
 /* ── Auto-redirect to default tab ───────────────────────────── */
-function TabDefaultRedirect({
-  canViewOverview,
-  roleResolved,
-}: {
-  canViewOverview: boolean;
-  roleResolved: boolean;
-}) {
+function TabDefaultRedirect() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -215,13 +202,11 @@ function TabDefaultRedirect({
       router.replace("/headteacher/dashboard?tab=camp");
     } else if (
       pathname === "/headteacher/dashboard" &&
-      searchParams.get("tab") === "overview" &&
-      roleResolved &&
-      !canViewOverview
+      searchParams.get("tab") === "overview"
     ) {
       router.replace("/headteacher/dashboard?tab=camp");
     }
-  }, [searchParams, router, pathname, canViewOverview, roleResolved]);
+  }, [searchParams, router, pathname]);
 
   return null;
 }
@@ -230,31 +215,6 @@ function TabDefaultRedirect({
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [canViewOverview, setCanViewOverview] = useState(false);
-  const [roleResolved, setRoleResolved] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((teacher) => {
-        const roles = new Set<string>([
-          ...(Array.isArray(teacher?.roles) ? teacher.roles : []),
-          ...(teacher?.role ? [teacher.role] : []),
-        ]);
-
-        setCanViewOverview(
-          roles.has("ADMIN") ||
-            roles.has("HEADTEACHER") ||
-            roles.has("CAMP_LEADER"),
-        );
-      })
-      .catch(() => setCanViewOverview(false))
-      .finally(() => setRoleResolved(true));
-  }, []);
-
-  const menuItems = canViewOverview
-    ? [overviewMenuItem, ...teacherMenuItems]
-    : teacherMenuItems;
 
   return (
     <StatusModalProvider>
@@ -272,7 +232,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           >
             <TeacherSidebar
               collapsed={collapsed}
-              menuItems={menuItems}
+              menuItems={teacherMenuItems}
               setCollapsed={setCollapsed}
             />
           </Suspense>
@@ -285,17 +245,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <Suspense fallback={null}>
           <MobileSidebar
             isOpen={mobileOpen}
-            menuItems={menuItems}
+            menuItems={teacherMenuItems}
             setIsOpen={setMobileOpen}
           />
         </Suspense>
 
         {/* Auto-redirect to default tab */}
         <Suspense fallback={null}>
-          <TabDefaultRedirect
-            canViewOverview={canViewOverview}
-            roleResolved={roleResolved}
-          />
+          <TabDefaultRedirect />
         </Suspense>
       </div>
     </StatusModalProvider>

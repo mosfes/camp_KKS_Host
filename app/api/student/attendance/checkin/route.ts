@@ -18,6 +18,7 @@ async function verifyQR(payload) {
       where: {
         camp_camp_id: cid,
         nonce,
+        method: "QR",
         is_closed: false,
         expires_at: { gt: new Date() },
       },
@@ -37,6 +38,7 @@ async function verifyPin(campId, pin) {
     where: {
       camp_camp_id: campId,
       pin: String(pin).trim(),
+      method: "QR",
       is_closed: false,
       expires_at: { gt: new Date() },
     },
@@ -195,9 +197,14 @@ export async function GET(req) {
       return NextResponse.json({
         isCheckedIn: true,
         checkedAt: record.checkin_time,
+        method: activeSession.method,
       });
     }
   }
 
-  return NextResponse.json({ isCheckedIn: false, checkedAt: null });
+  return NextResponse.json({
+    isCheckedIn: false,
+    checkedAt: null,
+    method: activeSession?.method ?? null,
+  });
 }

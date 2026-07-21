@@ -25,6 +25,7 @@ import {
   ScanLine,
   QrCode,
   KeyRound,
+  Nfc,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
@@ -105,6 +106,9 @@ export default function StudentCampDetailPage() {
   const [attendanceCheckedAt, setAttendanceCheckedAt] = useState<string | null>(
     null,
   );
+  const [attendanceMethod, setAttendanceMethod] = useState<
+    "QR" | "NFC" | null
+  >(null);
   const [qrScanActive, setQrScanActive] = useState(false);
   const [qrScanResult, setQrScanResult] = useState<
     "success" | "alreadyDone" | "error" | null
@@ -191,6 +195,7 @@ export default function StudentCampDetailPage() {
 
         setAttendanceCheckedIn(data.isCheckedIn);
         setAttendanceCheckedAt(data.checkedAt);
+        setAttendanceMethod(data.method === "NFC" ? "NFC" : data.method);
       }
     } catch (err) {
       console.error("Failed to check attendance status", err);
@@ -306,6 +311,12 @@ export default function StudentCampDetailPage() {
   };
 
   const openAttendanceModal = () => {
+    if (attendanceMethod === "NFC" && !attendanceCheckedIn) {
+      toast("รอบนี้ครูจะเช็คชื่อด้วยบัตร NFC กรุณานำบัตรไปแตะที่โทรศัพท์ครู");
+
+      return;
+    }
+
     setQrScanActive(false);
     setIsAttendanceModalOpen(true);
     if (!attendanceCheckedIn && !showPinInput) {
@@ -1078,6 +1089,8 @@ export default function StudentCampDetailPage() {
                                   startContent={
                                     attendanceCheckedIn ? (
                                       <CheckCircle2 size={16} />
+                                    ) : attendanceMethod === "NFC" ? (
+                                      <Nfc size={16} />
                                     ) : (
                                       <QrCode size={16} />
                                     )
@@ -1086,6 +1099,8 @@ export default function StudentCampDetailPage() {
                                 >
                                   {attendanceCheckedIn
                                     ? "เช็คชื่อแล้ว"
+                                    : attendanceMethod === "NFC"
+                                      ? "แตะบัตรกับครู"
                                     : "เช็คชื่อ"}
                                 </Button>
                               </div>

@@ -42,6 +42,7 @@ async function getAllRounds(campId) {
     roundId: s.round_id,
     roundNumber: s.round_number,
     description: s.description || `รอบที่ ${s.round_number}`,
+    method: s.method,
     createdAt: s.generated_at,
     expiresAt: s.expires_at,
     isClosed: s.is_closed,
@@ -67,11 +68,13 @@ export async function GET(request, { params }) {
     active: true,
     campId: cid,
     roundId: session.round_id,
-    qrPayload: buildPayload(cid, session.nonce),
-    pin: session.pin,
+    qrPayload:
+      session.method === "QR" ? buildPayload(cid, session.nonce) : null,
+    pin: session.method === "QR" ? session.pin : null,
     generatedAt: session.generated_at,
     expiresAt: session.expires_at,
     description: session.description,
+    method: session.method,
     rounds,
   });
 }
@@ -86,13 +89,15 @@ export async function POST(request, { params }) {
   const cid = parseInt(campId);
 
   let description = "",
-    durationMinutes = 60;
+    durationMinutes = 60,
+    method = "QR";
 
   try {
     const body = await request.json();
 
     description = body.description || "";
     if (body.durationMinutes) durationMinutes = parseInt(body.durationMinutes);
+    if (body.method === "NFC") method = "NFC";
   } catch {}
 
   // ปิดรอบเก่าที่ยังเปิดอยู่
@@ -134,6 +139,7 @@ export async function POST(request, { params }) {
       round_id: roundId,
       round_number: roundNumber,
       description: roundDescription,
+      method,
       nonce,
       pin,
       generated_at: generatedAt,
@@ -166,7 +172,7 @@ export async function POST(request, { params }) {
       teacher_enrollment_teacher_enrollment_id:
         teacherEnrollment.teacher_enrollment_id,
       description: roundDescription,
-      method: "QR",
+      method,
       round_id: roundId,
       round_number: roundNumber,
       expires_at: expiresAt,
@@ -180,11 +186,12 @@ export async function POST(request, { params }) {
     active: true,
     campId: cid,
     roundId,
-    qrPayload: buildPayload(cid, nonce),
-    pin,
+    qrPayload: method === "QR" ? buildPayload(cid, nonce) : null,
+    pin: method === "QR" ? pin : null,
     generatedAt,
     expiresAt,
     description: description || `รอบที่ ${roundNumber}`,
+    method,
     rounds,
   });
 }
@@ -207,6 +214,11 @@ export async function DELETE(request, { params }) {
       is_closed: true,
       closed_at: new Date(),
     },
+  });
+
+  await prisma.attendance_teachers.updateMany({
+    where: { camp_camp_id: cid, is_closed: false },
+    data: { is_closed: true, closed_at: new Date() },
   });
 
   const rounds = await getAllRounds(cid);

@@ -27,15 +27,18 @@ import {
   Trash2,
   Plus,
   CheckSquare,
+  Nfc,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import NfcAttendancePanel from "./NfcAttendancePanel";
 
 interface RoundInfo {
   roundId: string;
   roundNumber: number;
   description: string;
+  method: "QR" | "NFC";
   createdAt: string;
   expiresAt: string;
   isClosed: boolean;
@@ -62,6 +65,9 @@ export default function AttendanceModal({
   const [qrPin, setQrPin] = useState<string | null>(null);
   const [qrExpiresAt, setQrExpiresAt] = useState<Date | null>(null);
   const [durationMinutes, setDurationMinutes] = useState("60");
+  const [attendanceMethod, setAttendanceMethod] = useState<"QR" | "NFC">(
+    "QR",
+  );
   const [roundDescription, setRoundDescription] = useState("");
   const [qrLoading, setQrLoading] = useState(false);
   const [pinCopied, setPinCopied] = useState(false);
@@ -127,6 +133,7 @@ export default function AttendanceModal({
         setQrPin(data.pin ?? null);
         setQrExpiresAt(data.expiresAt ? new Date(data.expiresAt) : null);
         setActiveRoundId(data.roundId);
+        setAttendanceMethod(data.method === "NFC" ? "NFC" : "QR");
 
         return { roundId: data.roundId, rounds: fetchedRounds };
       } else {
@@ -181,6 +188,7 @@ export default function AttendanceModal({
         body: JSON.stringify({
           durationMinutes,
           description: roundDescription,
+          method: attendanceMethod,
         }),
       });
 
@@ -191,6 +199,7 @@ export default function AttendanceModal({
       setQrPin(data.pin ?? null);
       setQrExpiresAt(data.expiresAt ? new Date(data.expiresAt) : null);
       setActiveRoundId(data.roundId);
+      setAttendanceMethod(data.method === "NFC" ? "NFC" : "QR");
       setRounds(data.rounds ?? []);
       setSelectedRoundId(data.roundId);
       setPinCopied(false);
@@ -388,16 +397,27 @@ export default function AttendanceModal({
             {/* Body */}
             <ModalBody className="py-6 px-6 bg-[#f5f5f2]/30">
               <div className="space-y-4">
-                {/* ─── QR Section ─── */}
+                {/* ─── Attendance method section ─── */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
                     <div className="flex items-center gap-2">
-                      <QrCode className="text-[#6b857a] shrink-0" size={20} />
+                      {activeRoundId && attendanceMethod === "NFC" ? (
+                        <Nfc className="text-[#6b857a] shrink-0" size={20} />
+                      ) : (
+                        <QrCode
+                          className="text-[#6b857a] shrink-0"
+                          size={20}
+                        />
+                      )}
                       <h3 className="font-bold text-gray-900">
-                        QR Code สำหรับเช็คชื่อ
+                        {activeRoundId
+                          ? attendanceMethod === "NFC"
+                            ? "เช็คชื่อด้วยบัตร NFC"
+                            : "QR Code สำหรับเช็คชื่อ"
+                          : "เปิดรอบการเช็คชื่อ"}
                       </h3>
                     </div>
-                    {qrPayload && (
+                    {activeRoundId && (
                       <div className="sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
                         <button
                           className="flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors whitespace-nowrap"
@@ -410,7 +430,7 @@ export default function AttendanceModal({
                     )}
                   </div>
 
-                  {qrExpiresAt && qrPayload && (
+                  {qrExpiresAt && activeRoundId && (
                     <p className="text-[12px] text-red-500 sm:text-right mb-3 sm:-mt-3 font-semibold text-center sm:text-right">
                       หมดเวลาเช็คชื่อ:{" "}
                       {qrExpiresAt.toLocaleTimeString("th-TH", {
@@ -425,8 +445,15 @@ export default function AttendanceModal({
                       <div className="w-52 h-52 bg-gray-100 rounded-2xl flex items-center justify-center">
                         <div className="w-8 h-8 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
                       </div>
-                    ) : qrPayload ? (
-                      <>
+                    ) : activeRoundId ? (
+                      attendanceMethod === "NFC" ? (
+                        <NfcAttendancePanel
+                          campId={campId}
+                          roundId={activeRoundId}
+                          onDataChanged={() => fetchResults(activeRoundId)}
+                        />
+                      ) : qrPayload ? (
+                        <>
                         <div className="p-4 bg-white border-4 border-[#6b857a]/20 rounded-2xl shadow-inner">
                           <QRCode
                             bgColor="#ffffff"
@@ -477,7 +504,12 @@ export default function AttendanceModal({
                             </div>
                           </div>
                         )}
-                      </>
+                        </>
+                      ) : (
+                        <p className="py-8 text-sm text-red-500">
+                          ไม่สามารถสร้าง QR Code ของรอบนี้ได้
+                        </p>
+                      )
                     ) : (
                       /* ─── Create New Round ─── */
                       <div className="flex flex-col items-center gap-4 py-4 w-full">
@@ -504,6 +536,24 @@ export default function AttendanceModal({
                               setRoundDescription(e.target.value)
                             }
                           />
+                          <Select
+                            classNames={{ trigger: "bg-white" }}
+                            label="วิธีเช็คชื่อ"
+                            selectedKeys={[attendanceMethod]}
+                            variant="bordered"
+                            onSelectionChange={(keys) =>
+                              setAttendanceMethod(
+                                Array.from(keys)[0] === "NFC" ? "NFC" : "QR",
+                              )
+                            }
+                          >
+                            <SelectItem key="QR" textValue="QR Code / PIN">
+                              QR Code / PIN
+                            </SelectItem>
+                            <SelectItem key="NFC" textValue="บัตร NFC">
+                              บัตร NFC (แตะที่โทรศัพท์ครู)
+                            </SelectItem>
+                          </Select>
                           <Select
                             classNames={{ trigger: "bg-white" }}
                             label="ระยะเวลาเช็คชื่อ"
@@ -581,6 +631,9 @@ export default function AttendanceModal({
                               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                             )}
                             {round.description}
+                            <span className="text-[10px] opacity-75">
+                              {round.method === "NFC" ? "NFC" : "QR"}
+                            </span>
                             {isActive && (
                               <span className="text-[10px] opacity-75">
                                 ● กำลังเปิด

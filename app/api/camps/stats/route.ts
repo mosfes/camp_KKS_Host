@@ -16,6 +16,26 @@ export async function GET() {
   const teacherId = teacher.teachers_id;
 
   try {
+    const role = String(teacher.role || "TEACHER").toUpperCase();
+    const hasOverviewRole = role === "ADMIN" || role === "CAMP_LEADER";
+
+    if (!hasOverviewRole) {
+      const ownedCamp = await prisma.camp.findFirst({
+        where: {
+          created_by_teacher_id: teacherId,
+          deletedAt: null,
+        },
+        select: { camp_id: true },
+      });
+
+      if (!ownedCamp) {
+        return NextResponse.json(
+          { error: "ไม่มีสิทธิ์เข้าถึงภาพรวมระบบ" },
+          { status: 403 },
+        );
+      }
+    }
+
     const rawCamps = await prisma.camp.findMany({
       where: { deletedAt: null },
       select: {
