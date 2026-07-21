@@ -61,6 +61,7 @@ export default async function Home() {
             </ClerkLoading>
             <ClerkLoaded>
               <SignIn
+                forceRedirectUrl="/api/auth/sync-session"
                 appearance={{
                   elements: {
                     logoImage: {

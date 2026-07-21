@@ -17,19 +17,28 @@ import {
 import { HeadteacherNavbar } from "@/components/Headteacher";
 import { StatusModalProvider } from "@/components/StatusModalProvider";
 
-const menuItems = [
-  { id: "overview", label: "ภาพรวมระบบ", icon: PieChart },
+const overviewMenuItem = {
+  id: "overview",
+  label: "ภาพรวมระบบ",
+  icon: PieChart,
+};
+
+const teacherMenuItems = [
   { id: "homeroom", label: "นักเรียนประจำชั้น", icon: Users },
   { id: "camp", label: "ค่ายที่เกี่ยวข้อง", icon: Tent },
 ];
+
+type MenuItem = (typeof teacherMenuItems)[number];
 
 /* ── Sidebar (Desktop only) ─────────────────────────────────── */
 function TeacherSidebar({
   collapsed,
   setCollapsed,
+  menuItems,
 }: {
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
+  menuItems: MenuItem[];
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -108,9 +117,11 @@ function TeacherSidebar({
 function MobileSidebar({
   isOpen,
   setIsOpen,
+  menuItems,
 }: {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
+  menuItems: MenuItem[];
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -123,10 +134,12 @@ function MobileSidebar({
       }`}
     >
       {/* Overlay */}
-      <div
+      <button
+        aria-label="ปิดเมนูครู"
         className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
           isOpen ? "opacity-100" : "opacity-0"
         }`}
+        type="button"
         onClick={() => setIsOpen(false)}
       />
 
@@ -184,7 +197,13 @@ function MobileSidebar({
 }
 
 /* ── Auto-redirect to default tab ───────────────────────────── */
-function TabDefaultRedirect() {
+function TabDefaultRedirect({
+  canViewOverview,
+  roleResolved,
+}: {
+  canViewOverview: boolean;
+  roleResolved: boolean;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -194,8 +213,15 @@ function TabDefaultRedirect() {
     // ไม่ redirect เมื่ออยู่ใน subpage เช่น /headteacher/dashboard/camp/[id]
     if (pathname === "/headteacher/dashboard" && !searchParams.get("tab")) {
       router.replace("/headteacher/dashboard?tab=camp");
+    } else if (
+      pathname === "/headteacher/dashboard" &&
+      searchParams.get("tab") === "overview" &&
+      roleResolved &&
+      !canViewOverview
+    ) {
+      router.replace("/headteacher/dashboard?tab=camp");
     }
-  }, [searchParams, router, pathname]);
+  }, [searchParams, router, pathname, canViewOverview, roleResolved]);
 
   return null;
 }
@@ -204,6 +230,31 @@ function TabDefaultRedirect() {
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [canViewOverview, setCanViewOverview] = useState(false);
+  const [roleResolved, setRoleResolved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((teacher) => {
+        const roles = new Set<string>([
+          ...(Array.isArray(teacher?.roles) ? teacher.roles : []),
+          ...(teacher?.role ? [teacher.role] : []),
+        ]);
+
+        setCanViewOverview(
+          roles.has("ADMIN") ||
+            roles.has("HEADTEACHER") ||
+            roles.has("CAMP_LEADER"),
+        );
+      })
+      .catch(() => setCanViewOverview(false))
+      .finally(() => setRoleResolved(true));
+  }, []);
+
+  const menuItems = canViewOverview
+    ? [overviewMenuItem, ...teacherMenuItems]
+    : teacherMenuItems;
 
   return (
     <StatusModalProvider>
@@ -219,7 +270,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <div className="hidden md:block w-56 bg-white border-r border-gray-200 sticky top-[64px] h-[calc(100vh-64px)]" />
             }
           >
-            <TeacherSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+            <TeacherSidebar
+              collapsed={collapsed}
+              menuItems={menuItems}
+              setCollapsed={setCollapsed}
+            />
           </Suspense>
 
           {/* Page Content */}
@@ -228,12 +283,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
         {/* Mobile Sidebar */}
         <Suspense fallback={null}>
-          <MobileSidebar isOpen={mobileOpen} setIsOpen={setMobileOpen} />
+          <MobileSidebar
+            isOpen={mobileOpen}
+            menuItems={menuItems}
+            setIsOpen={setMobileOpen}
+          />
         </Suspense>
 
         {/* Auto-redirect to default tab */}
         <Suspense fallback={null}>
-          <TabDefaultRedirect />
+          <TabDefaultRedirect
+            canViewOverview={canViewOverview}
+            roleResolved={roleResolved}
+          />
         </Suspense>
       </div>
     </StatusModalProvider>

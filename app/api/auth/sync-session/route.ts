@@ -11,7 +11,13 @@ import { prisma } from "@/lib/db";
  */
 export async function GET(req: any) {
   const { userId } = await auth();
-  const to = new URL(req.url).searchParams.get("to") || "/";
+  const requestedPath = new URL(req.url).searchParams.get("to");
+
+  // รับเฉพาะ path ภายในเว็บไซต์ ป้องกัน external redirect
+  const safeRequestedPath =
+    requestedPath?.startsWith("/") && !requestedPath.startsWith("//")
+      ? requestedPath
+      : null;
 
   if (!userId) {
     return NextResponse.redirect(new URL("/", req.url));
@@ -24,8 +30,6 @@ export async function GET(req: any) {
     if (!email) {
       return NextResponse.redirect(new URL("/", req.url));
     }
-    const response = NextResponse.redirect(new URL(to, req.url));
-
     const { SignJWT } = await import("jose");
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
@@ -47,6 +51,9 @@ export async function GET(req: any) {
         .setExpirationTime("7d")
         .sign(secret);
 
+      const destination = safeRequestedPath || "/headteacher/dashboard";
+      const response = NextResponse.redirect(new URL(destination, req.url));
+
       response.cookies.set("teacher_session", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -54,6 +61,8 @@ export async function GET(req: any) {
         path: "/",
         maxAge: 60 * 60 * 24 * 7,
       });
+      response.cookies.delete("student_session");
+      response.cookies.delete("parent_session");
 
       return response;
     }
@@ -75,6 +84,9 @@ export async function GET(req: any) {
         .setExpirationTime("7d")
         .sign(secret);
 
+      const destination = safeRequestedPath || "/student/dashboard";
+      const response = NextResponse.redirect(new URL(destination, req.url));
+
       response.cookies.set("student_session", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -82,6 +94,8 @@ export async function GET(req: any) {
         path: "/",
         maxAge: 60 * 60 * 24 * 7,
       });
+      response.cookies.delete("teacher_session");
+      response.cookies.delete("parent_session");
 
       return response;
     }
