@@ -299,10 +299,13 @@ model teacher_enrollment {
 }
 
 model student_enrollment {
-  student_enrollment_id    Int       @id @default(autoincrement())
-  enrolled_at              DateTime? // null = ยังไม่ได้กดเข้าร่วม
-  shirt_size               String?   @db.VarChar(10) // null = ยังไม่ได้ระบุ
-  location_sharing_enabled Boolean   @default(true)
+  student_enrollment_id           Int       @id @default(autoincrement())
+  enrolled_at                     DateTime? // null = ยังไม่ได้กดเข้าร่วม
+  shirt_size                      String?   @db.VarChar(10) // null = ยังไม่ได้ระบุ
+  location_sharing_enabled        Boolean   @default(false)
+  location_consent_at             DateTime?
+  location_consent_by             String?   @db.VarChar(20)
+  location_consent_notice_version String?   @db.VarChar(20)
   // jorn DateTime @default(now()) // นักเรียนลงทะเบียน
 
   student_students_id Int

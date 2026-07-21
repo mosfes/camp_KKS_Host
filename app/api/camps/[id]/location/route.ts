@@ -28,8 +28,11 @@ const updateSchema = coordinateSchema.extend({
   accuracy: z.number().finite().min(0).max(100000).optional().nullable(),
 });
 
+const LOCATION_NOTICE_VERSION = "2026-07-16";
+
 const studentSharingSchema = z.object({
   enabled: z.boolean(),
+  noticeVersion: z.literal(LOCATION_NOTICE_VERSION).optional(),
 });
 
 async function authorize(context: { params: Promise<{ id: string }> }) {
@@ -84,6 +87,16 @@ function studentName(student: {
   return `${student.prefix_name ?? ""}${student.firstname} ${student.lastname}`;
 }
 
+function isUnderTen(birthday: Date | null) {
+  if (!birthday) return false;
+
+  const tenthBirthday = new Date(birthday);
+
+  tenthBirthday.setFullYear(tenthBirthday.getFullYear() + 10);
+
+  return tenthBirthday > new Date();
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
@@ -126,7 +139,9 @@ export async function GET(
     accuracy: number | null;
     recorded_at: Date;
   }> = [];
-  let studentSharingEnabled = true;
+  let studentSharingEnabled = false;
+  let hasActiveEnrollment = false;
+  let requiresGuardianConsent = false;
 
   if (viewer.kind === "teacher") {
     const enrollments = await prisma.student_enrollment.findMany({
@@ -134,6 +149,8 @@ export async function GET(
       orderBy: { student_students_id: "asc" },
       select: {
         location_sharing_enabled: true,
+        location_consent_at: true,
+        location_consent_notice_version: true,
         student: {
           select: {
             students_id: true,
@@ -156,14 +173,33 @@ export async function GET(
       },
     });
 
-    students = enrollments.map(({ student, location_sharing_enabled }) => ({
-      studentId: student.students_id,
-      name: studentName(student),
-      sharingEnabled: location_sharing_enabled,
-      latest: camp.location_sharing_enabled
-        ? (student.student_location_update[0] ?? null)
-        : null,
-    }));
+    students = enrollments.map(
+      ({
+        student,
+        location_sharing_enabled,
+        location_consent_at,
+        location_consent_notice_version,
+      }) => {
+        const hasValidConsent =
+          location_sharing_enabled &&
+          location_consent_at != null &&
+          location_consent_notice_version === LOCATION_NOTICE_VERSION;
+        const latest = student.student_location_update[0] ?? null;
+
+        return {
+          studentId: student.students_id,
+          name: studentName(student),
+          sharingEnabled: hasValidConsent,
+          latest:
+            camp.location_sharing_enabled &&
+            hasValidConsent &&
+            latest &&
+            latest.recorded_at >= location_consent_at
+              ? latest
+              : null,
+        };
+      },
+    );
   } else {
     const enrollment = await prisma.student_enrollment.findUnique({
       where: {
@@ -172,10 +208,20 @@ export async function GET(
           camp_camp_id: campId,
         },
       },
-      select: { location_sharing_enabled: true },
+      select: {
+        location_sharing_enabled: true,
+        location_consent_at: true,
+        location_consent_notice_version: true,
+        enrolled_at: true,
+      },
     });
 
-    studentSharingEnabled = enrollment?.location_sharing_enabled ?? true;
+    studentSharingEnabled = Boolean(
+      enrollment?.location_sharing_enabled &&
+        enrollment.location_consent_at &&
+        enrollment.location_consent_notice_version === LOCATION_NOTICE_VERSION,
+    );
+    hasActiveEnrollment = enrollment?.enrolled_at != null;
 
     const student = await prisma.students.findUnique({
       where: { students_id: viewer.studentId },
@@ -184,18 +230,22 @@ export async function GET(
         prefix_name: true,
         firstname: true,
         lastname: true,
+        birthday: true,
       },
     });
 
     if (student) {
-      if (camp.location_sharing_enabled) {
+      requiresGuardianConsent = isUnderTen(student.birthday);
+
+      if (camp.location_sharing_enabled && studentSharingEnabled) {
         viewerPath = await prisma.student_location_update.findMany({
           where: {
             camp_camp_id: campId,
             student_students_id: viewer.studentId,
+            recorded_at: { gte: enrollment!.location_consent_at! },
           },
           orderBy: { recorded_at: "desc" },
-          take: 500,
+          take: 1,
           select: {
             latitude: true,
             longitude: true,
@@ -203,7 +253,6 @@ export async function GET(
             recorded_at: true,
           },
         });
-        viewerPath.reverse();
       }
 
       students = [
@@ -240,6 +289,19 @@ export async function GET(
       permissions: {
         canConfigure: access.canConfigure,
         canSubmitStudentLocation: access.canSubmitStudentLocation,
+        canManageStudentSharing:
+          (viewer.kind === "student" &&
+            access.canSubmitStudentLocation &&
+            !requiresGuardianConsent) ||
+          (viewer.kind === "parent" && hasActiveEnrollment),
+      },
+      privacy: {
+        noticeVersion: LOCATION_NOTICE_VERSION,
+        purpose:
+          "ใช้เพื่อดูแลความปลอดภัยและประสานงานระหว่างการเดินทางของค่ายนี้เท่านั้น",
+        recipients: "ครูที่เกี่ยวข้องกับค่ายและผู้ปกครองของนักเรียน",
+        retention: "ระบบเก็บเฉพาะพิกัดล่าสุด และลบเมื่อปิดแชร์หรือปิดการติดตาม",
+        requiresGuardianConsent,
       },
       trackingLabel:
         viewer.kind === "teacher"
@@ -303,17 +365,25 @@ export async function PUT(
               destination_longitude: body.destination.longitude,
             };
 
-    await prisma.camp.update({
-      where: { camp_id: auth.campId },
-      data: {
-        ...destinationData,
-        ...(body.sharingEnabled !== undefined && {
-          location_sharing_enabled: body.sharingEnabled,
-        }),
-        ...(body.updateIntervalMinutes !== undefined && {
-          location_update_interval: body.updateIntervalMinutes,
-        }),
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.camp.update({
+        where: { camp_id: auth.campId },
+        data: {
+          ...destinationData,
+          ...(body.sharingEnabled !== undefined && {
+            location_sharing_enabled: body.sharingEnabled,
+          }),
+          ...(body.updateIntervalMinutes !== undefined && {
+            location_update_interval: body.updateIntervalMinutes,
+          }),
+        },
+      });
+
+      if (body.sharingEnabled === false || body.destination === null) {
+        await tx.student_location_update.deleteMany({
+          where: { camp_camp_id: auth.campId },
+        });
+      }
     });
 
     return NextResponse.json({ success: true });
@@ -339,24 +409,84 @@ export async function PATCH(
   const auth = await authorize(context);
 
   if (auth.error) return auth.error;
-  if (auth.viewer.kind !== "student" || !auth.access.canSubmitStudentLocation) {
+  if (
+    (auth.viewer.kind === "student" && !auth.access.canSubmitStudentLocation) ||
+    auth.viewer.kind === "teacher"
+  ) {
     return NextResponse.json(
-      { error: "เฉพาะนักเรียนที่ลงทะเบียนค่ายเท่านั้นที่ตั้งค่าการแชร์ได้" },
+      { error: "ไม่มีสิทธิ์ตั้งค่าการแชร์ตำแหน่งของนักเรียน" },
       { status: 403 },
     );
   }
+  const studentId = auth.viewer.studentId;
+  const consentBy = auth.viewer.kind;
 
   try {
     const body = studentSharingSchema.parse(await request.json());
-
-    await prisma.student_enrollment.update({
+    const enrollment = await prisma.student_enrollment.findUnique({
       where: {
         student_students_id_camp_camp_id: {
-          student_students_id: auth.viewer.studentId,
+          student_students_id: studentId,
           camp_camp_id: auth.campId,
         },
       },
-      data: { location_sharing_enabled: body.enabled },
+      select: { enrolled_at: true },
+    });
+
+    if (enrollment?.enrolled_at == null) {
+      return NextResponse.json(
+        { error: "นักเรียนต้องลงทะเบียนค่ายก่อนตั้งค่าการแชร์ตำแหน่ง" },
+        { status: 403 },
+      );
+    }
+
+    if (body.enabled && body.noticeVersion !== LOCATION_NOTICE_VERSION) {
+      return NextResponse.json(
+        { error: "กรุณารับทราบรายละเอียดการใช้ข้อมูลตำแหน่งก่อน" },
+        { status: 400 },
+      );
+    }
+
+    if (body.enabled && consentBy === "student") {
+      const student = await prisma.students.findUnique({
+        where: { students_id: studentId },
+        select: { birthday: true },
+      });
+
+      if (isUnderTen(student?.birthday ?? null)) {
+        return NextResponse.json(
+          { error: "นักเรียนอายุต่ำกว่า 10 ปีต้องให้ผู้ปกครองเป็นผู้เปิดแชร์" },
+          { status: 403 },
+        );
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.student_enrollment.update({
+        where: {
+          student_students_id_camp_camp_id: {
+            student_students_id: studentId,
+            camp_camp_id: auth.campId,
+          },
+        },
+        data: {
+          location_sharing_enabled: body.enabled,
+          location_consent_at: body.enabled ? new Date() : null,
+          location_consent_by: body.enabled ? consentBy : null,
+          location_consent_notice_version: body.enabled
+            ? LOCATION_NOTICE_VERSION
+            : null,
+        },
+      });
+
+      if (!body.enabled) {
+        await tx.student_location_update.deleteMany({
+          where: {
+            camp_camp_id: auth.campId,
+            student_students_id: studentId,
+          },
+        });
+      }
     });
 
     return NextResponse.json({
@@ -391,6 +521,7 @@ export async function POST(
       { status: 403 },
     );
   }
+  const studentId = auth.viewer.studentId;
 
   try {
     const body = updateSchema.parse(await request.json());
@@ -409,34 +540,51 @@ export async function POST(
     const enrollment = await prisma.student_enrollment.findUnique({
       where: {
         student_students_id_camp_camp_id: {
-          student_students_id: auth.viewer.studentId,
+          student_students_id: studentId,
           camp_camp_id: auth.campId,
         },
       },
-      select: { location_sharing_enabled: true },
+      select: {
+        location_sharing_enabled: true,
+        location_consent_at: true,
+        location_consent_notice_version: true,
+      },
     });
 
-    if (!enrollment?.location_sharing_enabled) {
+    if (
+      !enrollment?.location_sharing_enabled ||
+      !enrollment.location_consent_at ||
+      enrollment.location_consent_notice_version !== LOCATION_NOTICE_VERSION
+    ) {
       return NextResponse.json(
         { error: "นักเรียนปิดการแชร์ตำแหน่งอยู่" },
         { status: 409 },
       );
     }
 
-    const update = await prisma.student_location_update.create({
-      data: {
-        camp_camp_id: auth.campId,
-        student_students_id: auth.viewer.studentId,
-        latitude: body.latitude,
-        longitude: body.longitude,
-        accuracy: body.accuracy ?? null,
-      },
-      select: {
-        latitude: true,
-        longitude: true,
-        accuracy: true,
-        recorded_at: true,
-      },
+    const update = await prisma.$transaction(async (tx) => {
+      await tx.student_location_update.deleteMany({
+        where: {
+          camp_camp_id: auth.campId,
+          student_students_id: studentId,
+        },
+      });
+
+      return tx.student_location_update.create({
+        data: {
+          camp_camp_id: auth.campId,
+          student_students_id: studentId,
+          latitude: body.latitude,
+          longitude: body.longitude,
+          accuracy: body.accuracy ?? null,
+        },
+        select: {
+          latitude: true,
+          longitude: true,
+          accuracy: true,
+          recorded_at: true,
+        },
+      });
     });
 
     return NextResponse.json({ success: true, update }, { status: 201 });

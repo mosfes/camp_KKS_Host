@@ -88,4 +88,4 @@ export function getVideoSource(value: string): VideoSource | null {
 }
 
 export const supportedVideoUrlMessage =
-  "รองรับลิงก์ YouTube, Vimeo, Google Drive หรือไฟล์ MP4 ที่เปิดให้ดูได้";
+  "รองรับลิงก์ YouTube หรือ Google Drive ที่เปิดให้ดูได้";

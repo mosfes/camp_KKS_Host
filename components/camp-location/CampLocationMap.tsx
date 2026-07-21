@@ -13,6 +13,7 @@ interface CampLocationMapProps {
   destination: (MapPoint & { name: string; address?: string | null }) | null;
   students: Array<MapPoint & { studentId: number; name: string }>;
   path: MapPoint[];
+  routePath?: MapPoint[];
   editable?: boolean;
   onMapClick?: (point: MapPoint) => void;
 }
@@ -21,6 +22,7 @@ export default function CampLocationMap({
   destination,
   students,
   path,
+  routePath = [],
   editable = false,
   onMapClick,
 }: CampLocationMapProps) {
@@ -31,7 +33,8 @@ export default function CampLocationMap({
   const studentMarkersRef = useRef(
     new Map<number, google.maps.marker.AdvancedMarkerElement>(),
   );
-  const polylineRef = useRef<google.maps.Polyline | null>(null);
+  const historyPolylineRef = useRef<google.maps.Polyline | null>(null);
+  const routePolylineRef = useRef<google.maps.Polyline | null>(null);
   const clickListenerRef = useRef<google.maps.MapsEventListener | null>(null);
   const viewportSignatureRef = useRef("");
   const librariesRef = useRef<
@@ -79,7 +82,8 @@ export default function CampLocationMap({
         marker.map = null;
       });
       studentMarkersRef.current.clear();
-      polylineRef.current?.setMap(null);
+      historyPolylineRef.current?.setMap(null);
+      routePolylineRef.current?.setMap(null);
     };
   }, []);
 
@@ -94,8 +98,8 @@ export default function CampLocationMap({
       lng: point.longitude,
     }));
 
-    if (!polylineRef.current) {
-      polylineRef.current = new libraries.maps.Polyline({
+    if (!historyPolylineRef.current) {
+      historyPolylineRef.current = new libraries.maps.Polyline({
         map,
         path: pathPositions,
         strokeColor: "#2563eb",
@@ -103,7 +107,25 @@ export default function CampLocationMap({
         strokeWeight: 5,
       });
     } else {
-      polylineRef.current.setPath(pathPositions);
+      historyPolylineRef.current.setPath(pathPositions);
+    }
+
+    const routePositions = routePath.map((point) => ({
+      lat: point.latitude,
+      lng: point.longitude,
+    }));
+
+    if (!routePolylineRef.current) {
+      routePolylineRef.current = new libraries.maps.Polyline({
+        map,
+        path: routePositions,
+        strokeColor: "#16a34a",
+        strokeOpacity: 0.95,
+        strokeWeight: 6,
+        zIndex: 2,
+      });
+    } else {
+      routePolylineRef.current.setPath(routePositions);
     }
 
     if (destination) {
@@ -181,6 +203,7 @@ export default function CampLocationMap({
 
     const visiblePoints = [
       ...pathPositions,
+      ...routePositions,
       ...students.map((student) => ({
         lat: student.latitude,
         lng: student.longitude,
@@ -208,7 +231,7 @@ export default function CampLocationMap({
         map.fitBounds(bounds, 32);
       }
     }
-  }, [destination, path, ready, students]);
+  }, [destination, path, ready, routePath, students]);
 
   useEffect(() => {
     const map = mapRef.current;

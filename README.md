@@ -2,9 +2,11 @@
 
 ## Camp location tracking
 
-The camp tracking screen uses Google Maps JavaScript API and Places API (New)
-for both destination lookup and map display. Create a browser API key restricted
-to the application's HTTPS domains and enable both APIs:
+The camp tracking screen uses Google Maps JavaScript API, Places API (New),
+Routes API, and Geocoding API for destination lookup, map display, the student's
+route to the camp destination, and the student's current Thai administrative
+area. Create a browser API key restricted to the application's HTTPS domains and
+enable all four APIs:
 
 ```env
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_browser_key
@@ -17,6 +19,19 @@ Teachers can search or click the Google Map to pin a destination and choose a
 5- or 10-minute update interval. Each registered student publishes only their
 own location while the camp page is open. Teachers can see all registered
 students, while a parent can see only the student linked to their account.
+
+The student route uses the Routes Essentials tier without live traffic. It is
+calculated only when the student opens the map, cached in the browser for 15
+minutes, reused while the student remains within 500 metres of the cached
+origin, and manually refreshable with a one-minute cooldown. If Routes API is
+unavailable, the UI falls back to a straight line and an approximate distance.
+The reverse-geocoded subdistrict, district, and province are stored in the same
+cache and requested only after the student opens the map, so page visits and GPS
+polling do not generate additional Geocoding requests.
+To prevent unexpected charges, set billing alerts for the project and a daily
+quota for Routes: Compute Routes Essentials. A daily Routes quota around 300
+requests keeps a 31-day month below 10,000 requests. Dynamic Maps usage is
+reduced by loading the map only after the student presses the display button.
 
 This is a template for creating applications using Next.js 14 (app directory) and HeroUI (v2).
 

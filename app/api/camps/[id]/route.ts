@@ -372,6 +372,12 @@ export async function PUT(request, context) {
       },
     });
 
+    if (body.location_sharing_enabled === false || body.destination === null) {
+      await prisma.student_location_update.deleteMany({
+        where: { camp_camp_id: campId },
+      });
+    }
+
     // อัพเดท daily schedule (ทำเมื่อส่ง dailySchedule มาเท่านั้น)
     if (body.dailySchedule !== undefined) {
       // Delete existing time slots first (foreign key constraint)

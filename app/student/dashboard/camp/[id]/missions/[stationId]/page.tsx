@@ -958,7 +958,7 @@ export default function StudentStationDetailPage() {
                                       className="w-full rounded-xl border border-gray-300 py-3 pl-10 pr-3 text-sm text-gray-900 outline-none transition-colors focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20 disabled:bg-gray-50"
                                       disabled={isSubmitted}
                                       inputMode="url"
-                                      placeholder="วางลิงก์ YouTube, Vimeo, Google Drive หรือ MP4"
+                                      placeholder="วางลิงก์ YouTube หรือ Google Drive"
                                       type="url"
                                       value={answers[q.question_id] || ""}
                                       onChange={(e) =>

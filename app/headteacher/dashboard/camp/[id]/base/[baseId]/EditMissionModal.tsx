@@ -409,7 +409,7 @@ export default function EditMissionModal({
                 <div className="space-y-4">
                   {type === "VIDEO_SUBMISSION" && (
                     <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-700">
-                      นักเรียนจะส่งลิงก์ YouTube, Vimeo, Google Drive หรือ MP4
+                      นักเรียนจะส่งลิงก์ YouTube หรือ Google Drive
                     </p>
                   )}
                   <div className="flex items-center gap-2">

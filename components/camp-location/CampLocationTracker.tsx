@@ -18,12 +18,17 @@ import {
   LocateFixed,
   MapPin,
   Navigation,
+  RefreshCw,
   Search,
   ShieldCheck,
   Users,
 } from "lucide-react";
 
-import { searchGooglePlaces } from "@/lib/google-maps-client";
+import {
+  computeGoogleDrivingRoute,
+  reverseGeocodeThaiAdministrativeArea,
+  searchGooglePlaces,
+} from "@/lib/google-maps-client";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 const CampLocationMap = dynamic(() => import("./CampLocationMap"), {
@@ -62,6 +67,14 @@ interface TrackerData {
   permissions: {
     canConfigure: boolean;
     canSubmitStudentLocation: boolean;
+    canManageStudentSharing: boolean;
+  };
+  privacy: {
+    noticeVersion: string;
+    purpose: string;
+    recipients: string;
+    retention: string;
+    requiresGuardianConsent: boolean;
   };
   trackingLabel: string;
 }
@@ -70,8 +83,217 @@ interface PlaceResult extends Destination {
   id: string;
 }
 
+interface StudentRouteSummary {
+  path: MapPoint[];
+  distanceMeters: number;
+  durationMillis: number | null;
+  calculatedAt: string;
+  origin: MapPoint;
+  destination: MapPoint;
+  source: "google" | "straight";
+  administrativeArea: string | null;
+}
+
+interface StudentAdministrativeAreaCache {
+  administrativeArea: string | null;
+  resolvedAt: string;
+  origin: MapPoint;
+}
+
 const SEARCH_COOLDOWN_SECONDS = 3;
 const SEARCH_CACHE_LIMIT = 20;
+const ROUTE_CACHE_MAX_AGE_MS = 15 * 60_000;
+const ROUTE_ORIGIN_REUSE_DISTANCE_METERS = 500;
+const ROUTE_DESTINATION_REUSE_DISTANCE_METERS = 50;
+const ROUTE_REFRESH_COOLDOWN_MS = 60_000;
+const ADMINISTRATIVE_AREA_CACHE_MAX_AGE_MS = 15 * 60_000;
+const ADMINISTRATIVE_AREA_FAILURE_CACHE_MAX_AGE_MS = 60_000;
+const ADMINISTRATIVE_AREA_REUSE_DISTANCE_METERS = 500;
+
+function distanceBetweenPoints(a: MapPoint, b: MapPoint) {
+  const earthRadiusMeters = 6_371_000;
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const latitudeDelta = toRadians(b.latitude - a.latitude);
+  const longitudeDelta = toRadians(b.longitude - a.longitude);
+  const latitudeA = toRadians(a.latitude);
+  const latitudeB = toRadians(b.latitude);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(latitudeA) *
+      Math.cos(latitudeB) *
+      Math.sin(longitudeDelta / 2) ** 2;
+  const normalizedHaversine = Math.min(1, Math.max(0, haversine));
+
+  return (
+    earthRadiusMeters *
+    2 *
+    Math.atan2(
+      Math.sqrt(normalizedHaversine),
+      Math.sqrt(1 - normalizedHaversine),
+    )
+  );
+}
+
+function formatRouteDistance(distanceMeters: number) {
+  if (distanceMeters < 1_000) {
+    return `${Math.max(0, Math.round(distanceMeters / 10) * 10).toLocaleString(
+      "th-TH",
+    )} เมตร`;
+  }
+
+  return `${(distanceMeters / 1_000).toLocaleString("th-TH", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} กม.`;
+}
+
+function formatRouteDuration(durationMillis: number | null) {
+  if (durationMillis == null || !Number.isFinite(durationMillis)) return null;
+
+  const totalMinutes = Math.max(1, Math.round(durationMillis / 60_000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (!hours) return `ประมาณ ${minutes} นาที`;
+  if (!minutes) return `ประมาณ ${hours} ชม.`;
+
+  return `ประมาณ ${hours} ชม. ${minutes} นาที`;
+}
+
+function formatRouteDetail(route: StudentRouteSummary) {
+  if (route.source === "straight") return "ระยะเส้นตรงโดยประมาณ";
+
+  return formatRouteDuration(route.durationMillis) || "เส้นทางตามถนน";
+}
+
+function routeCacheKey(campId: number) {
+  return `camp-student-route-v2:${campId}`;
+}
+
+function isValidMapPoint(point: MapPoint | null | undefined) {
+  return (
+    point != null &&
+    Number.isFinite(point.latitude) &&
+    point.latitude >= -90 &&
+    point.latitude <= 90 &&
+    Number.isFinite(point.longitude) &&
+    point.longitude >= -180 &&
+    point.longitude <= 180
+  );
+}
+
+function administrativeAreaCacheKey(campId: number) {
+  return `camp-student-administrative-area-v1:${campId}`;
+}
+
+function readCachedAdministrativeArea(campId: number) {
+  try {
+    const raw = window.localStorage.getItem(administrativeAreaCacheKey(campId));
+
+    if (!raw) return null;
+
+    const cached = JSON.parse(raw) as StudentAdministrativeAreaCache;
+
+    if (
+      !cached ||
+      !isValidMapPoint(cached.origin) ||
+      !cached.resolvedAt ||
+      (cached.administrativeArea != null &&
+        typeof cached.administrativeArea !== "string")
+    ) {
+      return null;
+    }
+
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedAdministrativeArea(
+  campId: number,
+  cache: StudentAdministrativeAreaCache,
+) {
+  try {
+    window.localStorage.setItem(
+      administrativeAreaCacheKey(campId),
+      JSON.stringify(cache),
+    );
+  } catch {
+    // ยังแสดงชื่อพื้นที่ได้ตามปกติ แม้เบราว์เซอร์จะปิด localStorage
+  }
+}
+
+function canReuseCachedAdministrativeArea(
+  cached: StudentAdministrativeAreaCache,
+  origin: MapPoint,
+) {
+  const resolvedAt = new Date(cached.resolvedAt).getTime();
+  const maxAge =
+    cached.administrativeArea == null
+      ? ADMINISTRATIVE_AREA_FAILURE_CACHE_MAX_AGE_MS
+      : ADMINISTRATIVE_AREA_CACHE_MAX_AGE_MS;
+
+  return (
+    Number.isFinite(resolvedAt) &&
+    Date.now() - resolvedAt <= maxAge &&
+    distanceBetweenPoints(cached.origin, origin) <=
+      ADMINISTRATIVE_AREA_REUSE_DISTANCE_METERS
+  );
+}
+
+function readCachedRoute(campId: number) {
+  try {
+    const raw = window.localStorage.getItem(routeCacheKey(campId));
+
+    if (!raw) return null;
+
+    const cached = JSON.parse(raw) as StudentRouteSummary;
+
+    if (
+      !cached ||
+      !Array.isArray(cached.path) ||
+      !cached.path.length ||
+      !cached.path.every(isValidMapPoint) ||
+      !Number.isFinite(cached.distanceMeters) ||
+      !cached.calculatedAt ||
+      !isValidMapPoint(cached.origin) ||
+      !isValidMapPoint(cached.destination) ||
+      !["google", "straight"].includes(cached.source)
+    ) {
+      return null;
+    }
+
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedRoute(campId: number, route: StudentRouteSummary) {
+  try {
+    window.localStorage.setItem(routeCacheKey(campId), JSON.stringify(route));
+  } catch {
+    // ยังแสดงเส้นทางได้ตามปกติ แม้เบราว์เซอร์จะปิด localStorage
+  }
+}
+
+function canReuseCachedRoute(
+  cached: StudentRouteSummary,
+  origin: MapPoint,
+  destination: MapPoint,
+) {
+  const calculatedAt = new Date(cached.calculatedAt).getTime();
+
+  return (
+    Number.isFinite(calculatedAt) &&
+    Date.now() - calculatedAt <= ROUTE_CACHE_MAX_AGE_MS &&
+    distanceBetweenPoints(cached.origin, origin) <=
+      ROUTE_ORIGIN_REUSE_DISTANCE_METERS &&
+    distanceBetweenPoints(cached.destination, destination) <=
+      ROUTE_DESTINATION_REUSE_DISTANCE_METERS
+  );
+}
 
 function placeSearchError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
@@ -152,8 +374,29 @@ export default function CampLocationTracker({
     number | null
   >(null);
   const [studentMapVisible, setStudentMapVisible] = useState(false);
+  const [studentRoute, setStudentRoute] = useState<StudentRouteSummary | null>(
+    null,
+  );
+  const [studentRouteLoading, setStudentRouteLoading] = useState(false);
+  const [studentRouteNotice, setStudentRouteNotice] = useState("");
+  const [studentAdministrativeArea, setStudentAdministrativeArea] = useState<
+    string | null
+  >(null);
+  const [
+    studentAdministrativeAreaLoading,
+    setStudentAdministrativeAreaLoading,
+  ] = useState(false);
+  const [
+    studentAdministrativeAreaResolved,
+    setStudentAdministrativeAreaResolved,
+  ] = useState(false);
   const autoStartedRef = useRef(false);
   const publishingRef = useRef(false);
+  const lastRouteRequestAtRef = useRef(0);
+  const administrativeAreaLookupRef = useRef<{
+    signature: string;
+    promise: Promise<string | null>;
+  } | null>(null);
   const searchCacheRef = useRef(new Map<string, PlaceResult[]>());
 
   useEffect(() => {
@@ -318,7 +561,10 @@ export default function CampLocationTracker({
       const response = await fetch(`/api/camps/${campId}/location`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
+        body: JSON.stringify({
+          enabled,
+          ...(enabled && { noticeVersion: data?.privacy.noticeVersion }),
+        }),
       });
 
       if (!response.ok) throw new Error(await responseError(response));
@@ -477,6 +723,175 @@ export default function CampLocationTracker({
     () => (viewer === "teacher" ? [] : (data?.viewerPath ?? [])),
     [data?.viewerPath, viewer],
   );
+  const resolveStudentAdministrativeArea = useCallback(
+    async (origin: MapPoint) => {
+      const cached = readCachedAdministrativeArea(campId);
+
+      if (cached && canReuseCachedAdministrativeArea(cached, origin)) {
+        setStudentAdministrativeArea(cached.administrativeArea);
+        setStudentAdministrativeAreaLoading(false);
+        setStudentAdministrativeAreaResolved(true);
+
+        return cached.administrativeArea;
+      }
+
+      const signature = `${origin.latitude.toFixed(
+        5,
+      )},${origin.longitude.toFixed(5)}`;
+      const existingLookup = administrativeAreaLookupRef.current;
+      const lookup =
+        existingLookup?.signature === signature
+          ? existingLookup.promise
+          : reverseGeocodeThaiAdministrativeArea(origin);
+
+      administrativeAreaLookupRef.current = { signature, promise: lookup };
+      setStudentAdministrativeAreaLoading(true);
+      setStudentAdministrativeAreaResolved(false);
+
+      try {
+        const administrativeArea = await lookup;
+
+        saveCachedAdministrativeArea(campId, {
+          administrativeArea,
+          resolvedAt: new Date().toISOString(),
+          origin,
+        });
+        setStudentAdministrativeArea(administrativeArea);
+        setStudentAdministrativeAreaResolved(true);
+
+        return administrativeArea;
+      } catch {
+        saveCachedAdministrativeArea(campId, {
+          administrativeArea: null,
+          resolvedAt: new Date().toISOString(),
+          origin,
+        });
+        setStudentAdministrativeArea(null);
+        setStudentAdministrativeAreaResolved(true);
+
+        return null;
+      } finally {
+        if (administrativeAreaLookupRef.current?.signature === signature) {
+          administrativeAreaLookupRef.current = null;
+        }
+        setStudentAdministrativeAreaLoading(false);
+      }
+    },
+    [campId],
+  );
+  const loadStudentRoute = useCallback(
+    async (forceRefresh = false) => {
+      if (viewer !== "student") return;
+
+      const origin = data?.students[0]?.latest ?? null;
+      const destination = showDestination ? (data?.destination ?? null) : null;
+
+      if (!origin || !destination) {
+        setStudentRoute(null);
+        setStudentRouteNotice(
+          !origin
+            ? "ยังไม่มีพิกัดล่าสุด จึงยังคำนวณระยะทางไม่ได้"
+            : "ค่ายนี้ยังไม่ได้กำหนดจุดหมาย",
+        );
+
+        return;
+      }
+
+      const administrativeAreaPromise =
+        resolveStudentAdministrativeArea(origin);
+      const cached = readCachedRoute(campId);
+
+      if (
+        !forceRefresh &&
+        cached &&
+        canReuseCachedRoute(cached, origin, destination)
+      ) {
+        const administrativeArea = await administrativeAreaPromise;
+        const cachedWithAdministrativeArea = {
+          ...cached,
+          administrativeArea:
+            administrativeArea ?? cached.administrativeArea ?? null,
+        };
+
+        setStudentRoute(cachedWithAdministrativeArea);
+        saveCachedRoute(campId, cachedWithAdministrativeArea);
+        setStudentRouteNotice(
+          cached.source === "google"
+            ? "ใช้เส้นทางที่บันทึกไว้เพื่อลดการเรียก Google Routes"
+            : "แสดงระยะเส้นตรงโดยประมาณจากข้อมูลที่บันทึกไว้",
+        );
+
+        return;
+      }
+
+      const now = Date.now();
+
+      if (
+        forceRefresh &&
+        now - lastRouteRequestAtRef.current < ROUTE_REFRESH_COOLDOWN_MS
+      ) {
+        setStudentRouteNotice(
+          "เพิ่งคำนวณเส้นทางไป กรุณารอประมาณ 1 นาทีก่อนอัปเดตอีกครั้ง",
+        );
+
+        return;
+      }
+
+      lastRouteRequestAtRef.current = now;
+      setStudentRouteLoading(true);
+      setStudentRouteNotice("");
+
+      try {
+        let summary: StudentRouteSummary;
+        const administrativeArea = await administrativeAreaPromise;
+
+        try {
+          const route = await computeGoogleDrivingRoute(origin, destination);
+
+          summary = {
+            ...route,
+            calculatedAt: new Date().toISOString(),
+            origin,
+            destination,
+            source: "google",
+            administrativeArea,
+          };
+        } catch {
+          summary = {
+            path: [origin, destination],
+            distanceMeters: distanceBetweenPoints(origin, destination),
+            durationMillis: null,
+            calculatedAt: new Date().toISOString(),
+            origin,
+            destination,
+            source: "straight",
+            administrativeArea,
+          };
+        }
+
+        setStudentRoute(summary);
+        saveCachedRoute(campId, summary);
+        setStudentRouteNotice(
+          summary.source === "google"
+            ? "เส้นทางตามถนนแบบไม่รวมสภาพจราจร"
+            : "Google Routes ยังไม่พร้อม จึงแสดงเส้นตรงและระยะโดยประมาณแทน",
+        );
+      } catch {
+        setStudentRoute(null);
+        setStudentRouteNotice("ไม่สามารถโหลดข้อมูลตำแหน่งได้ กรุณาลองใหม่");
+      } finally {
+        setStudentRouteLoading(false);
+      }
+    },
+    [
+      campId,
+      data?.destination,
+      data?.students,
+      resolveStudentAdministrativeArea,
+      showDestination,
+      viewer,
+    ],
+  );
   const handleMapClick = useCallback((point: MapPoint) => {
     setDraftDestination({
       ...point,
@@ -572,7 +987,7 @@ export default function CampLocationTracker({
             </h3>
             <p className="mt-1 text-xs text-slate-500">{data.trackingLabel}</p>
           </div>
-          {viewer === "student" && data.permissions.canSubmitStudentLocation ? (
+          {data.permissions.canManageStudentSharing ? (
             <label
               className={`flex w-fit items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${
                 data.sharingEnabled
@@ -614,6 +1029,25 @@ export default function CampLocationTracker({
                 : "ปิดการติดตามตำแหน่ง"}
             </div>
           )}
+        </div>
+      )}
+
+      {viewer !== "teacher" && (
+        <div className="border-b border-blue-100 bg-blue-50/70 p-4 text-xs leading-5 text-slate-700">
+          <p className="font-bold text-slate-800">
+            รายละเอียดก่อนเปิดแชร์ตำแหน่ง
+          </p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            <li>{data.privacy.purpose}</li>
+            <li>ผู้ที่ดูได้: {data.privacy.recipients}</li>
+            <li>{data.privacy.retention}</li>
+            <li>ปิดแชร์ได้ทุกเมื่อโดยไม่กระทบสิทธิในการเข้าร่วมกิจกรรม</li>
+          </ul>
+          <p className="mt-2 font-medium text-blue-800">
+            {viewer === "student" && data.privacy.requiresGuardianConsent
+              ? "นักเรียนอายุต่ำกว่า 10 ปีต้องให้ผู้ปกครองเข้าสู่ระบบและเป็นผู้เปิดแชร์"
+              : "การเปิดสวิตช์ถือเป็นการยืนยันว่าได้รับทราบรายละเอียดข้างต้น หากนักเรียนยังไม่สามารถให้ความยินยอมเองได้ ให้ผู้ปกครองเป็นผู้เปิด"}
+          </p>
         </div>
       )}
 
@@ -800,13 +1234,26 @@ export default function CampLocationTracker({
             <MapPin className="mt-0.5 shrink-0 text-[#5d7c6f]" size={18} />
             <div className="min-w-0">
               <p className="text-xs font-medium text-slate-500">
-                พิกัดล่าสุดของฉัน
+                ตำแหน่งล่าสุดของฉัน
               </p>
-              <p className="mt-0.5 break-all text-sm font-semibold text-slate-800">
-                {ownLocation?.latest
-                  ? formatCoordinates(ownLocation.latest)
-                  : "ยังไม่มีพิกัดล่าสุด"}
+              <p className="mt-0.5 text-sm font-semibold text-slate-800">
+                {!ownLocation?.latest
+                  ? "ยังไม่มีตำแหน่งล่าสุด"
+                  : !studentMapVisible
+                    ? "กดแสดงแผนที่เพื่อดูตำบล อำเภอ จังหวัด"
+                    : studentAdministrativeAreaLoading
+                      ? "กำลังค้นหาตำบล อำเภอ จังหวัด..."
+                      : studentAdministrativeArea
+                        ? studentAdministrativeArea
+                        : studentAdministrativeAreaResolved
+                          ? "ไม่สามารถระบุชื่อตำบล อำเภอ จังหวัดได้"
+                          : "กำลังเตรียมข้อมูลตำแหน่ง..."}
               </p>
+              {ownLocation?.latest && (
+                <p className="mt-1 text-[11px] font-normal text-slate-400">
+                  พิกัด {formatCoordinates(ownLocation.latest)}
+                </p>
+              )}
               {!studentMapVisible && (
                 <p className="mt-1 text-[11px] text-slate-400">
                   แผนที่จะโหลดเมื่อกดแสดงแผนที่เท่านั้น
@@ -819,12 +1266,85 @@ export default function CampLocationTracker({
               className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#5d7c6f] px-3 text-xs font-semibold text-[#5d7c6f] transition hover:bg-[#5d7c6f] hover:text-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
               disabled={!ownLocation?.latest && !mapDestination}
               type="button"
-              onClick={() => setStudentMapVisible(true)}
+              onClick={() => {
+                setStudentMapVisible(true);
+                void loadStudentRoute();
+              }}
             >
               <LocateFixed size={15} />
               แสดงแผนที่
             </button>
           )}
+        </div>
+      )}
+
+      {viewer === "student" && studentMapVisible && (
+        <div className="border-b border-emerald-100 bg-emerald-50/70 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <Navigation
+                className="mt-0.5 shrink-0 text-emerald-700"
+                size={19}
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-emerald-700">
+                  ระยะทางไปยังจุดหมาย
+                </p>
+                {studentRouteLoading ? (
+                  <p className="mt-0.5 text-sm font-bold text-slate-700">
+                    กำลังคำนวณเส้นทาง...
+                  </p>
+                ) : studentRoute ? (
+                  <>
+                    <p className="mt-0.5 text-xl font-extrabold text-slate-800">
+                      เหลืออีก{" "}
+                      {formatRouteDistance(studentRoute.distanceMeters)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {formatRouteDetail(studentRoute)}
+                      {" · "}
+                      คำนวณล่าสุด{" "}
+                      {new Date(studentRoute.calculatedAt).toLocaleTimeString(
+                        "th-TH",
+                        { hour: "2-digit", minute: "2-digit" },
+                      )}
+                    </p>
+                    {(studentAdministrativeArea ||
+                      studentRoute.administrativeArea) && (
+                      <p className="mt-1 text-xs font-medium text-slate-700">
+                        ตำแหน่งปัจจุบัน:{" "}
+                        {studentAdministrativeArea ||
+                          studentRoute.administrativeArea}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-0.5 text-sm font-semibold text-slate-600">
+                    ยังไม่สามารถคำนวณระยะทางได้
+                  </p>
+                )}
+                {studentRouteNotice && (
+                  <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                    {studentRouteNotice}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-white px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={
+                studentRouteLoading || !ownLocation?.latest || !mapDestination
+              }
+              type="button"
+              onClick={() => void loadStudentRoute(true)}
+            >
+              <RefreshCw
+                className={studentRouteLoading ? "animate-spin" : ""}
+                size={14}
+              />
+              อัปเดตเส้นทาง
+            </button>
+          </div>
         </div>
       )}
 
@@ -835,6 +1355,7 @@ export default function CampLocationTracker({
               destination={mapDestination}
               editable={canConfigureDestination}
               path={mapPath}
+              routePath={viewer === "student" ? (studentRoute?.path ?? []) : []}
               students={studentsOnMap}
               onMapClick={handleMapClick}
             />
