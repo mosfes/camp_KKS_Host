@@ -59,7 +59,9 @@ export async function GET(
             prefix_name: true,
             firstname: true,
             lastname: true,
-            [field]: true,
+            food_allergy: true,
+            chronic_disease: true,
+            remark: true,
           },
         },
       },
@@ -75,7 +77,7 @@ export async function GET(
     >();
 
     for (const e of enrollments) {
-      const raw = (e.student as any)[field] as string | null;
+      const raw = e.student[field];
       if (!raw) continue;
 
       // Normalize: trim, split by common delimiters to handle "โรคA, โรคB"
