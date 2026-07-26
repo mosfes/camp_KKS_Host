@@ -39,6 +39,7 @@ import AttendanceModal from "./AttendanceModal";
 import PrePostTestModal from "./PrePostTestModal";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
 
 interface TimeSlot {
   startTime: string;
@@ -508,6 +509,7 @@ export default function CampDetailPage() {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+      timeZone: BANGKOK_TIME_ZONE,
     });
   };
 

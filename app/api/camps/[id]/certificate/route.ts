@@ -135,7 +135,10 @@ export async function GET(request: Request, context: any) {
       camp.survey.length > 0 &&
       camp.survey[0].is_required_for_cert
     ) {
-      if (enrollment.survey_response.length === 0 && enrollment.certificate.length === 0) {
+      if (
+        enrollment.survey_response.length === 0 &&
+        enrollment.certificate.length === 0
+      ) {
         return NextResponse.json(
           { error: "กรุณาทำแบบประเมินให้เสร็จสิ้นก่อนดาวน์โหลดเกียรติบัตร" },
           { status: 403 },
@@ -149,7 +152,7 @@ export async function GET(request: Request, context: any) {
     let overflowAmount = 0;
 
     if (camp.cert_show_number && camp.cert_number_start != null) {
-      if (enrollment.certificate.length > 0) {
+      if (enrollment.certificate[0]?.certificate_no != null) {
         // นักเรียนเคยได้รับเลขที่แล้ว ใช้เลขเดิม
         assignedCertNo = enrollment.certificate[0].certificate_no;
       } else {
@@ -162,10 +165,12 @@ export async function GET(request: Request, context: any) {
           try {
             // ตรวจสอบก่อนว่า record ถูก insert ไปแล้วหรือยัง (จาก retry รอบก่อน)
             const existing = await prisma.certificate.findUnique({
-              where: { student_enrollment_id: enrollment.student_enrollment_id },
+              where: {
+                student_enrollment_id: enrollment.student_enrollment_id,
+              },
               select: { certificate_no: true },
             });
-            if (existing) {
+            if (existing?.certificate_no != null) {
               assignedCertNo = existing.certificate_no;
               break;
             }
@@ -195,7 +200,7 @@ export async function GET(request: Request, context: any) {
                   usedCertificates
                     .map((r) => r.certificate_no)
                     .filter((n) => n != null)
-                    .map(Number)
+                    .map(Number),
                 );
 
                 let newNo = camp.cert_number_start!;
@@ -204,8 +209,15 @@ export async function GET(request: Request, context: any) {
                 }
 
                 // บันทึกเลขที่ใหม่ — unique constraint คือ safety net สุดท้าย
-                await tx.certificate.create({
-                  data: {
+                await tx.certificate.upsert({
+                  where: {
+                    student_enrollment_id: enrollment.student_enrollment_id,
+                  },
+                  update: {
+                    certificate_no: newNo,
+                    certificate_no_star: newNo,
+                  },
+                  create: {
                     certificate_no: newNo,
                     certificate_no_star: newNo,
                     file_url: "",
@@ -234,7 +246,7 @@ export async function GET(request: Request, context: any) {
                 },
                 select: { certificate_no: true },
               });
-              if (existingCert) {
+              if (existingCert?.certificate_no != null) {
                 assignedCertNo = existingCert.certificate_no;
                 lastError = null;
                 break;
@@ -247,9 +259,7 @@ export async function GET(request: Request, context: any) {
               errMsg.includes("9007") ||
               errMsg.includes("Deadlock")
             ) {
-              await new Promise((r) =>
-                setTimeout(r, 20 + attempt * 30),
-              );
+              await new Promise((r) => setTimeout(r, 20 + attempt * 30));
               continue;
             }
 
@@ -418,6 +428,21 @@ export async function GET(request: Request, context: any) {
 
       const resHeaders = new Headers(imageResponse.headers);
 
+      if (enrollment.certificate.length === 0) {
+        await prisma.certificate.upsert({
+          where: {
+            student_enrollment_id: enrollment.student_enrollment_id,
+          },
+          update: {},
+          create: {
+            certificate_no: assignedCertNo,
+            certificate_no_star: assignedCertNo,
+            file_url: "",
+            student_enrollment_id: enrollment.student_enrollment_id,
+          },
+        });
+      }
+
       resHeaders.set(
         "Content-Disposition",
         `${disposition}; filename="certificate_${student.students_id}_${campId}.png"`,
@@ -527,6 +552,21 @@ export async function GET(request: Request, context: any) {
     }
 
     const pdfBytes = await pdfDoc.save();
+
+    if (enrollment.certificate.length === 0) {
+      await prisma.certificate.upsert({
+        where: {
+          student_enrollment_id: enrollment.student_enrollment_id,
+        },
+        update: {},
+        create: {
+          certificate_no: assignedCertNo,
+          certificate_no_star: assignedCertNo,
+          file_url: "",
+          student_enrollment_id: enrollment.student_enrollment_id,
+        },
+      });
+    }
 
     const pdfHeaders: Record<string, string> = {
       "Content-Type": "application/pdf",

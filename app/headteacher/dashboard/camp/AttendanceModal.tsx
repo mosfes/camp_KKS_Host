@@ -32,6 +32,7 @@ import {
 import QRCode from "react-qr-code";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
 import NfcAttendancePanel from "./NfcAttendancePanel";
 
 interface RoundInfo {
@@ -320,16 +321,10 @@ export default function AttendanceModal({
   };
 
   const formatTime = (d: string | Date) => {
-    const s =
-      typeof d === "string"
-        ? d.endsWith("Z")
-          ? d.slice(0, -1)
-          : d
-        : d.toISOString();
-
-    return new Date(s).toLocaleString("th-TH", {
+    return new Date(d).toLocaleString("th-TH", {
       dateStyle: "short",
       timeStyle: "short",
+      timeZone: BANGKOK_TIME_ZONE,
     });
   };
 
@@ -436,6 +431,7 @@ export default function AttendanceModal({
                       {qrExpiresAt.toLocaleTimeString("th-TH", {
                         hour: "2-digit",
                         minute: "2-digit",
+                        timeZone: BANGKOK_TIME_ZONE,
                       })}
                     </p>
                   )}

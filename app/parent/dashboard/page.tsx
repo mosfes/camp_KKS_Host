@@ -22,6 +22,7 @@ import {
 
 import { ParentNavbar } from "@/components/ParentNavbar";
 import {
+  BANGKOK_TIME_ZONE,
   getBangkokDaysUntil,
   isBangkokDateBefore,
 } from "@/lib/bangkok-date";
@@ -69,6 +70,7 @@ const formatDate = (start: string, end?: string) => {
     year: "numeric",
     month: "short",
     day: "numeric",
+    timeZone: BANGKOK_TIME_ZONE,
   });
 
   if (!end || start === end) return s;
@@ -76,6 +78,7 @@ const formatDate = (start: string, end?: string) => {
     year: "numeric",
     month: "short",
     day: "numeric",
+    timeZone: BANGKOK_TIME_ZONE,
   });
 
   return `${s} - ${e}`;

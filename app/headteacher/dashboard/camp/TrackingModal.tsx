@@ -10,7 +10,15 @@ import {
   Button,
   Pagination,
 } from "@heroui/react";
-import { Search, Trophy, Clock, MapPin, Users } from "lucide-react";
+import {
+  Search,
+  Trophy,
+  Clock,
+  MapPin,
+  Users,
+  Award,
+  CheckCircle2,
+} from "lucide-react";
 
 import CampLocationTracker from "@/components/camp-location/CampLocationTracker";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -22,13 +30,22 @@ interface StudentProgress {
   totalMissions: number;
   progressPercentage: number;
   hasCertificate: boolean;
+  certificateNo: number | null;
+  certificateIssuedAt: string | null;
 }
 
 interface TrackingData {
   campId: number;
   totalMissions: number;
+  summary: {
+    totalStudents: number;
+    issuedCertificates: number;
+    pendingCertificates: number;
+  };
   students: StudentProgress[];
 }
+
+type CertificateFilter = "all" | "issued" | "pending";
 
 interface TrackingModalProps {
   isOpen: boolean;
@@ -47,7 +64,10 @@ export default function TrackingModal({
 }: TrackingModalProps) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<TrackingData | null>(null);
+  const [loadError, setLoadError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [certificateFilter, setCertificateFilter] =
+    useState<CertificateFilter>("all");
   const [page, setPage] = useState(1);
   const [activeSection, setActiveSection] = useState<"location" | "progress">(
     locationTrackingEnabled ? "location" : "progress",
@@ -58,6 +78,7 @@ export default function TrackingModal({
     if (isOpen && campId) {
       fetchTrackingData();
       setSearchQuery("");
+      setCertificateFilter("all");
       setPage(1);
       setActiveSection(locationTrackingEnabled ? "location" : "progress");
     }
@@ -65,19 +86,28 @@ export default function TrackingModal({
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, certificateFilter]);
 
   const fetchTrackingData = async () => {
     try {
       setLoading(true);
       setData(null);
+      setLoadError("");
       const res = await fetch(`/api/camps/${campId}/tracking`);
 
-      if (res.ok) {
-        setData(await res.json());
+      const body = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setLoadError(
+          body?.error || body?._error || "ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่",
+        );
+
+        return;
       }
-    } catch (err) {
-      console.error("Failed to fetch tracking data:", err);
+
+      setData(body);
+    } catch {
+      setLoadError("ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่");
     } finally {
       setLoading(false);
     }
@@ -86,7 +116,14 @@ export default function TrackingModal({
   const filteredStudents = data?.students.filter((student) => {
     const query = searchQuery.trim().toLowerCase();
 
+    const matchesCertificate =
+      certificateFilter === "all" ||
+      (certificateFilter === "issued" && student.hasCertificate) ||
+      (certificateFilter === "pending" && !student.hasCertificate);
+
+    if (!matchesCertificate) return false;
     if (!query) return true;
+
     const matchName = student.name.toLowerCase().includes(query);
     const matchId = String(student.studentId).includes(query);
 
@@ -180,20 +217,93 @@ export default function TrackingModal({
                   </div>
 
                   {data && (
-                    <div className="flex items-center gap-4 mt-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-lg">
-                        <span className="font-semibold text-gray-900">
-                          {data.students.length}
-                        </span>{" "}
-                        คนที่ลงทะเบียน
+                    <section className="mt-4 rounded-2xl border border-gray-200 bg-gray-50/80 p-3 sm:p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#5d7c6f] shadow-sm">
+                          <Award size={18} />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-gray-900">
+                            สถานะการรับเกียรติบัตร
+                          </h3>
+                          <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
+                            “ได้รับแล้ว” หมายถึง
+                            ระบบเคยออกเกียรติบัตรให้นักเรียนแล้ว
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-lg">
-                        <span className="font-semibold text-gray-900">
-                          {data.totalMissions}
-                        </span>{" "}
-                        ภารกิจทั้งหมด
+
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        {[
+                          {
+                            key: "all" as const,
+                            label: "นักเรียนทั้งหมด",
+                            helper: "ทุกสถานะ",
+                            value: data.summary.totalStudents,
+                            activeClass: "border-[#5d7c6f] bg-[#eef4f1]",
+                            iconClass: "bg-[#e2ece7] text-[#5d7c6f]",
+                          },
+                          {
+                            key: "issued" as const,
+                            label: "ได้รับเกียรติบัตรแล้ว",
+                            helper: "มีประวัติออกเกียรติบัตร",
+                            value: data.summary.issuedCertificates,
+                            activeClass: "border-emerald-500 bg-emerald-50",
+                            iconClass: "bg-emerald-100 text-emerald-700",
+                          },
+                          {
+                            key: "pending" as const,
+                            label: "ยังไม่ได้รับเกียรติบัตร",
+                            helper: "ยังไม่มีประวัติออกเกียรติบัตร",
+                            value: data.summary.pendingCertificates,
+                            activeClass: "border-amber-500 bg-amber-50",
+                            iconClass: "bg-amber-100 text-amber-700",
+                          },
+                        ].map((item) => (
+                          <button
+                            key={item.key}
+                            aria-pressed={certificateFilter === item.key}
+                            className={`relative flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                              certificateFilter === item.key
+                                ? `${item.activeClass} shadow-sm`
+                                : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                            }`}
+                            type="button"
+                            onClick={() => setCertificateFilter(item.key)}
+                          >
+                            <span
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${item.iconClass}`}
+                            >
+                              {item.key === "all" ? (
+                                <Users size={17} />
+                              ) : item.key === "issued" ? (
+                                <CheckCircle2 size={17} />
+                              ) : (
+                                <Clock size={17} />
+                              )}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-semibold leading-tight text-gray-800">
+                                {item.label}
+                              </span>
+                              <span className="mt-1 block text-[11px] leading-tight text-gray-500">
+                                {item.helper}
+                              </span>
+                            </span>
+                            <span className="text-xl font-bold text-gray-900">
+                              {item.value}
+                              <span className="ml-1 text-xs font-normal text-gray-500">
+                                คน
+                              </span>
+                            </span>
+                          </button>
+                        ))}
                       </div>
-                    </div>
+
+                      <p className="mt-2 text-center text-[11px] text-gray-400">
+                        กดสถานะด้านบนเพื่อกรองรายชื่อนักเรียน
+                      </p>
+                    </section>
                   )}
                 </>
               )}
@@ -220,12 +330,18 @@ export default function TrackingModal({
                 </div>
               ) : !data ? (
                 <p className="text-center text-gray-400 py-8">
-                  ไม่สามารถโหลดข้อมูลได้
+                  {loadError || "ไม่สามารถโหลดข้อมูลได้"}
                 </p>
               ) : filteredStudents?.length === 0 ? (
                 <div className="text-center py-10 text-gray-400">
                   <Search className="mx-auto mb-2 opacity-30" size={32} />
-                  <p className="text-sm">ไม่พบรายชื่อในระบบ</p>
+                  <p className="text-sm">
+                    {certificateFilter === "issued"
+                      ? "ยังไม่มีนักเรียนที่ได้รับเกียรติบัตร"
+                      : certificateFilter === "pending"
+                        ? "นักเรียนทุกคนได้รับเกียรติบัตรแล้ว"
+                        : "ไม่พบรายชื่อในระบบ"}
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -234,7 +350,7 @@ export default function TrackingModal({
                       key={student.studentId}
                       className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm"
                     >
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0">
                             {(page - 1) * ITEMS_PER_PAGE + i + 1}
@@ -244,14 +360,34 @@ export default function TrackingModal({
                           </h3>
                         </div>
                         {student.hasCertificate ? (
-                          <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-2.5 py-1 rounded-full text-xs font-medium border border-amber-100">
-                            <Trophy size={14} />
-                            <span>ได้รับเกียรติบัตรแล้ว</span>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-100">
+                              <Trophy size={14} />
+                              <span>ได้รับเกียรติบัตรแล้ว</span>
+                            </div>
+                            {(student.certificateNo != null ||
+                              student.certificateIssuedAt) && (
+                              <p className="mt-1 text-[11px] text-gray-400">
+                                {student.certificateNo != null &&
+                                  `เลขที่ ${student.certificateNo}`}
+                                {student.certificateNo != null &&
+                                  student.certificateIssuedAt &&
+                                  " · "}
+                                {student.certificateIssuedAt &&
+                                  new Date(
+                                    student.certificateIssuedAt,
+                                  ).toLocaleDateString("th-TH", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })}
+                              </p>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 bg-gray-50 text-gray-500 px-2.5 py-1 rounded-full text-xs font-medium border border-gray-200">
                             <Clock size={14} />
-                            <span>ยังไม่ได้เกียรติบัตร</span>
+                            <span>ยังไม่ได้รับเกียรติบัตร</span>
                           </div>
                         )}
                       </div>

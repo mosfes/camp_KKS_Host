@@ -34,6 +34,7 @@ import CampLocationTracker from "@/components/camp-location/CampLocationTracker"
 
 import TakeSurveyModal from "../TakeSurveyModal";
 import {
+  BANGKOK_TIME_ZONE,
   getBangkokDaysUntil,
   isBangkokDateBefore,
   isBangkokDateInRange,
@@ -52,6 +53,7 @@ function formatDate(dateString: string) {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: BANGKOK_TIME_ZONE,
   });
 }
 
@@ -1283,6 +1285,7 @@ export default function StudentCampDetailPage() {
                       {new Date(attendanceCheckedAt).toLocaleString("th-TH", {
                         dateStyle: "short",
                         timeStyle: "short",
+                        timeZone: BANGKOK_TIME_ZONE,
                       })}
                     </p>
                   )}

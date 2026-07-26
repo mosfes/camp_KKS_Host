@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
+  BANGKOK_TIME_ZONE,
+  getBangkokDateKey,
   getBangkokDaysUntil,
   isBangkokDateBefore,
 } from "@/lib/bangkok-date";
@@ -28,6 +30,7 @@ const formatDate = (start: string, end?: string) => {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: BANGKOK_TIME_ZONE,
   });
 
   if (!end || start === end) return s;
@@ -35,6 +38,7 @@ const formatDate = (start: string, end?: string) => {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: BANGKOK_TIME_ZONE,
   });
 
   return `${s} - ${e}`;
@@ -523,7 +527,7 @@ function StudentProfileSetupModal({
   const [apiError, setApiError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = Number(getBangkokDateKey().slice(0, 4));
   const days = Array.from({ length: 31 }, (_, i) =>
     (i + 1).toString().padStart(2, "0"),
   );

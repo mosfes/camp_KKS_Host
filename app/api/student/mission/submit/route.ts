@@ -77,7 +77,7 @@ export async function POST(req) {
         data: {
           method: "Code",
           status: newStatus,
-          submitted_at: new Date(Date.now() + 7 * 60 * 60 * 1000), // Thai UTC+7
+          submitted_at: new Date(),
           student_enrollment_id: enrollment.student_enrollment_id,
           mission_mission_id: missionId,
         },
@@ -108,7 +108,7 @@ export async function POST(req) {
         where: { mission_result_id: result.mission_result_id },
         data: {
           status: newStatus,
-          submitted_at: new Date(Date.now() + 7 * 60 * 60 * 1000),
+          submitted_at: new Date(),
         },
       });
     }

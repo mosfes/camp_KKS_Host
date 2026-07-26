@@ -13,7 +13,9 @@ export async function GET(request, context) {
     const params = await context.params;
     const campId = Number(params.id);
 
-    // Verify access (basic ownership or enrolled)
+    // A teacher can reach a camp through ownership, direct enrollment, or a
+    // classroom assigned to the camp. Keep this in sync with the location
+    // tracking authorization so homeroom/co-teachers can see their students.
     const checkAccess = await prisma.camp.findFirst({
       where: {
         camp_id: campId,
@@ -25,6 +27,24 @@ export async function GET(request, context) {
                 {
                   teacher_enrollment: {
                     some: { teacher_teachers_id: teacher.teachers_id },
+                  },
+                },
+                {
+                  camp_classroom: {
+                    some: {
+                      classroom: {
+                        OR: [
+                          { teachers_teachers_id: teacher.teachers_id },
+                          {
+                            classroom_teacher: {
+                              some: {
+                                teacher_teachers_id: teacher.teachers_id,
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    },
                   },
                 },
               ],
@@ -92,13 +112,21 @@ export async function GET(request, context) {
       }
     }
 
-    // 3. Get enrollments and mission results (only for students who have actually enrolled)
+    // 3. Get enrollments and mission results. Include pre-created enrollments
+    // too, because bulk certificate generation can issue certificates to them.
     const enrollments = await prisma.student_enrollment.findMany({
       where: {
         camp_camp_id: campId,
-        enrolled_at: { not: null },
       },
       include: {
+        student: {
+          select: {
+            students_id: true,
+            prefix_name: true,
+            firstname: true,
+            lastname: true,
+          },
+        },
         mission_result: {
           // Keep the numerator aligned with `totalMissions`: historical
           // results for missions (or stations) that were soft-deleted must
@@ -116,10 +144,28 @@ export async function GET(request, context) {
           select: { mission_mission_id: true },
         },
         certificate: {
-          select: { certificate_id: true },
+          select: {
+            certificate_id: true,
+            certificate_no: true,
+            issue_date: true,
+          },
+          take: 1,
         },
       },
     });
+
+    // Direct enrollments may not belong to a classroom attached to the camp.
+    // Add them so the certificate totals represent everyone in the camp.
+    for (const enrollment of enrollments) {
+      const student = enrollment.student;
+
+      if (!studentMap.has(student.students_id)) {
+        studentMap.set(student.students_id, {
+          studentId: student.students_id,
+          name: `${student.prefix_name ?? ""}${student.firstname} ${student.lastname}`,
+        });
+      }
+    }
 
     const enrollmentMap = new Map(
       enrollments.map((enr) => [enr.student_students_id, enr]),
@@ -150,6 +196,9 @@ export async function GET(request, context) {
         totalMissions,
         progressPercentage,
         hasCertificate: enr ? enr.certificate.length > 0 : false,
+        certificateNo: enr?.certificate[0]?.certificate_no ?? null,
+        certificateIssuedAt:
+          enr?.certificate[0]?.issue_date?.toISOString() ?? null,
       });
     }
 
@@ -162,9 +211,18 @@ export async function GET(request, context) {
       return a.name.localeCompare(b.name, "th");
     });
 
+    const issuedCertificates = studentsProgress.filter(
+      (student) => student.hasCertificate,
+    ).length;
+
     return NextResponse.json({
       campId,
       totalMissions,
+      summary: {
+        totalStudents: studentsProgress.length,
+        issuedCertificates,
+        pendingCertificates: studentsProgress.length - issuedCertificates,
+      },
       students: studentsProgress,
     });
   } catch {

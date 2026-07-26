@@ -26,7 +26,7 @@ interface Student {
     remark: string | null;
     tel: string | null;
   };
-  certificate?: { certificate_no: number }[];
+  certificate?: { certificate_no: number | null }[];
 }
 
 interface Summary {
@@ -385,9 +385,11 @@ export default function CampStudentsPage() {
                         )}
                       </td>
                       <td className="p-4 text-gray-900 font-medium">
-                        {row.certificate && row.certificate.length > 0
-                          ? row.certificate[0].certificate_no
-                          : <span className="text-gray-400">-</span>}
+                        {row.certificate && row.certificate.length > 0 ? (
+                          (row.certificate[0].certificate_no ?? "-")
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </td>
                       <td className="p-4">
                         {row.student.remark &&

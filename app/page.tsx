@@ -8,9 +8,11 @@ import {
 } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
+
 import { prisma } from "@/lib/db";
 import AutoLogout from "@/components/AutoLogout";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import InAppBrowserGuard from "@/components/InAppBrowserGuard";
 
 export default async function Home() {
   const { userId } = await auth();
@@ -51,32 +53,34 @@ export default async function Home() {
       <SignedOut>
         <div className="flex min-h-screen items-center justify-center bg-[#f5f0e7]">
           <div className="flex flex-col items-center gap-4">
-            <ClerkLoading>
-              <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[400px] w-full max-w-[400px]">
-                <LoadingSpinner className="mb-4" />
-                <p className="text-gray-500 font-medium">
-                  กำลังโหลดเข้าสู่ระบบ...
-                </p>
-              </div>
-            </ClerkLoading>
-            <ClerkLoaded>
-              <SignIn
-                forceRedirectUrl="/api/auth/sync-session"
-                appearance={{
-                  elements: {
-                    logoImage: {
-                      width: "100px",
-                      height: "auto",
+            <InAppBrowserGuard>
+              <ClerkLoading>
+                <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[400px] w-full max-w-[400px]">
+                  <LoadingSpinner className="mb-4" />
+                  <p className="text-gray-500 font-medium">
+                    กำลังโหลดเข้าสู่ระบบ...
+                  </p>
+                </div>
+              </ClerkLoading>
+              <ClerkLoaded>
+                <SignIn
+                  appearance={{
+                    elements: {
+                      logoImage: {
+                        width: "100px",
+                        height: "auto",
+                      },
+                      socialButtonsBlockButton: "h-[40px] text-base",
+                      formButtonPrimary: "!bg-sage hover:bg-blue-700 ",
+                      footerAction: "!hidden",
+                      footer: "!hidden",
                     },
-                    socialButtonsBlockButton: "h-[40px] text-base",
-                    formButtonPrimary: "!bg-sage hover:bg-blue-700 ",
-                    footerAction: "!hidden",
-                    footer: "!hidden",
-                  },
-                }}
-                routing="hash"
-              />
-            </ClerkLoaded>
+                  }}
+                  forceRedirectUrl="/api/auth/sync-session"
+                  routing="hash"
+                />
+              </ClerkLoaded>
+            </InAppBrowserGuard>
             {/* ปุ่มไปหน้าล็อคอินผู้ปกครอง */}
             {/* <Link
               className="w-full max-w-[400px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-[#a0b8af] bg-white text-[#5d7c6f] text-sm font-medium shadow-sm hover:bg-[#eaf1ee] hover:border-[#5d7c6f] transition-all"

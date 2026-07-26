@@ -29,6 +29,7 @@ import {
 
 import LoadingSpinner from "@/components/LoadingSpinner";
 import adminService from "@/app/service/adminService";
+import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
 
 const emptyQualityOverview = {
   evaluatedCamps: 0,
@@ -224,6 +225,7 @@ export default function OverviewManager() {
       day: "numeric",
       month: "short",
       year: "numeric",
+      timeZone: BANGKOK_TIME_ZONE,
     });
 
   const headerActionsNode = mounted

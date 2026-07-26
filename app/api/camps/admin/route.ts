@@ -5,17 +5,6 @@ import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
 import { getBangkokDateAsUtcMidnight } from "@/lib/bangkok-date";
 
-/** แปลง Date (UTC จาก DB) → ISO string +07:00 สำหรับแสดงผล */
-const toThaiISOString = (date) => {
-  if (!date) return null;
-  const d = new Date(date);
-  const offset = 7 * 60;
-  const localMs = d.getTime() + offset * 60 * 1000;
-  const local = new Date(localMs);
-
-  return local.toISOString().replace("Z", "+07:00");
-};
-
 /** ตรวจสอบ ADMIN role */
 async function requireAdmin() {
   const { teacher, error: authError } = await requireTeacher();
@@ -116,30 +105,8 @@ export async function GET(request) {
       prisma.camp.count({ where }),
     ]);
 
-    const dateFields = [
-      "start_date",
-      "end_date",
-      "start_regis_date",
-      "end_regis_date",
-      "start_shirt_date",
-      "end_shirt_date",
-    ];
-
-    const campsFormatted = camps.map((camp) => {
-      const updated = { ...camp };
-
-      for (const f of dateFields) {
-        if (updated[f]) updated[f] = toThaiISOString(updated[f]);
-      }
-      if (updated.deletedAt) {
-        updated.deletedAt = toThaiISOString(updated.deletedAt);
-      }
-
-      return updated;
-    });
-
     return NextResponse.json({
-      data: campsFormatted,
+      data: camps,
       pagination: {
         page,
         limit,

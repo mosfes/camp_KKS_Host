@@ -60,8 +60,8 @@ export async function GET(request: Request, context: any) {
           where: { deletedAt: null },
           include: {
             mission: true,
-          }
-        }
+          },
+        },
       },
     });
 
@@ -69,8 +69,14 @@ export async function GET(request: Request, context: any) {
       return NextResponse.json({ error: "Camp not found" }, { status: 404 });
     }
 
-    if (camp.created_by_teacher_id !== teacher.teachers_id && teacher.role !== "ADMIN") {
-       return NextResponse.json({ error: "ไม่มีสิทธิ์ดาวน์โหลดเกียรติบัตรแบบรวมสำหรับค่ายนี้" }, { status: 403 });
+    if (
+      camp.created_by_teacher_id !== teacher.teachers_id &&
+      teacher.role !== "ADMIN"
+    ) {
+      return NextResponse.json(
+        { error: "ไม่มีสิทธิ์ดาวน์โหลดเกียรติบัตรแบบรวมสำหรับค่ายนี้" },
+        { status: 403 },
+      );
     }
 
     if (!camp.img_certificate_url) {
@@ -120,14 +126,14 @@ export async function GET(request: Request, context: any) {
         },
         mission_result: {
           where: { status: "completed" },
-          select: { mission_mission_id: true }
-        }
+          select: { mission_mission_id: true },
+        },
       },
       orderBy: {
         student: {
-          students_id: "asc", 
-        }
-      }
+          students_id: "asc",
+        },
+      },
     });
 
     // "all" และ "passed_conditions" หมายถึงเฉพาะผู้ที่กดลงทะเบียนแล้ว
@@ -137,13 +143,17 @@ export async function GET(request: Request, context: any) {
     }
 
     if (condition === "passed_conditions") {
-      const isSurveyRequired = camp.survey && camp.survey.length > 0 && camp.survey[0].is_required_for_cert;
-      
+      const isSurveyRequired =
+        camp.survey &&
+        camp.survey.length > 0 &&
+        camp.survey[0].is_required_for_cert;
+
       const hasPostTest = camp.station?.some((s) =>
         s.mission?.some((m) => m.type === "POST_TEST"),
       );
-      
-      const requiredStations = camp.station?.filter((s) => s.is_required_for_cert) || [];
+
+      const requiredStations =
+        camp.station?.filter((s) => s.is_required_for_cert) || [];
 
       enrollments = enrollments.filter((e) => {
         // 1. Survey Check
@@ -151,24 +161,33 @@ export async function GET(request: Request, context: any) {
           return false;
         }
 
-        const completedMissionIds = new Set(e.mission_result.map((r) => r.mission_mission_id));
+        const completedMissionIds = new Set(
+          e.mission_result.map((r) => r.mission_mission_id),
+        );
 
         // 2. Post-Test Check
         if (hasPostTest) {
           const isPostTestCompleted = camp.station?.some((s) =>
-            s.mission?.some((m) => m.type === "POST_TEST" && completedMissionIds.has(m.mission_id))
+            s.mission?.some(
+              (m) =>
+                m.type === "POST_TEST" && completedMissionIds.has(m.mission_id),
+            ),
           );
           if (!isPostTestCompleted) return false;
         }
 
         // 3. Required Stations Check
-        const areRequiredStationsCompleted = requiredStations.every((station) => {
-          const stationMissions = station.mission || [];
-          if (stationMissions.length === 0) return true;
-          
-          const completedMissions = stationMissions.filter((m) => completedMissionIds.has(m.mission_id));
-          return completedMissions.length === stationMissions.length;
-        });
+        const areRequiredStationsCompleted = requiredStations.every(
+          (station) => {
+            const stationMissions = station.mission || [];
+            if (stationMissions.length === 0) return true;
+
+            const completedMissions = stationMissions.filter((m) =>
+              completedMissionIds.has(m.mission_id),
+            );
+            return completedMissions.length === stationMissions.length;
+          },
+        );
 
         if (!areRequiredStationsCompleted) return false;
 
@@ -188,7 +207,9 @@ export async function GET(request: Request, context: any) {
     }
 
     if (camp.cert_show_number && camp.cert_number_start != null) {
-      const studentsWithoutCert = enrollments.filter(e => e.certificate.length === 0);
+      const studentsWithoutCert = enrollments.filter(
+        (e) => e.certificate[0]?.certificate_no == null,
+      );
 
       if (studentsWithoutCert.length > 0) {
         const MAX_RETRIES = 5;
@@ -197,11 +218,12 @@ export async function GET(request: Request, context: any) {
 
         for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
           try {
-            await prisma.$transaction(async (tx) => {
-              await tx.$executeRaw`SET @@tidb_txn_mode = 'pessimistic'`;
-              await tx.$queryRaw`SELECT camp_id FROM camp WHERE camp_id = ${campId} FOR UPDATE`;
+            await prisma.$transaction(
+              async (tx) => {
+                await tx.$executeRaw`SET @@tidb_txn_mode = 'pessimistic'`;
+                await tx.$queryRaw`SELECT camp_id FROM camp WHERE camp_id = ${campId} FOR UPDATE`;
 
-              const usedCertificates: any[] = await tx.$queryRaw`
+                const usedCertificates: any[] = await tx.$queryRaw`
                   SELECT c.certificate_no
                   FROM certificate c
                   INNER JOIN student_enrollment se
@@ -209,41 +231,50 @@ export async function GET(request: Request, context: any) {
                   WHERE se.camp_camp_id = ${campId}
                     AND c.certificate_no >= ${camp.cert_number_start}`;
 
-              const usedSet = new Set(
-                usedCertificates
-                  .map((r) => r.certificate_no)
-                  .filter((n) => n != null)
-                  .map(Number)
-              );
+                const usedSet = new Set(
+                  usedCertificates
+                    .map((r) => r.certificate_no)
+                    .filter((n) => n != null)
+                    .map(Number),
+                );
 
-              let newNo = camp.cert_number_start!;
+                let newNo = camp.cert_number_start!;
 
-              for (const student of studentsWithoutCert) {
-                while (usedSet.has(newNo)) {
+                for (const student of studentsWithoutCert) {
+                  while (usedSet.has(newNo)) {
+                    newNo++;
+                  }
+
+                  await tx.certificate.upsert({
+                    where: {
+                      student_enrollment_id: student.student_enrollment_id,
+                    },
+                    update: {
+                      certificate_no: newNo,
+                      certificate_no_star: newNo,
+                    },
+                    create: {
+                      certificate_no: newNo,
+                      certificate_no_star: newNo,
+                      file_url: "",
+                      student_enrollment_id: student.student_enrollment_id,
+                    },
+                  });
+
+                  student.certificate = [{ certificate_no: newNo }];
+                  usedSet.add(newNo);
                   newNo++;
                 }
-
-                await tx.certificate.create({
-                  data: {
-                    certificate_no: newNo,
-                    certificate_no_star: newNo,
-                    file_url: "",
-                    student_enrollment_id: student.student_enrollment_id,
-                  },
-                });
-
-                student.certificate = [{ certificate_no: newNo }];
-                usedSet.add(newNo);
-                newNo++;
-              }
-            }, { isolationLevel: "ReadCommitted" });
+              },
+              { isolationLevel: "ReadCommitted" },
+            );
 
             success = true;
-            break; 
+            break;
           } catch (txError: any) {
             lastError = txError;
             const errMsg = String(txError?.message ?? "");
-            
+
             if (
               errMsg.includes("Write conflict") ||
               errMsg.includes("9007") ||
@@ -259,8 +290,17 @@ export async function GET(request: Request, context: any) {
         }
 
         if (!success && lastError) {
-          console.error("Bulk certificate assignment failed after retries:", lastError);
-          return NextResponse.json({ error: "เกิดข้อผิดพลาดในการรันเลขที่เกียรติบัตร กรุณาลองใหม่อีกครั้ง" }, { status: 500 });
+          console.error(
+            "Bulk certificate assignment failed after retries:",
+            lastError,
+          );
+          return NextResponse.json(
+            {
+              error:
+                "เกิดข้อผิดพลาดในการรันเลขที่เกียรติบัตร กรุณาลองใหม่อีกครั้ง",
+            },
+            { status: 500 },
+          );
         }
       }
     }
@@ -350,29 +390,50 @@ export async function GET(request: Request, context: any) {
       if (showNumber && enrollment.certificate.length > 0) {
         const assignedCertNo = enrollment.certificate[0].certificate_no;
         if (assignedCertNo != null) {
-            const numberText = buildCertNumberText(
-              camp.cert_number_prefix || "",
-              assignedCertNo,
-              camp.cert_number_is_thai ?? false,
-              camp.cert_year,
-            );
-            
-            const numTextWidth = customFont.widthOfTextAtSize(numberText, numFontSize);
-            const numX = (numXPercent / 100) * width - numTextWidth / 2;
-            const numY = (1 - numYPercent / 100) * height - numFontSize / 3;
-            
-            page.drawText(numberText, {
-              x: numX,
-              y: numY,
-              size: numFontSize,
-              font: customFont,
-              color: rgb(numColorRgb.r, numColorRgb.g, numColorRgb.b),
-            });
+          const numberText = buildCertNumberText(
+            camp.cert_number_prefix || "",
+            assignedCertNo,
+            camp.cert_number_is_thai ?? false,
+            camp.cert_year,
+          );
+
+          const numTextWidth = customFont.widthOfTextAtSize(
+            numberText,
+            numFontSize,
+          );
+          const numX = (numXPercent / 100) * width - numTextWidth / 2;
+          const numY = (1 - numYPercent / 100) * height - numFontSize / 3;
+
+          page.drawText(numberText, {
+            x: numX,
+            y: numY,
+            size: numFontSize,
+            font: customFont,
+            color: rgb(numColorRgb.r, numColorRgb.g, numColorRgb.b),
+          });
         }
       }
     }
 
     const pdfBytes = await pdfDoc.save();
+
+    if (!camp.cert_show_number || camp.cert_number_start == null) {
+      const untrackedCertificates = enrollments
+        .filter((enrollment) => enrollment.certificate.length === 0)
+        .map((enrollment) => ({
+          certificate_no: null,
+          certificate_no_star: null,
+          file_url: "",
+          student_enrollment_id: enrollment.student_enrollment_id,
+        }));
+
+      if (untrackedCertificates.length > 0) {
+        await prisma.certificate.createMany({
+          data: untrackedCertificates,
+          skipDuplicates: true,
+        });
+      }
+    }
 
     return new NextResponse(pdfBytes, {
       status: 200,

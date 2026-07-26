@@ -16,6 +16,10 @@ import {
   ChevronLeft,
   Camera,
 } from "lucide-react";
+import {
+  BANGKOK_TIME_ZONE,
+  getBangkokDateKey,
+} from "@/lib/bangkok-date";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface StudentProfile {
@@ -72,12 +76,13 @@ const months = [
 
 const formatBirthdayThai = (iso: string | null) => {
   if (!iso) return "ไม่ระบุ";
-  const d = new Date(iso);
-  const day = d.getDate();
-  const month = months[d.getMonth()].label;
-  const year = d.getFullYear() + 543;
 
-  return `${day} ${month} ${year}`;
+  return new Date(iso).toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: BANGKOK_TIME_ZONE,
+  });
 };
 
 const displayVal = (v: string | null | undefined) =>
@@ -197,7 +202,7 @@ export default function StudentProfilePage() {
   // Birthday parts state
   const [bday, setBday] = useState({ day: "", month: "", year: "" });
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = Number(getBangkokDateKey().slice(0, 4));
   const days = Array.from({ length: 31 }, (_, i) =>
     (i + 1).toString().padStart(2, "0"),
   );

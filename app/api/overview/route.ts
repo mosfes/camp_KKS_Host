@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 
 import { requireTeacher } from "@/lib/auth";
+import { getBangkokDateAsUtcMidnight } from "@/lib/bangkok-date";
 import { prisma } from "@/lib/db";
 
 const recommendationPattern =
@@ -176,7 +177,7 @@ export async function GET(request) {
     });
 
     // 5. Camp operations overview (all active camps)
-    const now = new Date();
+    const today = getBangkokDateAsUtcMidnight();
     const [
       activeCamps,
       upcomingCamps,
@@ -188,15 +189,15 @@ export async function GET(request) {
       prisma.camp.count({
         where: {
           deletedAt: null,
-          start_date: { lte: now },
-          end_date: { gte: now },
+          start_date: { lte: today },
+          end_date: { gte: today },
         },
       }),
       prisma.camp.count({
-        where: { deletedAt: null, start_date: { gt: now } },
+        where: { deletedAt: null, start_date: { gt: today } },
       }),
       prisma.camp.count({
-        where: { deletedAt: null, end_date: { lt: now } },
+        where: { deletedAt: null, end_date: { lt: today } },
       }),
       prisma.student_enrollment.count({
         where: { enrolled_at: { not: null }, camp: { deletedAt: null } },
@@ -205,7 +206,7 @@ export async function GET(request) {
         where: { deletedAt: null, station: { none: {} } },
       }),
       prisma.camp.findMany({
-        where: { deletedAt: null, start_date: { gt: now } },
+        where: { deletedAt: null, start_date: { gt: today } },
         orderBy: { start_date: "asc" },
         take: 3,
         select: {

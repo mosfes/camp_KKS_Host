@@ -1,5 +1,6 @@
 "use client";
 import { useStatusModal } from "@/components/StatusModalProvider";
+import { BANGKOK_TIME_ZONE, getBangkokDateKey } from "@/lib/bangkok-date";
 import {
     Card,
     CardBody,
@@ -26,7 +27,7 @@ import {
     DateRangePicker,
     HeroUIProvider
 } from "@heroui/react";
-import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
+import { parseDate } from "@internationalized/date";
 import { I18nProvider } from "@react-aria/i18n";
 import { useState, useEffect } from "react";
 import { Search, MapPin, Users, Calendar, GraduationCap, SquarePen, Trash2, RotateCcw, Trash, Archive, AlertTriangle, ArrowLeft, X, Eye } from 'lucide-react';
@@ -133,11 +134,12 @@ const CampManager = () => {
     const formatDate = (dateStr) => {
         if (!dateStr) return "-";
         try {
-            const d = new Date(dateStr);
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = d.getFullYear() + 543;
-            return `${day}/${month}/${year}`;
+            return new Date(dateStr).toLocaleDateString("th-TH", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                timeZone: BANGKOK_TIME_ZONE,
+            });
         } catch {
             return "-";
         }
@@ -146,8 +148,7 @@ const CampManager = () => {
     const toInputDate = (dateStr) => {
         if (!dateStr) return "";
         try {
-            const d = new Date(dateStr);
-            return d.toISOString().split("T")[0];
+            return getBangkokDateKey(dateStr);
         } catch {
             return "";
         }

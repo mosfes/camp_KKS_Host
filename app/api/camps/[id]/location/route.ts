@@ -6,6 +6,7 @@ import {
   getCampLocationViewer,
 } from "@/lib/camp-location-auth";
 import { prisma } from "@/lib/db";
+import { getBangkokDateKey } from "@/lib/bangkok-date";
 
 const coordinateSchema = z.object({
   latitude: z.number().finite().min(-90).max(90),
@@ -90,11 +91,10 @@ function studentName(student: {
 function isUnderTen(birthday: Date | null) {
   if (!birthday) return false;
 
-  const tenthBirthday = new Date(birthday);
+  const [year, month, day] = getBangkokDateKey(birthday).split("-");
+  const tenthBirthday = `${Number(year) + 10}-${month}-${day}`;
 
-  tenthBirthday.setFullYear(tenthBirthday.getFullYear() + 10);
-
-  return tenthBirthday > new Date();
+  return tenthBirthday > getBangkokDateKey();
 }
 
 export async function GET(

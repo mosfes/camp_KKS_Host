@@ -3,20 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
-
-/** แปลง Date (UTC จาก DB) → ISO string +07:00 สำหรับแสดงผล */
-const toThaiISOString = (date) => {
-  if (!date) return null;
-  const d = new Date(date);
-  const offset = 7 * 60; // +07:00 in minutes
-  const localMs = d.getTime() + offset * 60 * 1000;
-  const local = new Date(localMs);
-
-  return local.toISOString().replace("Z", "+07:00");
-};
-
-/** คืนค่า Date ปัจจุบันในโซนเวลาไทย (+07:00) */
-const thaiNow = () => new Date(Date.now() + 7 * 60 * 60 * 1000);
+import { getBangkokDateAsUtcMidnight } from "@/lib/bangkok-date";
 
 /**
  *
@@ -100,11 +87,11 @@ export async function POST(req) {
         start_shirt_date:
           body.hasShirt && body.shirtStartDate
             ? new Date(body.shirtStartDate)
-            : thaiNow(),
+            : getBangkokDateAsUtcMidnight(),
         end_shirt_date:
           body.hasShirt && body.shirtEndDate
             ? new Date(body.shirtEndDate)
-            : thaiNow(),
+            : getBangkokDateAsUtcMidnight(),
         status: "OPEN",
         img_camp_url: body.img_camp_url || "",
         img_shirt_url: body.img_shirt_url || "",
@@ -326,20 +313,8 @@ export async function GET(request) {
       orderBy: { camp_id: "desc" },
     });
 
-    const dateFields = [
-      "start_date",
-      "end_date",
-      "start_regis_date",
-      "end_regis_date",
-      "start_shirt_date",
-      "end_shirt_date",
-    ];
     const campsWithMeta = camps.map((camp) => {
       const updated = { ...camp };
-
-      for (const f of dateFields) {
-        if (updated[f]) updated[f] = toThaiISOString(updated[f]);
-      }
       updated.isOwner =
         camp.created_by_teacher_id === teacher.teachers_id ||
         teacher.role === "ADMIN";

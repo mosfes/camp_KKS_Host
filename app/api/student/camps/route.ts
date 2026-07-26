@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
-import { isBangkokDateBefore } from "@/lib/bangkok-date";
+import { getBangkokDateKey, isBangkokDateBefore } from "@/lib/bangkok-date";
 
 export async function GET() {
   const { student, error: authError } = await requireStudent();
@@ -122,8 +122,8 @@ export async function GET() {
         title: camp.name,
         description: camp.description,
         location: camp.location,
-        startDate: camp.start_date.toISOString().split("T")[0],
-        endDate: camp.end_date.toISOString().split("T")[0],
+        startDate: getBangkokDateKey(camp.start_date),
+        endDate: getBangkokDateKey(camp.end_date),
         status: isRegistered ? "Registered" : "Available",
         isRegistered: isRegistered,
         hasEnrollment: !!myEnrollment,

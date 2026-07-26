@@ -61,7 +61,7 @@ async function recordCompletion(studentId, missionId, campId) {
     data: {
       method: "QR",
       status: "completed",
-      submitted_at: new Date(Date.now() + 7 * 60 * 60 * 1000),
+      submitted_at: new Date(),
       student_enrollment_id: enrollment.student_enrollment_id,
       mission_mission_id: missionId,
     },

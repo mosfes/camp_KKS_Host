@@ -13,9 +13,13 @@ import {
 } from "lucide-react";
 import { Select, SelectItem } from "@heroui/react";
 import { DateRangePicker } from "@heroui/react";
-import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
+import { parseDate, today } from "@internationalized/date";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import {
+  BANGKOK_TIME_ZONE,
+  getBangkokDateKey,
+} from "@/lib/bangkok-date";
 import CampDestinationField, {
   type CampDestination,
 } from "@/components/camp-location/CampDestinationField";
@@ -63,12 +67,13 @@ function formatDateWithOffset(startDateStr: string, dayOffset: number) {
   if (!startDateStr) return "";
   const date = new Date(startDateStr);
 
-  date.setDate(date.getDate() + dayOffset);
+  date.setUTCDate(date.getUTCDate() + dayOffset);
 
   return date.toLocaleDateString("th-TH", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone: BANGKOK_TIME_ZONE,
   });
 }
 
@@ -215,9 +220,7 @@ export default function EditCampModal({
       // แปลง date จาก ISO string เป็น YYYY-MM-DD
       const formatDateForInput = (dateString: string) => {
         if (!dateString) return "";
-        const date = new Date(dateString);
-
-        return date.toISOString().split("T")[0];
+        return getBangkokDateKey(dateString);
       };
 
       // ดึง grade_level ทุกชั้นจาก camp_classroom
@@ -881,7 +884,7 @@ export default function EditCampModal({
                   className="w-full h-[56px]"
                   errorMessage={dateErrors.registration}
                   isInvalid={!!dateErrors.registration}
-                  minValue={today(getLocalTimeZone())}
+                  minValue={today(BANGKOK_TIME_ZONE)}
                   value={
                     formData.registrationStartDate &&
                     formData.registrationEndDate
@@ -1120,7 +1123,7 @@ export default function EditCampModal({
                     className="w-full h-[56px]"
                     errorMessage={dateErrors.shirt}
                     isInvalid={!!dateErrors.shirt}
-                    minValue={today(getLocalTimeZone())}
+                    minValue={today(BANGKOK_TIME_ZONE)}
                     value={
                       formData.shirtStartDate && formData.shirtEndDate
                         ? {

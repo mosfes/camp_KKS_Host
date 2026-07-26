@@ -2,7 +2,7 @@ export const BANGKOK_TIME_ZONE = "Asia/Bangkok";
 
 type DateInput = Date | string | number;
 
-export function getBangkokDateKey(input: DateInput): string {
+export function getBangkokDateKey(input: DateInput = new Date()): string {
   const date = input instanceof Date ? input : new Date(input);
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: BANGKOK_TIME_ZONE,

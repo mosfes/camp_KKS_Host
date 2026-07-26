@@ -30,6 +30,7 @@ import QRCode from "react-qr-code";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 import VideoPlayer from "@/components/VideoPlayer";
+import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
 
 interface MonitorMissionModalProps {
   isOpen: boolean;
@@ -128,21 +129,19 @@ export default function MonitorMissionModal({
 
   const formatDate = (dateString: string) => {
     if (!dateString) return { date: "", time: "" };
-    const localDateString = dateString.endsWith("Z")
-      ? dateString.slice(0, -1)
-      : dateString;
-
-    const d = new Date(localDateString);
+    const d = new Date(dateString);
 
     return {
       date: d.toLocaleDateString("th-TH", {
         day: "numeric",
         month: "numeric",
         year: "2-digit",
+        timeZone: BANGKOK_TIME_ZONE,
       }),
       time: d.toLocaleTimeString("th-TH", {
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: BANGKOK_TIME_ZONE,
       }),
     };
   };
@@ -277,6 +276,7 @@ export default function MonitorMissionModal({
                               hour: "2-digit",
                               minute: "2-digit",
                               second: "2-digit",
+                              timeZone: BANGKOK_TIME_ZONE,
                             })}
                           </p>
                         )}

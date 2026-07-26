@@ -6,7 +6,8 @@ import React, { useState, useEffect } from "react";
 import { ChevronRight, ImageOff, X, Trash2 } from "lucide-react";
 import { Select, SelectItem } from "@heroui/react";
 import { DateRangePicker } from "@heroui/react";
-import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
+import { parseDate, today } from "@internationalized/date";
+import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
 
 interface TimeSlot {
   startTime: string;
@@ -54,12 +55,13 @@ function formatDateWithOffset(startDateStr: string, dayOffset: number) {
   if (!startDateStr) return "";
   const date = new Date(startDateStr);
 
-  date.setDate(date.getDate() + dayOffset);
+  date.setUTCDate(date.getUTCDate() + dayOffset);
 
   return date.toLocaleDateString("th-TH", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone: BANGKOK_TIME_ZONE,
   });
 }
 
@@ -906,7 +908,7 @@ export default function CreateCampModal({
                   className="w-full h-[56px]"
                   errorMessage={dateErrors.registration}
                   isInvalid={!!dateErrors.registration}
-                  minValue={today(getLocalTimeZone())}
+                  minValue={today(BANGKOK_TIME_ZONE)}
                   value={
                     formData.registrationStartDate &&
                     formData.registrationEndDate
@@ -940,7 +942,7 @@ export default function CreateCampModal({
                   className="w-full h-[56px]"
                   errorMessage={dateErrors.camp}
                   isInvalid={!!dateErrors.camp}
-                  minValue={today(getLocalTimeZone())}
+                  minValue={today(BANGKOK_TIME_ZONE)}
                   value={
                     formData.campStartDate && formData.campEndDate
                       ? {
@@ -1154,7 +1156,7 @@ export default function CreateCampModal({
                     className="w-full h-[56px]"
                     errorMessage={dateErrors.shirt}
                     isInvalid={!!dateErrors.shirt}
-                    minValue={today(getLocalTimeZone())}
+                    minValue={today(BANGKOK_TIME_ZONE)}
                     value={
                       formData.shirtStartDate && formData.shirtEndDate
                         ? {

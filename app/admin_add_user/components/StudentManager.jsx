@@ -1,5 +1,6 @@
 "use client";
 import { useStatusModal } from "@/components/StatusModalProvider";
+import { getBangkokDateKey } from "@/lib/bangkok-date";
 import {
     Card,
     CardBody,
@@ -121,11 +122,18 @@ const StudentManager = () => {
         let newFormData = { ...formData, birthday: newBirthday };
 
         if (newBirthday) {
-            const birthDate = new Date(newBirthday);
-            const today = new Date();
-            let age = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            const [birthYear, birthMonth, birthDay] = newBirthday
+                .split("-")
+                .map(Number);
+            const [currentYear, currentMonth, currentDay] = getBangkokDateKey()
+                .split("-")
+                .map(Number);
+            let age = currentYear - birthYear;
+            const monthDifference = currentMonth - birthMonth;
+            if (
+                monthDifference < 0 ||
+                (monthDifference === 0 && currentDay < birthDay)
+            ) {
                 age--;
             }
 
@@ -276,7 +284,7 @@ const StudentManager = () => {
             email: student.email || "",
             tel: student.tel || "",
             classroom_id: currentClassroomId,
-            birthday: student.birthday ? new Date(student.birthday).toISOString().split('T')[0] : ""
+            birthday: student.birthday ? getBangkokDateKey(student.birthday) : ""
         });
 
         if (currentClassroom) {

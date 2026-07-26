@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
+import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
 
 import {
   computeGoogleDrivingRoute,
@@ -324,6 +325,7 @@ function thaiDateTime(value?: string | null) {
   return new Date(value).toLocaleString("th-TH", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: BANGKOK_TIME_ZONE,
   });
 }
 
@@ -1306,7 +1308,11 @@ export default function CampLocationTracker({
                       คำนวณล่าสุด{" "}
                       {new Date(studentRoute.calculatedAt).toLocaleTimeString(
                         "th-TH",
-                        { hour: "2-digit", minute: "2-digit" },
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          timeZone: BANGKOK_TIME_ZONE,
+                        },
                       )}
                     </p>
                     {(studentAdministrativeArea ||

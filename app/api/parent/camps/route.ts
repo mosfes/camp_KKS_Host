@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { prisma } from "@/lib/db";
-import { isBangkokDateBefore } from "@/lib/bangkok-date";
+import { getBangkokDateKey, isBangkokDateBefore } from "@/lib/bangkok-date";
 
 /**
  * GET /api/parent/camps
@@ -107,8 +107,8 @@ export async function GET() {
         title: camp.name,
         description: camp.description,
         location: camp.location,
-        startDate: camp.start_date.toISOString().split("T")[0],
-        endDate: camp.end_date.toISOString().split("T")[0],
+        startDate: getBangkokDateKey(camp.start_date),
+        endDate: getBangkokDateKey(camp.end_date),
         isRegistered,
         isEnded,
         rawStartDate: camp.start_date,

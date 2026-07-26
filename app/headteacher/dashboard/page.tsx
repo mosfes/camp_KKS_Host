@@ -45,7 +45,12 @@ function DefaultCampImage() {
 
 // ... imports
 import { useStatusModal } from "@/components/StatusModalProvider";
-import { isBangkokDateBefore, isBangkokDateInRange } from "@/lib/bangkok-date";
+import {
+  BANGKOK_TIME_ZONE,
+  getBangkokDateKey,
+  isBangkokDateBefore,
+  isBangkokDateInRange,
+} from "@/lib/bangkok-date";
 
 async function readResponseBody(response: Response) {
   const responseText = await response.text();
@@ -225,11 +230,13 @@ function DashboardContent() {
           day: "2-digit",
           month: "2-digit",
           year: "numeric",
+          timeZone: BANGKOK_TIME_ZONE,
         }),
         endDate: end.toLocaleDateString("th-TH", {
           day: "2-digit",
           month: "2-digit",
           year: "numeric",
+          timeZone: BANGKOK_TIME_ZONE,
         }),
         enrolled: camp._count?.student_enrollment || 0,
         totalStudents: Math.max(
@@ -654,7 +661,8 @@ function DashboardContent() {
               </span>
               <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium border border-white/10">
                 <Calendar size={14} />
-                <span>ปีการศึกษา:</span> {new Date().getFullYear() + 543}
+                <span>ปีการศึกษา:</span>{" "}
+                {Number(getBangkokDateKey().slice(0, 4)) + 543}
               </span>
             </div>
           </div>

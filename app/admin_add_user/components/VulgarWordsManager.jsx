@@ -18,6 +18,7 @@ import { Select, SelectItem } from "@heroui/select";
 import { Pagination } from "@heroui/react";
 import { Trash2, SquarePen, Search } from "lucide-react";
 import { useStatusModal } from "@/components/StatusModalProvider";
+import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
 import { PlusIcon } from "./Icons";
 
 export default function VulgarWordsManager() {
@@ -260,7 +261,9 @@ export default function VulgarWordsManager() {
                     </Chip>
                     </TableCell>
                     <TableCell className="text-gray-500">
-                      {new Date(item.createdAt).toLocaleDateString("th-TH")}
+                      {new Date(item.createdAt).toLocaleDateString("th-TH", {
+                        timeZone: BANGKOK_TIME_ZONE,
+                      })}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
