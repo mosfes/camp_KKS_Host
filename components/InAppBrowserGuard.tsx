@@ -103,7 +103,13 @@ export default function InAppBrowserGuard({
 
   if (!browserInfo.isInAppBrowser) return children;
 
-  const browserName = browserInfo.isIOS ? "Safari" : "Chrome";
+  const titleText = browserInfo.isAndroid
+    ? "กรุณาเปิดด้วย Chrome"
+    : "กรุณาเปิดด้วยเบราว์เซอร์ภายนอก";
+
+  const stepTwoText = browserInfo.isAndroid
+    ? "เลือก “เปิดใน Chrome” หรือ “Open in browser”"
+    : "เลือก “เปิดในเบราว์เซอร์” / “เปิดใน Safari” หรือ “Open in browser”";
 
   return (
     <section className="w-[calc(100vw-2rem)] max-w-[420px] overflow-hidden rounded-3xl border border-amber-100 bg-white shadow-[0_18px_55px_rgba(51,65,85,0.12)]">
@@ -111,9 +117,7 @@ export default function InAppBrowserGuard({
         <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white text-amber-600 shadow-sm">
           <ShieldAlert aria-hidden="true" size={28} />
         </div>
-        <h1 className="text-xl font-bold text-slate-700">
-          กรุณาเปิดด้วย {browserName}
-        </h1>
+        <h1 className="text-xl font-bold text-slate-700">{titleText}</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           หน้านี้เปิดอยู่ใน {browserInfo.appName} ซึ่ง Google ไม่อนุญาตให้
           เข้าสู่ระบบในหน้าต่างนี้
@@ -139,7 +143,7 @@ export default function InAppBrowserGuard({
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#6b857a] text-xs font-bold text-white">
                 2
               </span>
-              <span>เลือก “เปิดใน {browserName}” หรือ “Open in browser”</span>
+              <span>{stepTwoText}</span>
             </li>
             <li className="flex gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#6b857a] text-xs font-bold text-white">
@@ -167,8 +171,8 @@ export default function InAppBrowserGuard({
           >
             {copied ? <Check size={20} /> : <Clipboard size={20} />}
             {copied
-              ? "คัดลอกแล้ว—นำไปวางใน Safari"
-              : "คัดลอกลิงก์ไปเปิดใน Safari"}
+              ? "คัดลอกแล้ว—นำไปวางในเบราว์เซอร์"
+              : "คัดลอกลิงก์ไปเปิดในเบราว์เซอร์ภายนอก"}
           </button>
         )}
 

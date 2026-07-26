@@ -151,6 +151,9 @@ export async function GET(request, context) {
         (enrollment) => enrollment.student_students_id,
       ) ?? []),
     ]);
+    const enrolledStudentCount =
+      camp.student_enrollment?.filter((enrollment) => enrollment.enrolled_at)
+        .length ?? 0;
     const totalEligibleStudents = eligibleStudentIds.size;
 
     const typeMap = new Map();
@@ -209,6 +212,7 @@ export async function GET(request, context) {
           teacher.role === "ADMIN",
         isHomeroomTeacher,
         total_eligible_students: totalEligibleStudents,
+        enrolled_student_count: enrolledStudentCount,
         certificate_candidate_count: certificateCandidateIds.size,
         grades: sortedGrades,
         gradeDisplay: gradeDisplay,

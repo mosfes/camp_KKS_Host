@@ -48,7 +48,7 @@ export default function StudentStationDetailPage() {
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [answers, setAnswers] = useState<any>({}); // { questionId: value }
   const [submitting, setSubmitting] = useState(false);
-  const [uploadingQid, setUploadingQid] = useState<number | null>(null);
+  const [uploadingQids, setUploadingQids] = useState<number[]>([]);
 
   // QR Scan State
   const [qrScanActive, setQrScanActive] = useState(false);
@@ -357,7 +357,9 @@ export default function StudentStationDetailPage() {
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 2000; // 2 วินาที (exponential: 2s, 4s, 6s)
 
-    setUploadingQid(questionId);
+    setUploadingQids((current) =>
+      current.includes(questionId) ? current : [...current, questionId],
+    );
     try {
       const compressedFile = await compressImage(file);
       const formData = new FormData();
@@ -420,12 +422,23 @@ export default function StudentStationDetailPage() {
       console.error(error);
       toast.error("เกิดข้อผิดพลาดในการอัปโหลด");
     } finally {
-      setUploadingQid(null);
+      setUploadingQids((current) =>
+        current.filter((qid) => qid !== questionId),
+      );
     }
   };
 
   const submitMission = async () => {
     if (!selectedMission) return;
+
+    // Do not persist a draft while an image is still being compressed/uploaded.
+    // The URL is only added to `answers` after /api/upload succeeds.
+    if (uploadingQids.length > 0) {
+      toast.error("กรุณารอให้อัปโหลดรูปภาพเสร็จก่อนบันทึกหรือส่ง");
+
+      return;
+    }
+
     setSubmitting(true);
 
     // Transform answers
@@ -1089,7 +1102,11 @@ export default function StudentStationDetailPage() {
                                         id={`file-${q.question_id}`}
                                         type="file"
                                         onChange={(e) => {
-                                          const file = e.target.files?.[0];
+                                          const file =
+                                            e.currentTarget.files?.[0];
+
+                                          // Allow retrying the same file after a failed upload.
+                                          e.currentTarget.value = "";
 
                                           if (file)
                                             handleImageUpload(
@@ -1103,11 +1120,11 @@ export default function StudentStationDetailPage() {
                                           className="flex-1 bg-white border-2 border-dashed border-gray-300 hover:border-[#5d7c6f] hover:text-[#5d7c6f] py-4 h-auto rounded-xl transition-all flex flex-col gap-1"
                                           isDisabled={
                                             isSubmitted ||
-                                            uploadingQid === q.question_id
+                                            uploadingQids.length > 0
                                           }
-                                          isLoading={
-                                            uploadingQid === q.question_id
-                                          }
+                                          isLoading={uploadingQids.includes(
+                                            q.question_id,
+                                          )}
                                           onPress={() =>
                                             document
                                               .getElementById(
@@ -1116,7 +1133,9 @@ export default function StudentStationDetailPage() {
                                               ?.click()
                                           }
                                         >
-                                          {uploadingQid === q.question_id ? (
+                                          {uploadingQids.includes(
+                                            q.question_id,
+                                          ) ? (
                                             <span className="text-sm font-semibold ml-2">
                                               กำลังอัปโหลด...
                                             </span>
@@ -1172,6 +1191,15 @@ export default function StudentStationDetailPage() {
                       answers[q.question_id] &&
                       String(answers[q.question_id]).trim() !== "",
                   );
+                  const photoQuestionCount =
+                    selectedMission?.mission_question?.filter(
+                      (q: any) => q.question_type === "PHOTO",
+                    ).length ?? 0;
+                  const isSinglePhotoSubmission =
+                    selectedMission?.type === "PHOTO_SUBMISSION" &&
+                    photoQuestionCount === 1;
+                  const isUploading = uploadingQids.length > 0;
+                  const canSubmit = allAnswered && !isUploading;
 
                   return (
                     <>
@@ -1180,11 +1208,19 @@ export default function StudentStationDetailPage() {
                       </Button>
                       {!isSubmitted && (
                         <Button
-                          className={`text-white font-bold ${allAnswered ? "bg-[#5d7c6f]" : "bg-gray-500 hover:bg-gray-600"}`}
+                          className={`text-white font-bold ${canSubmit ? "bg-[#5d7c6f]" : "bg-gray-500 hover:bg-gray-600"}`}
+                          isDisabled={
+                            isUploading ||
+                            (isSinglePhotoSubmission && !allAnswered)
+                          }
                           isLoading={submitting}
                           onPress={submitMission}
                         >
-                          {allAnswered ? "ส่งคำตอบ" : "บันทึกร่าง"}
+                          {isUploading
+                            ? "กำลังอัปโหลด..."
+                            : allAnswered || isSinglePhotoSubmission
+                              ? "ส่งคำตอบ"
+                              : "บันทึกร่าง"}
                         </Button>
                       )}
                     </>

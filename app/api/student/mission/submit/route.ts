@@ -26,11 +26,33 @@ export async function POST(req) {
 
     const mission = await prisma.mission.findUnique({
       where: { mission_id: missionId },
-      select: { type: true, station: { select: { camp_camp_id: true } } },
+      select: {
+        type: true,
+        mission_question: { select: { question_type: true } },
+        station: { select: { camp_camp_id: true } },
+      },
     });
 
     if (!mission || mission.station.camp_camp_id !== campId) {
       return NextResponse.json({ error: "Mission not found" }, { status: 404 });
+    }
+
+    // A photo mission with one question is a direct submission. It must not
+    // be saved as a draft; drafts are only useful when several photo
+    // questions can be completed incrementally.
+    const photoQuestionCount = mission.mission_question.filter(
+      (question) => question.question_type === "PHOTO",
+    ).length;
+
+    if (
+      mission.type === "PHOTO_SUBMISSION" &&
+      photoQuestionCount === 1 &&
+      isDraft
+    ) {
+      return NextResponse.json(
+        { error: "ภารกิจนี้ต้องอัปโหลดรูปให้เสร็จแล้วจึงส่งได้" },
+        { status: 400 },
+      );
     }
 
     if (mission.type === "VIDEO_SUBMISSION") {
@@ -40,6 +62,7 @@ export async function POST(req) {
           typeof answer.value !== "string" ||
           !getVideoSource(answer.value),
       );
+
       if (invalidVideo) {
         return NextResponse.json(
           { error: supportedVideoUrlMessage },

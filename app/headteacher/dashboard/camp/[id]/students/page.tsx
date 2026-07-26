@@ -8,12 +8,14 @@ import {
   Users,
   Activity,
   FileText,
+  ChevronRight,
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { Input } from "@heroui/input";
 import { Chip } from "@heroui/chip";
 import { Pagination } from "@heroui/pagination";
 import { Select, SelectItem } from "@heroui/react";
+import BreakdownModal from "./BreakdownModal";
 
 interface Student {
   student: {
@@ -47,6 +49,13 @@ export default function CampStudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState<{
+    open: boolean;
+    type: "allergy" | "disease" | "remark";
+    title: string;
+    count: number;
+    accent: string;
+  } | null>(null);
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -143,113 +152,131 @@ export default function CampStudentsPage() {
               </p>
             </div>
 
-            <div className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-red-100">
-              <div className="flex items-center gap-2 mb-2 md:mb-3">
-                <AlertCircle className="text-red-500 w-5 h-5 md:w-6 md:h-6" />
-                <h3 className="font-semibold text-gray-900 text-sm md:text-base">
-                  แพ้อาหาร
-                </h3>
+            {/* Allergy card */}
+            <button
+              className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-red-100 text-left group hover:shadow-md hover:border-red-200 transition-all duration-200 cursor-pointer"
+              disabled={summary.allergiesCount === 0}
+              onClick={() =>
+                summary.allergiesCount > 0 &&
+                setModal({
+                  open: true,
+                  type: "allergy",
+                  title: "แพ้อาหาร",
+                  count: summary.allergiesCount,
+                  accent: "red",
+                })
+              }
+            >
+              <div className="flex items-center justify-between mb-2 md:mb-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="text-red-500 w-5 h-5 md:w-6 md:h-6" />
+                  <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                    แพ้อาหาร
+                  </h3>
+                </div>
+                {summary.allergiesCount > 0 && (
+                  <ChevronRight
+                    className="text-gray-300 group-hover:text-red-400 transition-colors"
+                    size={16}
+                  />
+                )}
               </div>
-              <p className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
+              <p className="text-xl md:text-2xl font-bold text-gray-900">
                 {summary.allergiesCount}{" "}
                 <span className="text-xs md:text-sm font-normal text-gray-500">
                   คน
                 </span>
               </p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {summary.allergies.slice(0, 3).map((a, i) => (
-                  <Chip
-                    key={i}
-                    className="bg-red-50 text-red-700 max-w-full"
-                    size="sm"
-                    style={{
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {a.text}
-                  </Chip>
-                ))}
-                {summary.allergiesCount > 3 && (
-                  <span className="text-xs text-gray-500 mt-1">
-                    +{summary.allergiesCount - 3}
-                  </span>
+              {summary.allergiesCount > 0 && (
+                <p className="text-xs text-red-400 mt-2">
+                  กดเพื่อดูรายละเอียด
+                </p>
+              )}
+            </button>
+
+            {/* Disease card */}
+            <button
+              className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-gray-100 text-left group hover:shadow-md hover:border-[#c5d9d0] transition-all duration-200 cursor-pointer"
+              disabled={summary.chronicDiseasesCount === 0}
+              onClick={() =>
+                summary.chronicDiseasesCount > 0 &&
+                setModal({
+                  open: true,
+                  type: "disease",
+                  title: "โรคประจำตัว",
+                  count: summary.chronicDiseasesCount,
+                  accent: "green",
+                })
+              }
+            >
+              <div className="flex items-center justify-between mb-2 md:mb-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="text-[#6b857a] w-5 h-5 md:w-6 md:h-6" />
+                  <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                    โรคประจำตัว
+                  </h3>
+                </div>
+                {summary.chronicDiseasesCount > 0 && (
+                  <ChevronRight
+                    className="text-gray-300 group-hover:text-[#6b857a] transition-colors"
+                    size={16}
+                  />
                 )}
               </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center gap-2 mb-2 md:mb-3">
-                <Activity className="text-[#6b857a] w-5 h-5 md:w-6 md:h-6" />
-                <h3 className="font-semibold text-gray-900 text-sm md:text-base">
-                  โรคประจำตัว
-                </h3>
-              </div>
-              <p className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
+              <p className="text-xl md:text-2xl font-bold text-gray-900">
                 {summary.chronicDiseasesCount}{" "}
                 <span className="text-xs md:text-sm font-normal text-gray-500">
                   คน
                 </span>
               </p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {summary.chronicDiseases.slice(0, 3).map((d, i) => (
-                  <Chip
-                    key={i}
-                    className="bg-[#f0f4f2] text-[#5d7c6f] border border-[#d1e0d9] max-w-full"
-                    size="sm"
-                    style={{
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {d.text}
-                  </Chip>
-                ))}
-                {summary.chronicDiseasesCount > 3 && (
-                  <span className="text-xs text-gray-500 mt-1">
-                    +{summary.chronicDiseasesCount - 3}
-                  </span>
+              {summary.chronicDiseasesCount > 0 && (
+                <p className="text-xs text-[#6b857a] mt-2">
+                  กดเพื่อดูรายละเอียด
+                </p>
+              )}
+            </button>
+
+            {/* Remark card */}
+            <button
+              className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-blue-100 text-left group hover:shadow-md hover:border-blue-200 transition-all duration-200 cursor-pointer"
+              disabled={summary.remarksCount === 0}
+              onClick={() =>
+                summary.remarksCount > 0 &&
+                setModal({
+                  open: true,
+                  type: "remark",
+                  title: "ข้อมูลอื่นๆ",
+                  count: summary.remarksCount,
+                  accent: "blue",
+                })
+              }
+            >
+              <div className="flex items-center justify-between mb-2 md:mb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="text-blue-500 w-5 h-5 md:w-6 md:h-6" />
+                  <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                    ข้อมูลอื่นๆ
+                  </h3>
+                </div>
+                {summary.remarksCount > 0 && (
+                  <ChevronRight
+                    className="text-gray-300 group-hover:text-blue-400 transition-colors"
+                    size={16}
+                  />
                 )}
               </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-blue-100">
-              <div className="flex items-center gap-2 mb-2 md:mb-3">
-                <FileText className="text-blue-500 w-5 h-5 md:w-6 md:h-6" />
-                <h3 className="font-semibold text-gray-900 text-sm md:text-base">
-                  ข้อมูลอื่นๆ
-                </h3>
-              </div>
-              <p className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
+              <p className="text-xl md:text-2xl font-bold text-gray-900">
                 {summary.remarksCount}{" "}
                 <span className="text-xs md:text-sm font-normal text-gray-500">
                   คน
                 </span>
               </p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {summary.remarks.slice(0, 3).map((r, i) => (
-                  <Chip
-                    key={i}
-                    className="bg-blue-50 text-blue-700 max-w-full"
-                    size="sm"
-                    style={{
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {r.text}
-                  </Chip>
-                ))}
-                {summary.remarksCount > 3 && (
-                  <span className="text-xs text-gray-500 mt-1">
-                    +{summary.remarksCount - 3}
-                  </span>
-                )}
-              </div>
-            </div>
+              {summary.remarksCount > 0 && (
+                <p className="text-xs text-blue-400 mt-2">
+                  กดเพื่อดูรายละเอียด
+                </p>
+              )}
+            </button>
           </div>
         )}
 
@@ -426,6 +453,19 @@ export default function CampStudentsPage() {
           )}
         </div>
       </div>
+
+      {/* Breakdown Modal */}
+      {modal && (
+        <BreakdownModal
+          accentColor={modal.accent}
+          campId={campId!}
+          isOpen={modal.open}
+          title={modal.title}
+          totalCount={modal.count}
+          type={modal.type}
+          onClose={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }

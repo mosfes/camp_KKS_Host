@@ -41,7 +41,12 @@ export default function StudentSurveyPage() {
           setSurvey(data.survey);
         }
       } else {
-        toast.error("ดึงข้อมูลแบบประเมินล้มเหลว");
+        if (res.status === 403) {
+          toast.error("กรุณาเข้าร่วมค่ายก่อนจึงจะทำแบบประเมินได้");
+          router.replace(`/student/dashboard/camp/${id}`);
+        } else {
+          toast.error("ดึงข้อมูลแบบประเมินล้มเหลว");
+        }
       }
     } catch (error) {
       console.error("Failed to fetch survey", error);

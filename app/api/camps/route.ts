@@ -283,7 +283,10 @@ export async function GET(request) {
         },
         _count: {
           select: {
-            student_enrollment: true,
+            // Enrollment records with enrolled_at = null are pre-created
+            // candidates (for example after bulk certificate generation),
+            // not students who actually joined the camp.
+            student_enrollment: { where: { enrolled_at: { not: null } } },
             teacher_enrollment: true,
           },
         },

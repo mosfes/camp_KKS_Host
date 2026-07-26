@@ -18,6 +18,8 @@ import {
   Users,
   Award,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 import CampLocationTracker from "@/components/camp-location/CampLocationTracker";
@@ -68,6 +70,7 @@ export default function TrackingModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [certificateFilter, setCertificateFilter] =
     useState<CertificateFilter>("all");
+  const [isCertificateStatusOpen, setIsCertificateStatusOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [activeSection, setActiveSection] = useState<"location" | "progress">(
     locationTrackingEnabled ? "location" : "progress",
@@ -79,6 +82,7 @@ export default function TrackingModal({
       fetchTrackingData();
       setSearchQuery("");
       setCertificateFilter("all");
+      setIsCertificateStatusOpen(false);
       setPage(1);
       setActiveSection(locationTrackingEnabled ? "location" : "progress");
     }
@@ -218,91 +222,111 @@ export default function TrackingModal({
 
                   {data && (
                     <section className="mt-4 rounded-2xl border border-gray-200 bg-gray-50/80 p-3 sm:p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#5d7c6f] shadow-sm">
-                          <Award size={18} />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-bold text-gray-900">
-                            สถานะการรับเกียรติบัตร
-                          </h3>
-                          <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
-                            “ได้รับแล้ว” หมายถึง
-                            ระบบเคยออกเกียรติบัตรให้นักเรียนแล้ว
-                          </p>
-                        </div>
-                      </div>
+                      <button
+                        aria-expanded={isCertificateStatusOpen}
+                        className="flex w-full items-center justify-between gap-3 text-left sm:pointer-events-none"
+                        type="button"
+                        onClick={() =>
+                          setIsCertificateStatusOpen((current) => !current)
+                        }
+                      >
+                        <span className="flex min-w-0 items-start gap-3">
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#5d7c6f] shadow-sm">
+                            <Award size={18} />
+                          </span>
+                          <span>
+                            <span className="block text-sm font-bold text-gray-900">
+                              สถานะการรับเกียรติบัตร
+                            </span>
+                            <span className="mt-0.5 block text-xs leading-relaxed text-gray-500">
+                              “ได้รับแล้ว” หมายถึง
+                              ระบบเคยออกเกียรติบัตรให้นักเรียนแล้ว
+                            </span>
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-[#5d7c6f] sm:hidden">
+                          {isCertificateStatusOpen ? (
+                            <ChevronUp size={18} />
+                          ) : (
+                            <ChevronDown size={18} />
+                          )}
+                        </span>
+                      </button>
 
-                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        {[
-                          {
-                            key: "all" as const,
-                            label: "นักเรียนทั้งหมด",
-                            helper: "ทุกสถานะ",
-                            value: data.summary.totalStudents,
-                            activeClass: "border-[#5d7c6f] bg-[#eef4f1]",
-                            iconClass: "bg-[#e2ece7] text-[#5d7c6f]",
-                          },
-                          {
-                            key: "issued" as const,
-                            label: "ได้รับเกียรติบัตรแล้ว",
-                            helper: "มีประวัติออกเกียรติบัตร",
-                            value: data.summary.issuedCertificates,
-                            activeClass: "border-emerald-500 bg-emerald-50",
-                            iconClass: "bg-emerald-100 text-emerald-700",
-                          },
-                          {
-                            key: "pending" as const,
-                            label: "ยังไม่ได้รับเกียรติบัตร",
-                            helper: "ยังไม่มีประวัติออกเกียรติบัตร",
-                            value: data.summary.pendingCertificates,
-                            activeClass: "border-amber-500 bg-amber-50",
-                            iconClass: "bg-amber-100 text-amber-700",
-                          },
-                        ].map((item) => (
-                          <button
-                            key={item.key}
-                            aria-pressed={certificateFilter === item.key}
-                            className={`relative flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
-                              certificateFilter === item.key
-                                ? `${item.activeClass} shadow-sm`
-                                : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                            }`}
-                            type="button"
-                            onClick={() => setCertificateFilter(item.key)}
-                          >
-                            <span
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${item.iconClass}`}
+                      <div
+                        className={`${isCertificateStatusOpen ? "mt-3 block" : "hidden"} sm:mt-3 sm:block`}
+                      >
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          {[
+                            {
+                              key: "all" as const,
+                              label: "นักเรียนทั้งหมด",
+                              helper: "ทุกสถานะ",
+                              value: data.summary.totalStudents,
+                              activeClass: "border-[#5d7c6f] bg-[#eef4f1]",
+                              iconClass: "bg-[#e2ece7] text-[#5d7c6f]",
+                            },
+                            {
+                              key: "issued" as const,
+                              label: "ได้รับเกียรติบัตรแล้ว",
+                              helper: "มีประวัติออกเกียรติบัตร",
+                              value: data.summary.issuedCertificates,
+                              activeClass: "border-emerald-500 bg-emerald-50",
+                              iconClass: "bg-emerald-100 text-emerald-700",
+                            },
+                            {
+                              key: "pending" as const,
+                              label: "ยังไม่ได้รับเกียรติบัตร",
+                              helper: "ยังไม่มีประวัติออกเกียรติบัตร",
+                              value: data.summary.pendingCertificates,
+                              activeClass: "border-amber-500 bg-amber-50",
+                              iconClass: "bg-amber-100 text-amber-700",
+                            },
+                          ].map((item) => (
+                            <button
+                              key={item.key}
+                              aria-pressed={certificateFilter === item.key}
+                              className={`relative flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                                certificateFilter === item.key
+                                  ? `${item.activeClass} shadow-sm`
+                                  : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                              }`}
+                              type="button"
+                              onClick={() => setCertificateFilter(item.key)}
                             >
-                              {item.key === "all" ? (
-                                <Users size={17} />
-                              ) : item.key === "issued" ? (
-                                <CheckCircle2 size={17} />
-                              ) : (
-                                <Clock size={17} />
-                              )}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-sm font-semibold leading-tight text-gray-800">
-                                {item.label}
+                              <span
+                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${item.iconClass}`}
+                              >
+                                {item.key === "all" ? (
+                                  <Users size={17} />
+                                ) : item.key === "issued" ? (
+                                  <CheckCircle2 size={17} />
+                                ) : (
+                                  <Clock size={17} />
+                                )}
                               </span>
-                              <span className="mt-1 block text-[11px] leading-tight text-gray-500">
-                                {item.helper}
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-semibold leading-tight text-gray-800">
+                                  {item.label}
+                                </span>
+                                <span className="mt-1 block text-[11px] leading-tight text-gray-500">
+                                  {item.helper}
+                                </span>
                               </span>
-                            </span>
-                            <span className="text-xl font-bold text-gray-900">
-                              {item.value}
-                              <span className="ml-1 text-xs font-normal text-gray-500">
-                                คน
+                              <span className="text-xl font-bold text-gray-900">
+                                {item.value}
+                                <span className="ml-1 text-xs font-normal text-gray-500">
+                                  คน
+                                </span>
                               </span>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
+                            </button>
+                          ))}
+                        </div>
 
-                      <p className="mt-2 text-center text-[11px] text-gray-400">
-                        กดสถานะด้านบนเพื่อกรองรายชื่อนักเรียน
-                      </p>
+                        <p className="mt-2 text-center text-[11px] text-gray-400">
+                          กดสถานะด้านบนเพื่อกรองรายชื่อนักเรียน
+                        </p>
+                      </div>
                     </section>
                   )}
                 </>
@@ -348,26 +372,26 @@ export default function TrackingModal({
                   {paginatedStudents?.map((student, i) => (
                     <div
                       key={student.studentId}
-                      className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm"
+                      className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-4"
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0">
+                      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-base font-semibold text-gray-600 sm:h-8 sm:w-8 sm:text-sm">
                             {(page - 1) * ITEMS_PER_PAGE + i + 1}
                           </div>
-                          <h3 className="text-sm font-semibold text-gray-800">
+                          <h3 className="min-w-0 flex-1 break-words text-lg font-bold leading-7 text-gray-900 sm:text-sm sm:font-semibold sm:leading-6">
                             {student.name}
                           </h3>
                         </div>
                         {student.hasCertificate ? (
-                          <div className="text-right">
-                            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-100">
+                          <div className="self-start text-left sm:text-right">
+                            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
                               <Trophy size={14} />
                               <span>ได้รับเกียรติบัตรแล้ว</span>
                             </div>
                             {(student.certificateNo != null ||
                               student.certificateIssuedAt) && (
-                              <p className="mt-1 text-[11px] text-gray-400">
+                              <p className="mt-1 text-[11px] text-gray-400 sm:text-right">
                                 {student.certificateNo != null &&
                                   `เลขที่ ${student.certificateNo}`}
                                 {student.certificateNo != null &&
@@ -385,7 +409,7 @@ export default function TrackingModal({
                             )}
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 bg-gray-50 text-gray-500 px-2.5 py-1 rounded-full text-xs font-medium border border-gray-200">
+                          <div className="inline-flex self-start items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-500">
                             <Clock size={14} />
                             <span>ยังไม่ได้รับเกียรติบัตร</span>
                           </div>
@@ -406,7 +430,9 @@ export default function TrackingModal({
                         <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
                           <div
                             className="bg-[#5d7c6f] h-2.5 rounded-full transition-all duration-1000 ease-in-out"
-                            style={{ width: `${student.progressPercentage}%` }}
+                            style={{
+                              width: `${student.progressPercentage}%`,
+                            }}
                           />
                         </div>
 

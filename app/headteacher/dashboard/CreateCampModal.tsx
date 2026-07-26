@@ -1027,14 +1027,14 @@ export default function CreateCampModal({
                           key={slotIndex}
                           className="p-4 hover:bg-gray-50 transition-colors"
                         >
-                          <div className="grid grid-cols-12 gap-3 items-center">
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                             {/* Start Time */}
-                            <div className="col-span-3">
+                            <div className="min-w-0 md:col-span-3">
                               <label className="block text-xs text-gray-500 mb-1">
                                 เวลาเริ่ม
                               </label>
                               <input
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6b857a] focus:border-transparent"
+                                className="w-full min-w-0 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6b857a] focus:border-transparent"
                                 type="time"
                                 value={slot.startTime}
                                 onChange={(e) =>
@@ -1049,12 +1049,12 @@ export default function CreateCampModal({
                             </div>
 
                             {/* End Time */}
-                            <div className="col-span-3">
+                            <div className="min-w-0 md:col-span-3">
                               <label className="block text-xs text-gray-500 mb-1">
                                 เวลาสิ้นสุด
                               </label>
                               <input
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6b857a] focus:border-transparent"
+                                className="w-full min-w-0 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6b857a] focus:border-transparent"
                                 type="time"
                                 value={slot.endTime}
                                 onChange={(e) =>
@@ -1069,12 +1069,12 @@ export default function CreateCampModal({
                             </div>
 
                             {/* Activity */}
-                            <div className="col-span-5">
+                            <div className="min-w-0 md:col-span-5">
                               <label className="block text-xs text-gray-500 mb-1">
                                 กิจกรรม
                               </label>
                               <input
-                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6b857a] focus:border-transparent"
+                                className="w-full min-w-0 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6b857a] focus:border-transparent"
                                 placeholder="ชื่อกิจกรรม"
                                 type="text"
                                 value={slot.activity}
@@ -1090,10 +1090,10 @@ export default function CreateCampModal({
                             </div>
 
                             {/* Delete Button */}
-                            <div className="col-span-1 flex justify-end">
+                            <div className="flex justify-end md:col-span-1">
                               {day.timeSlots.length > 1 && (
                                 <button
-                                  className="p-2 text-[#E84A5F] opacity-70 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded transition-colors mt-5"
+                                  className="p-2 text-[#E84A5F] opacity-70 hover:opacity-100 hover:text-[#FF847C] hover:bg-[#E84A5F]/10 rounded transition-colors"
                                   type="button"
                                   onClick={() =>
                                     removeTimeSlot(dayIndex, slotIndex)

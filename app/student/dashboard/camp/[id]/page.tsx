@@ -158,8 +158,16 @@ export default function StudentCampDetailPage() {
   useEffect(() => {
     window.scrollTo(0, 0); // เลื่อนขึ้นไปบนสุดทุกครั้งที่เข้าหน้าค่าย
     fetchCamp();
-    fetchSurvey();
   }, [id]);
+
+  useEffect(() => {
+    if (camp?.isRegistered && id) {
+      fetchSurvey();
+    } else {
+      setSurveyData(null);
+      setSurveyCompleted(false);
+    }
+  }, [camp?.isRegistered, id]);
 
   useEffect(() => {
     if (camp?.isRegistered && id) {
@@ -178,6 +186,9 @@ export default function StudentCampDetailPage() {
           setSurveyData(data.survey);
           setSurveyCompleted(data.isCompleted);
         }
+      } else {
+        setSurveyData(null);
+        setSurveyCompleted(false);
       }
     } catch (err) {
       console.error(err);
@@ -442,8 +453,6 @@ export default function StudentCampDetailPage() {
   const startDate = camp.rawStartDate ? new Date(camp.rawStartDate) : null;
   const campNotStarted =
     startDate && isBangkokDateBefore(new Date(), startDate);
-  const canShowAssignedSurvey = !camp.isRegistered && !!surveyData;
-
   return (
     <div
       className={`min-h-screen bg-[#F5F5F3] transition-[padding] duration-300 ${
@@ -832,43 +841,7 @@ export default function StudentCampDetailPage() {
           >
             <div className="min-h-0 overflow-hidden">
               {!camp.isRegistered ? (
-                canShowAssignedSurvey ? (
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      fullWidth
-                      className={`font-black text-base h-12 rounded-xl border ${
-                        surveyCompleted
-                          ? "bg-green-50 text-green-700 border-green-200"
-                          : "bg-[#FFECC9] text-yellow-800 border-yellow-300 shadow-xl shadow-yellow-200/40"
-                      }`}
-                      isDisabled={surveyCompleted}
-                      startContent={
-                        surveyCompleted ? (
-                          <CheckCircle2 size={20} />
-                        ) : (
-                          <ClipboardList size={20} />
-                        )
-                      }
-                      onPress={() => setIsSurveyModalOpen(true)}
-                    >
-                      {surveyCompleted ? "ประเมินแล้ว" : "ทำแบบประเมิน"}
-                    </Button>
-                    {camp.isEnded ? (
-                      <p className="text-center text-xs font-semibold text-gray-400">
-                        ค่ายจบแล้ว แต่คุณยังทำแบบประเมินของค่ายนี้ได้
-                      </p>
-                    ) : (
-                      <Button
-                        fullWidth
-                        className="bg-[#5d7c6f] text-white font-bold text-sm h-11 rounded-xl shadow-md shadow-[#5d7c6f]/20"
-                        isLoading={registering}
-                        onPress={handleRegister}
-                      >
-                        เข้าร่วมค่าย
-                      </Button>
-                    )}
-                  </div>
-                ) : camp.isEnded ? (
+                camp.isEnded ? (
                   <Button
                     fullWidth
                     isDisabled

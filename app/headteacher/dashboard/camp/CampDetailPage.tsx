@@ -98,6 +98,7 @@ interface CampDetail {
   created_by_teacher_id?: number;
   location_sharing_enabled?: boolean;
   total_eligible_students?: number;
+  enrolled_student_count?: number;
   certificate_candidate_count?: number;
   student_enrollment?: any[];
 }
@@ -584,13 +585,8 @@ export default function CampDetailPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-0" />
 
           <div className="relative z-10 w-full flex flex-col gap-3">
-            {/* Status and ID */}
+            {/* ID */}
             <div className="flex items-center gap-3 mb-1">
-              <span className="bg-[#00C48C] text-white px-3 py-1 rounded-full text-xs font-semibold">
-                {camp.status === "active"
-                  ? "กำลังดำเนินการ"
-                  : camp.status || "กำลังดำเนินการ"}
-              </span>
               <span className="text-gray-300 text-sm font-medium">
                 ID: {camp.camp_id}
               </span>
@@ -652,12 +648,18 @@ export default function CampDetailPage() {
           {/* Participants Card */}
           <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
             <p className="text-2xl md:text-3xl font-bold text-[#6b857a] mb-0.5">
-              {camp?.student_enrollment?.length ?? 0}
-              {Math.max(camp?.student_enrollment?.length ?? 0, camp?.total_eligible_students ?? 0) > 0 && (
+              {camp?.enrolled_student_count ?? 0}
+              {Math.max(
+                camp?.enrolled_student_count ?? 0,
+                camp?.total_eligible_students ?? 0,
+              ) > 0 && (
                 <>
                   <span className="text-xl text-gray-300 mx-1">/</span>
                   <span className="text-xl text-gray-400">
-                    {Math.max(camp?.student_enrollment?.length ?? 0, camp?.total_eligible_students ?? 0)}
+                    {Math.max(
+                      camp?.enrolled_student_count ?? 0,
+                      camp?.total_eligible_students ?? 0,
+                    )}
                   </span>
                 </>
               )}

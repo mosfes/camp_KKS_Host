@@ -50,7 +50,7 @@ export async function GET(request: Request, context: any) {
 
     // นับนักเรียนที่ลงทะเบียน
     const enrolledCount = await prisma.student_enrollment.count({
-      where: { camp_camp_id: campId },
+      where: { camp_camp_id: campId, enrolled_at: { not: null } },
     });
 
     const rangeCount =
