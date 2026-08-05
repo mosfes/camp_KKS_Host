@@ -12,6 +12,9 @@ const isProtectedApiRoute = createRouteMatcher([
   "/api/upload(.*)",
   "/api/classrooms(.*)",
   "/api/vulgar-words(.*)",
+  "/api/document-personnel(.*)",
+  "/api/project-document-templates(.*)",
+  "/api/document-reference-options(.*)",
   "/api/camps(.*)",
 ]);
 

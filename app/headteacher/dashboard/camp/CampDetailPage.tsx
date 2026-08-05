@@ -23,6 +23,7 @@ import {
   UserCheck,
   TrendingUp,
   BookOpen,
+  FileText,
 } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -690,6 +691,19 @@ export default function CampDetailPage() {
         {/* Quick Actions */}
         <div className="mb-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {camp.isOwner && (
+              <button
+                className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                onClick={() => router.push(`/headteacher/dashboard/camp/${campId}/project-document`)}
+              >
+                <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                  <FileText size={32} />
+                </div>
+                <span className="font-semibold text-sm text-center text-gray-700">
+                  เอกสาร<br />โครงการ
+                </span>
+              </button>
+            )}
             {camp.isOwner && (
               <button
                 className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"

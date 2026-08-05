@@ -29,12 +29,13 @@ model teachers {
   email       String    @db.VarChar(255)
   deletedAt   DateTime?
 
-  classrooms           classrooms[]
-  classroom_teacher    classroom_teacher[]
-  camp                 camp[]
-  teacher_enrollment   teacher_enrollment[]
-  survey_template      survey_template[]
-  camp_location_update camp_location_update[]
+  classrooms                classrooms[]
+  classroom_teacher         classroom_teacher[]
+  camp                      camp[]
+  teacher_enrollment        teacher_enrollment[]
+  survey_template           survey_template[]
+  camp_location_update      camp_location_update[]
+  project_document_template project_document_template[]
 
   @@index([deletedAt])
 }
@@ -196,9 +197,84 @@ model camp {
   survey                   survey[]
   location_updates         camp_location_update[]
   student_location_updates student_location_update[]
+  project_document         camp_project_document?
 
   @@index([deletedAt])
   @@index([created_by_teacher_id])
+}
+
+model document_personnel {
+  document_personnel_id Int      @id @default(autoincrement())
+  prefix_name           String?  @db.VarChar(50)
+  firstname             String   @db.VarChar(255)
+  lastname              String   @db.VarChar(255)
+  position              String   @db.VarChar(500)
+  is_active             Boolean  @default(true)
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@index([is_active])
+  @@index([firstname, lastname])
+}
+
+model camp_project_document {
+  camp_project_document_id Int      @id @default(autoincrement())
+  camp_camp_id             Int      @unique
+  camp                     camp     @relation(fields: [camp_camp_id], references: [camp_id], onDelete: Cascade)
+  fiscal_year              Int
+  project_name             String   @db.VarChar(500)
+  project_code             String?  @db.VarChar(100)
+  activity_name            String?  @db.VarChar(500)
+  activity_order           String?  @db.VarChar(100)
+  project_type             String   @default("CONTINUING") @db.VarChar(30)
+  standards                String?  @db.Text
+  strategy                 String?  @db.Text
+  responsible_people       String?  @db.Text
+  department               String?  @db.VarChar(500)
+  rationale                String?  @db.LongText
+  objectives               Json
+  quantitative_targets     Json
+  qualitative_targets      Json
+  procedures               Json
+  duration_text            String?  @db.VarChar(500)
+  location_text            String?  @db.VarChar(500)
+  budget_total             Float    @default(0)
+  budget_source            String?  @db.VarChar(100)
+  budget_items             Json
+  evaluations              Json
+  expected_results         Json
+  signatories              Json
+  created_at               DateTime @default(now())
+  updated_at               DateTime @updatedAt
+
+  @@index([camp_camp_id])
+}
+
+model project_document_template {
+  project_document_template_id Int      @id @default(autoincrement())
+  name                         String   @db.VarChar(255)
+  description                  String?  @db.VarChar(500)
+  template_data                Json
+  created_by_teacher_id        Int
+  created_by                   teachers @relation(fields: [created_by_teacher_id], references: [teachers_id], onDelete: Cascade)
+  created_at                   DateTime @default(now())
+  updated_at                   DateTime @updatedAt
+
+  @@unique([created_by_teacher_id, name])
+  @@index([created_by_teacher_id, updated_at])
+}
+
+model document_reference_option {
+  document_reference_option_id Int      @id @default(autoincrement())
+  category                     String   @db.VarChar(30)
+  label                        String   @db.VarChar(700)
+  is_active                    Boolean  @default(true)
+  sort_order                   Int      @default(0)
+  created_at                   DateTime @default(now())
+  updated_at                   DateTime @updatedAt
+
+  @@unique([category, label])
+  @@index([category, is_active, sort_order])
 }
 
 model camp_location_update {
