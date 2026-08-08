@@ -1035,22 +1035,30 @@ export default function CampLocationTracker({
       )}
 
       {viewer !== "teacher" && (
-        <div className="border-b border-blue-100 bg-blue-50/70 p-4 text-xs leading-5 text-slate-700">
-          <p className="font-bold text-slate-800">
+        <details className="group border-b border-blue-100 bg-blue-50/70 p-4 text-xs leading-5 text-slate-700">
+          <summary className="flex cursor-pointer items-center font-bold text-slate-800 outline-none">
             รายละเอียดก่อนเปิดแชร์ตำแหน่ง
-          </p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5">
-            <li>{data.privacy.purpose}</li>
-            <li>ผู้ที่ดูได้: {data.privacy.recipients}</li>
-            <li>{data.privacy.retention}</li>
-            <li>ปิดแชร์ได้ทุกเมื่อโดยไม่กระทบสิทธิในการเข้าร่วมกิจกรรม</li>
-          </ul>
-          <p className="mt-2 font-medium text-blue-800">
-            {viewer === "student" && data.privacy.requiresGuardianConsent
-              ? "นักเรียนอายุต่ำกว่า 10 ปีต้องให้ผู้ปกครองเข้าสู่ระบบและเป็นผู้เปิดแชร์"
-              : "การเปิดสวิตช์ถือเป็นการยืนยันว่าได้รับทราบรายละเอียดข้างต้น หากนักเรียนยังไม่สามารถให้ความยินยอมเองได้ ให้ผู้ปกครองเป็นผู้เปิด"}
-          </p>
-        </div>
+            <span className="ml-auto text-[11px] font-medium text-blue-600 underline underline-offset-2 group-open:hidden">
+              อ่านรายละเอียด
+            </span>
+            <span className="ml-auto hidden text-[11px] font-medium text-slate-500 underline underline-offset-2 group-open:inline">
+              ซ่อนรายละเอียด
+            </span>
+          </summary>
+          <div className="mt-3">
+            <ul className="list-disc space-y-0.5 pl-5">
+              <li>{data.privacy.purpose}</li>
+              <li>ผู้ที่ดูได้: {data.privacy.recipients}</li>
+              <li>{data.privacy.retention}</li>
+              <li>ปิดแชร์ได้ทุกเมื่อโดยไม่กระทบสิทธิในการเข้าร่วมกิจกรรม</li>
+            </ul>
+            <p className="mt-2 font-medium text-blue-800">
+              {viewer === "student" && data.privacy.requiresGuardianConsent
+                ? "นักเรียนอายุต่ำกว่า 10 ปีต้องให้ผู้ปกครองเข้าสู่ระบบและเป็นผู้เปิดแชร์"
+                : "การเปิดสวิตช์ถือเป็นการยืนยันว่าได้รับทราบรายละเอียดข้างต้น หากนักเรียนยังไม่สามารถให้ความยินยอมเองได้ ให้ผู้ปกครองเป็นผู้เปิด"}
+            </p>
+          </div>
+        </details>
       )}
 
       {canConfigureDestination && (
