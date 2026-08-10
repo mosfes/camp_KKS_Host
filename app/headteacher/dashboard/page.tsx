@@ -483,8 +483,15 @@ function DashboardContent() {
     try {
       setIsSubmitting(true);
 
-      let img_shirt_url = formData.shirtImage || "";
-      let img_camp_url = formData.campImage || "";
+      const isDataUrl = (value: unknown) =>
+        typeof value === "string" && value.startsWith("data:");
+
+      let img_shirt_url = isDataUrl(formData.shirtImage)
+        ? ""
+        : formData.shirtImage || "";
+      let img_camp_url = isDataUrl(formData.campImage)
+        ? ""
+        : formData.campImage || "";
 
       // Upload new shirt images if files were picked
       let finalShirtUrls: (string | null)[] = [];
@@ -495,10 +502,12 @@ function DashboardContent() {
         );
 
         finalShirtUrls = Array.isArray(parsed)
-          ? parsed
-          : [formData.shirtImages];
+          ? parsed.map((url) => (isDataUrl(url) ? null : url))
+          : [isDataUrl(formData.shirtImages) ? null : formData.shirtImages];
       } catch (e) {
-        finalShirtUrls = [formData.shirtImages];
+        finalShirtUrls = [
+          isDataUrl(formData.shirtImages) ? null : formData.shirtImages,
+        ];
       }
 
       if (formData.shirtImageFiles && Array.isArray(formData.shirtImageFiles)) {
@@ -513,6 +522,8 @@ function DashboardContent() {
               finalShirtUrls[i] = uploadData.url;
             } catch (uploadErr) {
               console.error("Error during shirt upload:", uploadErr);
+
+              throw new Error("อัปโหลดรูปเสื้อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
             }
           }
         }
@@ -527,6 +538,10 @@ function DashboardContent() {
           img_camp_url = uploadData.url;
         } catch (uploadErr) {
           console.error("Error during camp image upload:", uploadErr);
+
+          throw new Error(
+            "อัปโหลดรูปหน้าปกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+          );
         }
       }
 

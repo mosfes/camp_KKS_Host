@@ -65,6 +65,10 @@ function formatDateWithOffset(startDateStr: string, dayOffset: number) {
   });
 }
 
+function revokePreviewUrl(url: string | null) {
+  if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
+}
+
 import { useStatusModal } from "@/components/StatusModalProvider";
 import CampDestinationField, {
   type CampDestination,
@@ -519,15 +523,11 @@ export default function CreateCampModal({
         newFiles[index] = file;
         setShirtImageFiles(newFiles);
 
-        const reader = new FileReader();
+        const newImages = [...shirtImages];
 
-        reader.onloadend = () => {
-          const newImages = [...shirtImages];
-
-          newImages[index] = reader.result as string;
-          setShirtImages(newImages);
-        };
-        reader.readAsDataURL(file);
+        revokePreviewUrl(newImages[index]);
+        newImages[index] = URL.createObjectURL(file);
+        setShirtImages(newImages);
       }
     };
 
@@ -535,6 +535,7 @@ export default function CreateCampModal({
     const newImages = [...shirtImages];
     const newFiles = [...shirtImageFiles];
 
+    revokePreviewUrl(newImages[index]);
     newImages[index] = null;
     newFiles[index] = null;
     setShirtImages(newImages);
@@ -557,16 +558,13 @@ export default function CreateCampModal({
         return;
       }
       setCampImageFile(file);
-      const reader = new FileReader();
-
-      reader.onloadend = () => {
-        setCampImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      revokePreviewUrl(campImage);
+      setCampImage(URL.createObjectURL(file));
     }
   };
 
   const removeCampImage = () => {
+    revokePreviewUrl(campImage);
     setCampImage(null);
     setCampImageFile(null);
   };
