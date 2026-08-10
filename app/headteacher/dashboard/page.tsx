@@ -64,6 +64,44 @@ async function readResponseBody(response: Response) {
   }
 }
 
+async function uploadImageDirect(file: File) {
+  const signatureResponse = await fetch("/api/upload/signature", {
+    method: "POST",
+  });
+  const signatureData = await readResponseBody(signatureResponse);
+
+  if (!signatureResponse.ok) {
+    throw new Error(
+      signatureData?.error || "ไม่สามารถเตรียมการอัปโหลดรูปได้",
+    );
+  }
+
+  const formData = new FormData();
+  formData.append("file", file, "camp-image.jpg");
+  formData.append("api_key", signatureData.apiKey);
+  formData.append("timestamp", String(signatureData.timestamp));
+  formData.append("folder", signatureData.folder);
+  formData.append("signature", signatureData.signature);
+
+  const uploadResponse = await fetch(
+    `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+  const uploadData = await readResponseBody(uploadResponse);
+
+  if (!uploadResponse.ok || !uploadData?.secure_url) {
+    throw new Error(uploadData?.error?.message || "อัปโหลดรูปไม่สำเร็จ");
+  }
+
+  return {
+    url: uploadData.secure_url,
+    public_id: uploadData.public_id,
+  };
+}
+
 const fetcher = async (url: string) => {
   const response = await fetch(url);
   const data = await readResponseBody(response);
@@ -332,27 +370,10 @@ function DashboardContent() {
       if (data.campImageFile) {
         try {
           const compressedFile = await compressImage(data.campImageFile);
-          const formData = new FormData();
+          const uploadData = await uploadImageDirect(compressedFile);
 
-          formData.append("file", compressedFile);
-
-          const uploadRes = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (uploadRes.ok) {
-            const uploadData = await readResponseBody(uploadRes);
-
-            img_camp_url = uploadData.url;
-            console.log("Uploaded camp image:", img_camp_url);
-          } else {
-            console.error("Failed to upload camp image");
-            showError(
-              "อัปโหลดรูปล้มเหลว",
-              "ไม่สามารถอัปโหลดรูปภาพหน้าปกค่ายได้ แต่จะดำเนินการสร้างค่ายต่อ",
-            );
-          }
+          img_camp_url = uploadData.url;
+          console.log("Uploaded camp image:", img_camp_url);
         } catch (uploadErr) {
           console.error("Error during upload:", uploadErr);
           showError(
@@ -370,19 +391,9 @@ function DashboardContent() {
           if (file) {
             try {
               const compressedFile = await compressImage(file);
-              const formData = new FormData();
+              const uploadData = await uploadImageDirect(compressedFile);
 
-              formData.append("file", compressedFile);
-              const uploadRes = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
-              });
-
-              if (uploadRes.ok) {
-                const uploadData = await readResponseBody(uploadRes);
-
-                shirtUrls.push(uploadData.url);
-              }
+              shirtUrls.push(uploadData.url);
             } catch (uploadErr) {
               console.error("Error uploading shirt image:", uploadErr);
             }
@@ -497,19 +508,9 @@ function DashboardContent() {
           if (file) {
             try {
               const compressedFile = await compressImage(file);
-              const uploadForm = new FormData();
+              const uploadData = await uploadImageDirect(compressedFile);
 
-              uploadForm.append("file", compressedFile);
-              const uploadRes = await fetch("/api/upload", {
-                method: "POST",
-                body: uploadForm,
-              });
-
-              if (uploadRes.ok) {
-                const uploadData = await readResponseBody(uploadRes);
-
-                finalShirtUrls[i] = uploadData.url;
-              }
+              finalShirtUrls[i] = uploadData.url;
             } catch (uploadErr) {
               console.error("Error during shirt upload:", uploadErr);
             }
@@ -521,19 +522,9 @@ function DashboardContent() {
       if (formData.campImageFile) {
         try {
           const compressedFile = await compressImage(formData.campImageFile);
-          const uploadForm = new FormData();
+          const uploadData = await uploadImageDirect(compressedFile);
 
-          uploadForm.append("file", compressedFile);
-          const uploadRes = await fetch("/api/upload", {
-            method: "POST",
-            body: uploadForm,
-          });
-
-          if (uploadRes.ok) {
-            const uploadData = await readResponseBody(uploadRes);
-
-            img_camp_url = uploadData.url;
-          }
+          img_camp_url = uploadData.url;
         } catch (uploadErr) {
           console.error("Error during camp image upload:", uploadErr);
         }
