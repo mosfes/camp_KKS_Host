@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-import cloudinary from "@/config/cloudinary";
+import cloudinary, { isCloudinaryConfigured } from "@/config/cloudinary";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
@@ -49,6 +50,17 @@ function uploadBuffer(
 
 export async function POST(request: Request) {
   try {
+    if (!isCloudinaryConfigured()) {
+      console.error(
+        "[upload] Cloudinary is not configured. Set CLOUDINARY_URL or CLOUD_NAME/API_KEY/API_SECRET.",
+      );
+
+      return NextResponse.json(
+        { error: "ระบบอัปโหลดรูปยังไม่ได้ตั้งค่า Cloudinary บนเซิร์ฟเวอร์" },
+        { status: 503 },
+      );
+    }
+
     const data = await request.formData();
     const file = data.get("file") as File | null;
 
@@ -85,7 +97,7 @@ export async function POST(request: Request) {
     console.error("[upload] Cloudinary error:", error);
 
     return NextResponse.json(
-      { _error: "อัปโหลดล้มเหลว", details: error?.message ?? String(error) },
+      { error: "อัปโหลดล้มเหลว", details: error?.message ?? String(error) },
       { status: 500 },
     );
   }
