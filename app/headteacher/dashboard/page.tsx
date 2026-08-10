@@ -530,14 +530,34 @@ function DashboardContent() {
         }
       }
 
+      // Do not spread formData here: it contains base64 preview strings and
+      // File objects used only by the modal. Sending those in JSON can exceed
+      // Vercel's 4.5 MB Function payload limit.
+      const updatePayload = {
+        name: formData.name,
+        location: formData.location,
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        start_regis_date: formData.start_regis_date,
+        end_regis_date: formData.end_regis_date,
+        start_shirt_date: formData.start_shirt_date,
+        end_shirt_date: formData.end_shirt_date,
+        description: formData.description,
+        has_shirt: formData.has_shirt,
+        status: formData.status || "OPEN",
+        classroom_ids: formData.classroom_ids,
+        dailySchedule: formData.dailySchedule,
+        destination: formData.destination,
+        location_sharing_enabled: formData.location_sharing_enabled,
+        location_update_interval: formData.location_update_interval,
+        img_shirt_url,
+        img_camp_url,
+      };
+
       const response = await fetch(`/api/camps/${editingCampData.camp_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          img_shirt_url,
-          img_camp_url,
-        }),
+        body: JSON.stringify(updatePayload),
       });
 
       if (!response.ok) {
