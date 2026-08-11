@@ -47,13 +47,26 @@ export async function PUT(req: any) {
     const { payload: studentSession } = await jwtVerify(session.value, secret);
     const body = await req.json();
 
-    const updateData: any = {
-      chronic_disease: body.chronic_disease || null,
-      food_allergy: body.food_allergy || null,
-      birthday: body.birthday ? new Date(body.birthday) : null,
-      remark: body.remark || null,
-      tel: body.student_tel || null,
-    };
+    const updateData: any = {};
+
+    // Only update fields that were included in the request. This lets the
+    // lightweight first-visit form save nickname/food allergy without
+    // clearing the student's existing medical and contact information.
+    if (body.chronic_disease !== undefined) {
+      updateData.chronic_disease = body.chronic_disease || null;
+    }
+    if (body.food_allergy !== undefined) {
+      updateData.food_allergy = body.food_allergy || null;
+    }
+    if (body.birthday !== undefined) {
+      updateData.birthday = body.birthday ? new Date(body.birthday) : null;
+    }
+    if (body.remark !== undefined) {
+      updateData.remark = body.remark || null;
+    }
+    if (body.student_tel !== undefined) {
+      updateData.tel = body.student_tel || null;
+    }
 
     // อัปเดตชื่อเล่นถ้ามี
     if (body.nickname !== undefined) {

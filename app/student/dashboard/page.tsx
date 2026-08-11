@@ -11,6 +11,7 @@ import {
   History,
   Sparkles,
   AlertCircle,
+  Camera,
   Phone,
   Clock,
   Users,
@@ -53,12 +54,9 @@ export default function StudentDashboard() {
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileData, setProfileData] = useState({
-    chronic_disease: "",
+    nickname: "",
     food_allergy: "",
-    birthday: "",
-    parent_tel: "",
-    student_tel: "",
-    remark: "",
+    profile_image_url: null as string | null,
   });
 
   const goToCamp = (campId: number) => {
@@ -86,23 +84,13 @@ export default function StudentDashboard() {
         if (profileRes.ok) {
           const profile = await profileRes.json();
 
-          // Check if key information is missing
-          if (
-            !profile.birthday ||
-            !profile.tel ||
-            profile.chronic_disease === null ||
-            profile.food_allergy === null
-          ) {
+          // Ask for a nickname the first time a student enters without one.
+          // The profile image is shown in the same form but remains optional.
+          if (!profile.nickname?.trim()) {
             setProfileData({
-              chronic_disease: profile.chronic_disease || "",
+              nickname: profile.nickname || "",
               food_allergy: profile.food_allergy || "",
-              birthday: profile.birthday ? profile.birthday.split("T")[0] : "",
-              student_tel: profile.tel || "",
-              parent_tel:
-                profile.parents && profile.parents.length > 0
-                  ? profile.parents[0].tel
-                  : "",
-              remark: profile.remark || "",
+              profile_image_url: profile.profile_image_url || null,
             });
             setShowProfileModal(true);
           }
@@ -523,6 +511,9 @@ function StudentProfileSetupModal({
 }) {
   const [form, setForm] = useState(initialData);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -552,29 +543,10 @@ function StudentProfileSetupModal({
   const validate = () => {
     const errors: Record<string, string> = {};
 
-    if (!form.chronic_disease.trim())
-      errors.chronic_disease = "กรุณากรอกข้อมูลโรคประจำตัว";
-    if (!form.food_allergy.trim())
-      errors.food_allergy = "กรุณากรอกข้อมูลการแพ้อาหาร/ยา";
-    if (!form.birthday) {
-      errors.birthday = "กรุณาเลือกวันเกิดให้ครบถ้วน";
-    } else {
-      const parts = form.birthday.split("-");
-
-      if (parts.length !== 3 || parts.some((p: any) => !p))
-        errors.birthday = "กรุณาเลือกวันเกิดให้ครบถ้วน";
-    }
-
-    if (form.parent_tel.trim()) {
-      const digits = form.parent_tel.replace(/\D/g, "");
-
-      if (digits.length !== 10) errors.parent_tel = "เบอร์โทรต้องเป็น 10 หลัก";
-    }
-    if (form.student_tel.trim()) {
-      const digits = form.student_tel.replace(/\D/g, "");
-
-      if (digits.length !== 10) errors.student_tel = "เบอร์โทรต้องเป็น 10 หลัก";
-    }
+    if (!form.nickname?.trim())
+      errors.nickname = "กรุณากรอกชื่อเล่นก่อนดำเนินการต่อ";
+    if (!form.food_allergy?.trim())
+      errors.food_allergy = "กรุณากรอกข้อมูลการแพ้อาหาร/ยา หรือกรอกว่าไม่มี";
 
     return errors;
   };
@@ -592,7 +564,13 @@ function StudentProfileSetupModal({
       const res = await fetch("/api/student/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          nickname: form.nickname?.trim() || null,
+          food_allergy: form.food_allergy.trim(),
+          ...(pendingImageUrl
+            ? { profile_image_url: pendingImageUrl }
+            : {}),
+        }),
       });
       const data = await res.json();
 
@@ -607,6 +585,57 @@ function StudentProfileSetupModal({
       setApiError("เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleImageChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setApiError("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+
+    setPreviewImage(objectUrl);
+    setApiError("");
+    setUploadingImage(true);
+
+    try {
+      const imageCompression = (
+        await import("browser-image-compression")
+      ).default;
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 800,
+        useWebWorker: true,
+        fileType: "image/jpeg",
+      });
+      const uploadForm = new FormData();
+
+      uploadForm.append("file", compressedFile, "student-profile.jpg");
+
+      const response = await fetch("/api/student/profile/upload-image", {
+        method: "POST",
+        body: uploadForm,
+      });
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "อัปโหลดรูปไม่สำเร็จ");
+
+      setPendingImageUrl(data.url);
+    } catch (error: any) {
+      URL.revokeObjectURL(objectUrl);
+      setPreviewImage(null);
+      setApiError(error.message || "อัปโหลดรูปไม่สำเร็จ");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -650,6 +679,7 @@ function StudentProfileSetupModal({
             </div>
           ) : (
             <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="hidden">
               <div className="bg-[#5d7c6f]/10 p-3 rounded-xl border border-[#5d7c6f]/20 text-center">
                 <p className="text-xs text-[#3d6357] leading-relaxed">
                   หากไม่มีข้อมูลส่วนไหน สามารถพิมพ์คำว่า{" "}
@@ -849,6 +879,105 @@ function StudentProfileSetupModal({
                 />
               </div>
 
+              </div>
+
+              <div>
+                <label
+                  className="block text-sm font-semibold text-gray-700 mb-1"
+                  htmlFor="student-profile-image"
+                >
+                  รูปโปรไฟล์ <span className="text-xs text-gray-400">(ถ้ามี)</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-full overflow-hidden bg-[#5d7c6f]/10 border border-gray-200 flex items-center justify-center text-[#5d7c6f]">
+                    {previewImage || form.profile_image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        alt="ตัวอย่างรูปโปรไฟล์"
+                        className="w-full h-full object-cover"
+                        src={previewImage || form.profile_image_url}
+                      />
+                    ) : (
+                      <Camera size={22} />
+                    )}
+                  </div>
+                  <label className="cursor-pointer px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+                    {uploadingImage ? "กำลังอัปโหลด..." : "เลือกรูปภาพ"}
+                    <input
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingImage}
+                      id="student-profile-image"
+                      type="file"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                  <span className="text-xs text-gray-400">ข้ามได้</span>
+                </div>
+              </div>
+
+              <div>
+                <label
+                  className="block text-sm font-semibold text-gray-700 mb-1"
+                  htmlFor="student-food-allergy"
+                >
+                  การแพ้อาหาร/ยา <span className="text-red-500">*</span>
+                </label>
+                <input
+                  className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all
+                    ${
+                      fieldError.food_allergy
+                        ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+                        : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
+                    }`}
+                  id="student-food-allergy"
+                  placeholder="เช่น ไม่มี, อาหารทะเล, ไข่ไก่"
+                  type="text"
+                  value={form.food_allergy || ""}
+                  onChange={(e) =>
+                    setForm((f: any) => ({
+                      ...f,
+                      food_allergy: e.target.value,
+                    }))
+                  }
+                />
+                {fieldError.food_allergy && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {fieldError.food_allergy}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  className="block text-sm font-semibold text-gray-700 mb-1"
+                  htmlFor="student-nickname"
+                >
+                  ชื่อเล่น <span className="text-red-500">*</span>
+                </label>
+                <input
+                  className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all
+                    ${
+                      fieldError.nickname
+                        ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+                        : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
+                  }`}
+                  id="student-nickname"
+                  placeholder="กรอกชื่อเล่นที่อยากให้เพื่อน ๆ เรียก"
+                  type="text"
+                  maxLength={50}
+                  value={form.nickname || ""}
+                  onChange={(e) =>
+                    setForm((f: any) => ({ ...f, nickname: e.target.value }))
+                  }
+                />
+                {fieldError.nickname && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {fieldError.nickname}
+                  </p>
+                )}
+              </div>
+
               {apiError && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2 text-red-600 text-sm">
                   <AlertCircle size={16} />
@@ -858,7 +987,7 @@ function StudentProfileSetupModal({
 
               <button
                 className="w-full bg-[#5d7c6f] hover:bg-[#4a6659] text-white font-bold py-3.5 rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm shadow-md"
-                disabled={saving}
+                disabled={saving || uploadingImage}
                 type="submit"
               >
                 {saving ? (
@@ -867,7 +996,7 @@ function StudentProfileSetupModal({
                     กำลังบันทึก...
                   </>
                 ) : (
-                  <>บันทึกข้อมูลส่วนตัว</>
+                  <>บันทึกชื่อเล่น</>
                 )}
               </button>
             </form>
