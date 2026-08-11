@@ -42,36 +42,59 @@ async function recordCompletion(studentId, missionId, campId) {
   if (!enrollment)
     return { error: "ยังไม่ได้ลงทะเบียนเข้าร่วมค่าย", status: 403 };
 
-  const existing = await prisma.mission_result.findFirst({
-    where: {
-      student_enrollment_id: enrollment.student_enrollment_id,
-      mission_mission_id: missionId,
-      status: "completed",
-    },
-  });
+  return prisma.$transaction(async (tx) => {
+    // Lock the existing enrollment row so two tabs/processes cannot both
+    // pass the check before either one creates the completion record.
+    await tx.$queryRaw`
+      SELECT student_enrollment_id
+      FROM student_enrollment
+      WHERE student_enrollment_id = ${enrollment.student_enrollment_id}
+      FOR UPDATE
+    `;
 
-  if (existing)
+    const existing = await tx.mission_result.findFirst({
+      where: {
+        student_enrollment_id: enrollment.student_enrollment_id,
+        mission_mission_id: missionId,
+      },
+      orderBy: { mission_result_id: "desc" },
+    });
+
+    if (existing?.status === "completed") {
+      return {
+        success: true,
+        alreadyCompleted: true,
+        message: "คุณได้ทำภารกิจนี้แล้ว",
+      };
+    }
+
+    if (existing) {
+      await tx.mission_result.update({
+        where: { mission_result_id: existing.mission_result_id },
+        data: {
+          method: "QR",
+          status: "completed",
+          submitted_at: new Date(),
+        },
+      });
+    } else {
+      await tx.mission_result.create({
+        data: {
+          method: "QR",
+          status: "completed",
+          submitted_at: new Date(),
+          student_enrollment_id: enrollment.student_enrollment_id,
+          mission_mission_id: missionId,
+        },
+      });
+    }
+
     return {
       success: true,
-      alreadyCompleted: true,
-      message: "คุณได้ทำภารกิจนี้แล้ว",
+      alreadyCompleted: false,
+      message: "สำเร็จ! ภารกิจเสร็จสิ้น",
     };
-
-  await prisma.mission_result.create({
-    data: {
-      method: "QR",
-      status: "completed",
-      submitted_at: new Date(),
-      student_enrollment_id: enrollment.student_enrollment_id,
-      mission_mission_id: missionId,
-    },
   });
-
-  return {
-    success: true,
-    alreadyCompleted: false,
-    message: "สำเร็จ! ภารกิจเสร็จสิ้น",
-  };
 }
 
 // POST /api/student/mission/qr-scan

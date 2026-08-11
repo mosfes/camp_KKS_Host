@@ -429,7 +429,7 @@ export default function StudentStationDetailPage() {
   };
 
   const submitMission = async () => {
-    if (!selectedMission) return;
+    if (!selectedMission || submitting) return;
 
     // Do not persist a draft while an image is still being compressed/uploaded.
     // The URL is only added to `answers` after /api/upload succeeds.
@@ -477,7 +477,9 @@ export default function StudentStationDetailPage() {
         await fetchCamp(); // Refresh status
         onClose();
       } else {
-        toast.error("ส่งภารกิจล้มเหลว");
+        const errorData = await res.json().catch(() => null);
+
+        toast.error(errorData?.error || "ส่งภารกิจล้มเหลว");
       }
     } catch (error) {
       console.error(error);
@@ -1210,6 +1212,7 @@ export default function StudentStationDetailPage() {
                         <Button
                           className={`text-white font-bold ${canSubmit ? "bg-[#5d7c6f]" : "bg-gray-500 hover:bg-gray-600"}`}
                           isDisabled={
+                            submitting ||
                             isUploading ||
                             (isSinglePhotoSubmission && !allAnswered)
                           }
