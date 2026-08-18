@@ -30,6 +30,53 @@ import TrashManager from "./TrashManager";
 import studentService from "@/app/service/adminService";
 import { PlusIcon } from "./Icons";
 
+function ClassroomLoadingTable() {
+    const columns = [
+        "ระดับชั้น",
+        "ประเภทห้อง",
+        "ครูประจำชั้น",
+        "ปีการศึกษา",
+        "จำนวนนักเรียน",
+        "ดำเนินการ",
+    ];
+
+    return (
+        <div
+            aria-label="กำลังโหลดข้อมูลห้องเรียน"
+            className="min-w-[800px] overflow-hidden rounded-xl border border-gray-100 bg-white"
+            role="status"
+        >
+            <div className="grid grid-cols-[0.8fr_1fr_1.8fr_1fr_1fr_0.7fr] gap-4 border-b border-gray-100 bg-gray-50/50 px-4 py-4">
+                {columns.map((column) => (
+                    <span className="text-sm font-semibold text-gray-800" key={column}>
+                        {column}
+                    </span>
+                ))}
+            </div>
+
+            {Array.from({ length: 6 }, (_, index) => (
+                <div
+                    className="grid grid-cols-[0.8fr_1fr_1.8fr_1fr_1fr_0.7fr] items-center gap-4 border-b border-gray-100 px-4 py-5 last:border-b-0"
+                    key={index}
+                >
+                    <div className="h-4 w-12 animate-pulse rounded bg-gray-200" />
+                    <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
+                    <div className="space-y-2">
+                        <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
+                        <div className="h-3 w-28 animate-pulse rounded bg-gray-200" />
+                    </div>
+                    <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
+                    <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
+                    <div className="flex gap-3">
+                        <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                        <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 const ClassroomManager = () => {
     const { showSuccess, showError, showConfirm } = useStatusModal();
     const [isLoading, setIsLoading] = useState(true);
@@ -513,6 +560,9 @@ const ClassroomManager = () => {
                     </div>
 
                     <div className="overflow-x-auto w-full">
+                        {isLoading ? (
+                            <ClassroomLoadingTable />
+                        ) : (
                         <Table aria-label="Classroom Table" shadow="none"
                             classNames={{
                                 wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[800px] md:min-w-full",
@@ -530,13 +580,6 @@ const ClassroomManager = () => {
                             </TableHeader>
                             <TableBody
                                 emptyContent="ยังไม่ได้กำหนดห้องเรียนในปีนี้"
-                                isLoading={isLoading}
-                                loadingContent={
-                                    <div className="flex flex-col items-center gap-2">
-                                        <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
-                                        <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
-                                    </div>
-                                }
                             >
                                 {classrooms
                                     .filter(room =>
@@ -579,6 +622,7 @@ const ClassroomManager = () => {
                                 ))}
                             </TableBody>
                         </Table>
+                        )}
                     </div>
 
                     <div className="flex flex-col md:flex-row items-center mt-6 gap-4 px-2 w-full relative">

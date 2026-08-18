@@ -158,7 +158,7 @@ export default function TakeSurveyModal({
     <Modal
       backdrop="blur"
       classNames={{
-        base: "bg-white rounded-3xl shadow-xl",
+        base: "bg-white rounded-3xl shadow-xl max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100%_-_8rem)]",
         backdrop: "bg-black/40 backdrop-blur-sm",
       }}
       isOpen={isOpen}
@@ -169,12 +169,12 @@ export default function TakeSurveyModal({
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex flex-col gap-1 px-8 pt-8 pb-4">
-              <div className="flex items-center gap-3 mb-2">
+            <ModalHeader className="flex flex-col gap-1 px-4 pt-4 pb-3 sm:px-8 sm:pt-8 sm:pb-4">
+              <div className="flex items-center gap-2 mb-1 sm:gap-3 sm:mb-2">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                   <ClipboardList size={20} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900">
                   {survey.title}
                 </h2>
               </div>
@@ -184,16 +184,16 @@ export default function TakeSurveyModal({
                 </p>
               )}
 
-              <div className="mt-4 bg-blue-50/80 border border-blue-100 rounded-xl p-3 flex items-start gap-3">
+              <div className="mt-3 bg-blue-50/80 border border-blue-100 rounded-xl p-2.5 flex items-start gap-2 sm:mt-4 sm:p-3 sm:gap-3">
                 <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-blue-700 leading-relaxed">
-                  <span className="font-semibold">แบบสอบถามไม่ระบุตัวตน:</span>{" "}
+                <p className="text-sm text-blue-700 font-normal leading-relaxed">
+                  <span className="font-normal">แบบสอบถามไม่ระบุตัวตน:</span>{" "}
                   จะไม่มีการแสดงชื่อหรือข้อมูลส่วนตัวของผู้ตอบแบบสอบถาม
                 </p>
               </div>
             </ModalHeader>
 
-            <ModalBody className="px-8 py-4 space-y-6">
+            <ModalBody className="px-4 py-3 space-y-3 sm:px-8 sm:py-4 sm:space-y-6">
               {(() => {
                 let qNumber = 1;
 
@@ -202,7 +202,7 @@ export default function TakeSurveyModal({
                     return (
                       <div
                         key={q.question_id}
-                        className="bg-purple-50/50 rounded-2xl p-5 border border-purple-100 mt-2"
+                        className="bg-purple-50/50 rounded-2xl p-3 sm:p-5 border border-purple-100 mt-1 sm:mt-2"
                       >
                         <div className="flex gap-3 items-center">
                           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
@@ -221,9 +221,9 @@ export default function TakeSurveyModal({
                   return (
                     <div
                       key={q.question_id}
-                      className="bg-gray-50 rounded-2xl p-5 border border-gray-100"
+                      className="bg-gray-50 rounded-2xl p-3 sm:p-5 border border-gray-100"
                     >
-                      <div className="flex gap-3 mb-4">
+                      <div className="flex gap-2 mb-2 sm:gap-3 sm:mb-4">
                         <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
                           {currentIndex}
                         </span>
@@ -239,7 +239,7 @@ export default function TakeSurveyModal({
                         </p>
                       </div>
 
-                      <div className="pl-9">
+                      <div className="pl-8 sm:pl-9">
                         {q.question_type === "text" ? (
                           <textarea
                             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#5d7c6f] focus:border-[#5d7c6f] outline-none transition-all text-sm resize-none bg-white text-gray-900"
@@ -281,9 +281,9 @@ export default function TakeSurveyModal({
                             )}
                           </div>
                         ) : (
-                          <div className="mt-4 overflow-x-auto pb-2">
+                          <div className="mt-2 overflow-x-auto pb-1 sm:mt-4 sm:pb-2">
                             <div className="inline-block min-w-full sm:min-w-[auto]">
-                              <div className="flex items-center gap-3 sm:gap-5 py-2">
+                              <div className="flex items-center gap-2 sm:gap-5 py-1 sm:py-2">
                                 <span className="text-xs font-medium text-[#4f6d5f] whitespace-nowrap">
                                   มากที่สุด
                                 </span>
@@ -392,10 +392,10 @@ export default function TakeSurveyModal({
               )}
             </ModalBody>
 
-            <ModalFooter className="px-8 py-6 flex-col sm:flex-row gap-3">
+            <ModalFooter className="px-4 py-3 flex-col sm:flex-row gap-2 sm:px-8 sm:py-6 sm:gap-3">
               <Button
                 fullWidth
-                className="bg-gray-100 text-gray-600 font-medium sm:w-1/3"
+                className="bg-gray-100 text-gray-600 font-normal sm:w-1/3"
                 size="lg"
                 onPress={onClose}
               >
@@ -403,7 +403,7 @@ export default function TakeSurveyModal({
               </Button>
               <Button
                 fullWidth
-                className="bg-[#5d7c6f] text-white font-bold shadow-lg shadow-[#5d7c6f]/20 sm:w-2/3"
+                className="bg-[#5d7c6f] text-white font-normal shadow-lg shadow-[#5d7c6f]/20 sm:w-2/3"
                 isLoading={loading}
                 size="lg"
                 onPress={handleSubmit}

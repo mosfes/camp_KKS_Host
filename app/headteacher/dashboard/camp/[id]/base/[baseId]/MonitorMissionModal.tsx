@@ -245,7 +245,7 @@ export default function MonitorMissionModal({
               <ModalHeader className="flex flex-col gap-1 p-6 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2 text-[#6b857a]">
                   <Eye size={24} />
-                  <h2 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-xl font-bold text-gray-900">
                     ดูคำตอบนักเรียน
                   </h2>
                 </div>

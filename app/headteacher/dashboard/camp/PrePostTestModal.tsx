@@ -7,9 +7,14 @@ import {
   ModalFooter,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
-import { BarChart2, Search } from "lucide-react";
+import { ArrowLeft, BarChart2, Search } from "lucide-react";
 
-export default function PrePostTestModal({ isOpen, onClose, campId }: any) {
+export default function PrePostTestModal({
+  isOpen,
+  onClose,
+  campId,
+  pageMode = false,
+}: any) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,30 +46,68 @@ export default function PrePostTestModal({ isOpen, onClose, campId }: any) {
     <Modal
       backdrop="blur"
       classNames={{
-        base: "bg-white rounded-2xl shadow-xl",
-        backdrop: "bg-black/50 backdrop-blur-sm",
+        base: pageMode
+          ? "!m-0 !h-full !min-h-0 !max-h-none w-full !max-w-none rounded-none bg-[#f5f5f2] shadow-none"
+          : "bg-white rounded-2xl shadow-xl",
+        backdrop: pageMode ? "hidden" : "bg-black/50 backdrop-blur-sm",
+        wrapper: pageMode ? "camp-page-modal items-start p-0" : undefined,
       }}
+      hideCloseButton={pageMode}
+      isDismissable={!pageMode}
       isOpen={isOpen}
       scrollBehavior="inside"
       size="4xl"
       onOpenChange={onClose}
     >
-      <ModalContent>
+      <ModalContent
+        className={
+          pageMode
+            ? "!m-0 !h-full !min-h-0 !max-h-none !rounded-none !bg-[#f5f5f2] !shadow-none overflow-y-auto"
+            : undefined
+        }
+      >
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1 p-6 border-b border-gray-100">
+            <ModalHeader
+              className={`relative flex flex-col gap-1 px-6 ${
+                pageMode
+                  ? "mx-auto w-full max-w-6xl border-0 pb-8 pt-8 sm:px-8"
+                  : "border-b border-gray-100 p-6"
+              }`}
+            >
+              {pageMode && (
+                <button
+                  className="mb-6 inline-flex w-fit items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
+                  type="button"
+                  onClick={onClose}
+                >
+                  <ArrowLeft size={14} />
+                  กลับไปยังหน้าหลัก
+                </button>
+              )}
+
               <div className="flex items-center gap-2 text-[#6b857a]">
-                <BarChart2 size={24} />
-                <h2 className="text-2xl font-bold text-gray-900">
+                <BarChart2 size={pageMode ? 20 : 24} />
+                <h2
+                  className={`${
+                    pageMode ? "text-lg leading-tight" : "text-xl"
+                  } font-bold text-gray-900`}
+                >
                   เปรียบเทียบคะแนนก่อนเรียน - หลังเรียน
                 </h2>
               </div>
-              <p className="text-sm text-gray-500 font-normal">
+              <p className="text-sm font-normal text-gray-500">
                 ดูและเปรียบเทียบคะแนนพัฒนาการของนักเรียนในแต่ละฐานกิจกรรม
               </p>
             </ModalHeader>
 
-            <ModalBody className="p-6 bg-gray-50/50">
+            <ModalBody
+              className={
+                pageMode
+                  ? "mx-auto block w-full max-w-6xl space-y-6 overflow-visible bg-[#f5f5f2] px-4 pb-10 pt-0 sm:px-8"
+                  : "bg-gray-50/50 p-6"
+              }
+            >
               {loading ? (
                 <div className="flex justify-center items-center py-12">
                   <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
@@ -263,14 +306,16 @@ export default function PrePostTestModal({ isOpen, onClose, campId }: any) {
                 </div>
               )}
             </ModalBody>
-            <ModalFooter className="p-4 border-t border-gray-100 flex justify-end">
-              <Button
-                className="bg-gray-100 text-gray-700 font-medium hover:bg-gray-200"
-                onPress={onClose}
-              >
-                ปิดหน้าต่าง
-              </Button>
-            </ModalFooter>
+            {!pageMode && (
+              <ModalFooter className="flex justify-end border-t border-gray-100 p-4">
+                <Button
+                  className="bg-gray-100 font-medium text-gray-700 hover:bg-gray-200"
+                  onPress={onClose}
+                >
+                  ปิดหน้าต่าง
+                </Button>
+              </ModalFooter>
+            )}
           </>
         )}
       </ModalContent>

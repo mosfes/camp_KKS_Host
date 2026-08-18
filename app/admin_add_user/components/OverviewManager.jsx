@@ -27,7 +27,6 @@ import {
   Users,
 } from "lucide-react";
 
-import LoadingSpinner from "@/components/LoadingSpinner";
 import adminService from "@/app/service/adminService";
 import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
 
@@ -145,6 +144,162 @@ function OperationCard({ icon: Icon, label, value, tone }) {
   );
 }
 
+function SkeletonBlock({ className = "" }) {
+  return <div className={`animate-pulse rounded bg-gray-200 ${className}`} />;
+}
+
+export function OverviewSkeleton() {
+  return (
+    <div
+      aria-label="กำลังโหลดภาพรวมระบบ"
+      aria-live="polite"
+      className="flex w-full flex-col gap-6 pt-1"
+      role="status"
+    >
+      {/* Summary banner */}
+      <section className="overflow-hidden rounded-3xl bg-[#365f4f] shadow-sm">
+        <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div className="space-y-4">
+            <SkeletonBlock className="h-4 w-32 bg-white/25" />
+            <SkeletonBlock className="h-8 w-72 bg-white/25 sm:h-9 sm:w-96" />
+            <SkeletonBlock className="h-4 w-full max-w-xl bg-white/20" />
+            <div className="flex gap-2">
+              <SkeletonBlock className="h-9 w-32 rounded-xl bg-white/20" />
+              <SkeletonBlock className="h-9 w-40 rounded-xl bg-white/20" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:w-[430px]">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div
+                key={index}
+                className="rounded-2xl border border-white/15 bg-white/10 p-3"
+              >
+                <SkeletonBlock className="h-5 w-5 rounded-full bg-white/25" />
+                <SkeletonBlock className="mt-3 h-8 w-10 bg-white/25" />
+                <SkeletonBlock className="mt-2 h-3 w-16 bg-white/20" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Quality summary */}
+      <section className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="space-y-3">
+            <SkeletonBlock className="h-4 w-28" />
+            <SkeletonBlock className="h-6 w-72" />
+            <SkeletonBlock className="h-4 w-full max-w-2xl" />
+            <div className="flex gap-2">
+              <SkeletonBlock className="h-7 w-28 rounded-full" />
+              <SkeletonBlock className="h-7 w-32 rounded-full" />
+            </div>
+          </div>
+          <div className="grid min-w-[280px] grid-cols-3 gap-2">
+            {Array.from({ length: 3 }, (_, index) => (
+              <div key={index} className="rounded-xl bg-gray-100 p-3">
+                <SkeletonBlock className="mx-auto h-7 w-8" />
+                <SkeletonBlock className="mx-auto mt-2 h-3 w-16" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Upcoming and follow-up cards */}
+      <section className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
+        {Array.from({ length: 2 }, (_, index) => (
+          <div
+            key={index}
+            className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6"
+          >
+            <SkeletonBlock className="h-4 w-28" />
+            <SkeletonBlock className="mt-3 h-6 w-64" />
+            <div className="mt-5 space-y-3">
+              {Array.from({ length: 2 }, (_, row) => (
+                <div
+                  key={row}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <SkeletonBlock className="h-9 w-9 rounded-xl" />
+                    <div className="space-y-2">
+                      <SkeletonBlock className="h-4 w-36" />
+                      <SkeletonBlock className="h-3 w-24" />
+                    </div>
+                  </div>
+                  <SkeletonBlock className="h-5 w-6" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* System counts */}
+      <section>
+        <SkeletonBlock className="h-6 w-40" />
+        <SkeletonBlock className="mt-2 h-4 w-64" />
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div
+              key={index}
+              className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
+            >
+              <SkeletonBlock className="h-10 w-10 rounded-xl" />
+              <SkeletonBlock className="mt-3 h-8 w-14" />
+              <SkeletonBlock className="mt-2 h-3 w-24" />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Quality metrics */}
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div
+            key={index}
+            className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <SkeletonBlock className="h-4 w-28" />
+                <SkeletonBlock className="mt-3 h-9 w-16" />
+                <SkeletonBlock className="mt-2 h-3 w-32" />
+              </div>
+              <SkeletonBlock className="h-11 w-11 rounded-2xl" />
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* Camp analysis */}
+      <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+        <div className="border-b border-gray-100 p-5 sm:p-6">
+          <SkeletonBlock className="h-6 w-44" />
+          <SkeletonBlock className="mt-2 h-4 w-80 max-w-full" />
+        </div>
+        <div className="space-y-4 p-5 sm:p-6">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-4 rounded-xl border border-gray-100 p-4"
+            >
+              <SkeletonBlock className="hidden h-10 w-10 rounded-xl lg:block" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <SkeletonBlock className="h-4 w-48 max-w-full" />
+                <SkeletonBlock className="h-3 w-64 max-w-full" />
+              </div>
+              <SkeletonBlock className="h-7 w-20 rounded-full" />
+              <SkeletonBlock className="h-5 w-5" />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function OverviewManager() {
   const router = useRouter();
   const [academicYears, setAcademicYears] = useState([]);
@@ -254,9 +409,17 @@ export default function OverviewManager() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <LoadingSpinner />
-      </div>
+      <>
+        {headerActionsNode &&
+          createPortal(
+            <div
+              aria-hidden="true"
+              className="h-10 w-40 animate-pulse rounded-xl bg-gray-200"
+            />,
+            headerActionsNode,
+          )}
+        <OverviewSkeleton />
+      </>
     );
   }
 

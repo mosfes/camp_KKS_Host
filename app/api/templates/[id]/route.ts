@@ -24,6 +24,7 @@ export async function GET(request, { params }) {
             location: true,
             description: true,
             has_shirt: true,
+            has_transport: true,
             camp_classroom: {
               select: {
                 classroom_classroom_id: true,

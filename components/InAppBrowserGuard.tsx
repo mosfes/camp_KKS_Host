@@ -131,7 +131,7 @@ export default function InAppBrowserGuard({
           </p>
           <ol className="space-y-3 text-sm leading-6 text-slate-600">
             <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#6b857a] text-xs font-bold text-white">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#6b857a] bg-transparent text-xs font-bold text-[#6b857a]">
                 1
               </span>
               <span>
@@ -140,13 +140,13 @@ export default function InAppBrowserGuard({
               </span>
             </li>
             <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#6b857a] text-xs font-bold text-white">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#6b857a] bg-transparent text-xs font-bold text-[#6b857a]">
                 2
               </span>
               <span>{stepTwoText}</span>
             </li>
             <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#6b857a] text-xs font-bold text-white">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#6b857a] bg-transparent text-xs font-bold text-[#6b857a]">
                 3
               </span>
               <span>กลับมากดเข้าสู่ระบบด้วย Google อีกครั้ง</span>

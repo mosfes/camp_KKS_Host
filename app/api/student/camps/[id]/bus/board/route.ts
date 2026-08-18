@@ -1,0 +1,119 @@
+// @ts-nocheck
+
+import { NextResponse } from "next/server";
+
+import { requireStudent } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+
+export async function POST(request: Request, context: any) {
+  const { student, error: authError } = await requireStudent();
+
+  if (authError) return authError;
+
+  const { id } = await context.params;
+  const campId = Number(id);
+  const studentId = Number(student.students_id);
+
+  if (!Number.isInteger(campId) || campId <= 0) {
+    return NextResponse.json({ error: "รหัสค่ายไม่ถูกต้อง" }, { status: 400 });
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const assignment = await tx.camp_bus_student.findFirst({
+      where: {
+        student_enrollment: {
+          camp_camp_id: campId,
+          student_students_id: studentId,
+          enrolled_at: { not: null },
+        },
+      },
+      select: {
+        assignment_id: true,
+        status: true,
+        position: { select: { label: true } },
+        bus: { select: { bus_id: true, status: true, name: true } },
+      },
+    });
+
+    if (!assignment) {
+      return {
+        error: "ยังไม่มีรถหรือที่นั่งที่จัดให้คุณในค่ายนี้",
+        status: 404,
+      };
+    }
+
+    if (assignment.bus.status === "TRAVELING") {
+      return {
+        error: "รถกำลังเดินทาง ไม่สามารถกดยืนยันขึ้นรถในตอนนี้",
+        status: 409,
+      };
+    }
+
+    if (!assignment.position) {
+      return {
+        error: "ยังไม่ได้จัดที่นั่งให้คุณ กรุณาติดต่อครูผู้ดูแล",
+        status: 409,
+      };
+    }
+
+    if (assignment.status === "ON_BUS") {
+      return {
+        alreadyBoarded: true,
+        busName: assignment.bus.name,
+        positionLabel: assignment.position?.label || null,
+      };
+    }
+
+    const checkedAt = new Date();
+
+    const updated = await tx.camp_bus_student.updateMany({
+      where: {
+        assignment_id: assignment.assignment_id,
+        status: "OFF_BUS",
+      },
+      data: { status: "ON_BUS", last_boarded_at: checkedAt },
+    });
+
+    if (updated.count === 0) {
+      return {
+        alreadyBoarded: true,
+        busName: assignment.bus.name,
+        positionLabel: assignment.position?.label || null,
+      };
+    }
+
+    await tx.camp_bus_event.create({
+      data: {
+        bus_bus_id: assignment.bus.bus_id,
+        student_assignment_id: assignment.assignment_id,
+        event_type: "BOARD",
+        created_at: checkedAt,
+      },
+    });
+
+    return {
+      alreadyBoarded: false,
+      busName: assignment.bus.name,
+      positionLabel: assignment.position?.label || null,
+      checkedAt,
+    };
+  });
+
+  if (result.error) {
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.status || 400 },
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    alreadyBoarded: result.alreadyBoarded,
+    busName: result.busName,
+    positionLabel: result.positionLabel,
+    checkedAt: result.checkedAt || null,
+    message: result.alreadyBoarded
+      ? "คุณยืนยันว่าอยู่บนรถแล้ว"
+      : "เช็คชื่อขึ้นรถสำเร็จ",
+  });
+}

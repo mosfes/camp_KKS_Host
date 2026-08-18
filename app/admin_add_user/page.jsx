@@ -7,7 +7,9 @@ import StudentManager from "./components/StudentManager";
 import TeacherManager from "./components/TeacherManager";
 import CampManager from "./components/CampManager";
 import VulgarWordsManager from "./components/VulgarWordsManager";
-import OverviewManager from "./components/OverviewManager";
+import OverviewManager, {
+  OverviewSkeleton,
+} from "./components/OverviewManager";
 import DocumentDataManager from "./components/DocumentDataManager";
 
 const sectionMap = {
@@ -70,11 +72,7 @@ function AdminContent() {
 export default function AdminPage() {
   return (
     <Suspense
-      fallback={
-        <div className="flex items-center justify-center h-64">
-          <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
+      fallback={<OverviewSkeleton />}
     >
       <AdminContent />
     </Suspense>

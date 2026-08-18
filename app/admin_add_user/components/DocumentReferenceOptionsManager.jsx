@@ -32,6 +32,32 @@ const emptyForm = {
   is_active: true,
 };
 
+function ReferenceOptionsSkeleton() {
+  return (
+    <div
+      aria-label="กำลังโหลดตัวเลือกเอกสาร"
+      className="divide-y divide-gray-100"
+      role="status"
+    >
+      {Array.from({ length: 6 }, (_, index) => (
+        <div
+          className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
+          key={index}
+        >
+          <div className="h-4 min-w-0 flex-1 animate-pulse rounded bg-gray-200" />
+          <div className="h-6 w-20 animate-pulse rounded-full bg-gray-200" />
+          <div className="h-5 w-10 animate-pulse rounded-full bg-gray-200" />
+          <div className="flex gap-1">
+            <div className="h-8 w-8 animate-pulse rounded bg-gray-200" />
+            <div className="h-8 w-8 animate-pulse rounded bg-gray-200" />
+            <div className="h-8 w-8 animate-pulse rounded bg-gray-200" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function DocumentReferenceOptionsManager() {
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const { showError, showSuccess, setIsLoading } = useStatusModal();
@@ -231,9 +257,7 @@ export default function DocumentReferenceOptionsManager() {
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         {loading ? (
-          <div className="p-12 text-center text-gray-500">
-            กำลังโหลดข้อมูล...
-          </div>
+          <ReferenceOptionsSkeleton />
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 p-12 text-center text-gray-500">
             <ListChecks className="text-gray-300" size={42} />

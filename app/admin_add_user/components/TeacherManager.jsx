@@ -32,6 +32,25 @@ import TrashManager from "./TrashManager";
 import studentService from "@/app/service/adminService";
 import { PlusIcon } from "./Icons";
 
+function TeacherTableSkeleton() {
+    return (
+        <div aria-label="กำลังโหลดข้อมูลครู" className="flex w-full flex-col gap-3 p-4" role="status">
+            {Array.from({ length: 6 }, (_, index) => (
+                <div className="grid grid-cols-1 gap-3 rounded-xl border border-gray-100 p-3 sm:grid-cols-5 sm:items-center" key={index}>
+                    <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
+                    <div className="h-4 w-48 animate-pulse rounded bg-gray-200" />
+                    <div className="h-4 w-28 animate-pulse rounded bg-gray-200" />
+                    <div className="h-6 w-24 animate-pulse rounded-full bg-gray-200" />
+                    <div className="flex gap-3">
+                        <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                        <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 const TeacherManager = () => {
     const { showSuccess, showError, showConfirm } = useStatusModal();
     const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -450,12 +469,7 @@ const TeacherManager = () => {
                             <TableBody
                                 emptyContent={"ไม่มีข้อมูลครู"}
                                 isLoading={isLoading}
-                                loadingContent={
-                                    <div className="flex flex-col items-center gap-2">
-                                        <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
-                                        <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
-                                    </div>
-                                }
+                                loadingContent={<TeacherTableSkeleton />}
                             >
                                 {teachers.map((t) => (
                                     <TableRow key={t.teachers_id} className="bg-white text-gray-800 border-b border-gray-300 last:border-b-0 hover:bg-gray-50">

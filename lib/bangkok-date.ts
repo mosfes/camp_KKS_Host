@@ -55,3 +55,81 @@ export function getBangkokDaysUntil(
     Math.round((target.getTime() - current.getTime()) / 86_400_000),
   );
 }
+
+export type CampScheduleSlotState = "past" | "current" | "upcoming";
+
+function getBangkokTimeInMinutes(input: DateInput = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: BANGKOK_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(input instanceof Date ? input : new Date(input));
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+
+  return Number(values.hour) * 60 + Number(values.minute);
+}
+
+function parseScheduleTime(time: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})/.exec(time);
+
+  if (!match) return null;
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+
+  if (hour > 23 || minute > 59) return null;
+
+  return hour * 60 + minute;
+}
+
+export function getCampScheduleDateKey(
+  campStartDate: DateInput,
+  day: number,
+): string {
+  const startDateKey = getBangkokDateKey(campStartDate);
+  const date = new Date(`${startDateKey}T00:00:00.000Z`);
+
+  date.setUTCDate(date.getUTCDate() + Math.max(0, day - 1));
+
+  return date.toISOString().slice(0, 10);
+}
+
+export function isCampScheduleDayToday(
+  campStartDate: DateInput,
+  day: number,
+  currentDate: DateInput = new Date(),
+): boolean {
+  return (
+    getCampScheduleDateKey(campStartDate, day) ===
+    getBangkokDateKey(currentDate)
+  );
+}
+
+export function getCampScheduleSlotState(
+  campStartDate: DateInput,
+  day: number,
+  startTime: string,
+  endTime: string,
+  currentDate: DateInput = new Date(),
+): CampScheduleSlotState {
+  const scheduleDateKey = getCampScheduleDateKey(campStartDate, day);
+  const currentDateKey = getBangkokDateKey(currentDate);
+
+  if (currentDateKey < scheduleDateKey) return "upcoming";
+  if (currentDateKey > scheduleDateKey) return "past";
+
+  const startMinutes = parseScheduleTime(startTime);
+  const endMinutes = parseScheduleTime(endTime);
+
+  if (startMinutes === null || endMinutes === null) return "upcoming";
+
+  const currentMinutes = getBangkokTimeInMinutes(currentDate);
+
+  if (currentMinutes < startMinutes) return "upcoming";
+  if (currentMinutes >= endMinutes) return "past";
+
+  return "current";
+}

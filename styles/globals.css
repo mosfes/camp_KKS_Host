@@ -2,8 +2,182 @@
 
 @config "../tailwind.config.js";
 
+/* ลดความหนาของข้อความที่ใช้ font-bold โดยไม่กระทบน้ำหนักปกติหรือ semibold */
+@layer utilities {
+  .font-bold {
+    font-weight: 600;
+  }
+
+  /* Keep the camp detail page lighter without changing teacher/admin screens. */
+  .student-camp-page .font-black,
+  .student-camp-page .font-extrabold,
+  .student-camp-page .font-bold,
+  .student-camp-page .font-semibold {
+    font-weight: 500;
+  }
+
+  .student-camp-page .font-medium {
+    font-weight: 400;
+  }
+
+  :is(h1, h2, h3, h4, h5, h6).font-semibold {
+    font-weight: 500;
+  }
+
+  :is(h1, h2, h3, h4, h5, h6).font-bold {
+    font-weight: 600;
+  }
+
+  :is(h1, h2, h3, h4, h5, h6).font-extrabold {
+    font-weight: 700;
+  }
+
+  :is(h1, h2, h3, h4, h5, h6).font-black {
+    font-weight: 800;
+  }
+
+  :is(h1, h2, h3, h4, h5, h6):not([class*="font-"]) {
+    font-weight: 600;
+  }
+}
+
+/* Full-page camp screens render through HeroUI's overlay portal. Keep the
+   portal below the fixed dashboard header and above the page content. */
+.camp-page-modal {
+  top: 4rem !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: calc(100dvh - 4rem) !important;
+  overflow: hidden !important;
+}
+
+@media (min-width: 768px) {
+  .camp-page-modal {
+    left: var(--teacher-sidebar-width, 14rem) !important;
+    width: calc(100vw - var(--teacher-sidebar-width, 14rem)) !important;
+  }
+}
+
+/* Bus check-in uses one calm sage palette. Status colors (blue/amber/red)
+   remain reserved for travel state, attention, and destructive actions. */
+.bus-checkin-theme {
+  --bus-page: #f4f7f5;
+  --bus-surface-soft: #f7faf8;
+  --bus-primary: #5a7c6b;
+  --bus-primary-dark: #2f5d4b;
+  --bus-primary-soft: #e8f1ec;
+  --bus-primary-soft-strong: #dcebe2;
+  --bus-border: #d9e6de;
+  background-color: var(--bus-page) !important;
+}
+
+.bus-checkin-theme [class*="bg-[#f5f5f2]"] {
+  background-color: var(--bus-page) !important;
+}
+
+.bus-checkin-theme [class*="bg-[#f7faf8]"],
+.bus-checkin-theme [class*="bg-[#f8fbf9]"],
+.bus-checkin-theme [class*="bg-[#f4f7f5]"] {
+  background-color: var(--bus-surface-soft) !important;
+}
+
+.bus-checkin-theme [class*="bg-[#6b857a]"],
+.bus-checkin-theme [class*="bg-[#5d7c6f]"] {
+  background-color: var(--bus-primary) !important;
+}
+
+.bus-checkin-theme [class*="bg-[#365f4f]"] {
+  background-color: var(--bus-primary-dark) !important;
+}
+
+.bus-checkin-theme [class*="bg-[#e2eee7]"],
+.bus-checkin-theme [class*="bg-[#e8f2ed]"],
+.bus-checkin-theme [class*="bg-[#edf5f0]"],
+.bus-checkin-theme [class*="bg-[#f1f7f4]"] {
+  background-color: var(--bus-primary-soft) !important;
+}
+
+.bus-checkin-theme [class*="bg-[#cfe0d6]"],
+.bus-checkin-theme [class*="bg-[#dfeae3]"] {
+  background-color: var(--bus-primary-soft-strong) !important;
+}
+
+.bus-checkin-theme [class*="text-[#6b857a]"],
+.bus-checkin-theme [class*="text-[#5d7c6f]"] {
+  color: var(--bus-primary) !important;
+}
+
+.bus-checkin-theme [class*="text-[#365f4f]"],
+.bus-checkin-theme [class*="text-[#3d6357]"] {
+  color: var(--bus-primary-dark) !important;
+}
+
+.bus-checkin-theme [class*="border-[#6b857a]"],
+.bus-checkin-theme [class*="border-[#5d7c6f]"] {
+  border-color: var(--bus-primary) !important;
+}
+
+.bus-checkin-theme [class*="border-[#365f4f]"],
+.bus-checkin-theme [class*="border-[#9ab4a7]"],
+.bus-checkin-theme [class*="border-[#dce8e0]"] {
+  border-color: var(--bus-border) !important;
+}
+
+.bus-checkin-theme [class*="ring-[#6b857a]"],
+.bus-checkin-theme [class*="ring-[#5d7c6f]"] {
+  --tw-ring-color: rgb(90 124 107 / 0.3) !important;
+}
+
+.bus-checkin-theme [class~="border-gray-100"] {
+  border-color: var(--bus-border) !important;
+}
+
+.bus-checkin-theme [class~="bg-gray-50"] {
+  background-color: #f1f5f2 !important;
+}
+
+.bus-checkin-theme [class~="bg-gray-100"] {
+  background-color: #eaf0ec !important;
+}
+
+.bus-checkin-theme [class~="bg-green-50"],
+.bus-checkin-theme [class~="bg-green-100"] {
+  background-color: var(--bus-primary-soft) !important;
+}
+
+.bus-checkin-theme [class~="text-green-600"],
+.bus-checkin-theme [class~="text-green-700"],
+.bus-checkin-theme [class~="text-green-800"] {
+  color: var(--bus-primary-dark) !important;
+}
+
 /* One visual language for every loading indicator. */
 @layer components {
+  /* Keep the dashboard sidebar scrollbar compact and visually quiet. */
+  .sidebar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(107 133 122 / 0.45) transparent;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgb(107 133 122 / 0.45);
+    border-radius: 9999px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #6b857a;
+  }
+
   .loading-spinner,
   :where(div.rounded-full.animate-spin[class*="border-"]):not(button *) {
     border-color: rgb(107 133 122 / 0.2) !important;

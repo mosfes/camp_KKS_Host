@@ -1,8 +1,7 @@
 // @ts-nocheck
-import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db";
 
 export async function GET(request, { params }) {
   try {
@@ -44,6 +43,26 @@ export async function GET(request, { params }) {
       },
     });
 
+    // This enrollment list is shared by every station. Fetch it once instead
+    // of repeating the same query inside the station loop below.
+    const enrollments = await prisma.student_enrollment.findMany({
+      where: {
+        camp_camp_id: parseInt(campId),
+        enrolled_at: { not: null },
+      },
+      select: {
+        student_enrollment_id: true,
+        student: {
+          select: {
+            students_id: true,
+            prefix_name: true,
+            firstname: true,
+            lastname: true,
+          },
+        },
+      },
+    });
+
     const pairs = [];
 
     for (const station of stations) {
@@ -58,17 +77,6 @@ export async function GET(request, { params }) {
 
         const preTestTotal = preTest.mission_question.length;
         const postTestTotal = postTest.mission_question.length;
-
-        // Collect all students who are enrolled in the camp
-        const enrollments = await prisma.student_enrollment.findMany({
-          where: {
-            camp_camp_id: parseInt(campId),
-            enrolled_at: { not: null },
-          },
-          include: {
-            student: true,
-          },
-        });
 
         const studentScores = enrollments.map((enroll) => {
           // Find pre-test result

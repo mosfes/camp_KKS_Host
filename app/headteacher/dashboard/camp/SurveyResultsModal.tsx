@@ -11,6 +11,7 @@ import {
 } from "@heroui/react";
 import toast from "react-hot-toast";
 import {
+  ArrowLeft,
   FileText,
   Star,
   MessageSquare,
@@ -19,6 +20,7 @@ import {
   CheckCircle2,
   Lightbulb,
   Book,
+  Pencil,
 } from "lucide-react";
 import {
   BarChart,
@@ -37,6 +39,8 @@ interface SurveyResultsModalProps {
   isOpen: boolean;
   onClose: () => void;
   campId: number;
+  pageMode?: boolean;
+  onEdit?: () => void;
 }
 
 interface QuestionSummary {
@@ -65,6 +69,8 @@ export default function SurveyResultsModal({
   isOpen,
   onClose,
   campId,
+  pageMode = false,
+  onEdit,
 }: SurveyResultsModalProps) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<SurveySummary | null>(null);
@@ -141,50 +147,101 @@ export default function SurveyResultsModal({
     <Modal
       backdrop="blur"
       classNames={{
-        base: "bg-white shadow-xl",
-        backdrop: "bg-black/40 backdrop-blur-sm",
+        base: pageMode
+          ? "!m-0 !h-full !min-h-0 !max-h-none w-full !max-w-none rounded-none bg-[#f5f5f2] shadow-none"
+          : "bg-white shadow-xl",
+        backdrop: pageMode ? "hidden" : "bg-black/40 backdrop-blur-sm",
+        wrapper: pageMode ? "camp-page-modal items-start p-0" : undefined,
       }}
+      hideCloseButton={pageMode}
+      isDismissable={!pageMode}
       isOpen={isOpen}
       scrollBehavior="inside"
       size="full"
       onOpenChange={onClose}
     >
-      <ModalContent>
+      <ModalContent
+        className={
+          pageMode
+            ? "!m-0 !h-full !min-h-0 !max-h-none !rounded-none !bg-[#f5f5f2] !shadow-none overflow-y-auto"
+            : undefined
+        }
+      >
         {() => (
           <>
-            <ModalHeader className="flex flex-col gap-1 px-6 sm:px-8 pt-6 sm:pt-8 pb-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start sm:items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-                    <FileText size={20} />
-                  </div>
+            <ModalHeader
+              className={`relative flex flex-col gap-1 px-6 ${
+                pageMode
+                  ? "mx-auto w-full max-w-7xl border-0 pb-8 pt-8 sm:px-8"
+                  : "pb-4 pt-6 sm:px-8 sm:pt-8"
+              }`}
+            >
+              {pageMode && (
+                <button
+                  className="mb-6 inline-flex w-fit items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
+                  type="button"
+                  onClick={onClose}
+                >
+                  <ArrowLeft size={14} />
+                  กลับไปยังหน้าหลัก
+                </button>
+              )}
+
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                <div className="flex items-start gap-3 sm:items-center">
+                  {pageMode ? (
+                    <FileText className="shrink-0 text-[#6b857a]" size={20} />
+                  ) : (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                      <FileText size={20} />
+                    </div>
+                  )}
                   <div className="min-w-0">
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 break-words">
+                    <h2 className="break-words text-lg font-bold text-gray-900 sm:text-xl">
                       {data ? data.title : "ผลการประเมินความพึงพอใจ"}
                     </h2>
-                    <p className="text-sm font-normal text-gray-500 flex items-center gap-1 mt-1">
+                    <p className="mt-1 flex items-center gap-1 text-sm font-normal text-gray-500">
                       <Users size={14} /> ผู้ตอบแบบประเมินทั้งหมด{" "}
                       {data?.totalResponses || 0} คน
                     </p>
                   </div>
                 </div>
-                {data && data.totalResponses > 0 && !aiSummary && (
-                  <div className="flex-shrink-0">
-                    <Button
-                      className="w-full sm:w-auto bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium transition-colors"
-                      isLoading={isAiLoading}
-                      startContent={<Sparkles size={16} />}
-                      variant="flat"
-                      onPress={fetchAiSummary}
-                    >
-                      สรุปผลด้วย AI
-                    </Button>
+                {(onEdit ||
+                  (data && data.totalResponses > 0 && !aiSummary)) && (
+                  <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                    {onEdit && (
+                      <Button
+                        className="w-full bg-[#e8f0ec] font-medium text-[#5d7c6f] transition-colors hover:bg-[#dce9e2] sm:w-auto"
+                        startContent={<Pencil size={16} />}
+                        variant="flat"
+                        onPress={onEdit}
+                      >
+                        แก้ไขแบบสอบถาม
+                      </Button>
+                    )}
+                    {data && data.totalResponses > 0 && !aiSummary && (
+                      <Button
+                        className="w-full bg-indigo-50 font-medium text-indigo-700 transition-colors hover:bg-indigo-100 sm:w-auto"
+                        isLoading={isAiLoading}
+                        startContent={<Sparkles size={16} />}
+                        variant="flat"
+                        onPress={fetchAiSummary}
+                      >
+                        สรุปผลด้วย AI
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
             </ModalHeader>
 
-            <ModalBody className="px-5 sm:px-8 py-4 pt-2 space-y-4">
+            <ModalBody
+              className={
+                pageMode
+                  ? "mx-auto block w-full max-w-7xl space-y-4 overflow-visible bg-[#f5f5f2] px-4 pb-10 pt-0 sm:px-8"
+                  : "space-y-4 px-5 py-4 pt-2 sm:px-8"
+              }
+            >
               {/* AI Summary */}
               {aiSummary && (
                 <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 sm:p-6 shadow-sm">
@@ -650,15 +707,17 @@ export default function SurveyResultsModal({
               )}
             </ModalBody>
 
-            <ModalFooter className="px-6 sm:px-8 py-5 border-t border-gray-100">
-              <Button
-                className="w-full sm:w-auto px-8 bg-gray-100 text-gray-700 font-medium hover:bg-gray-200"
-                variant="flat"
-                onPress={onClose}
-              >
-                ปิดหน้าต่าง
-              </Button>
-            </ModalFooter>
+            {!pageMode && (
+              <ModalFooter className="border-t border-gray-100 px-6 py-5 sm:px-8">
+                <Button
+                  className="w-full bg-gray-100 px-8 font-medium text-gray-700 hover:bg-gray-200 sm:w-auto"
+                  variant="flat"
+                  onPress={onClose}
+                >
+                  ปิดหน้าต่าง
+                </Button>
+              </ModalFooter>
+            )}
           </>
         )}
       </ModalContent>

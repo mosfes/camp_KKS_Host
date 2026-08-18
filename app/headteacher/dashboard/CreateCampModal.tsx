@@ -31,6 +31,7 @@ interface FormData {
   campEndDate: string;
   description: string;
   hasShirt: boolean;
+  hasTransport: boolean;
   shirtStartDate: string;
   shirtEndDate: string;
   templateName: string;
@@ -116,6 +117,7 @@ export default function CreateCampModal({
     campEndDate: "",
     description: "",
     hasShirt: false,
+    hasTransport: false,
     shirtStartDate: "",
     shirtEndDate: "",
     templateName: "",
@@ -275,6 +277,7 @@ export default function CreateCampModal({
         campEndDate: "",
         description: campSource.description || "",
         hasShirt: campSource.has_shirt || false,
+        hasTransport: Boolean(campSource.has_transport),
         shirtStartDate: "",
         shirtEndDate: "",
         templateName: "",
@@ -315,6 +318,7 @@ export default function CreateCampModal({
         campEndDate: "",
         description: "",
         hasShirt: false,
+        hasTransport: false,
         shirtStartDate: "",
         shirtEndDate: "",
         templateName: "",
@@ -644,6 +648,7 @@ export default function CreateCampModal({
       campImageFile: campImageFile,
       destination,
       locationTrackingEnabled,
+      hasTransport: formData.hasTransport || locationTrackingEnabled,
     };
 
     onSubmit(payload);
@@ -829,8 +834,15 @@ export default function CreateCampModal({
                   <CampDestinationField
                     destination={destination}
                     enabled={locationTrackingEnabled}
+                    hasTransport={formData.hasTransport}
                     onDestinationChange={setDestination}
-                    onEnabledChange={setLocationTrackingEnabled}
+                    onEnabledChange={(enabled) => {
+                      setLocationTrackingEnabled(enabled);
+                      if (enabled) handleChange("hasTransport", true);
+                    }}
+                    onHasTransportChange={(hasTransport) =>
+                      handleChange("hasTransport", hasTransport)
+                    }
                   />
                 </div>
                 <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">

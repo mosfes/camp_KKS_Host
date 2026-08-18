@@ -26,16 +26,18 @@ import {
   QrCode,
   KeyRound,
   Nfc,
+  Bus,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import CampLocationTracker from "@/components/camp-location/CampLocationTracker";
 
 import TakeSurveyModal from "../TakeSurveyModal";
 import {
   BANGKOK_TIME_ZONE,
   getBangkokDaysUntil,
+  getCampScheduleSlotState,
+  isCampScheduleDayToday,
   isBangkokDateBefore,
   isBangkokDateInRange,
 } from "@/lib/bangkok-date";
@@ -90,6 +92,7 @@ export default function StudentCampDetailPage() {
 
   // Schedule Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleNow, setScheduleNow] = useState(() => new Date());
 
   // Certificate Preview Modal State
   const [isCertPreviewModalOpen, setIsCertPreviewModalOpen] = useState(false);
@@ -108,9 +111,9 @@ export default function StudentCampDetailPage() {
   const [attendanceCheckedAt, setAttendanceCheckedAt] = useState<string | null>(
     null,
   );
-  const [attendanceMethod, setAttendanceMethod] = useState<
-    "QR" | "NFC" | null
-  >(null);
+  const [attendanceMethod, setAttendanceMethod] = useState<"QR" | "NFC" | null>(
+    null,
+  );
   const [qrScanActive, setQrScanActive] = useState(false);
   const [qrScanResult, setQrScanResult] = useState<
     "success" | "alreadyDone" | "error" | null
@@ -126,7 +129,7 @@ export default function StudentCampDetailPage() {
 
   const fetchCamp = async () => {
     try {
-      const res = await fetch("/api/student/camps", {
+      const res = await fetch(`/api/student/camps/${id}`, {
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache",
@@ -135,8 +138,7 @@ export default function StudentCampDetailPage() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        const found = data.find((c: any) => c.id === Number(id));
+        const found = await res.json();
 
         if (found) {
           setCamp(found);
@@ -174,6 +176,15 @@ export default function StudentCampDetailPage() {
       checkAttendanceStatus();
     }
   }, [camp?.isRegistered, id]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(
+      () => setScheduleNow(new Date()),
+      30_000,
+    );
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   const fetchSurvey = async () => {
     try {
@@ -444,18 +455,44 @@ export default function StudentCampDetailPage() {
   const completedMissions = 0;
 
   const daysLeftToReserve = getDaysRemaining(camp.endShirtDate);
-  const daysUntilStart = getDaysRemaining(camp.rawStartDate);
   const shirtPeriodActive = isInShirtPeriod(
     camp.startShirtDate,
     camp.endShirtDate,
   );
 
   const startDate = camp.rawStartDate ? new Date(camp.rawStartDate) : null;
-  const campNotStarted =
-    startDate && isBangkokDateBefore(new Date(), startDate);
+  const campNotStarted = Boolean(
+    startDate && isBangkokDateBefore(new Date(), startDate),
+  );
+  const menuLocked = camp.isRegistered && campNotStarted;
+  const currentScheduleSlot = camp.camp_daily_schedule
+    ?.flatMap((day: any) =>
+      (day.time_slots || []).map((slot: any) => ({ day: day.day, slot })),
+    )
+    .find(
+      ({ day, slot }: any) =>
+        getCampScheduleSlotState(
+          camp.rawStartDate,
+          day,
+          slot.startTime,
+          slot.endTime,
+          scheduleNow,
+        ) === "current",
+    );
+
+  const openSurvey = () => {
+    if (campNotStarted) {
+      toast.error("ค่ายยังไม่เริ่ม ไม่สามารถทำแบบประเมินได้");
+
+      return;
+    }
+
+    setIsSurveyModalOpen(true);
+  };
+
   return (
     <div
-      className={`min-h-screen bg-[#F5F5F3] transition-[padding] duration-300 ${
+      className={`student-camp-page min-h-screen bg-[#F5F5F3] transition-[padding] duration-300 ${
         isBottomMenuExpanded ? "pb-72" : "pb-24"
       }`}
     >
@@ -489,7 +526,7 @@ export default function StudentCampDetailPage() {
         {/* Main Info Card */}
         <div className="bg-white rounded-t-[2rem] shadow-xl shadow-gray-200/30 p-8 pb-10 border-x border-t border-gray-100/50">
           <div className="mb-6">
-            <h1 className="text-[22px] sm:text-[26px] font-black text-[#1A202C] mb-5 leading-[1.2] tracking-tight">
+            <h1 className="text-[22px] sm:text-[26px] font-semibold text-[#1A202C] mb-5 leading-[1.2] tracking-tight">
               {camp.title}
             </h1>
 
@@ -513,11 +550,11 @@ export default function StudentCampDetailPage() {
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-4">
               <FileText className="text-gray-400" size={22} />
-              <h2 className="text-base font-black text-gray-900">
+              <h2 className="text-base font-semibold text-gray-900">
                 รายละเอียดค่าย
               </h2>
             </div>
-            <p className="text-gray-600 text-sm leading-relaxed font-medium opacity-90 pl-1">
+            <p className="text-gray-600 text-sm leading-relaxed font-semibold opacity-90 pl-1">
               {camp.description}
             </p>
           </div>
@@ -581,9 +618,17 @@ export default function StudentCampDetailPage() {
                     <p className="font-black text-gray-800 text-sm">
                       กำหนดการค่าย
                     </p>
-                    <p className="text-xs text-gray-500 font-bold opacity-70">
-                      {camp.camp_daily_schedule.length} วัน · กดเพื่อดูตารางเวลา
-                    </p>
+                    {currentScheduleSlot ? (
+                      <p className="mt-0.5 flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                        ตอนนี้: {currentScheduleSlot.slot.activity}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-500 font-bold opacity-70">
+                        {camp.camp_daily_schedule.length} วัน ·
+                        กดเพื่อดูตารางเวลา
+                      </p>
+                    )}
                   </div>
                 </div>
                 <ChevronLeft
@@ -593,10 +638,34 @@ export default function StudentCampDetailPage() {
               </button>
             </div>
           )}
-        </div>
 
-        <div className="mt-3">
-          <CampLocationTracker campId={Number(id)} viewer="student" />
+          {camp.isRegistered && camp.hasTransport && (
+            <div className="mt-3">
+              <button
+                className="group flex w-full items-center justify-between rounded-2xl border border-[#5d7c6f]/15 bg-[#5d7c6f]/5 px-6 py-4 text-left transition-all hover:bg-[#5d7c6f]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40"
+                type="button"
+                onClick={() => router.push(`/student/dashboard/camp/${id}/bus`)}
+              >
+                <span className="flex min-w-0 items-center gap-4">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#5d7c6f] text-white shadow-lg shadow-[#5d7c6f]/20">
+                    <Bus size={20} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-black text-gray-800">
+                      ผังรถและที่นั่งของฉัน
+                    </span>
+                    <span className="block truncate text-xs font-bold text-gray-500 opacity-70">
+                      ตรวจสอบรถ ตำแหน่งที่นั่ง และยืนยันขึ้นรถ
+                    </span>
+                  </span>
+                </span>
+                <ChevronLeft
+                  className="shrink-0 rotate-180 text-[#5d7c6f] transition-transform group-hover:translate-x-1"
+                  size={20}
+                />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Mission Progress Section (Only if registered) */}
@@ -794,13 +863,18 @@ export default function StudentCampDetailPage() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100/80 bg-white/90 px-3 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-2xl shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
-        <div className="max-w-xl mx-auto rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+        <div className="relative max-w-xl mx-auto rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
           <button
             aria-controls="camp-bottom-menu-content"
             aria-expanded={isBottomMenuExpanded}
-            className="flex w-full items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40"
+            className={`flex w-full items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40 ${menuLocked ? "cursor-not-allowed opacity-60" : "hover:bg-gray-50"}`}
+            disabled={menuLocked}
             type="button"
-            onClick={() => setIsBottomMenuExpanded((expanded) => !expanded)}
+            onClick={() => {
+              if (!menuLocked) {
+                setIsBottomMenuExpanded((expanded) => !expanded);
+              }
+            }}
           >
             <span className="flex min-w-0 items-center gap-2">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e8f0ee] text-[#3d6357]">
@@ -837,7 +911,7 @@ export default function StudentCampDetailPage() {
                 : "mt-0 grid-rows-[0fr] opacity-0"
             }`}
             id="camp-bottom-menu-content"
-            inert={!isBottomMenuExpanded}
+            inert={menuLocked || !isBottomMenuExpanded}
           >
             <div className="min-h-0 overflow-hidden">
               {!camp.isRegistered ? (
@@ -862,80 +936,29 @@ export default function StudentCampDetailPage() {
               ) : (
                 <div className="relative">
                   {(() => {
-                    const hasPostTest = camp?.station?.some((s: any) =>
-                      s.mission?.some((m: any) => m.type === "POST_TEST"),
-                    );
-                    const isPostTestCompleted = camp?.station?.some((s: any) =>
-                      s.mission?.some(
-                        (m: any) =>
-                          m.type === "POST_TEST" &&
-                          camp.missionResults?.some(
-                            (r: any) =>
-                              r.mission_mission_id === m.mission_id &&
-                              r.status === "completed",
-                          ),
-                      ),
-                    );
-
                     const hasCertTemplate = !!camp?.img_certificate_url;
-
-                    const requiredStations =
-                      camp?.station?.filter(
-                        (s: any) => s.is_required_for_cert,
-                      ) || [];
-                    const areRequiredStationsCompleted = requiredStations.every(
-                      (station: any) => {
-                        const stationMissions = station.mission || [];
-
-                        if (stationMissions.length === 0) return true;
-                        const completedMissions = stationMissions.filter(
-                          (m: any) =>
-                            camp.missionResults?.some(
-                              (r: any) =>
-                                r.mission_mission_id === m.mission_id &&
-                                r.status === "completed",
-                            ),
-                        );
-
-                        return (
-                          completedMissions.length === stationMissions.length
-                        );
-                      },
-                    );
-
-                    const isSurveyRequiredAndNotCompleted =
-                      surveyData?.is_required_for_cert && !surveyCompleted;
+                    const requirements = camp?.certificateRequirements;
+                    const hasIssuedCertificate =
+                      requirements?.hasIssuedCertificate ?? false;
+                    const missionRequirementMet =
+                      requirements?.missionRequirementMet ?? false;
+                    const surveyRequirementMet =
+                      !requirements?.requiresSurvey || surveyCompleted;
                     const canDownloadCert =
                       hasCertTemplate &&
-                      !(hasPostTest && !isPostTestCompleted) &&
-                      areRequiredStationsCompleted &&
-                      !isSurveyRequiredAndNotCompleted;
+                      (hasIssuedCertificate ||
+                        (missionRequirementMet && surveyRequirementMet));
 
                     const certLockReason = !hasCertTemplate
                       ? "ยังไม่มีเทมเพลตเกียรติบัตร"
-                      : hasPostTest && !isPostTestCompleted
-                        ? "ต้องทำ Post-Test ก่อน"
-                        : !areRequiredStationsCompleted
-                          ? "ต้องผ่านฐานที่บังคับก่อน"
-                          : isSurveyRequiredAndNotCompleted
-                            ? "ต้องทำแบบประเมินก่อน"
-                            : null;
+                      : !missionRequirementMet && !hasIssuedCertificate
+                        ? `ต้องทำภารกิจอย่างน้อย ${requirements?.requiredMissions ?? 0} ใน ${requirements?.totalMissions ?? 0} (ตอนนี้ ${requirements?.completedMissions ?? 0})`
+                        : !surveyRequirementMet && !hasIssuedCertificate
+                          ? "ต้องทำแบบประเมินก่อน"
+                          : null;
 
                     return (
                       <>
-                        {/* Overlay เมื่อค่ายยังไม่เริ่ม */}
-                        {campNotStarted && (
-                          <div className="absolute inset-0 bg-white/90 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center gap-1 border border-gray-100">
-                            <Clock className="text-[#5d7c6f]" size={24} />
-                            <p className="text-sm font-black text-gray-900">
-                              ยังไม่ถึงเวลาเริ่มค่าย
-                            </p>
-                            <p className="text-xs text-gray-400 font-bold">
-                              อีก {daysUntilStart} วัน · เริ่ม{" "}
-                              {formatDate(camp.rawStartDate)}
-                            </p>
-                          </div>
-                        )}
                         <div className="flex flex-col gap-3">
                           {camp.isEnded ? (
                             <>
@@ -969,7 +992,7 @@ export default function StudentCampDetailPage() {
                                       <ClipboardList size={18} />
                                     )
                                   }
-                                  onPress={() => setIsSurveyModalOpen(true)}
+                                  onPress={openSurvey}
                                 >
                                   {surveyCompleted
                                     ? "ประเมินแล้ว"
@@ -1020,39 +1043,7 @@ export default function StudentCampDetailPage() {
                             </>
                           ) : (
                             <>
-                              <Button
-                                fullWidth
-                                className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-xl shadow-md shadow-[#5d7c6f]/20"
-                                isDisabled={navigating || !!campNotStarted}
-                                isLoading={navigating}
-                                startContent={<LayoutDashboard size={22} />}
-                                onPress={() => {
-                                  setNavigating(true);
-                                  router.push(
-                                    `/student/dashboard/camp/${id}/missions`,
-                                  );
-                                }}
-                              >
-                                ไปยังหน้าภารกิจ
-                              </Button>
-                              <div className="grid grid-cols-2 gap-2">
-                                <Button
-                                  fullWidth
-                                  className={`h-10 rounded-xl font-bold text-sm border ${
-                                    surveyData && !surveyCompleted
-                                      ? "bg-[#FFECC9] text-yellow-800 border-yellow-300"
-                                      : surveyCompleted
-                                        ? "bg-green-50 text-green-700 border-green-200"
-                                        : "bg-gray-50 text-gray-400 border-gray-200"
-                                  }`}
-                                  isDisabled={!surveyData || surveyCompleted}
-                                  startContent={<ClipboardList size={16} />}
-                                  onPress={() => setIsSurveyModalOpen(true)}
-                                >
-                                  {surveyCompleted
-                                    ? "ประเมินแล้ว"
-                                    : "แบบประเมิน"}
-                                </Button>
+                              <div className="grid grid-cols-1 gap-2">
                                 <Button
                                   fullWidth
                                   className={`h-10 rounded-xl font-bold text-sm border ${
@@ -1076,8 +1067,53 @@ export default function StudentCampDetailPage() {
                                     ? "เช็คชื่อแล้ว"
                                     : attendanceMethod === "NFC"
                                       ? "แตะบัตรกับครู"
-                                    : "เช็คชื่อ"}
+                                      : "เช็คชื่อ"}
                                 </Button>
+                              </div>
+
+                              <div
+                                className={
+                                  surveyData ? "grid grid-cols-2 gap-2" : ""
+                                }
+                              >
+                                <Button
+                                  fullWidth
+                                  className="h-10 rounded-xl bg-[#5d7c6f] text-sm font-bold text-white shadow-md shadow-[#5d7c6f]/20"
+                                  isDisabled={navigating || !!campNotStarted}
+                                  isLoading={navigating}
+                                  startContent={<LayoutDashboard size={18} />}
+                                  onPress={() => {
+                                    setNavigating(true);
+                                    router.push(
+                                      `/student/dashboard/camp/${id}/missions`,
+                                    );
+                                  }}
+                                >
+                                  ภารกิจ
+                                </Button>
+                                {surveyData && (
+                                  <Button
+                                    fullWidth
+                                    className={`h-10 rounded-xl border text-sm font-bold ${
+                                      surveyData && !surveyCompleted
+                                        ? "border-yellow-300 bg-[#FFECC9] text-yellow-800"
+                                        : surveyCompleted
+                                          ? "border-green-200 bg-green-50 text-green-700"
+                                          : "border-gray-200 bg-gray-50 text-gray-400"
+                                    }`}
+                                    isDisabled={
+                                      campNotStarted ||
+                                      !surveyData ||
+                                      surveyCompleted
+                                    }
+                                    startContent={<ClipboardList size={16} />}
+                                    onPress={openSurvey}
+                                  >
+                                    {surveyCompleted
+                                      ? "ประเมินแล้ว"
+                                      : "แบบประเมิน"}
+                                  </Button>
+                                )}
                               </div>
 
                               <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2.5">
@@ -1131,6 +1167,18 @@ export default function StudentCampDetailPage() {
               )}
             </div>
           </div>
+
+          {menuLocked && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 rounded-2xl border border-gray-200 bg-white/95 px-4 text-center shadow-sm backdrop-blur-sm">
+              <Lock className="text-[#5d7c6f]" size={24} />
+              <p className="text-sm font-black text-gray-900">
+                เมนูนี้จะเปิดให้ใช้งานในวันเข้าค่าย
+              </p>
+              <p className="text-xs font-bold text-gray-400">
+                เริ่มใช้งานได้วันที่ {formatDate(camp.rawStartDate)}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1164,49 +1212,86 @@ export default function StudentCampDetailPage() {
 
             {/* Body */}
             <div className="overflow-y-auto px-6 py-4 space-y-4">
-              {camp.camp_daily_schedule.map((day: any, dayIdx: number) => (
-                <div
-                  key={day.daily_schedule_id ?? dayIdx}
-                  className="rounded-2xl border border-gray-100 overflow-hidden"
-                >
-                  {/* Day Header */}
-                  <div className="bg-[#5d7c6f] px-4 py-2.5 flex items-center gap-2">
-                    <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                      {day.day}
-                    </div>
-                    <span className="text-white font-semibold text-sm">
-                      วันที่ {day.day}
-                    </span>
-                  </div>
+              {camp.camp_daily_schedule.map((day: any, dayIdx: number) => {
+                const isToday = isCampScheduleDayToday(
+                  camp.rawStartDate,
+                  day.day,
+                  scheduleNow,
+                );
 
-                  {/* Time Slots */}
-                  {day.time_slots && day.time_slots.length > 0 ? (
-                    <div className="divide-y divide-gray-50">
-                      {day.time_slots.map((slot: any, slotIdx: number) => (
-                        <div
-                          key={slot.time_slot_id ?? slotIdx}
-                          className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex items-center gap-1 text-[#5d7c6f] min-w-[110px] mt-0.5">
-                            <Clock className="flex-shrink-0" size={13} />
-                            <span className="text-xs font-mono font-semibold">
-                              {slot.startTime?.slice(0, 5)} –{" "}
-                              {slot.endTime?.slice(0, 5)}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700 flex-1 leading-relaxed">
-                            {slot.activity}
-                          </p>
-                        </div>
-                      ))}
+                return (
+                  <div
+                    key={day.daily_schedule_id ?? dayIdx}
+                    className={`rounded-2xl border overflow-hidden ${
+                      isToday ? "border-emerald-300" : "border-gray-100"
+                    }`}
+                  >
+                    {/* Day Header */}
+                    <div className="bg-[#5d7c6f] px-4 py-2.5 flex items-center gap-2">
+                      <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                        {day.day}
+                      </div>
+                      <span className="text-white font-semibold text-sm">
+                        วันที่ {day.day}
+                      </span>
+                      {isToday && (
+                        <span className="ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-bold text-white">
+                          วันนี้
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-sm text-gray-400 px-4 py-3">
-                      ไม่มีกิจกรรม
-                    </p>
-                  )}
-                </div>
-              ))}
+
+                    {/* Time Slots */}
+                    {day.time_slots && day.time_slots.length > 0 ? (
+                      <div className="divide-y divide-gray-50">
+                        {day.time_slots.map((slot: any, slotIdx: number) => {
+                          const isCurrent =
+                            getCampScheduleSlotState(
+                              camp.rawStartDate,
+                              day.day,
+                              slot.startTime,
+                              slot.endTime,
+                              scheduleNow,
+                            ) === "current";
+
+                          return (
+                            <div
+                              key={slot.time_slot_id ?? slotIdx}
+                              aria-current={isCurrent ? "step" : undefined}
+                              className={`flex flex-col items-stretch gap-2 px-4 py-3 transition-colors sm:flex-row sm:items-start sm:gap-3 ${
+                                isCurrent
+                                  ? "bg-emerald-50 ring-1 ring-inset ring-emerald-200"
+                                  : "hover:bg-gray-50"
+                              }`}
+                            >
+                              <div className="mt-0.5 flex w-full flex-wrap items-center gap-1 text-[#5d7c6f] sm:w-auto sm:min-w-[110px] sm:flex-shrink-0">
+                                <Clock className="flex-shrink-0" size={13} />
+                                <span className="text-xs font-mono font-semibold">
+                                  {slot.startTime?.slice(0, 5)} –{" "}
+                                  {slot.endTime?.slice(0, 5)}
+                                </span>
+                                {isCurrent && (
+                                  <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white">
+                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                                    กำลังดำเนินการ
+                                  </span>
+                                )}
+                              </div>
+                              <p className="min-w-0 flex-1 text-sm leading-relaxed text-gray-700">
+                                {slot.activity}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 px-4 py-3">
+                        ไม่มีกิจกรรม
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Footer */}

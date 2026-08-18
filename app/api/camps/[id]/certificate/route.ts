@@ -9,6 +9,7 @@ import React from "react";
 
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
+import { getCertificateEligibility } from "@/lib/certificate-eligibility";
 
 // Cache Font ไว้ใน Memory เพื่อไม่ต้องอ่านไฟล์ใหม่ทุกครั้งที่กดโหลด
 let cachedFontBytes: Buffer | null = null;
@@ -100,7 +101,15 @@ export async function GET(request: Request, context: any) {
       include: {
         camp: {
           include: {
-            survey: true,
+            station: {
+              where: { deletedAt: null },
+              select: {
+                mission: {
+                  where: { deletedAt: null },
+                  select: { mission_id: true },
+                },
+              },
+            },
           },
         },
         student: true,
@@ -110,6 +119,10 @@ export async function GET(request: Request, context: any) {
         certificate: {
           select: { certificate_no: true },
           take: 1,
+        },
+        mission_result: {
+          where: { status: "completed" },
+          select: { mission_mission_id: true },
         },
       },
     });
@@ -130,20 +143,28 @@ export async function GET(request: Request, context: any) {
       );
     }
 
-    if (
-      camp.survey &&
-      camp.survey.length > 0 &&
-      camp.survey[0].is_required_for_cert
-    ) {
-      if (
-        enrollment.survey_response.length === 0 &&
-        enrollment.certificate.length === 0
-      ) {
-        return NextResponse.json(
-          { error: "กรุณาทำแบบประเมินให้เสร็จสิ้นก่อนดาวน์โหลดเกียรติบัตร" },
-          { status: 403 },
-        );
-      }
+    const missionIds = new Set(
+      camp.station.flatMap((station) =>
+        station.mission.map((mission) => mission.mission_id),
+      ),
+    );
+    const eligibility = getCertificateEligibility({
+      totalMissions: missionIds.size,
+      completedMissionIds: enrollment.mission_result
+        .map((result) => result.mission_mission_id)
+        .filter((missionId) => missionIds.has(missionId)),
+      missionPercent: camp.cert_mission_completion_percent,
+      requireSurvey: camp.cert_require_survey,
+      hasSurveyResponse: enrollment.survey_response.length > 0,
+      hasIssuedCertificate: enrollment.certificate.length > 0,
+    });
+
+    if (!eligibility.eligible) {
+      const error = !eligibility.missionRequirementMet
+        ? `กรุณาทำภารกิจให้ครบอย่างน้อย ${eligibility.requiredMissions} จาก ${missionIds.size} ภารกิจก่อนดาวน์โหลดเกียรติบัตร`
+        : "กรุณาทำแบบประเมินให้เสร็จสิ้นก่อนดาวน์โหลดเกียรติบัตร";
+
+      return NextResponse.json({ error }, { status: 403 });
     }
 
     // ---- ระบบเลขที่เกียรติบัตรแบบรัน ----

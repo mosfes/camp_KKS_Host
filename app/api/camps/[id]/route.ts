@@ -23,6 +23,11 @@ const campSchema = z
     img_shirt_url: z.string().optional(),
     img_camp_url: z.string().optional(),
     img_certificate_url: z.string().optional().nullable(),
+    img_certificate_public_id: z.string().max(255).optional().nullable(),
+    img_certificate_bytes: z.number().int().nonnegative().optional().nullable(),
+    img_certificate_width: z.number().int().positive().optional().nullable(),
+    img_certificate_height: z.number().int().positive().optional().nullable(),
+    img_certificate_format: z.string().max(20).optional().nullable(),
     cert_name_x: z.number().optional().nullable(),
     cert_name_y: z.number().optional().nullable(),
     cert_font_size: z.number().optional().nullable(),
@@ -37,6 +42,13 @@ const campSchema = z
     cert_number_prefix: z.string().optional().nullable(),
     cert_number_is_thai: z.boolean().optional(),
     cert_year: z.string().optional().nullable(),
+    cert_mission_completion_percent: z
+      .number()
+      .int()
+      .min(0)
+      .max(100)
+      .optional(),
+    cert_require_survey: z.boolean().optional(),
     destination: z
       .object({
         name: z.string().trim().min(1).max(255),
@@ -47,6 +59,7 @@ const campSchema = z
       .nullable()
       .optional(),
     location_sharing_enabled: z.boolean().optional(),
+    has_transport: z.boolean().optional(),
     location_update_interval: z.union([z.literal(5), z.literal(10)]).optional(),
     dailySchedule: z.array(z.any()).optional(),
     classroom_ids: z.array(z.number()).optional(),
@@ -62,6 +75,162 @@ export async function GET(request, context) {
   try {
     const params = await context.params;
     const campId = Number(params.id);
+    const view = new URL(request.url).searchParams.get("view");
+
+    if (view === "bases") {
+      const camp = await prisma.camp.findFirst({
+        where: { camp_id: campId, deletedAt: null },
+        select: {
+          created_by_teacher_id: true,
+          station: {
+            where: { deletedAt: null },
+            select: {
+              station_id: true,
+              name: true,
+              description: true,
+            },
+          },
+        },
+      });
+
+      if (!camp) {
+        return NextResponse.json({ error: "Camp not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        ...camp,
+        isOwner:
+          camp.created_by_teacher_id === teacher.teachers_id ||
+          teacher.role === "ADMIN",
+      });
+    }
+
+    if (view === "survey") {
+      const camp = await prisma.camp.findFirst({
+        where: { camp_id: campId, deletedAt: null },
+        select: { created_by_teacher_id: true },
+      });
+
+      if (!camp) {
+        return NextResponse.json({ error: "Camp not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        ...camp,
+        isOwner:
+          camp.created_by_teacher_id === teacher.teachers_id ||
+          teacher.role === "ADMIN",
+      });
+    }
+
+    if (view === "certificate") {
+      const camp = await prisma.camp.findFirst({
+        where: { camp_id: campId, deletedAt: null },
+        select: {
+          camp_id: true,
+          created_by_teacher_id: true,
+          img_certificate_url: true,
+          img_certificate_public_id: true,
+          img_certificate_bytes: true,
+          img_certificate_width: true,
+          img_certificate_height: true,
+          img_certificate_format: true,
+          cert_name_x: true,
+          cert_name_y: true,
+          cert_font_size: true,
+          cert_font_color: true,
+          cert_show_number: true,
+          cert_number_start: true,
+          cert_number_end: true,
+          cert_number_x: true,
+          cert_number_y: true,
+          cert_number_size: true,
+          cert_number_color: true,
+          cert_number_prefix: true,
+          cert_number_is_thai: true,
+          cert_year: true,
+          cert_mission_completion_percent: true,
+          cert_require_survey: true,
+          survey: { select: { survey_id: true } },
+          station: {
+            where: { deletedAt: null },
+            select: {
+              mission: {
+                where: { deletedAt: null },
+                select: { mission_id: true },
+              },
+            },
+          },
+          student_enrollment: {
+            select: { student_students_id: true },
+          },
+          camp_classroom: {
+            select: {
+              classroom: {
+                select: {
+                  classroom_students: {
+                    select: { student_students_id: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!camp) {
+        return NextResponse.json({ error: "Camp not found" }, { status: 404 });
+      }
+
+      const candidateIds = new Set([
+        ...camp.student_enrollment.map((item) => item.student_students_id),
+        ...camp.camp_classroom.flatMap((item) =>
+          item.classroom.classroom_students.map(
+            (student) => student.student_students_id,
+          ),
+        ),
+      ]);
+
+      const certificateData = {
+        camp_id: camp.camp_id,
+        created_by_teacher_id: camp.created_by_teacher_id,
+        img_certificate_url: camp.img_certificate_url,
+        img_certificate_public_id: camp.img_certificate_public_id,
+        img_certificate_bytes: camp.img_certificate_bytes,
+        img_certificate_width: camp.img_certificate_width,
+        img_certificate_height: camp.img_certificate_height,
+        img_certificate_format: camp.img_certificate_format,
+        cert_name_x: camp.cert_name_x,
+        cert_name_y: camp.cert_name_y,
+        cert_font_size: camp.cert_font_size,
+        cert_font_color: camp.cert_font_color,
+        cert_show_number: camp.cert_show_number,
+        cert_number_start: camp.cert_number_start,
+        cert_number_end: camp.cert_number_end,
+        cert_number_x: camp.cert_number_x,
+        cert_number_y: camp.cert_number_y,
+        cert_number_size: camp.cert_number_size,
+        cert_number_color: camp.cert_number_color,
+        cert_number_prefix: camp.cert_number_prefix,
+        cert_number_is_thai: camp.cert_number_is_thai,
+        cert_year: camp.cert_year,
+        cert_mission_completion_percent: camp.cert_mission_completion_percent,
+        cert_require_survey: camp.cert_require_survey,
+        certificate_total_missions: camp.station.reduce(
+          (total, station) => total + station.mission.length,
+          0,
+        ),
+        certificate_has_survey: camp.survey.length > 0,
+      };
+
+      return NextResponse.json({
+        ...certificateData,
+        certificate_candidate_count: candidateIds.size,
+        isOwner:
+          camp.created_by_teacher_id === teacher.teachers_id ||
+          teacher.role === "ADMIN",
+      });
+    }
 
     const camp = await prisma.camp.findFirst({
       where: { camp_id: campId, deletedAt: null },
@@ -325,6 +494,21 @@ export async function PUT(request, context) {
         ...(body.img_certificate_url !== undefined && {
           img_certificate_url: body.img_certificate_url,
         }),
+        ...(body.img_certificate_public_id !== undefined && {
+          img_certificate_public_id: body.img_certificate_public_id,
+        }),
+        ...(body.img_certificate_bytes !== undefined && {
+          img_certificate_bytes: body.img_certificate_bytes,
+        }),
+        ...(body.img_certificate_width !== undefined && {
+          img_certificate_width: body.img_certificate_width,
+        }),
+        ...(body.img_certificate_height !== undefined && {
+          img_certificate_height: body.img_certificate_height,
+        }),
+        ...(body.img_certificate_format !== undefined && {
+          img_certificate_format: body.img_certificate_format,
+        }),
         ...(body.cert_name_x !== undefined && {
           cert_name_x: body.cert_name_x,
         }),
@@ -367,9 +551,23 @@ export async function PUT(request, context) {
         ...(body.cert_year !== undefined && {
           cert_year: body.cert_year,
         }),
+        ...(body.cert_mission_completion_percent !== undefined && {
+          cert_mission_completion_percent: body.cert_mission_completion_percent,
+        }),
+        ...(body.cert_require_survey !== undefined && {
+          cert_require_survey: body.cert_require_survey,
+        }),
         ...(body.location_sharing_enabled !== undefined && {
           location_sharing_enabled: body.location_sharing_enabled,
         }),
+        ...(body.has_transport !== undefined ||
+        body.location_sharing_enabled === true
+          ? {
+              has_transport: Boolean(
+                body.has_transport || body.location_sharing_enabled,
+              ),
+            }
+          : {}),
         ...(body.location_update_interval !== undefined && {
           location_update_interval: body.location_update_interval,
         }),

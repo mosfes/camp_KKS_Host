@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 import { isBangkokDateInRange } from "@/lib/bangkok-date";
+import { positiveIntSchema } from "@/lib/api-validation";
 
 // POST: ลงทะเบียนเข้าร่วมค่าย
 export async function POST(req) {
@@ -13,55 +14,129 @@ export async function POST(req) {
 
   try {
     const body = await req.json();
-    const campId = Number(body.campId);
+    const campIdResult = positiveIntSchema.safeParse(body?.campId);
     const studentId = Number(student.students_id);
 
-    if (!campId) {
+    if (!campIdResult.success) {
       return NextResponse.json(
-        { error: "Camp ID is required" },
+        { error: "รหัสค่ายไม่ถูกต้อง" },
         { status: 400 },
       );
     }
 
-    // ตรวจสอบว่าลงทะเบียนแล้วหรือยัง
-    const existing = await prisma.student_enrollment.findFirst({
-      where: {
-        student_students_id: studentId,
-        camp_camp_id: campId,
+    const campId = campIdResult.data;
+
+    const camp = await prisma.camp.findFirst({
+      where: { camp_id: campId, deletedAt: null },
+      select: {
+        status: true,
+        start_regis_date: true,
+        end_regis_date: true,
+        start_date: true,
+        end_date: true,
+        camp_classroom: {
+          select: { classroom: { select: { _count: { select: { classroom_students: true } } } } },
+        },
       },
     });
 
-    if (existing) {
-      // Pre-created record (enrolled_at = null) → นักเรียนกดเข้าร่วมครั้งแรก
-      if (!existing.enrolled_at) {
-        const enrollment = await prisma.student_enrollment.update({
-          where: { student_enrollment_id: existing.student_enrollment_id },
-          data: {
-            enrolled_at: new Date(), // ใช้ Date ปกติ (UTC)
-          },
-        });
+    if (!camp) {
+      return NextResponse.json({ error: "ไม่พบค่าย" }, { status: 404 });
+    }
 
-        return NextResponse.json(enrollment, { status: 200 });
-      }
-
+    if (camp.status !== "OPEN") {
       return NextResponse.json(
-        { message: "Already enrolled" },
-        { status: 200 },
+        { error: "ค่ายนี้ปิดรับลงทะเบียนแล้ว" },
+        { status: 400 },
       );
     }
 
-    // ไม่มี record → สร้างใหม่
-    const enrollment = await prisma.student_enrollment.create({
-      data: {
-        student: { connect: { students_id: studentId } },
-        camp: { connect: { camp_id: campId } },
-        enrolled_at: new Date(),
-        shirt_size: null,
-      },
+    const isRegistrationPeriod = isBangkokDateInRange(
+      camp.start_regis_date,
+      camp.end_regis_date,
+    );
+    const isCampPeriod = isBangkokDateInRange(
+      camp.start_date,
+      camp.end_date,
+    );
+
+    if (!isRegistrationPeriod && !isCampPeriod) {
+      return NextResponse.json(
+        { error: "ไม่อยู่ในช่วงเวลาลงทะเบียนค่าย" },
+        { status: 400 },
+      );
+    }
+
+    const totalCapacity = camp.camp_classroom.reduce(
+      (sum, campClassroom) =>
+        sum + campClassroom.classroom._count.classroom_students,
+      0,
+    );
+
+    // Lock the camp row while checking capacity and creating the enrollment.
+    // Without this, two students registering at the same time could both see
+    // one free seat and exceed the classroom capacity.
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT camp_id
+        FROM camp
+        WHERE camp_id = ${campId}
+        FOR UPDATE
+      `;
+
+      const existing = await tx.student_enrollment.findFirst({
+        where: {
+          student_students_id: studentId,
+          camp_camp_id: campId,
+        },
+      });
+
+      if (existing) {
+        if (!existing.enrolled_at) {
+          return {
+            enrollment: await tx.student_enrollment.update({
+              where: { student_enrollment_id: existing.student_enrollment_id },
+              data: { enrolled_at: new Date() },
+            }),
+            status: 200,
+          };
+        }
+
+        return { enrollment: existing, status: 200 };
+      }
+
+      const totalEnrolled = await tx.student_enrollment.count({
+        where: { camp_camp_id: campId, enrolled_at: { not: null } },
+      });
+
+      if (totalCapacity > 0 && totalEnrolled >= totalCapacity) {
+        const error = new Error("CAMP_CAPACITY_REACHED");
+
+        error.code = "CAMP_CAPACITY_REACHED";
+        throw error;
+      }
+
+      return {
+        enrollment: await tx.student_enrollment.create({
+          data: {
+            student: { connect: { students_id: studentId } },
+            camp: { connect: { camp_id: campId } },
+            enrolled_at: new Date(),
+            shirt_size: null,
+          },
+        }),
+        status: 201,
+      };
     });
 
-    return NextResponse.json(enrollment, { status: 201 });
+    return NextResponse.json(result.enrollment, { status: result.status });
   } catch (error) {
+    if (error.code === "CAMP_CAPACITY_REACHED") {
+      return NextResponse.json(
+        { error: "ค่ายนี้มีผู้ลงทะเบียนเต็มจำนวนแล้ว" },
+        { status: 409 },
+      );
+    }
     if (error.code === "P2002") {
       return NextResponse.json(
         { message: "Already enrolled" },
@@ -82,14 +157,18 @@ export async function PUT(req) {
 
   try {
     const body = await req.json();
-    const { campId, shirtSize } = body;
+    const campIdResult = positiveIntSchema.safeParse(body?.campId);
+    const shirtSize =
+      typeof body?.shirtSize === "string" ? body.shirtSize.trim() : "";
 
-    if (!campId || !shirtSize) {
+    if (!campIdResult.success || !shirtSize || shirtSize.length > 10) {
       return NextResponse.json(
-        { error: "Camp ID and Shirt Size required" },
+        { error: "รหัสค่ายหรือขนาดเสื้อไม่ถูกต้อง" },
         { status: 400 },
       );
     }
+
+    const campId = campIdResult.data;
 
     // ตรวจสอบว่าอยู่ในช่วงเวลาจองเสื้อหรือไม่
     const camp = await prisma.camp.findUnique({

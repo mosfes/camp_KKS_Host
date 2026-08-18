@@ -3,8 +3,14 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
-import { getBangkokDateKey, isBangkokDateBefore } from "@/lib/bangkok-date";
+import { isBangkokDateBefore } from "@/lib/bangkok-date";
 
+/**
+ * Dashboard summary only.
+ *
+ * Keep this endpoint intentionally small: questions, choices, answers,
+ * schedules and station details are loaded by the pages that need them.
+ */
 export async function GET() {
   const { student, error: authError } = await requireStudent();
 
@@ -13,158 +19,90 @@ export async function GET() {
   const studentId = student.students_id;
 
   try {
-    // 1. Find classrooms for the student
     const classrooms = await prisma.classrooms.findMany({
       where: {
         classroom_students: {
-          some: {
-            student_students_id: studentId,
-          },
+          some: { student_students_id: studentId },
         },
       },
       select: { classroom_id: true },
     });
 
-    let classroomIds = classrooms.map((c) => c.classroom_id);
+    let classroomIds = classrooms.map((classroom) => classroom.classroom_id);
 
-    // Fallback: หากยังไม่ได้ link ห้องเรียนใน DB (สำหรับ Demo) ให้หาตาม Grade 4 (Level_4) เหมือนเดิม
+    // Keep the existing demo fallback, but do not load the classroom graph.
     if (classroomIds.length === 0) {
       const demoClassrooms = await prisma.classrooms.findMany({
         where: { grade: "Level_4" },
         select: { classroom_id: true },
       });
-
-      classroomIds = demoClassrooms.map((c) => c.classroom_id);
+      classroomIds = demoClassrooms.map((classroom) => classroom.classroom_id);
     }
 
-    // 2. Find Camps linked to these classrooms (รวมทั้งที่จบแล้วด้วย)
     const camps = await prisma.camp.findMany({
       where: {
         deletedAt: null,
         camp_classroom: {
-          some: {
-            classroom_classroom_id: { in: classroomIds },
-          },
+          some: { classroom_classroom_id: { in: classroomIds } },
         },
       },
-      include: {
+      select: {
+        camp_id: true,
+        name: true,
+        location: true,
+        start_date: true,
+        end_date: true,
+        start_regis_date: true,
+        img_camp_url: true,
+        survey: { select: { survey_id: true } },
         student_enrollment: {
-          include: {
-            mission_result: {
-              include: {
-                mission_answer: {
-                  include: {
-                    answer_text: true,
-                    answer_mcq: true,
-                    answer_photo: true,
-                  },
-                },
-              },
-            },
+          where: { student_students_id: studentId },
+          select: {
+            enrolled_at: true,
           },
+          take: 1,
         },
         camp_classroom: {
-          include: {
+          select: {
             classroom: {
-              include: {
-                _count: {
-                  select: { classroom_students: true },
-                },
-              },
+              select: { academic_years_years_id: true },
             },
           },
-        },
-        camp_daily_schedule: {
-          include: { time_slots: true },
-          orderBy: { day: "asc" },
-        },
-        survey: {
-          select: { survey_id: true },
-        },
-        station: {
-          where: { deletedAt: null },
-          include: {
-            mission: {
-              where: { deletedAt: null },
-              include: {
-                mission_question: {
-                  include: { choices: true },
-                },
-              },
-            },
-          },
+          take: 1,
         },
       },
-      orderBy: {
-        camp_id: "desc",
+      orderBy: { camp_id: "desc" },
+    });
+
+    return NextResponse.json(
+      camps.map((camp) => {
+        const enrollment = camp.student_enrollment[0];
+        const isRegistered = !!enrollment?.enrolled_at;
+
+        return {
+          id: camp.camp_id,
+          title: camp.name,
+          location: camp.location,
+          rawStartDate: camp.start_date,
+          rawEndDate: camp.end_date,
+          startRegisDate: camp.start_regis_date,
+          isRegistered,
+          hasEnrollment: !!enrollment,
+          hasSurvey: camp.survey.length > 0,
+          isEnded: isBangkokDateBefore(camp.end_date),
+          img_camp_url: camp.img_camp_url,
+          academicYear:
+            camp.camp_classroom[0]?.classroom?.academic_years_years_id ?? null,
+        };
+      }),
+      {
+        headers: {
+          "Cache-Control": "private, no-store",
+        },
       },
-    });
-
-    // 3. Transform data for frontend
-    const studentCamps = camps.map((camp) => {
-      const enrollments = camp.student_enrollment;
-      const myEnrollment = enrollments.find(
-        (e) => e.student_students_id === studentId,
-      );
-
-      const isRegistered = !!myEnrollment?.enrolled_at;
-      const isEnded = isBangkokDateBefore(camp.end_date);
-
-      // Total capacity = sum of students in all linked classrooms
-      const totalCapacity = camp.camp_classroom.reduce(
-        (sum, cc) => sum + (cc.classroom?._count?.classroom_students || 0),
-        0,
-      );
-      const totalEnrolled = enrollments.filter((e) => e.enrolled_at).length;
-
-      return {
-        id: camp.camp_id,
-        title: camp.name,
-        description: camp.description,
-        location: camp.location,
-        startDate: getBangkokDateKey(camp.start_date),
-        endDate: getBangkokDateKey(camp.end_date),
-        status: isRegistered ? "Registered" : "Available",
-        isRegistered: isRegistered,
-        hasEnrollment: !!myEnrollment,
-        hasSurvey: camp.survey.length > 0,
-        isEnded: isEnded,
-        shirtSize: myEnrollment?.shirt_size || null,
-        hasShirt: camp.has_shirt,
-        startShirtDate: camp.start_shirt_date,
-        endShirtDate: camp.end_shirt_date,
-        rawStartDate: camp.start_date,
-        rawEndDate: camp.end_date,
-        missionResults: myEnrollment?.mission_result || [],
-        station: camp.station,
-        img_camp_url: camp.img_camp_url,
-        img_shirt_url: camp.img_shirt_url,
-        img_certificate_url: camp.img_certificate_url,
-        enrolledAt: myEnrollment?.enrolled_at,
-        startRegisDate: camp.start_regis_date,
-        endRegisDate: camp.end_regis_date,
-        totalCapacity,
-        totalEnrolled,
-        academicYear:
-          camp.camp_classroom[0]?.classroom?.academic_years_years_id,
-        camp_daily_schedule: camp.camp_daily_schedule
-          ? camp.camp_daily_schedule.map((s) => ({
-              daily_schedule_id: s.daily_schedule_id,
-              day: s.day,
-              time_slots: (s.time_slots || []).map((slot) => ({
-                time_slot_id: slot.time_slot_id,
-                startTime: slot.startTime,
-                endTime: slot.endTime,
-                activity: slot.activity,
-              })),
-            }))
-          : [],
-      };
-    });
-
-    return NextResponse.json(studentCamps);
-  } catch {
-    //     console.error("Error fetching student camps:", error);
+    );
+  } catch (error) {
+    console.error("[student camps summary] error:", error);
 
     return NextResponse.json(
       { _error: "Failed to fetch camps" },

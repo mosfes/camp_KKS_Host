@@ -40,13 +40,15 @@ export default function StudentStationDetailPage() {
 
   const [camp, setCamp] = useState<any>(null);
   const [station, setStation] = useState<any>(null);
-  const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Mission Execution State
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [answers, setAnswers] = useState<any>({}); // { questionId: value }
+  const [answerPublicIds, setAnswerPublicIds] = useState<Record<number, string>>(
+    {},
+  );
   const [submitting, setSubmitting] = useState(false);
   const [uploadingQids, setUploadingQids] = useState<number[]>([]);
 
@@ -64,24 +66,20 @@ export default function StudentStationDetailPage() {
 
   const fetchCamp = async () => {
     try {
-      const [campRes, studentRes] = await Promise.all([
-        fetch("/api/student/camps", {
-          cache: "no-store",
-          headers: {
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-          },
-        }),
-        fetch("/api/auth/student/me"),
-      ]);
-
-      if (studentRes.ok) {
-        setStudent(await studentRes.json());
-      }
+      const campRes = await fetch(
+        `/api/student/camps/${id}/missions/${stationId}`,
+        {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+        },
+      );
 
       if (campRes.ok) {
-        const data = await campRes.json();
-        const foundCamp = data.find((c: any) => c.id === Number(id));
+        const payload = await campRes.json();
+        const foundCamp = payload.camp;
 
         if (foundCamp) {
           if (!foundCamp.isRegistered) {
@@ -101,21 +99,25 @@ export default function StudentStationDetailPage() {
 
             return;
           }
-          setCamp(foundCamp);
-          // Find Station
-          // Note: Original endpoint structure puts 'stations' under camp with full nested data
-          const foundStation = foundCamp.station?.find(
-            (s: any) => s.station_id === Number(stationId),
-          );
+          setCamp({
+            ...foundCamp,
+            missionResults: payload.missionResults || [],
+            preTestMissionIds: payload.preTestMissionIds || [],
+            preTestCompleted: payload.preTestCompleted ?? false,
+          });
 
-          if (foundStation) {
-            setStation(foundStation);
+          if (payload.station) {
+            setStation(payload.station);
           } else {
             toast.error("ไม่พบฐานกิจกรรม");
           }
         } else {
           toast.error("ไม่พบค่าย");
         }
+      } else if (campRes.status === 403) {
+        const errorData = await campRes.json().catch(() => null);
+        toast.error(errorData?.error || "ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
+        router.replace(`/student/dashboard/camp/${id}`);
       }
     } catch (error) {
       console.error("Failed to fetch camp", error);
@@ -131,6 +133,7 @@ export default function StudentStationDetailPage() {
 
   const openMission = (mission: any) => {
     setSelectedMission(mission);
+    setAnswerPublicIds({});
 
     // Reset QR state
     setQrScanActive(false);
@@ -180,8 +183,8 @@ export default function StudentStationDetailPage() {
       if (res.ok && data.success) {
         setQrScanResult(data.alreadyCompleted ? "alreadyDone" : "success");
         setQrScanMessage(data.message);
-        if (!data.alreadyCompleted) {
-          await fetchCamp();
+        if (!data.alreadyCompleted && selectedMission?.mission_id) {
+          markMissionCompleted(selectedMission.mission_id);
         }
       } else {
         setQrScanResult("error");
@@ -224,7 +227,9 @@ export default function StudentStationDetailPage() {
       if (res.ok && data.success) {
         setQrScanResult(data.alreadyCompleted ? "alreadyDone" : "success");
         setQrScanMessage(data.message);
-        if (!data.alreadyCompleted) await fetchCamp();
+        if (!data.alreadyCompleted && selectedMission?.mission_id) {
+          markMissionCompleted(selectedMission.mission_id);
+        }
       } else {
         setQrScanResult("error");
         setQrScanMessage(data.error || "รหัส PIN ไม่ถูกต้อง");
@@ -323,23 +328,148 @@ export default function StudentStationDetailPage() {
     setAnswers((prev: any) => ({ ...prev, [questionId]: value }));
   };
 
+  const markMissionCompleted = (missionId: number) => {
+    setCamp((previous: any) => {
+      if (!previous) return previous;
+
+      const missionResults = previous.missionResults || [];
+      const existingResult = missionResults.find(
+        (result: any) => result.mission_mission_id === missionId,
+      );
+
+      if (existingResult?.status === "completed") return previous;
+
+      return {
+        ...previous,
+        missionResults: existingResult
+          ? missionResults.map((result: any) =>
+              result.mission_mission_id === missionId
+                ? { ...result, status: "completed" }
+                : result,
+            )
+          : [
+              ...missionResults,
+              {
+                mission_mission_id: missionId,
+                status: "completed",
+                mission_answer: [],
+              },
+            ],
+      };
+    });
+  };
+
   const compressImage = async (file: File) => {
-    if (!file || !file.type.startsWith("image/")) return file;
+    if (!file || !file.type.startsWith("image/")) {
+      return { file, compressionFailed: false };
+    }
+
     try {
       const imageCompression = (await import("browser-image-compression"))
         .default;
 
-      return await imageCompression(file, {
-        maxSizeMB: 2,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-        fileType: "image/jpeg", // Always convert to JPEG for compatibility
-      });
+      return {
+        file: await imageCompression(file, {
+          maxSizeMB: 2,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+          fileType: "image/jpeg", // Always convert to JPEG for compatibility
+        }),
+        compressionFailed: false,
+      };
     } catch (e) {
       console.error("Compression error:", e);
 
-      return file;
+      return { file, compressionFailed: true };
     }
+  };
+
+  const uploadMissionImageDirect = async ({
+    file,
+    campId,
+    missionId,
+    questionId,
+    useFallback,
+  }: {
+    file: File;
+    campId: number;
+    missionId: number;
+    questionId: number;
+    useFallback: boolean;
+  }) => {
+    const signatureResponse = await fetch(
+      "/api/student/mission/upload-signature",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campId,
+          missionId,
+          questionId,
+          useFallback,
+        }),
+      },
+    );
+    const signatureData = await signatureResponse.json().catch(() => null);
+
+    if (!signatureResponse.ok) {
+      throw new Error(
+        signatureData?.error || "ไม่สามารถเตรียมการอัปโหลดรูปได้",
+      );
+    }
+
+    const uploadForm = new FormData();
+    uploadForm.append("file", file, file.name || "mission-image.jpg");
+    uploadForm.append("api_key", signatureData.apiKey);
+    uploadForm.append("timestamp", String(signatureData.timestamp));
+    uploadForm.append("folder", signatureData.folder);
+    uploadForm.append("signature", signatureData.signature);
+
+    if (signatureData.uploadPreset) {
+      uploadForm.append("upload_preset", signatureData.uploadPreset);
+    }
+
+    if (signatureData.transformation) {
+      uploadForm.append("transformation", signatureData.transformation);
+    }
+
+    const uploadResponse = await fetch(
+      `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
+      { method: "POST", body: uploadForm },
+    );
+    const uploadData = await uploadResponse.json().catch(() => null);
+
+    if (!uploadResponse.ok || !uploadData?.secure_url) {
+      throw new Error(
+        uploadData?.error?.message || "อัปโหลดรูปภาพไม่สำเร็จ",
+      );
+    }
+
+    const commitResponse = await fetch(
+      "/api/student/mission/upload-commit",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campId,
+          missionId,
+          questionId,
+          publicId: uploadData.public_id,
+        }),
+      },
+    );
+    const commitData = await commitResponse.json().catch(() => null);
+
+    if (!commitResponse.ok || !commitData?.url || !commitData?.publicId) {
+      throw new Error(
+        commitData?.error || "รูปภาพไม่ผ่านการตรวจสอบจากเซิร์ฟเวอร์",
+      );
+    }
+
+    return {
+      url: commitData.url,
+      public_id: commitData.publicId,
+    };
   };
 
   const handleImageUpload = async (questionId: number, file: File) => {
@@ -361,45 +491,45 @@ export default function StudentStationDetailPage() {
       current.includes(questionId) ? current : [...current, questionId],
     );
     try {
-      const compressedFile = await compressImage(file);
-      const formData = new FormData();
-
-      formData.append("file", compressedFile, file.name);
+      const compressionResult = await compressImage(file);
+      const uploadFile = compressionResult.file;
+      // Files up to 5MB go directly to Cloudinary without an incoming
+      // transformation. Only larger files use the fallback transformation.
+      const useFallback = uploadFile.size > 5 * 1024 * 1024;
 
       let lastError: string | null = null;
 
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-          const res = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
+          const data = await uploadMissionImageDirect({
+            file: uploadFile,
+            campId: Number(id),
+            missionId: selectedMission?.mission_id,
+            questionId,
+            useFallback,
           });
 
-          if (res.ok) {
-            const data = await res.json();
+          handleAnswerChange(questionId, data.url);
+          setAnswerPublicIds((current) => ({
+            ...current,
+            [questionId]: data.public_id,
+          }));
+          toast.success("อัปโหลดรูปภาพสำเร็จ");
 
-            handleAnswerChange(questionId, data.url);
-            toast.success("อัปโหลดรูปภาพสำเร็จ");
+          return; // สำเร็จ ออกจาก loop
+        } catch (error: any) {
+          // Signature validation and other 4xx errors are not fixed by retry.
+          const message = error?.message || "อัปโหลดล้มเหลว";
 
-            return; // สำเร็จ ออกจาก loop
-          }
-
-          // 4xx = validation error, ไม่ retry เพราะแก้ไม่ได้
-          if (res.status >= 400 && res.status < 500) {
-            const errorData = await res.json();
-
-            toast.error(
-              errorData.error || errorData._error || "อัปโหลดล้มเหลว",
-            );
+          if (
+            /ไม่พบ|ไม่มีสิทธิ์|ยังไม่ได้ลงทะเบียน|ไม่สามารถเตรียม/.test(message)
+          ) {
+            toast.error(message);
 
             return;
           }
 
-          // 5xx = server/Cloudinary overload, retry ได้
-          lastError = `Server error (${res.status})`;
-        } catch (networkError) {
-          // Network timeout หรือ connection reset
-          lastError = "Network error";
+          lastError = message;
         }
 
         if (attempt < MAX_RETRIES) {
@@ -452,6 +582,9 @@ export default function StudentStationDetailPage() {
         questionId: Number(qid),
         type: q?.question_type,
         value: val,
+        ...(q?.question_type === "PHOTO" && answerPublicIds[Number(qid)]
+          ? { publicId: answerPublicIds[Number(qid)] }
+          : {}),
       };
     });
 
@@ -473,8 +606,47 @@ export default function StudentStationDetailPage() {
       });
 
       if (res.ok) {
+        const resultData = await res.json().catch(() => null);
+        const savedStatus =
+          resultData?.status || (isDraft ? "pending" : "completed");
+        const savedAnswers = payloadAnswers.map((answer: any) => ({
+          mission_question_question_id: answer.questionId,
+          answer_text:
+            answer.type === "TEXT" ? [{ answer_text: answer.value }] : [],
+          answer_mcq:
+            answer.type === "MCQ" ? [{ question_text: answer.value }] : [],
+          answer_photo:
+            answer.type === "PHOTO" ? [{ img_url: answer.value }] : [],
+        }));
+
+        setCamp((previous: any) => {
+          if (!previous) return previous;
+
+          const missionResults = previous.missionResults || [];
+          const nextResult = {
+            mission_result_id: resultData?.resultId,
+            mission_mission_id: selectedMission.mission_id,
+            status: savedStatus,
+            mission_answer: savedAnswers,
+          };
+          const hasExistingResult = missionResults.some(
+            (result: any) =>
+              result.mission_mission_id === selectedMission.mission_id,
+          );
+
+          return {
+            ...previous,
+            missionResults: hasExistingResult
+              ? missionResults.map((result: any) =>
+                  result.mission_mission_id === selectedMission.mission_id
+                    ? { ...result, ...nextResult }
+                    : result,
+                )
+              : [...missionResults, nextResult],
+          };
+        });
+
         toast.success(isDraft ? "บันทึกร่างสำเร็จ!" : "ส่งภารกิจสำเร็จ!");
-        await fetchCamp(); // Refresh status
         onClose();
       } else {
         const errorData = await res.json().catch(() => null);
@@ -501,48 +673,29 @@ export default function StudentStationDetailPage() {
   };
 
   const isPreTestCompleted = () => {
-    if (!camp || !camp.station) return false;
+    if (camp?.preTestCompleted) return true;
 
-    let preTestMissions: any[] = [];
+    const preTestIds = camp?.preTestMissionIds || [];
 
-    for (const s of camp.station) {
-      if (!s.mission) continue;
-      for (const m of s.mission) {
-        if (m.type === "PRE_TEST") {
-          preTestMissions.push(m);
-        }
-      }
-    }
-
-    if (preTestMissions.length === 0) return true;
-
-    let allPreTestsCompleted = true;
-
-    for (const m of preTestMissions) {
-      const isCompleted = camp.missionResults?.some(
-        (r: any) =>
-          r.mission_mission_id === m.mission_id && r.status === "completed",
-      );
-
-      if (!isCompleted) {
-        allPreTestsCompleted = false;
-        break;
-      }
-    }
-
-    return allPreTestsCompleted;
+    return preTestIds.every((missionId: number) =>
+      camp?.missionResults?.some(
+        (result: any) =>
+          result.mission_mission_id === missionId &&
+          result.status === "completed",
+      ),
+    );
   };
 
   if (loading)
     return (
       <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 font-bold">กำลังโหลด...</div>
+        <div className="text-gray-400 font-medium">กำลังโหลด...</div>
       </div>
     );
   if (!station)
     return (
       <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 font-bold">ไม่พบฐานกิจกรรม</div>
+        <div className="text-gray-400 font-medium">ไม่พบฐานกิจกรรม</div>
       </div>
     );
 
@@ -559,7 +712,7 @@ export default function StudentStationDetailPage() {
           <ChevronLeft size={24} />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-[#2D3648] leading-tight">
+          <h1 className="text-2xl font-medium text-[#2D3648] leading-tight">
             {station.name}
           </h1>
           <p className="text-[13px] text-gray-400 font-medium leading-tight line-clamp-2 mt-1">
@@ -572,11 +725,11 @@ export default function StudentStationDetailPage() {
         {station.description && (
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-4">
             <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              <h2 className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">
                 เกี่ยวกับฐานนี้
               </h2>
             </div>
-            <p className="text-gray-600 text-sm leading-relaxed font-medium">
+            <p className="text-gray-600 text-sm leading-relaxed font-normal">
               {station.description}
             </p>
           </div>
@@ -585,7 +738,7 @@ export default function StudentStationDetailPage() {
         {station.mission?.length === 0 && (
           <div className="text-center text-gray-400 py-16 bg-white/40 rounded-2xl border-2 border-dashed border-gray-100">
             <Circle className="mx-auto mb-3 opacity-20" size={48} />
-            <p className="font-bold">ยังไม่มีภารกิจในฐานนี้</p>
+            <p className="font-medium">ยังไม่มีภารกิจในฐานนี้</p>
           </div>
         )}
 
@@ -632,19 +785,19 @@ export default function StudentStationDetailPage() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className={`text-lg font-bold text-[#2D3648] truncate`}>
+                    <h3 className={`text-lg font-medium text-[#2D3648] truncate`}>
                       {mission.title?.replace(
                         /\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g,
                         "",
                       ) || "ภารกิจ"}
                     </h3>
                     {mission.type === "PRE_TEST" && (
-                      <span className="shrink-0 bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                      <span className="shrink-0 bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-medium">
                         ก่อนเรียน
                       </span>
                     )}
                     {mission.type === "POST_TEST" && (
-                      <span className="shrink-0 bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                      <span className="shrink-0 bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-medium">
                         หลังเรียน
                       </span>
                     )}
@@ -655,7 +808,7 @@ export default function StudentStationDetailPage() {
                 </div>
 
                 {completed && (
-                  <div className="bg-[#E6F4EA] text-[#1E8E3E] text-[13px] font-bold px-3 py-1 rounded-full shrink-0">
+                  <div className="bg-[#E6F4EA] text-[#1E8E3E] text-[13px] font-medium px-3 py-1 rounded-full shrink-0">
                     สำเร็จ
                   </div>
                 )}
@@ -696,19 +849,19 @@ export default function StudentStationDetailPage() {
                   ทำภารกิจ
                 </span>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-gray-900 truncate">
+                  <h2 className="text-xl font-medium text-gray-900 truncate">
                     {selectedMission?.title?.replace(
                       /\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g,
                       "",
                     )}
                   </h2>
                   {selectedMission?.type === "PRE_TEST" && (
-                    <span className="shrink-0 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-bold">
+                    <span className="shrink-0 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
                       ก่อนเรียน
                     </span>
                   )}
                   {selectedMission?.type === "POST_TEST" && (
-                    <span className="shrink-0 bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-bold">
+                    <span className="shrink-0 bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium">
                       หลังเรียน
                     </span>
                   )}
@@ -719,7 +872,7 @@ export default function StudentStationDetailPage() {
                 {/* Mission Description */}
                 {selectedMission?.description && (
                   <div className="bg-blue-50/50 p-4 rounded-xl text-gray-700 text-sm leading-relaxed border border-blue-100/50">
-                    <h4 className="font-bold text-[#5d7c6f] mb-1">
+                    <h4 className="font-medium text-[#5d7c6f] mb-1">
                       รายละเอียดภารกิจ:
                     </h4>
                     <p className="whitespace-pre-wrap">
@@ -746,7 +899,7 @@ export default function StudentStationDetailPage() {
                               size={44}
                             />
                           </div>
-                          <p className="text-lg font-bold text-green-700">
+                          <p className="text-lg font-medium text-green-700">
                             สแกนสำเร็จแล้ว!
                           </p>
                           <p className="text-sm text-gray-500">
@@ -765,7 +918,7 @@ export default function StudentStationDetailPage() {
                               size={44}
                             />
                           </div>
-                          <p className="text-lg font-bold text-green-700">
+                          <p className="text-lg font-medium text-green-700">
                             สำเร็จ!
                           </p>
                           <p className="text-sm text-gray-600">
@@ -781,13 +934,13 @@ export default function StudentStationDetailPage() {
                           <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center">
                             <X className="text-red-400" size={40} />
                           </div>
-                          <p className="text-base font-semibold text-red-600 text-center">
+                          <p className="text-base font-medium text-red-600 text-center">
                             {qrScanMessage}
                           </p>
                           <div className="flex flex-col w-full gap-2">
                             {!showPinInput && (
                               <Button
-                                className="w-full bg-[#5d7c6f] text-white font-semibold"
+                                className="w-full bg-[#5d7c6f] text-white font-medium"
                                 startContent={<ScanLine size={18} />}
                                 onPress={resetQrScan}
                               >
@@ -830,7 +983,7 @@ export default function StudentStationDetailPage() {
                             <div className="w-16 h-16 rounded-2xl bg-[#5d7c6f]/10 flex items-center justify-center mb-1 text-[#5d7c6f]">
                               <KeyRound size={32} strokeWidth={2.5} />
                             </div>
-                            <p className="font-bold text-gray-900">
+                            <p className="font-medium text-gray-900">
                               กรอกรหัส PIN
                             </p>
                             <p className="text-xs text-gray-600 text-center">
@@ -838,7 +991,7 @@ export default function StudentStationDetailPage() {
                             </p>
                           </div>
                           <input
-                            className="w-60 pl-[0.35em] text-center text-gray-900 text-3xl font-black tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50 placeholder:text-gray-300"
+                            className="w-60 pl-[0.35em] text-center text-gray-900 text-3xl font-medium tracking-[0.35em] font-mono border-2 border-gray-200 focus:border-[#5d7c6f] rounded-xl py-3 outline-none transition-colors bg-gray-50 placeholder:text-gray-300"
                             inputMode="numeric"
                             maxLength={6}
                             pattern="[0-9]*"
@@ -857,7 +1010,7 @@ export default function StudentStationDetailPage() {
                           />
                           <div className="flex flex-col w-full gap-2">
                             <Button
-                              className="w-full bg-[#5d7c6f] text-white font-bold"
+                              className="w-full bg-[#5d7c6f] text-white font-medium"
                               isDisabled={pinInput.length !== 6}
                               isLoading={pinSubmitting}
                               size="lg"
@@ -919,7 +1072,7 @@ export default function StudentStationDetailPage() {
                               </span>
                             </p>
                             <Button
-                              className="bg-[#5d7c6f] text-white font-bold px-8"
+                              className="bg-[#5d7c6f] text-white font-medium px-8"
                               size="lg"
                               startContent={<ScanLine size={20} />}
                               onPress={requestCameraAndStartScan}
@@ -958,7 +1111,7 @@ export default function StudentStationDetailPage() {
 
                           return (
                             <div key={q.question_id} className="space-y-3">
-                              <label className="block font-semibold text-gray-700 break-words leading-relaxed">
+                              <label className="block font-medium text-gray-700 break-words leading-relaxed">
                                 {idx + 1}. {q.question_text}
                               </label>
 
@@ -995,7 +1148,7 @@ export default function StudentStationDetailPage() {
                                   )}
                                   {videoSource && (
                                     <div className="space-y-2 rounded-xl border border-[#5d7c6f]/20 bg-[#5d7c6f]/5 p-3">
-                                      <p className="text-xs font-semibold text-[#5d7c6f]">
+                                      <p className="text-xs font-medium text-[#5d7c6f]">
                                         ตัวอย่างวิดีโอ ({videoSource.provider})
                                       </p>
                                       <VideoPlayer
@@ -1057,7 +1210,7 @@ export default function StudentStationDetailPage() {
                                         >
                                           <div
                                             className={`
-                                        w-6 h-6 rounded-full border flex items-center justify-center shrink-0 font-bold text-xs
+                                        w-6 h-6 rounded-full border flex items-center justify-center shrink-0 font-medium text-xs
                                         ${answers[q.question_id] === choiceLetter ? "border-white" : "border-gray-400"}
                                     `}
                                           >
@@ -1085,12 +1238,17 @@ export default function StudentStationDetailPage() {
                                       {!isSubmitted && (
                                         <button
                                           className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors"
-                                          onClick={() =>
+                                          onClick={() => {
                                             handleAnswerChange(
                                               q.question_id,
                                               "",
-                                            )
-                                          }
+                                            );
+                                            setAnswerPublicIds((current) => {
+                                              const next = { ...current };
+                                              delete next[q.question_id];
+                                              return next;
+                                            });
+                                          }}
                                         >
                                           <X size={16} />
                                         </button>
@@ -1138,13 +1296,13 @@ export default function StudentStationDetailPage() {
                                           {uploadingQids.includes(
                                             q.question_id,
                                           ) ? (
-                                            <span className="text-sm font-semibold ml-2">
+                                            <span className="text-sm font-medium ml-2">
                                               กำลังอัปโหลด...
                                             </span>
                                           ) : (
                                             <div className="flex flex-col items-center gap-1">
                                               <Camera size={24} />
-                                              <span className="text-sm font-semibold">
+                                              <span className="text-sm font-medium">
                                                 ถ่ายรูป / เลือกรูป
                                               </span>
                                               <span className="text-[10px] text-gray-600 font-normal">
@@ -1210,7 +1368,7 @@ export default function StudentStationDetailPage() {
                       </Button>
                       {!isSubmitted && (
                         <Button
-                          className={`text-white font-bold ${canSubmit ? "bg-[#5d7c6f]" : "bg-gray-500 hover:bg-gray-600"}`}
+                          className={`text-white font-medium ${canSubmit ? "bg-[#5d7c6f]" : "bg-gray-500 hover:bg-gray-600"}`}
                           isDisabled={
                             submitting ||
                             isUploading ||

@@ -35,6 +35,50 @@ import { useRouter } from "next/navigation";
 import { PlusIcon } from "./Icons";
 import TrashManager from "./TrashManager";
 
+function StudentLoadingTable() {
+    const columns = [
+        "รหัสนักเรียน",
+        "ชื่อ-นามสกุล",
+        "อีเมล",
+        "ระดับชั้น/ห้อง",
+        "เบอร์โทร",
+        "ดำเนินการ",
+    ];
+
+    return (
+        <div
+            aria-label="กำลังโหลดข้อมูลนักเรียน"
+            className="min-w-[900px] overflow-hidden rounded-xl border border-gray-100 bg-white"
+            role="status"
+        >
+            <div className="grid grid-cols-[0.9fr_1.4fr_1.8fr_1.2fr_1fr_0.7fr] gap-4 border-b border-gray-100 bg-gray-50/50 px-4 py-4">
+                {columns.map((column) => (
+                    <span className="text-sm font-semibold text-gray-800" key={column}>
+                        {column}
+                    </span>
+                ))}
+            </div>
+
+            {Array.from({ length: 7 }, (_, index) => (
+                <div
+                    className="grid grid-cols-[0.9fr_1.4fr_1.8fr_1.2fr_1fr_0.7fr] items-center gap-4 border-b border-gray-100 px-4 py-5 last:border-b-0"
+                    key={index}
+                >
+                    <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
+                    <div className="h-4 w-36 animate-pulse rounded bg-gray-200" />
+                    <div className="h-4 w-48 animate-pulse rounded bg-gray-200" />
+                    <div className="h-6 w-24 animate-pulse rounded-full bg-gray-200" />
+                    <div className="h-4 w-28 animate-pulse rounded bg-gray-200" />
+                    <div className="flex gap-3">
+                        <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                        <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 const StudentManager = () => {
     const { showSuccess, showError, showConfirm } = useStatusModal();
     const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -710,6 +754,9 @@ const StudentManager = () => {
 
                     <div className="w-full">
                         <div className="overflow-x-auto w-full">
+                            {isLoading ? (
+                                <StudentLoadingTable />
+                            ) : (
                             <Table aria-label="Student Table"
                                 shadow="none"
                                 isHeaderSticky
@@ -728,13 +775,6 @@ const StudentManager = () => {
                                 </TableHeader>
                                 <TableBody
                                     emptyContent={"ไม่มีข้อมูลนักเรียน"}
-                                    isLoading={isLoading}
-                                    loadingContent={
-                                        <div className="flex flex-col items-center gap-2">
-                                            <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
-                                            <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
-                                        </div>
-                                    }
                                 >
 
                                     {filteredStudents.map((stu) => (
@@ -769,6 +809,7 @@ const StudentManager = () => {
                                     ))}
                                 </TableBody>
                             </Table>
+                            )}
                         </div>
 
                         <div className="flex flex-col md:flex-row items-center mt-6 w-full px-2 gap-4 relative">

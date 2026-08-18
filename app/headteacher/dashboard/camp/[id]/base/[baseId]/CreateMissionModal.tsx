@@ -262,7 +262,7 @@ export default function CreateMissionModal({
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
-              <h2 className="text-2xl font-bold text-gray-900">สร้างภารกิจ</h2>
+              <h2 className="text-xl font-bold text-gray-900">สร้างภารกิจ</h2>
               <p className="text-sm text-gray-500 font-normal">
                 ตั้งค่าภารกิจใหม่สำหรับนักเรียน
               </p>
@@ -296,7 +296,7 @@ export default function CreateMissionModal({
                 classNames={{
                   base: "w-full",
                   description: "text-xs text-gray-500",
-                  label: "text-sm font-semibold text-gray-700",
+                  label: "text-sm font-medium text-gray-700",
                   listbox: "p-0",
                   listboxWrapper:
                     "max-h-[178px] overflow-y-scroll pr-1 scrollbar-thin scrollbar-thumb-[#6b857a]/70 scrollbar-track-transparent",
@@ -304,7 +304,7 @@ export default function CreateMissionModal({
                     "rounded-xl border border-gray-100 p-1 shadow-lg",
                   trigger:
                     "min-h-11 rounded-lg border border-gray-200 bg-white px-3 shadow-none data-[hover=true]:border-[#6b857a]",
-                  value: "text-sm font-medium text-gray-900",
+                  value: "text-sm font-normal text-gray-900",
                 }}
                 description={selectedType?.description}
                 label="ประเภทภารกิจ"
@@ -321,7 +321,7 @@ export default function CreateMissionModal({
                     classNames={{
                       base:
                         "min-h-10 rounded-lg px-3 py-2 data-[hover=true]:bg-[#6b857a]/10",
-                      title: "text-sm font-medium text-gray-800",
+                      title: "text-sm font-normal text-gray-800",
                     }}
                     textValue={item.label}
                   >
@@ -538,7 +538,7 @@ export default function CreateMissionModal({
             <ModalFooter className="p-6 pt-2 flex gap-2">
               <Button
                 fullWidth
-                className="font-medium text-gray-600"
+                className="font-normal text-gray-600"
                 size="lg"
                 variant="light"
                 onPress={onClose}
@@ -547,7 +547,7 @@ export default function CreateMissionModal({
               </Button>
               <Button
                 fullWidth
-                className="bg-[#6b857a] text-white rounded-xl font-bold shadow-lg hover:bg-[#5a7268]"
+                className="bg-[#6b857a] text-white rounded-xl font-medium shadow-lg hover:bg-[#5a7268]"
                 isLoading={loading}
                 size="lg"
                 startContent={!loading && <Save size={18} />}

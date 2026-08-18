@@ -70,8 +70,8 @@ export function AppNavbar() {
           <GraduationCap size={20} />
         </div>
         <div className="flex flex-col leading-tight">
-          <span className="font-bold text-sm text-black">KKS Camp</span>
-          <span className="text-xs text-gray-700 font-medium">ค่ายของฉัน</span>
+          <span className="font-medium text-sm text-black">KKS Camp</span>
+          <span className="text-xs text-gray-700 font-normal">ค่ายของฉัน</span>
         </div>
       </NavbarBrand>
 
@@ -89,7 +89,7 @@ export function AppNavbar() {
                   {student && (
                     <div className="hidden sm:flex items-center gap-2">
                       {displayNickname && (
-                        <span className="text-sm font-semibold text-gray-700">
+                        <span className="text-sm font-medium text-gray-700">
                           น้อง{displayNickname}
                         </span>
                       )}
@@ -123,7 +123,7 @@ export function AppNavbar() {
               <DropdownMenu aria-label="Profile Actions" variant="flat">
                 <DropdownItem key="profile" className="h-14 gap-2">
                   <div>
-                    <p className="font-semibold">
+                    <p className="font-medium">
                       {displayNickname ? `น้อง${displayNickname}` : displayName}
                     </p>
                     <p className="text-xs text-gray-500">{displayEmail}</p>
@@ -172,7 +172,7 @@ export function AppNavbar() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/50 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
             <LoadingSpinner />
-            <p className="text-sm font-medium text-[#5d7c6f]">
+            <p className="text-sm font-normal text-[#5d7c6f]">
               กำลังออกจากระบบ...
             </p>
           </div>

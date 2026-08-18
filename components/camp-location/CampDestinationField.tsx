@@ -30,8 +30,10 @@ interface PlaceResult extends CampDestination {
 interface Props {
   destination: CampDestination | null;
   enabled: boolean;
+  hasTransport: boolean;
   onDestinationChange: (destination: CampDestination | null) => void;
   onEnabledChange: (enabled: boolean) => void;
+  onHasTransportChange: (hasTransport: boolean) => void;
 }
 
 function searchError(error: unknown) {
@@ -52,8 +54,10 @@ function searchError(error: unknown) {
 export default function CampDestinationField({
   destination,
   enabled,
+  hasTransport,
   onDestinationChange,
   onEnabledChange,
+  onHasTransportChange,
 }: Props) {
   const [query, setQuery] = useState("");
   const [places, setPlaces] = useState<PlaceResult[]>([]);
@@ -117,6 +121,31 @@ export default function CampDestinationField({
           />
           <span className="relative h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-[#5d7c6f] after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5" />
           {enabled ? "เปิดใช้งาน" : "ไม่ใช้งาน"}
+        </label>
+      </div>
+
+      <div className="border-t border-slate-200 px-4 py-3">
+        <label
+          className={`flex items-start gap-3 text-sm ${
+            enabled ? "cursor-not-allowed" : "cursor-pointer"
+          }`}
+        >
+          <input
+            checked={hasTransport || enabled}
+            className="mt-0.5 h-4 w-4 accent-[#5d7c6f]"
+            disabled={enabled}
+            type="checkbox"
+            onChange={(event) => onHasTransportChange(event.target.checked)}
+          />
+          <span>
+            <span className="block font-semibold text-slate-800">
+              ค่ายมีการเดินทาง
+            </span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              ใช้สำหรับแสดงเมนูเช็คชื่อขึ้นรถ
+              {enabled && " (เปิดอัตโนมัติเมื่อใช้ติดตามตำแหน่ง)"}
+            </span>
+          </span>
         </label>
       </div>
 

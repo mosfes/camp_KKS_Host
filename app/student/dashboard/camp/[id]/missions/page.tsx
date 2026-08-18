@@ -27,7 +27,6 @@ export default function StudentMissionsPage() {
   const { id } = params;
 
   const [camp, setCamp] = useState<any>(null);
-  const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
 
@@ -39,24 +38,16 @@ export default function StudentMissionsPage() {
 
   const fetchCamp = async () => {
     try {
-      const [campRes, studentRes] = await Promise.all([
-        fetch("/api/student/camps", {
-          cache: "no-store",
-          headers: {
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-          },
-        }),
-        fetch("/api/auth/student/me"),
-      ]);
-
-      if (studentRes.ok) {
-        setStudent(await studentRes.json());
-      }
+      const campRes = await fetch(`/api/student/camps/${id}/missions`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      });
 
       if (campRes.ok) {
-        const data = await campRes.json();
-        const found = data.find((c: any) => c.id === Number(id));
+        const found = await campRes.json();
 
         if (found) {
           if (!found.isRegistered) {
@@ -66,7 +57,9 @@ export default function StudentMissionsPage() {
             return;
           }
           // ตรวจสอบว่าค่ายเริ่มแล้วหรือยัง
-          const startDate = found.rawStartDate ? new Date(found.rawStartDate) : null;
+          const startDate = found.rawStartDate
+            ? new Date(found.rawStartDate)
+            : null;
 
           if (startDate && isBangkokDateBefore(new Date(), startDate)) {
             toast.error("ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
@@ -78,6 +71,10 @@ export default function StudentMissionsPage() {
         } else {
           toast.error("ไม่พบค่าย");
         }
+      } else if (campRes.status === 403) {
+        const errorData = await campRes.json().catch(() => null);
+        toast.error(errorData?.error || "ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
+        router.replace(`/student/dashboard/camp/${id}`);
       }
     } catch (error) {
       console.error("Failed to fetch camp", error);
@@ -94,13 +91,13 @@ export default function StudentMissionsPage() {
   if (loading)
     return (
       <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 font-bold">กำลังโหลด...</div>
+        <div className="text-gray-400 font-medium">กำลังโหลด...</div>
       </div>
     );
   if (!camp)
     return (
       <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 font-bold">ไม่พบค่าย</div>
+        <div className="text-gray-400 font-medium">ไม่พบค่าย</div>
       </div>
     );
 
@@ -142,7 +139,7 @@ export default function StudentMissionsPage() {
           <ChevronLeft size={24} />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-[#2D3648] leading-tight">
+          <h1 className="text-2xl font-medium text-[#2D3648] leading-tight">
             ภารกิจค่าย
           </h1>
           <p className="text-[13px] text-gray-400 font-medium leading-tight line-clamp-2 mt-1">
@@ -154,15 +151,15 @@ export default function StudentMissionsPage() {
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
         {/* Overall Progress Card */}
         <div className="bg-[#EEEADF] rounded-2xl p-8">
-          <h3 className="text-[#2D3648] font-bold text-lg mb-8">
+          <h3 className="text-[#2D3648] font-medium text-lg mb-8">
             ความคืบหน้าโดยรวม
           </h3>
 
           <div className="flex justify-between items-end mb-2">
-            <div className="text-[56px] font-bold text-[#2D3648] leading-none">
+            <div className="text-[44px] font-normal text-[#2D3648] leading-none">
               {overallProgress}%
             </div>
-            <div className="text-[15px] font-bold text-gray-500 mb-1">
+            <div className="text-[15px] font-medium text-gray-500 mb-1">
               {completedOverall}/{totalMissions} ภารกิจ
             </div>
           </div>
@@ -176,7 +173,7 @@ export default function StudentMissionsPage() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-[#2D3648] font-bold text-lg px-1">
+          <h3 className="text-[#2D3648] font-medium text-lg px-1">
             เลือกฐานกิจกรรม
           </h3>
 
@@ -216,15 +213,10 @@ export default function StudentMissionsPage() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1 gap-4">
-                      <h4 className="font-bold text-[#2D3648] text-lg flex items-center gap-2 min-w-0">
+                      <h4 className="font-medium text-[#2D3648] text-lg flex items-center gap-2 min-w-0">
                         <span className="truncate">{station.name}</span>
-                        {station.is_required_for_cert && (
-                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                            บังคับ
-                          </span>
-                        )}
                       </h4>
-                      <div className="bg-[#EEEADF] text-[#8C8471] text-[13px] font-bold px-3 py-1 rounded-full shrink-0">
+                      <div className="bg-[#EEEADF] text-[#8C8471] text-[13px] font-medium px-3 py-1 rounded-full shrink-0">
                         {completedInStation}/{stationMissions.length}
                       </div>
                     </div>
@@ -240,7 +232,7 @@ export default function StudentMissionsPage() {
                           style={{ width: `${progress}%` }}
                         />
                       </div>
-                      <span className="text-[13px] font-bold text-gray-400 whitespace-nowrap">
+                      <span className="text-[13px] font-medium text-gray-400 whitespace-nowrap">
                         {progress}% สำเร็จ
                       </span>
                     </div>

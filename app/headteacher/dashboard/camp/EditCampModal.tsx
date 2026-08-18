@@ -46,6 +46,7 @@ interface FormData {
   campEndDate: string;
   description: string;
   hasShirt: boolean;
+  hasTransport: boolean;
   shirtStartDate: string;
   shirtEndDate: string;
   dailySchedule: DaySchedule[];
@@ -121,6 +122,7 @@ export default function EditCampModal({
     campEndDate: "",
     description: "",
     hasShirt: false,
+    hasTransport: false,
     shirtStartDate: "",
     shirtEndDate: "",
     dailySchedule: [
@@ -297,6 +299,9 @@ export default function EditCampModal({
         campEndDate: formatDateForInput(campData.end_date),
         description: campData.description || "",
         hasShirt: campData.has_shirt || false,
+        hasTransport: Boolean(
+          campData.has_transport || campData.location_sharing_enabled,
+        ),
         shirtStartDate: formatDateForInput(campData.start_shirt_date),
         shirtEndDate: formatDateForInput(campData.end_shirt_date),
         dailySchedule:
@@ -625,6 +630,7 @@ export default function EditCampModal({
       camp_id: campData.camp_id,
       destination,
       location_sharing_enabled: locationTrackingEnabled,
+      has_transport: formData.hasTransport || locationTrackingEnabled,
     };
 
     onSubmit(payload);
@@ -647,7 +653,7 @@ export default function EditCampModal({
               <ChevronRight className="rotate-180" size={18} />
               <span className="text-sm font-medium">กลับ</span>
             </button>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-gray-900">
               แก้ไขข้อมูลค่าย
             </h2>
             <p className="text-sm text-gray-500">อัปเดตรายละเอียดของค่าย</p>
@@ -805,8 +811,15 @@ export default function EditCampModal({
               <CampDestinationField
                 destination={destination}
                 enabled={locationTrackingEnabled}
+                hasTransport={formData.hasTransport}
                 onDestinationChange={setDestination}
-                onEnabledChange={setLocationTrackingEnabled}
+                onEnabledChange={(enabled) => {
+                  setLocationTrackingEnabled(enabled);
+                  if (enabled) handleChange("hasTransport", true);
+                }}
+                onHasTransportChange={(hasTransport) =>
+                  handleChange("hasTransport", hasTransport)
+                }
               />
 
               {/* Camp Image Upload */}

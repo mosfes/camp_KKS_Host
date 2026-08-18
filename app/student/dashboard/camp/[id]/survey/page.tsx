@@ -41,8 +41,12 @@ export default function StudentSurveyPage() {
           setSurvey(data.survey);
         }
       } else {
+        const errorData = await res.json().catch(() => null);
+
         if (res.status === 403) {
-          toast.error("กรุณาเข้าร่วมค่ายก่อนจึงจะทำแบบประเมินได้");
+          toast.error(
+            errorData?.error || "ไม่สามารถทำแบบประเมินได้ในขณะนี้",
+          );
           router.replace(`/student/dashboard/camp/${id}`);
         } else {
           toast.error("ดึงข้อมูลแบบประเมินล้มเหลว");

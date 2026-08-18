@@ -4,6 +4,13 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { prisma } from "@/lib/db";
+import {
+  isCloudinaryUploadUrl,
+  isIsoDate,
+  isTenDigitPhone,
+  profileUpdateSchema,
+  validationErrorMessage,
+} from "@/lib/api-validation";
 
 export async function GET() {
   try {
@@ -19,7 +26,30 @@ export async function GET() {
 
     const student = await prisma.students.findUnique({
       where: { students_id: Number(studentSession.students_id) },
-      include: { parents: true },
+      select: {
+        students_id: true,
+        prefix_name: true,
+        firstname: true,
+        lastname: true,
+        nickname: true,
+        profile_image_url: true,
+        birthday: true,
+        food_allergy: true,
+        chronic_disease: true,
+        remark: true,
+        tel: true,
+        email: true,
+        deletedAt: true,
+        parents: {
+          select: {
+            parents_id: true,
+            firstname: true,
+            lastname: true,
+            tel: true,
+            username_student_id: true,
+          },
+        },
+      },
     });
 
     if (!student)
@@ -46,50 +76,92 @@ export async function PUT(req: any) {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const { payload: studentSession } = await jwtVerify(session.value, secret);
     const body = await req.json();
+    const parsed = profileUpdateSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: validationErrorMessage(parsed.error) },
+        { status: 400 },
+      );
+    }
+
+    const validated = parsed.data;
+    const studentId = Number(studentSession.students_id);
+
+    if (
+      (validated.student_tel && !isTenDigitPhone(validated.student_tel)) ||
+      (validated.parent_tel && !isTenDigitPhone(validated.parent_tel))
+    ) {
+      return NextResponse.json(
+        { error: "เบอร์โทรต้องเป็นตัวเลข 10 หลัก" },
+        { status: 400 },
+      );
+    }
+
+    if (validated.birthday && !isIsoDate(validated.birthday)) {
+      return NextResponse.json({ error: "วันเกิดไม่ถูกต้อง" }, { status: 400 });
+    }
+
+    if (
+      validated.profile_image_url &&
+      !isCloudinaryUploadUrl(
+        validated.profile_image_url,
+        `camp_profiles/student_${studentId}/profile`,
+      )
+    ) {
+      return NextResponse.json(
+        { error: "รูปโปรไฟล์ต้องเป็นไฟล์ที่ตรวจสอบจาก Cloudinary แล้ว" },
+        { status: 400 },
+      );
+    }
 
     const updateData: any = {};
 
     // Only update fields that were included in the request. This lets the
     // lightweight first-visit form save nickname/food allergy without
     // clearing the student's existing medical and contact information.
-    if (body.chronic_disease !== undefined) {
-      updateData.chronic_disease = body.chronic_disease || null;
+    if (validated.chronic_disease !== undefined) {
+      updateData.chronic_disease = validated.chronic_disease || null;
     }
-    if (body.food_allergy !== undefined) {
-      updateData.food_allergy = body.food_allergy || null;
+    if (validated.food_allergy !== undefined) {
+      updateData.food_allergy = validated.food_allergy || null;
     }
-    if (body.birthday !== undefined) {
-      updateData.birthday = body.birthday ? new Date(body.birthday) : null;
+    if (validated.birthday !== undefined) {
+      updateData.birthday = validated.birthday
+        ? new Date(`${validated.birthday}T00:00:00.000Z`)
+        : null;
     }
-    if (body.remark !== undefined) {
-      updateData.remark = body.remark || null;
+    if (validated.remark !== undefined) {
+      updateData.remark = validated.remark || null;
     }
-    if (body.student_tel !== undefined) {
-      updateData.tel = body.student_tel || null;
+    if (validated.student_tel !== undefined) {
+      updateData.tel = validated.student_tel
+        ? validated.student_tel.replace(/\D/g, "")
+        : null;
     }
 
     // อัปเดตชื่อเล่นถ้ามี
-    if (body.nickname !== undefined) {
-      updateData.nickname = body.nickname?.trim() || null;
+    if (validated.nickname !== undefined) {
+      updateData.nickname = validated.nickname || null;
     }
 
     // อัปเดต profile_image_url ถ้ามี
-    if (body.profile_image_url !== undefined) {
-      updateData.profile_image_url = body.profile_image_url || null;
+    if (validated.profile_image_url !== undefined) {
+      updateData.profile_image_url = validated.profile_image_url || null;
     }
 
     const updatedStudent = await prisma.students.update({
-      where: { students_id: Number(studentSession.students_id) },
+      where: { students_id: studentId },
       data: updateData,
     });
 
     // Update parent phone if parent exists, if not, create a placeholder record
-    if (body.parent_tel) {
+    if (validated.parent_tel) {
       const existingParent = await prisma.parents.findFirst({
         where: { username_student_id: Number(studentSession.students_id) },
       });
 
-      const parentTelDigits = body.parent_tel.replace(/\D/g, "");
+      const parentTelDigits = validated.parent_tel.replace(/\D/g, "");
 
       if (existingParent) {
         await prisma.parents.update({

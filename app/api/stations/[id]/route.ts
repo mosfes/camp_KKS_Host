@@ -1,9 +1,7 @@
 // @ts-nocheck
 
-import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db";
 
 export async function GET(request, { params }) {
   try {
@@ -78,7 +76,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, description, is_required_for_cert } = body;
+    const { name, description } = body;
 
     if (name && name.length > 255) {
       return NextResponse.json(
@@ -99,7 +97,6 @@ export async function PUT(request, { params }) {
       data: {
         name,
         description,
-        ...(is_required_for_cert !== undefined && { is_required_for_cert }),
       },
     });
 

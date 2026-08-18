@@ -35,6 +35,80 @@ import { useRouter } from "next/navigation";
 import adminService from "@/app/service/adminService";
 import { isBangkokDateBefore, isBangkokDateInRange } from "@/lib/bangkok-date";
 
+function CampLoadingTable({ trash = false }) {
+    const columns = trash
+        ? ["ชื่อค่าย", "สถานที่", "ผู้สร้าง", "วันที่ลบ", "ดำเนินการ"]
+        : [
+            "ชื่อค่าย",
+            "สถานที่",
+            "กำหนดการ",
+            "สถานะ",
+            "ผู้สร้าง",
+            "ระดับ/ห้องเรียน",
+            "ดำเนินการ",
+        ];
+    const gridClass = trash
+        ? "grid-cols-[1.4fr_1.2fr_1.2fr_1fr_1.3fr]"
+        : "grid-cols-[0.95fr_1fr_1.65fr_0.8fr_1fr_1.1fr_0.8fr]";
+    const minWidth = trash ? "min-w-[800px]" : "min-w-[1100px]";
+
+    return (
+        <div
+            aria-label="กำลังโหลดข้อมูลค่าย"
+            className={`${minWidth} overflow-hidden rounded-xl border border-gray-100 bg-white`}
+            role="status"
+        >
+            <div className={`grid ${gridClass} gap-4 border-b border-gray-100 bg-gray-50/50 px-4 py-4`}>
+                {columns.map((column) => (
+                    <span className="text-sm font-semibold text-gray-800" key={column}>
+                        {column}
+                    </span>
+                ))}
+            </div>
+
+            {Array.from({ length: 6 }, (_, index) => (
+                <div
+                    className={`grid ${gridClass} items-center gap-4 border-b border-gray-100 px-4 py-5 last:border-b-0`}
+                    key={index}
+                >
+                    {trash ? (
+                        <>
+                            <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
+                            <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+                            <div className="h-4 w-28 animate-pulse rounded bg-gray-200" />
+                            <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
+                            <div className="flex gap-3">
+                                <div className="h-8 w-16 animate-pulse rounded-full bg-gray-200" />
+                                <div className="h-8 w-16 animate-pulse rounded-full bg-gray-200" />
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="space-y-2">
+                                <div className="h-4 w-44 animate-pulse rounded bg-gray-200" />
+                                <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
+                            </div>
+                            <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+                            <div className="space-y-2">
+                                <div className="h-3 w-40 animate-pulse rounded bg-gray-200" />
+                                <div className="h-3 w-36 animate-pulse rounded bg-gray-200" />
+                            </div>
+                            <div className="h-6 w-24 animate-pulse rounded-full bg-gray-200" />
+                            <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+                            <div className="h-6 w-28 animate-pulse rounded-full bg-gray-200" />
+                            <div className="flex gap-3">
+                                <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                                <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                                <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+                            </div>
+                        </>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
 
 
 const CampManager = () => {
@@ -370,7 +444,9 @@ const CampManager = () => {
                     </div>
 
                     <div className="overflow-x-auto w-full">
-                        {showTrash ? (
+                        {isLoading ? (
+                            <CampLoadingTable trash={showTrash} />
+                        ) : showTrash ? (
                             /* ========== ตาราง ถังขยะ ========== */
                             <Table
                                 aria-label="Deleted Camp Table"
@@ -391,13 +467,6 @@ const CampManager = () => {
                                 </TableHeader>
                                 <TableBody
                                     emptyContent={"ไม่มีค่ายในรายการที่ลบ"}
-                                    isLoading={isLoading}
-                                    loadingContent={
-                                        <div className="flex flex-col items-center gap-2">
-                                            <div className="w-10 h-10 border-4 border-red-400 border-t-transparent rounded-full animate-spin"></div>
-                                            <p className="text-red-400 text-sm">กำลังโหลดข้อมูล...</p>
-                                        </div>
-                                    }
                                 >
                                     {camps.map((camp) => (
                                         <TableRow key={camp.camp_id} className="hover:bg-red-50/50">
@@ -471,13 +540,6 @@ const CampManager = () => {
                                 </TableHeader>
                                 <TableBody
                                     emptyContent={"ไม่มีข้อมูลค่าย"}
-                                    isLoading={isLoading}
-                                    loadingContent={
-                                        <div className="flex flex-col items-center gap-2">
-                                            <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
-                                            <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
-                                        </div>
-                                    }
                                 >
                                     {camps.map((camp) => (
                                         <TableRow key={camp.camp_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">

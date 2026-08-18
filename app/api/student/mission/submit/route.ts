@@ -3,7 +3,15 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
+import { isBangkokDateBefore } from "@/lib/bangkok-date";
 import { getVideoSource, supportedVideoUrlMessage } from "@/lib/video";
+import {
+  cloudinaryUrlContainsPublicId,
+  isCloudinaryPublicId,
+  isCloudinaryUploadUrl,
+  missionSubmitSchema,
+  validationErrorMessage,
+} from "@/lib/api-validation";
 
 export async function POST(req) {
   const { student, error: authError } = await requireStudent();
@@ -14,27 +22,133 @@ export async function POST(req) {
 
   try {
     const body = await req.json();
-    const { campId, missionId, answers, isDraft } = body;
-    const newStatus = isDraft ? "pending" : "completed";
+    const parsed = missionSubmitSchema.safeParse(body);
 
-    if (!campId || !missionId || !answers) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: validationErrorMessage(parsed.error) },
         { status: 400 },
       );
     }
+
+    const { campId, missionId, answers, isDraft } = parsed.data;
+    const newStatus = isDraft ? "pending" : "completed";
 
     const mission = await prisma.mission.findUnique({
       where: { mission_id: missionId },
       select: {
         type: true,
-        mission_question: { select: { question_type: true } },
-        station: { select: { camp_camp_id: true } },
+        mission_question: {
+          select: {
+            question_id: true,
+            question_type: true,
+            choices: { select: { choice_id: true, choice_text: true } },
+          },
+        },
+        station: {
+          select: {
+            camp_camp_id: true,
+            camp: { select: { start_date: true } },
+          },
+        },
       },
     });
 
     if (!mission || mission.station.camp_camp_id !== campId) {
       return NextResponse.json({ error: "Mission not found" }, { status: 404 });
+    }
+
+    if (isBangkokDateBefore(new Date(), mission.station.camp.start_date)) {
+      return NextResponse.json(
+        { error: "ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้" },
+        { status: 403 },
+      );
+    }
+
+    const questionsById = new Map(
+      mission.mission_question.map((question) => [question.question_id, question]),
+    );
+    const submittedQuestionIds = new Set<number>();
+
+    for (const answer of answers) {
+      if (submittedQuestionIds.has(answer.questionId)) {
+        return NextResponse.json(
+          { error: "ส่งคำตอบของคำถามซ้ำกันไม่ได้" },
+          { status: 400 },
+        );
+      }
+
+      submittedQuestionIds.add(answer.questionId);
+      const question = questionsById.get(answer.questionId);
+
+      if (!question) {
+        return NextResponse.json(
+          { error: "คำถามนี้ไม่อยู่ในภารกิจที่กำลังส่ง" },
+          { status: 400 },
+        );
+      }
+
+      if (answer.type !== question.question_type) {
+        return NextResponse.json(
+          { error: "ชนิดคำตอบไม่ตรงกับคำถาม" },
+          { status: 400 },
+        );
+      }
+
+      const value = answer.value.trim();
+
+      if (!value) {
+        return NextResponse.json(
+          { error: "คำตอบต้องไม่เป็นค่าว่าง" },
+          { status: 400 },
+        );
+      }
+
+      if (answer.type === "TEXT" && value.length > 10_000) {
+        return NextResponse.json(
+          { error: "คำตอบข้อความยาวเกินกำหนด" },
+          { status: 400 },
+        );
+      }
+
+      if (answer.type === "MCQ") {
+        const choiceIndex = value.charCodeAt(0) - 65;
+
+        if (
+          value.length !== 1 ||
+          choiceIndex < 0 ||
+          choiceIndex >= question.choices.length
+        ) {
+          return NextResponse.json(
+            { error: "ตัวเลือกคำตอบไม่ถูกต้อง" },
+            { status: 400 },
+          );
+        }
+      }
+
+      if (answer.type === "PHOTO") {
+        const expectedPrefix = `camp-submissions/${campId}/${missionId}/${studentId}`;
+
+        if (
+          (answer.publicId &&
+            !isCloudinaryPublicId(answer.publicId, expectedPrefix)) ||
+          !isCloudinaryUploadUrl(value, expectedPrefix) ||
+          (answer.publicId &&
+            !cloudinaryUrlContainsPublicId(value, answer.publicId))
+        ) {
+          return NextResponse.json(
+            { error: "รูปคำตอบไม่ถูกต้องหรือไม่ได้มาจากพื้นที่ของนักเรียน" },
+            { status: 400 },
+          );
+        }
+      }
+    }
+
+    if (!isDraft && answers.length !== mission.mission_question.length) {
+      return NextResponse.json(
+        { error: "กรุณาตอบคำถามให้ครบก่อนส่งภารกิจ" },
+        { status: 400 },
+      );
     }
 
     // A photo mission with one question is a direct submission. It must not
@@ -78,6 +192,7 @@ export async function POST(req) {
         camp_camp_id: campId,
         enrolled_at: { not: null },
       },
+      select: { student_enrollment_id: true },
     });
 
     if (!enrollment) {
@@ -90,7 +205,7 @@ export async function POST(req) {
     // Lock the enrollment row before reading or writing the result. This
     // serializes submissions for the same student across tabs/processes
     // without requiring a schema change or an in-memory lock.
-    await prisma.$transaction(async (tx) => {
+    const savedResult = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`
         SELECT student_enrollment_id
         FROM student_enrollment
@@ -179,9 +294,16 @@ export async function POST(req) {
       if (createAnswers.length > 0) {
         await Promise.all(createAnswers);
       }
+
+      return result;
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      missionId,
+      status: newStatus,
+      resultId: savedResult.mission_result_id,
+    });
   } catch (error) {
     //     console.error("Submit error:", error);
 

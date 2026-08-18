@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
+import { isBangkokDateBefore } from "@/lib/bangkok-date";
 
 // GET /api/student/surveys?campId=<id> — ดึงแบบสอบถามเพื่อให้นักเรียนทำ (และเช็คว่าทำไปแล้วหรือยัง)
 export async function GET(request) {
@@ -37,6 +38,18 @@ export async function GET(request) {
 
     if (!survey) {
       return NextResponse.json({ survey: null, isCompleted: false });
+    }
+
+    const camp = await prisma.camp.findUnique({
+      where: { camp_id: cId },
+      select: { start_date: true },
+    });
+
+    if (camp?.start_date && isBangkokDateBefore(new Date(), camp.start_date)) {
+      return NextResponse.json(
+        { error: "ค่ายยังไม่เริ่ม ไม่สามารถทำแบบประเมินได้" },
+        { status: 403 },
+      );
     }
 
     // ต้องลงทะเบียนเข้าค่ายจริงก่อน จึงจะเห็นแบบประเมินได้
@@ -120,6 +133,18 @@ export async function POST(request) {
       return NextResponse.json(
         { error: "Survey not found for this camp" },
         { status: 404 },
+      );
+    }
+
+    const camp = await prisma.camp.findUnique({
+      where: { camp_id: cId },
+      select: { start_date: true },
+    });
+
+    if (camp?.start_date && isBangkokDateBefore(new Date(), camp.start_date)) {
+      return NextResponse.json(
+        { error: "ค่ายยังไม่เริ่ม ไม่สามารถทำแบบประเมินได้" },
+        { status: 403 },
       );
     }
 

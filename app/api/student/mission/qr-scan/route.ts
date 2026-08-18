@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
+import { isBangkokDateBefore } from "@/lib/bangkok-date";
 
 async function verifyQRPayload(payload) {
   try {
@@ -169,6 +170,18 @@ export async function POST(req) {
       return NextResponse.json(
         { error: "ข้อมูลไม่ตรงกับค่ายนี้" },
         { status: 400 },
+      );
+    }
+
+    const camp = await prisma.camp.findUnique({
+      where: { camp_id: campId },
+      select: { start_date: true },
+    });
+
+    if (camp?.start_date && isBangkokDateBefore(new Date(), camp.start_date)) {
+      return NextResponse.json(
+        { error: "ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้" },
+        { status: 403 },
       );
     }
 

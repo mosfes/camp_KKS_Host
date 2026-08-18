@@ -16,10 +16,8 @@ import {
   ChevronLeft,
   Camera,
 } from "lucide-react";
-import {
-  BANGKOK_TIME_ZONE,
-  getBangkokDateKey,
-} from "@/lib/bangkok-date";
+import { BANGKOK_TIME_ZONE, getBangkokDateKey } from "@/lib/bangkok-date";
+import { uploadStudentProfileImage } from "@/lib/student-profile-upload";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface StudentProfile {
@@ -304,19 +302,9 @@ export default function StudentProfilePage() {
 
     setUploadingImage(true);
     try {
-      const formData = new FormData();
+      const uploaded = await uploadStudentProfileImage(file);
 
-      formData.append("file", file);
-
-      const res = await fetch("/api/student/profile/upload-image", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error);
-
-      setPendingImageUrl(data.url);
+      setPendingImageUrl(uploaded.url);
     } catch (err: any) {
       setApiError(err.message || "อัปโหลดรูปล้มเหลว");
       setPreviewImage(null);
@@ -368,6 +356,7 @@ export default function StudentProfilePage() {
         }
       }
       setPendingImageUrl(null);
+      if (previewImage) URL.revokeObjectURL(previewImage);
       setPreviewImage(null);
 
       setTimeout(() => {

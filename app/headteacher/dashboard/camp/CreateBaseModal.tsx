@@ -7,7 +7,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Switch,
 } from "@heroui/react";
 import { useState } from "react";
 import { Save } from "lucide-react";
@@ -30,7 +29,6 @@ export default function CreateBaseModal({
   const { showError, showSuccess } = useStatusModal();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [isRequiredForCert, setIsRequiredForCert] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -49,7 +47,6 @@ export default function CreateBaseModal({
           name,
           description,
           campId,
-          is_required_for_cert: isRequiredForCert,
         }),
       });
 
@@ -90,7 +87,7 @@ export default function CreateBaseModal({
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-gray-900">
                 สร้างฐานกิจกรรม
               </h2>
               <p className="text-sm text-gray-500 font-normal">
@@ -133,22 +130,6 @@ export default function CreateBaseModal({
                   value={description}
                   maxLength={255}
                   onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    จำเป็นต้องผ่านฐานนี้
-                  </label>
-                  <p className="text-xs text-gray-500">
-                    นักเรียนต้องผ่านฐานนี้ถึงจะสามารถดาวน์โหลดเกียรติบัตรได้
-                  </p>
-                </div>
-                <Switch
-                  color="success"
-                  isSelected={isRequiredForCert}
-                  onValueChange={setIsRequiredForCert}
                 />
               </div>
             </ModalBody>

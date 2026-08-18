@@ -1,10 +1,8 @@
 // @ts-nocheck
-import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { requireTeacher } from "@/lib/auth";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db";
 
 export async function POST(request) {
   const { teacher, error } = await requireTeacher();

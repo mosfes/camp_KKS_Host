@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import { Card, CardBody } from "@heroui/card";
 import { Tabs, Tab } from "@heroui/tabs";
 import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@heroui/react";
+import {
   MapPin,
   Calendar,
   Flag,
@@ -15,14 +22,18 @@ import {
   Phone,
   Clock,
   Users,
+  Bus,
+  ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 import {
   BANGKOK_TIME_ZONE,
   getBangkokDateKey,
   getBangkokDaysUntil,
   isBangkokDateBefore,
 } from "@/lib/bangkok-date";
+import { uploadStudentProfileImage } from "@/lib/student-profile-upload";
 
 // Utility to format date (with optional range)
 const formatDate = (start: string, end?: string) => {
@@ -45,11 +56,53 @@ const formatDate = (start: string, end?: string) => {
   return `${s} - ${e}`;
 };
 
+const formatBusCheckedAt = (value?: string | null) => {
+  if (!value) return "";
+
+  return new Date(value).toLocaleTimeString("th-TH", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: BANGKOK_TIME_ZONE,
+  });
+};
+
+const getBusSeatSideLabel = (label: string, seatIndex?: number | null) => {
+  const seatLetter = label.trim().charAt(0).toUpperCase();
+
+  if (seatLetter === "A" || seatLetter === "D") return "ติดหน้าต่าง";
+  if (seatLetter === "B" || seatLetter === "C") return "ทางเดิน";
+
+  return seatIndex === 0 || seatIndex === 3 ? "ติดหน้าต่าง" : "ทางเดิน";
+};
+
+const formatBusSeat = (assignment: any) => {
+  const position = assignment?.student?.position;
+
+  if (!position) return "ยังไม่ได้จัด";
+
+  const floorLabel =
+    assignment.bus?.floorCount > 1 && position.floorNumber
+      ? `${
+          position.floorNumber === 1
+            ? "ชั้นล่าง"
+            : position.floorNumber === 2
+              ? "ชั้นบน"
+              : `ชั้น ${position.floorNumber}`
+        } · `
+      : "";
+
+  return `${floorLabel}${position.label} · ${getBusSeatSideLabel(position.label, position.seatIndex)}`;
+};
+
 export default function StudentDashboard() {
   const router = useRouter();
   const [camps, setCamps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState<any>(null);
+  const [busAssignments, setBusAssignments] = useState<any[]>([]);
+  const [boardingCampId, setBoardingCampId] = useState<number | null>(null);
+  const [pendingBoardingAssignment, setPendingBoardingAssignment] =
+    useState<any>(null);
   const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -65,14 +118,68 @@ export default function StudentDashboard() {
     router.push(`/student/dashboard/camp/${campId}`);
   };
 
+  const goToBus = (campId: number) => {
+    if (navigatingTo !== null || boardingCampId !== null) return;
+    setNavigatingTo(campId);
+    router.push(`/student/dashboard/camp/${campId}/bus`);
+  };
+
+  const confirmBusBoarding = async (assignment: any) => {
+    if (boardingCampId !== null || navigatingTo !== null) return;
+
+    setBoardingCampId(assignment.campId);
+
+    try {
+      const response = await fetch(
+        `/api/student/camps/${assignment.campId}/bus/board`,
+        { method: "POST" },
+      );
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast.error(result.error || "เช็คชื่อขึ้นรถไม่สำเร็จ");
+
+        return;
+      }
+
+      setBusAssignments((current) =>
+        current.map((item) =>
+          item.campId === assignment.campId
+            ? {
+                ...item,
+                student: {
+                  ...item.student,
+                  status: "ON_BUS",
+                  isOnBus: true,
+                  lastBoardedAt: result.checkedAt || new Date().toISOString(),
+                },
+              }
+            : item,
+        ),
+      );
+      setPendingBoardingAssignment(null);
+      toast.success(result.message || "เช็คชื่อขึ้นรถสำเร็จ");
+    } catch {
+      toast.error("เชื่อมต่อระบบไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      setBoardingCampId(null);
+    }
+  };
+
+  const requestBusBoarding = (assignment: any) => {
+    if (boardingCampId !== null || navigatingTo !== null) return;
+    setPendingBoardingAssignment(assignment);
+  };
+
   useEffect(() => {
     window.scrollTo(0, 0);
     async function fetchData() {
       try {
-        const [campsRes, studentRes, profileRes] = await Promise.all([
+        const [campsRes, studentRes, profileRes, busRes] = await Promise.all([
           fetch("/api/student/camps"),
           fetch("/api/auth/student/me"),
           fetch("/api/student/profile"),
+          fetch("/api/student/bus", { cache: "no-store" }),
         ]);
 
         if (campsRes.ok) {
@@ -80,6 +187,13 @@ export default function StudentDashboard() {
         }
         if (studentRes.ok) {
           setStudent(await studentRes.json());
+        }
+        if (busRes.ok) {
+          const busData = await busRes.json();
+
+          setBusAssignments(
+            Array.isArray(busData.assignments) ? busData.assignments : [],
+          );
         }
         if (profileRes.ok) {
           const profile = await profileRes.json();
@@ -137,6 +251,8 @@ export default function StudentDashboard() {
     );
   }
 
+  const defaultCampTab = availableCamps.length > 0 ? "available" : "mycamps";
+
   const uniqueYears = Array.from(
     new Set(camps.map((c: any) => c.academicYear).filter(Boolean)),
   ).sort((a: any, b: any) => b - a);
@@ -174,10 +290,10 @@ export default function StudentDashboard() {
                 <Sparkles className="text-white animate-pulse" size={24} />
               </div>
               <div>
-                <h1 className="text-2xl font-extrabold tracking-tight">
+                <h1 className="text-2xl font-semibold tracking-tight">
                   สวัสดีน้อง{student?.firstname || "ๆ"}
                 </h1>
-                <p className="text-white text-sm font-medium flex items-center gap-1.5">
+                <p className="text-white text-sm font-normal flex items-center gap-1.5">
                   ยินดีต้อนรับเข้าสู่ KKS Camp{" "}
                   <Sparkles className="text-white animate-pulse" size={14} />
                 </p>
@@ -191,10 +307,10 @@ export default function StudentDashboard() {
                   <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center">
                     <History className="text-white" size={12} />
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-wider">
+                  <span className="text-xs font-medium uppercase tracking-wider">
                     รหัสนักเรียน:
                   </span>
-                  <span className="text-sm font-bold">
+                  <span className="text-sm font-medium">
                     {student.students_id}
                   </span>
                 </div>
@@ -204,7 +320,7 @@ export default function StudentDashboard() {
                     <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center">
                       <Flag className="text-white" size={12} />
                     </div>
-                    <span className="text-sm font-bold">
+                    <span className="text-sm font-medium">
                       {student.classroom.grade_label}/
                       {student.classroom.class_name}
                     </span>
@@ -216,7 +332,7 @@ export default function StudentDashboard() {
                     <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
                       <Users className="text-white" size={12} />
                     </div>
-                    <span className="text-xs font-bold whitespace-nowrap">
+                    <span className="text-xs font-medium whitespace-nowrap">
                       ครู{student.classroom.homeroom_teacher}
                     </span>
                   </div>
@@ -229,6 +345,199 @@ export default function StudentDashboard() {
           </div>
         </div>
 
+        {busAssignments.length > 0 && (
+          <section aria-labelledby="student-transport-heading">
+            <div className="mb-2 flex items-center gap-2.5 px-1">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e8f0ee] text-[#3d6357]">
+                <Bus size={18} />
+              </div>
+              <div>
+                <h2
+                  className="text-sm font-semibold text-gray-900"
+                  id="student-transport-heading"
+                >
+                  การเดินทางของฉัน
+                </h2>
+                <p className="text-[11px] text-gray-500">
+                  ตรวจสอบรถและที่นั่งก่อนยืนยันขึ้นรถ
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              {busAssignments.map((assignment: any) => {
+                const isOnBus = Boolean(assignment.student?.isOnBus);
+                const isTraveling = assignment.bus?.status === "TRAVELING";
+                const position = assignment.student?.position;
+                const statusLabel = !assignment.configured
+                  ? "ยังไม่ได้จัดรถ"
+                  : isOnBus
+                    ? `อยู่บนรถแล้ว${assignment.student.lastBoardedAt ? ` · ${formatBusCheckedAt(assignment.student.lastBoardedAt)} น.` : ""}`
+                    : isTraveling
+                      ? "รถกำลังเดินทาง"
+                      : position
+                        ? "พร้อมเช็กชื่อ"
+                        : "รอจัดที่นั่ง";
+
+                return (
+                  <article
+                    key={assignment.campId}
+                    className="w-full rounded-xl border border-[#d8e5de] bg-white p-3 text-left shadow-sm"
+                  >
+                    <button
+                      aria-label={`เปิดการเดินทางของ ${assignment.campName}`}
+                      className="block w-full rounded-lg text-left transition hover:bg-[#f7faf8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40"
+                      disabled={
+                        boardingCampId !== null || navigatingTo !== null
+                      }
+                      type="button"
+                      onClick={() => goToBus(assignment.campId)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-normal text-[#5d7c6f]">
+                            {assignment.campName}
+                          </p>
+                          <h3 className="truncate text-sm font-semibold text-gray-900">
+                            {assignment.configured
+                              ? assignment.bus.name
+                              : "รอข้อมูลรถจากครู"}
+                          </h3>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
+                            isOnBus
+                              ? "bg-green-100 text-green-700"
+                              : isTraveling
+                                ? "bg-amber-100 text-amber-700"
+                                : assignment.configured && position
+                                  ? "bg-[#e8f0ee] text-[#3d6357]"
+                                  : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
+
+                      {assignment.configured ? (
+                        <div className="mt-2 rounded-lg bg-[#f7faf8] p-2">
+                          <p className="text-[10px] text-gray-400">
+                            ที่นั่งของคุณ
+                          </p>
+                          <p className="mt-0.5 truncate text-xs font-semibold text-gray-700">
+                            {position
+                              ? formatBusSeat(assignment)
+                              : "ยังไม่ได้จัด"}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-[11px] text-gray-500">
+                          กรุณาติดต่อครูผู้ดูแลเพื่อจัดรถและที่นั่ง
+                        </p>
+                      )}
+                    </button>
+
+                    {!isOnBus &&
+                    assignment.configured &&
+                    !isTraveling &&
+                    position ? (
+                      <div className="mt-2">
+                        <button
+                          aria-label={`ยืนยันขึ้นรถ ${assignment.bus.name}`}
+                          className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-[#5d7c6f] px-3 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#4f6d61] disabled:cursor-wait disabled:opacity-60"
+                          disabled={
+                            boardingCampId !== null || navigatingTo !== null
+                          }
+                          type="button"
+                          onClick={() => requestBusBoarding(assignment)}
+                        >
+                          <CheckCircle2 size={14} />
+                          {boardingCampId === assignment.campId
+                            ? "กำลังยืนยัน..."
+                            : "ยืนยันขึ้นรถ"}
+                        </button>
+                      </div>
+                    ) : !isOnBus ? (
+                      <button
+                        aria-label={`ดูรายละเอียดรถ ${assignment.campName}`}
+                        className="mt-2 flex min-h-10 w-full items-center justify-between border-t border-gray-100 pt-2 text-[11px] font-semibold text-[#3d6357]"
+                        disabled={
+                          boardingCampId !== null || navigatingTo !== null
+                        }
+                        type="button"
+                        onClick={() => goToBus(assignment.campId)}
+                      >
+                        ดูรายละเอียด
+                        <ChevronRight size={16} />
+                      </button>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        <Modal
+          isDismissable={boardingCampId === null}
+          isOpen={pendingBoardingAssignment !== null}
+          placement="center"
+          size="sm"
+          onOpenChange={(open) => {
+            if (!open && boardingCampId === null) {
+              setPendingBoardingAssignment(null);
+            }
+          }}
+        >
+          <ModalContent>
+            <ModalHeader className="text-base font-semibold text-gray-900">
+              ยืนยันขึ้นรถ
+            </ModalHeader>
+            <ModalBody className="gap-3">
+              {pendingBoardingAssignment && (
+                <>
+                  <div className="rounded-2xl bg-[#f1f7f4] p-4">
+                    <p className="text-xs text-[#5d7c6f]">
+                      {pendingBoardingAssignment.campName}
+                    </p>
+                    <p className="mt-1 text-base font-medium text-gray-900">
+                      {pendingBoardingAssignment.bus.name}
+                    </p>
+                    <p className="mt-2 text-sm text-gray-600">
+                      ที่นั่ง {formatBusSeat(pendingBoardingAssignment)}
+                    </p>
+                  </div>
+                  <p className="text-xs leading-relaxed text-gray-500">
+                    เมื่อกดยืนยัน ระบบจะบันทึกว่าคุณอยู่บนรถคันนี้
+                  </p>
+                </>
+              )}
+            </ModalBody>
+            <ModalFooter className="gap-2">
+              <button
+                className="min-h-10 flex-1 rounded-xl px-3 text-sm font-medium text-gray-600 transition hover:bg-gray-100 disabled:opacity-60"
+                disabled={boardingCampId !== null}
+                type="button"
+                onClick={() => setPendingBoardingAssignment(null)}
+              >
+                ยกเลิก
+              </button>
+              <button
+                className="min-h-10 flex-1 rounded-xl bg-[#5d7c6f] px-3 text-sm font-semibold text-white transition hover:bg-[#4f6d61] disabled:cursor-wait disabled:opacity-60"
+                disabled={boardingCampId !== null}
+                type="button"
+                onClick={() => {
+                  if (pendingBoardingAssignment) {
+                    void confirmBusBoarding(pendingBoardingAssignment);
+                  }
+                }}
+              >
+                {boardingCampId !== null ? "กำลังยืนยัน..." : "ยืนยันขึ้นรถ"}
+              </button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
         <Tabs
           aria-label="Camp Options"
           classNames={{
@@ -236,9 +545,10 @@ export default function StudentDashboard() {
               "gap-0 w-full relative rounded-none p-0 border-b border-divider",
             cursor: "w-full bg-[#5d7c6f]",
             tab: "flex-1 max-w-none px-2 h-12 justify-center",
-            tabContent: "group-data-[selected=true]:text-[#5d7c6f] font-bold",
+            tabContent: "group-data-[selected=true]:text-[#5d7c6f] font-medium",
           }}
           color="primary"
+          defaultSelectedKey={defaultCampTab}
           variant="underlined"
         >
           {/* ----- Tab 1: Available ----- */}
@@ -246,7 +556,7 @@ export default function StudentDashboard() {
             key="available"
             title={
               <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="text-sm sm:text-base font-bold">
+                <span className="text-sm sm:text-base font-medium">
                   ค่ายที่เปิดรับสมัคร
                 </span>
                 {availableCamps.length > 0 && (
@@ -280,7 +590,7 @@ export default function StudentDashboard() {
             key="mycamps"
             title={
               <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="text-sm sm:text-base font-bold">
+                <span className="text-sm sm:text-base font-medium">
                   ค่ายของฉัน
                 </span>
                 {myCamps.length > 0 && (
@@ -314,7 +624,7 @@ export default function StudentDashboard() {
             key="ended"
             title={
               <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="text-sm sm:text-base font-bold">
+                <span className="text-sm sm:text-base font-medium">
                   ประวัติค่าย
                 </span>
                 {endedCamps.length > 0 && (
@@ -329,7 +639,7 @@ export default function StudentDashboard() {
               {uniqueYears.length > 0 && (
                 <div className="flex flex-wrap gap-2 pb-1">
                   <button
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
                       selectedYear === "all"
                         ? "bg-[#5d7c6f] text-white border-[#5d7c6f] shadow-sm"
                         : "bg-white text-gray-500 border-gray-200 hover:border-[#5d7c6f]/50 hover:text-[#5d7c6f]"
@@ -341,7 +651,7 @@ export default function StudentDashboard() {
                   {uniqueYears.map((year: any) => (
                     <button
                       key={year}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border ${
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
                         selectedYear === year.toString()
                           ? "bg-[#5d7c6f] text-white border-[#5d7c6f] shadow-sm"
                           : "bg-white text-gray-500 border-gray-200 hover:border-[#5d7c6f]/50 hover:text-[#5d7c6f]"
@@ -428,10 +738,10 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
           <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center mb-4 ring-1 ring-white/30">
             <Clock className="text-white animate-pulse" size={28} />
           </div>
-          <h3 className="font-extrabold text-xl mb-1 tracking-tight">
+          <h3 className="font-semibold text-xl mb-1 tracking-tight">
             ยังไม่เปิดรับสมัคร
           </h3>
-          <p className="text-sm font-medium text-white/80">{countdownText}</p>
+          <p className="text-sm font-normal text-white/80">{countdownText}</p>
         </div>
       )}
 
@@ -461,11 +771,11 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
 
         <div className="flex-1 p-4 flex flex-col gap-2">
           <div className="space-y-1">
-            <h3 className="font-extrabold text-base sm:text-lg text-gray-800 line-clamp-2 leading-tight group-hover:text-[#5d7c6f] transition-colors">
+            <h3 className="font-semibold text-base sm:text-lg text-gray-800 line-clamp-2 leading-tight group-hover:text-[#5d7c6f] transition-colors">
               {camp.title}
             </h3>
             {isEnded && (
-              <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md">
+              <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-md">
                 ค่ายจบแล้ว
               </span>
             )}
@@ -476,21 +786,21 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
               <div className="w-7 h-7 rounded-lg bg-[#5d7c6f]/10 flex items-center justify-center shrink-0">
                 <MapPin className="text-[#5d7c6f]" size={14} />
               </div>
-              <span className="font-medium line-clamp-1">{camp.location}</span>
+              <span className="font-normal line-clamp-1">{camp.location}</span>
             </div>
 
             <div className="flex items-center gap-2.5 text-gray-600">
               <div className="w-7 h-7 rounded-lg bg-[#5d7c6f]/10 flex items-center justify-center shrink-0">
                 <Calendar className="text-[#5d7c6f]" size={14} />
               </div>
-              <span className="font-medium text-xs sm:text-[13px]">
+              <span className="font-normal text-xs sm:text-[13px]">
                 {formatDate(camp.rawStartDate, camp.rawEndDate)}
               </span>
             </div>
           </div>
 
           <div className="mt-auto pt-2">
-            <div className="w-full bg-[#5d7c6f] text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-[#5d7c6f]/20 group-hover:bg-[#4a6358] transition-all transform group-hover:-translate-y-0.5 active:translate-y-0 text-sm">
+            <div className="w-full bg-[#5d7c6f] text-white font-medium py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-[#5d7c6f]/20 group-hover:bg-[#4a6358] transition-all transform group-hover:-translate-y-0.5 active:translate-y-0 text-sm">
               <span>{isEnded ? "ดูย้อนหลัง" : "ดูรายละเอียดค่าย"}</span>
               <History className={isEnded ? "block" : "hidden"} size={16} />
             </div>
@@ -567,9 +877,7 @@ function StudentProfileSetupModal({
         body: JSON.stringify({
           nickname: form.nickname?.trim() || null,
           food_allergy: form.food_allergy.trim(),
-          ...(pendingImageUrl
-            ? { profile_image_url: pendingImageUrl }
-            : {}),
+          ...(pendingImageUrl ? { profile_image_url: pendingImageUrl } : {}),
         }),
       });
       const data = await res.json();
@@ -579,6 +887,7 @@ function StudentProfileSetupModal({
 
         return;
       }
+      if (previewImage) URL.revokeObjectURL(previewImage);
       setSuccess(true);
       setTimeout(() => onSaved(), 1200);
     } catch {
@@ -588,9 +897,7 @@ function StudentProfileSetupModal({
     }
   };
 
-  const handleImageChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
     if (!file) return;
@@ -608,28 +915,17 @@ function StudentProfileSetupModal({
     setUploadingImage(true);
 
     try {
-      const imageCompression = (
-        await import("browser-image-compression")
-      ).default;
+      const imageCompression = (await import("browser-image-compression"))
+        .default;
       const compressedFile = await imageCompression(file, {
         maxSizeMB: 2,
         maxWidthOrHeight: 800,
         useWebWorker: true,
         fileType: "image/jpeg",
       });
-      const uploadForm = new FormData();
+      const uploaded = await uploadStudentProfileImage(compressedFile);
 
-      uploadForm.append("file", compressedFile, "student-profile.jpg");
-
-      const response = await fetch("/api/student/profile/upload-image", {
-        method: "POST",
-        body: uploadForm,
-      });
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data.error || "อัปโหลดรูปไม่สำเร็จ");
-
-      setPendingImageUrl(data.url);
+      setPendingImageUrl(uploaded.url);
     } catch (error: any) {
       URL.revokeObjectURL(objectUrl);
       setPreviewImage(null);
@@ -659,7 +955,7 @@ function StudentProfileSetupModal({
               <Sparkles className="text-white" size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold">มาทำความรู้จักกันอีกนิด</h2>
+              <h2 className="text-xl font-semibold">มาทำความรู้จักกันอีกนิด</h2>
             </div>
           </div>
         </div>
@@ -670,7 +966,7 @@ function StudentProfileSetupModal({
               <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
                 <CheckCircle2 className="text-[#5d7c6f]" size={32} />
               </div>
-              <p className="font-bold text-gray-800 text-lg">
+              <p className="font-medium text-gray-800 text-lg">
                 บันทึกข้อมูลสำเร็จ!
               </p>
               <p className="text-sm text-gray-500">
@@ -680,213 +976,213 @@ function StudentProfileSetupModal({
           ) : (
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="hidden">
-              <div className="bg-[#5d7c6f]/10 p-3 rounded-xl border border-[#5d7c6f]/20 text-center">
-                <p className="text-xs text-[#3d6357] leading-relaxed">
-                  หากไม่มีข้อมูลส่วนไหน สามารถพิมพ์คำว่า{" "}
-                  <span className="font-bold">"ไม่มี"</span> ได้เลย
-                </p>
-              </div>
+                <div className="bg-[#5d7c6f]/10 p-3 rounded-xl border border-[#5d7c6f]/20 text-center">
+                  <p className="text-xs text-[#3d6357] leading-relaxed">
+                    หากไม่มีข้อมูลส่วนไหน สามารถพิมพ์คำว่า{" "}
+                    <span className="font-medium">"ไม่มี"</span> ได้เลย
+                  </p>
+                </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  โรคประจำตัว <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className={`w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    โรคประจำตัว <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all
                     ${
                       fieldError.chronic_disease
                         ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
                         : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
                     }`}
-                  placeholder="เช่น หอบหืด, ภูมิแพ้"
-                  type="text"
-                  value={form.chronic_disease}
-                  onChange={(e) =>
-                    setForm((f: any) => ({
-                      ...f,
-                      chronic_disease: e.target.value,
-                    }))
-                  }
-                />
-                {fieldError.chronic_disease && (
-                  <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
-                    <AlertCircle size={10} /> {fieldError.chronic_disease}
-                  </p>
-                )}
-              </div>
+                    placeholder="เช่น หอบหืด, ภูมิแพ้"
+                    type="text"
+                    value={form.chronic_disease}
+                    onChange={(e) =>
+                      setForm((f: any) => ({
+                        ...f,
+                        chronic_disease: e.target.value,
+                      }))
+                    }
+                  />
+                  {fieldError.chronic_disease && (
+                    <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
+                      <AlertCircle size={10} /> {fieldError.chronic_disease}
+                    </p>
+                  )}
+                </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  การแพ้อาหาร/ยา <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className={`w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    การแพ้อาหาร/ยา <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all
                     ${
                       fieldError.food_allergy
                         ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
                         : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
                     }`}
-                  placeholder="เช่น อาหารทะเล, ไข่ไก่"
-                  type="text"
-                  value={form.food_allergy}
-                  onChange={(e) =>
-                    setForm((f: any) => ({
-                      ...f,
-                      food_allergy: e.target.value,
-                    }))
-                  }
-                />
-                {fieldError.food_allergy && (
-                  <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
-                    <AlertCircle size={10} /> {fieldError.food_allergy}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  วัน/เดือน/ปีเกิด <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <select
-                    className="px-2 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-[#5d7c6f]"
-                    value={bdayParts[2] || ""}
-                    onChange={(e) => updateBirthday("day", e.target.value)}
-                  >
-                    <option value="">วันที่</option>
-                    {days.map((d) => (
-                      <option key={d} value={d}>
-                        {parseInt(d)}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="px-2 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-[#5d7c6f]"
-                    value={bdayParts[1] || ""}
-                    onChange={(e) => updateBirthday("month", e.target.value)}
-                  >
-                    <option value="">เดือน</option>
-                    {months.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="px-2 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-[#5d7c6f]"
-                    value={bdayParts[0] || ""}
-                    onChange={(e) => updateBirthday("year", e.target.value)}
-                  >
-                    <option value="">ปี(พ.ศ.)</option>
-                    {years.map((y) => (
-                      <option key={y} value={y}>
-                        {parseInt(y) + 543}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {fieldError.birthday && (
-                  <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
-                    <AlertCircle size={10} /> {fieldError.birthday}
-                  </p>
-                )}
-              </div>
-
-              {/* Phone Student */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  เบอร์โทรศัพท์นักเรียน
-                </label>
-                <div className="relative">
-                  <Phone
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={14}
+                    placeholder="เช่น อาหารทะเล, ไข่ไก่"
+                    type="text"
+                    value={form.food_allergy}
+                    onChange={(e) =>
+                      setForm((f: any) => ({
+                        ...f,
+                        food_allergy: e.target.value,
+                      }))
+                    }
                   />
-                  <input
-                    className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none transition-all
+                  {fieldError.food_allergy && (
+                    <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
+                      <AlertCircle size={10} /> {fieldError.food_allergy}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    วัน/เดือน/ปีเกิด <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <select
+                      className="px-2 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-[#5d7c6f]"
+                      value={bdayParts[2] || ""}
+                      onChange={(e) => updateBirthday("day", e.target.value)}
+                    >
+                      <option value="">วันที่</option>
+                      {days.map((d) => (
+                        <option key={d} value={d}>
+                          {parseInt(d)}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="px-2 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-[#5d7c6f]"
+                      value={bdayParts[1] || ""}
+                      onChange={(e) => updateBirthday("month", e.target.value)}
+                    >
+                      <option value="">เดือน</option>
+                      {months.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="px-2 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-[#5d7c6f]"
+                      value={bdayParts[0] || ""}
+                      onChange={(e) => updateBirthday("year", e.target.value)}
+                    >
+                      <option value="">ปี(พ.ศ.)</option>
+                      {years.map((y) => (
+                        <option key={y} value={y}>
+                          {parseInt(y) + 543}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {fieldError.birthday && (
+                    <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
+                      <AlertCircle size={10} /> {fieldError.birthday}
+                    </p>
+                  )}
+                </div>
+
+                {/* Phone Student */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    เบอร์โทรศัพท์นักเรียน
+                  </label>
+                  <div className="relative">
+                    <Phone
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={14}
+                    />
+                    <input
+                      className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none transition-all
                       ${
                         fieldError.student_tel
                           ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
                           : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
                       }`}
-                    maxLength={10}
-                    placeholder="0xxxxxxxxx"
-                    type="tel"
-                    value={form.student_tel}
-                    onChange={(e) =>
-                      setForm((f: any) => ({
-                        ...f,
-                        student_tel: e.target.value,
-                      }))
-                    }
-                  />
+                      maxLength={10}
+                      placeholder="0xxxxxxxxx"
+                      type="tel"
+                      value={form.student_tel}
+                      onChange={(e) =>
+                        setForm((f: any) => ({
+                          ...f,
+                          student_tel: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  {fieldError.student_tel && (
+                    <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
+                      <AlertCircle size={10} /> {fieldError.student_tel}
+                    </p>
+                  )}
                 </div>
-                {fieldError.student_tel && (
-                  <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
-                    <AlertCircle size={10} /> {fieldError.student_tel}
-                  </p>
-                )}
-              </div>
 
-              {/* Phone Parent */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  เบอร์โทรศัพท์ผู้ปกครอง
-                </label>
-                <div className="relative">
-                  <Phone
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={14}
-                  />
-                  <input
-                    className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none transition-all
+                {/* Phone Parent */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    เบอร์โทรศัพท์ผู้ปกครอง
+                  </label>
+                  <div className="relative">
+                    <Phone
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                      size={14}
+                    />
+                    <input
+                      className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none transition-all
                       ${
                         fieldError.parent_tel
                           ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
                           : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
                       }`}
-                    maxLength={10}
-                    placeholder="0xxxxxxxxx"
-                    type="tel"
-                    value={form.parent_tel}
+                      maxLength={10}
+                      placeholder="0xxxxxxxxx"
+                      type="tel"
+                      value={form.parent_tel}
+                      onChange={(e) =>
+                        setForm((f: any) => ({
+                          ...f,
+                          parent_tel: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  {fieldError.parent_tel && (
+                    <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
+                      <AlertCircle size={10} /> {fieldError.parent_tel}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    หมายเหตุเพิ่มเติม (ถ้ามี)
+                  </label>
+                  <textarea
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none transition-all focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20 resize-none"
+                    placeholder="ข้อมูลอื่นที่ต้องการแจ้งครู..."
+                    rows={2}
+                    value={form.remark}
                     onChange={(e) =>
-                      setForm((f: any) => ({
-                        ...f,
-                        parent_tel: e.target.value,
-                      }))
+                      setForm((f: any) => ({ ...f, remark: e.target.value }))
                     }
                   />
                 </div>
-                {fieldError.parent_tel && (
-                  <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
-                    <AlertCircle size={10} /> {fieldError.parent_tel}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  หมายเหตุเพิ่มเติม (ถ้ามี)
-                </label>
-                <textarea
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none transition-all focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20 resize-none"
-                  placeholder="ข้อมูลอื่นที่ต้องการแจ้งครู..."
-                  rows={2}
-                  value={form.remark}
-                  onChange={(e) =>
-                    setForm((f: any) => ({ ...f, remark: e.target.value }))
-                  }
-                />
-              </div>
-
               </div>
 
               <div>
                 <label
-                  className="block text-sm font-semibold text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 mb-1"
                   htmlFor="student-profile-image"
                 >
-                  รูปโปรไฟล์ <span className="text-xs text-gray-400">(ถ้ามี)</span>
+                  รูปโปรไฟล์{" "}
+                  <span className="text-xs text-gray-400">(ถ้ามี)</span>
                 </label>
                 <div className="flex items-center gap-3">
                   <div className="w-16 h-16 rounded-full overflow-hidden bg-[#5d7c6f]/10 border border-gray-200 flex items-center justify-center text-[#5d7c6f]">
@@ -918,7 +1214,7 @@ function StudentProfileSetupModal({
 
               <div>
                 <label
-                  className="block text-sm font-semibold text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 mb-1"
                   htmlFor="student-food-allergy"
                 >
                   การแพ้อาหาร/ยา <span className="text-red-500">*</span>
@@ -950,7 +1246,7 @@ function StudentProfileSetupModal({
 
               <div>
                 <label
-                  className="block text-sm font-semibold text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 mb-1"
                   htmlFor="student-nickname"
                 >
                   ชื่อเล่น <span className="text-red-500">*</span>
@@ -961,7 +1257,7 @@ function StudentProfileSetupModal({
                       fieldError.nickname
                         ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
                         : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
-                  }`}
+                    }`}
                   id="student-nickname"
                   placeholder="กรอกชื่อเล่นที่อยากให้เพื่อน ๆ เรียก"
                   type="text"
@@ -986,7 +1282,7 @@ function StudentProfileSetupModal({
               )}
 
               <button
-                className="w-full bg-[#5d7c6f] hover:bg-[#4a6659] text-white font-bold py-3.5 rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm shadow-md"
+                className="w-full bg-[#5d7c6f] hover:bg-[#4a6659] text-white font-medium py-3.5 rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm shadow-md"
                 disabled={saving || uploadingImage}
                 type="submit"
               >

@@ -80,9 +80,11 @@ export default function StatusModal({
       classNames={{
         base: "bg-[#F5F1E8] rounded-2xl shadow-xl border border-[#6b857a]/20",
         backdrop: "bg-black/60 backdrop-blur-sm",
+        wrapper: "!items-center !justify-center p-4",
       }}
       isOpen={isOpen}
       onOpenChange={onClose}
+      placement="center"
     >
       <ModalContent>
         {(onClose) => (

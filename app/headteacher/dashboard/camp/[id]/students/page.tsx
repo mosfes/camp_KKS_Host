@@ -9,6 +9,7 @@ import {
   Activity,
   FileText,
   ChevronRight,
+  BookOpen,
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { Input } from "@heroui/input";
@@ -41,6 +42,83 @@ interface Summary {
   remarks: any[];
 }
 
+function SkeletonBlock({ className }: { className: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`animate-pulse rounded-lg bg-gray-200 ${className}`}
+    />
+  );
+}
+
+function StudentPageSkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="กำลังโหลดข้อมูลนักเรียน"
+      className="max-w-7xl mx-auto px-4 py-8"
+    >
+      <div className="flex items-center gap-1 mb-6">
+        <SkeletonBlock className="h-3.5 w-3.5 rounded-full" />
+        <SkeletonBlock className="h-3 w-28" />
+      </div>
+
+      <div className="flex items-center gap-2 mb-8">
+        <SkeletonBlock className="h-5 w-5 rounded-lg" />
+        <SkeletonBlock className="h-6 w-48" />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-8">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-gray-100"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <SkeletonBlock className="h-5 w-5 rounded-full" />
+              <SkeletonBlock className="h-3.5 w-24" />
+            </div>
+            <SkeletonBlock className="h-7 w-16" />
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm overflow-hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+          <SkeletonBlock className="h-5 w-32 self-start sm:self-auto" />
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <SkeletonBlock className="h-10 w-full sm:w-[200px]" />
+            <SkeletonBlock className="h-10 w-full sm:w-72" />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <div className="min-w-[700px]">
+            <div className="grid grid-cols-7 gap-4 bg-gray-50 border-y border-gray-100 p-4">
+              {Array.from({ length: 7 }, (_, index) => (
+                <SkeletonBlock key={index} className="h-3 w-full" />
+              ))}
+            </div>
+            {Array.from({ length: 6 }, (_, rowIndex) => (
+              <div
+                key={rowIndex}
+                className="grid grid-cols-7 items-center gap-4 border-b border-gray-50 p-4"
+              >
+                {Array.from({ length: 7 }, (_, cellIndex) => (
+                  <SkeletonBlock
+                    key={cellIndex}
+                    className={cellIndex === 1 ? "h-3 w-32" : "h-3 w-full"}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CampStudentsPage() {
   const router = useRouter();
   const params = useParams();
@@ -70,6 +148,10 @@ export default function CampStudentsPage() {
   }, [campId, page, filter]);
 
   useEffect(() => {
+    // The first effect above already loads the initial empty-search page.
+    // Skip this debounce on the initial render to avoid a duplicate request.
+    if (!search && !summary) return;
+
     const delayDebounceFn = setTimeout(() => {
       setPage(1);
       fetchStudents();
@@ -105,33 +187,20 @@ export default function CampStudentsPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f2]">
-      {/* Loading Overlay */}
-      {loading && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
-          <div className="relative bg-white rounded-2xl shadow-2xl px-10 py-8 flex flex-col items-center gap-4">
-            <div className="w-14 h-14 rounded-full border-4 border-[#6b857a]/20 border-t-[#6b857a] animate-spin" />
-            <div className="text-center">
-              <p className="font-semibold text-[#2d3748] text-base">
-                กำลังโหลดข้อมูลนักเรียน
-              </p>
-              <p className="text-sm text-gray-400 mt-0.5">กรุณารอสักครู่...</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {loading && <StudentPageSkeleton />}
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className={loading ? "hidden" : "max-w-7xl mx-auto px-4 py-8"}>
         <button
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6"
-          onClick={() => router.push(`/headteacher/dashboard/camp/${campId}`)}
+          className="flex items-center gap-0.5 text-[11px] text-gray-600 hover:text-gray-900 transition-colors mb-6"
+          onClick={() => router.push("/headteacher/dashboard")}
         >
-          <ChevronLeft size={20} />
-          <span className="font-medium">กลับไปยังหน้าค่าย</span>
+          <ChevronLeft size={14} />
+          <span className="font-medium">กลับไปยังหน้าหลัก</span>
         </button>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          ข้อมูลนักเรียนในค่าย
+        <h1 className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-8">
+          <BookOpen className="text-[#6b857a]" size={20} />
+          <span>ข้อมูลนักเรียนในค่าย</span>
         </h1>
 
         {/* Summary Cards */}
@@ -140,13 +209,13 @@ export default function CampStudentsPage() {
             <div className="bg-white rounded-xl p-3 md:p-6 shadow-sm border border-gray-100">
               <div className="flex items-center gap-2 mb-2 md:mb-3">
                 <Users className="text-[#6b857a] w-5 h-5 md:w-6 md:h-6" />
-                <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                <h3 className="text-sm font-semibold text-gray-900">
                   นักเรียนทั้งหมด
                 </h3>
               </div>
               <p className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
                 {summary.totalStudents}{" "}
-                <span className="text-xs md:text-sm font-normal text-gray-500">
+                <span className="text-[9px] font-medium text-gray-500">
                   คน
                 </span>
               </p>
@@ -170,7 +239,7 @@ export default function CampStudentsPage() {
               <div className="flex items-center justify-between mb-2 md:mb-3">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="text-red-500 w-5 h-5 md:w-6 md:h-6" />
-                  <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                  <h3 className="text-sm font-semibold text-gray-900">
                     แพ้อาหาร
                   </h3>
                 </div>
@@ -183,7 +252,7 @@ export default function CampStudentsPage() {
               </div>
               <p className="text-xl md:text-2xl font-bold text-gray-900">
                 {summary.allergiesCount}{" "}
-                <span className="text-xs md:text-sm font-normal text-gray-500">
+                <span className="text-[9px] font-medium text-gray-500">
                   คน
                 </span>
               </p>
@@ -212,7 +281,7 @@ export default function CampStudentsPage() {
               <div className="flex items-center justify-between mb-2 md:mb-3">
                 <div className="flex items-center gap-2">
                   <Activity className="text-[#6b857a] w-5 h-5 md:w-6 md:h-6" />
-                  <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                  <h3 className="text-sm font-semibold text-gray-900">
                     โรคประจำตัว
                   </h3>
                 </div>
@@ -225,7 +294,7 @@ export default function CampStudentsPage() {
               </div>
               <p className="text-xl md:text-2xl font-bold text-gray-900">
                 {summary.chronicDiseasesCount}{" "}
-                <span className="text-xs md:text-sm font-normal text-gray-500">
+                <span className="text-[9px] font-medium text-gray-500">
                   คน
                 </span>
               </p>
@@ -254,7 +323,7 @@ export default function CampStudentsPage() {
               <div className="flex items-center justify-between mb-2 md:mb-3">
                 <div className="flex items-center gap-2">
                   <FileText className="text-blue-500 w-5 h-5 md:w-6 md:h-6" />
-                  <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                  <h3 className="text-sm font-semibold text-gray-900">
                     ข้อมูลอื่นๆ
                   </h3>
                 </div>
@@ -267,7 +336,7 @@ export default function CampStudentsPage() {
               </div>
               <p className="text-xl md:text-2xl font-bold text-gray-900">
                 {summary.remarksCount}{" "}
-                <span className="text-xs md:text-sm font-normal text-gray-500">
+                <span className="text-[9px] font-medium text-gray-500">
                   คน
                 </span>
               </p>
@@ -283,7 +352,7 @@ export default function CampStudentsPage() {
         {/* Search & Table Section */}
         <div className="bg-white rounded-2xl p-6 shadow-sm overflow-hidden">
           <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <h3 className="text-xl font-semibold text-gray-900 w-full sm:w-auto">
+            <h3 className="text-sm font-semibold text-gray-900 w-full sm:w-auto">
               รายชื่อนักเรียน
             </h3>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -325,7 +394,9 @@ export default function CampStudentsPage() {
                   }}
                   placeholder="ค้นหาชื่อ, นามสกุล หรือรหัส..."
                   size="sm"
-                  startContent={<Search className="text-gray-400" size={18} />}
+                  startContent={
+                    <Search className="text-gray-400" size={18} />
+                  }
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -377,8 +448,8 @@ export default function CampStudentsPage() {
                         {row.student.students_id}
                       </td>
                       <td className="p-4 text-gray-900">
-                        {row.student.prefix_name || ""} {row.student.firstname}{" "}
-                        {row.student.lastname}
+                        {row.student.prefix_name || ""}{" "}
+                        {row.student.firstname} {row.student.lastname}
                       </td>
                       <td className="p-4 text-gray-600">
                         {row.student.tel || "-"}

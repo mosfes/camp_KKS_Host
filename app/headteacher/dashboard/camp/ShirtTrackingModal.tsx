@@ -10,7 +10,7 @@ import {
   Button,
   Pagination,
 } from "@heroui/react";
-import { Search, Shirt } from "lucide-react";
+import { ArrowLeft, Search, Shirt } from "lucide-react";
 
 interface StudentShirt {
   enrollmentId: number;
@@ -34,6 +34,60 @@ interface ShirtTrackingModalProps {
   onClose: () => void;
   campId: number;
   campName: string;
+  pageMode?: boolean;
+}
+
+function ShirtSkeletonBlock({ className }: { className: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`animate-pulse rounded-lg bg-[#e7eee9] ${className}`}
+    />
+  );
+}
+
+function ShirtTrackingSkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="กำลังโหลดข้อมูลการจองเสื้อ"
+      className="space-y-6"
+      role="status"
+    >
+      <span className="sr-only">กำลังโหลดข้อมูลการจองเสื้อ...</span>
+
+      <div className="rounded-2xl border border-[#d1e0d9] bg-[#f0f4f2]/50 p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <ShirtSkeletonBlock className="h-4 w-4 rounded-full" />
+          <ShirtSkeletonBlock className="h-3.5 w-44" />
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {Array.from({ length: 4 }, (_, index) => (
+            <ShirtSkeletonBlock key={index} className="h-9 w-24 rounded-xl" />
+          ))}
+        </div>
+      </div>
+
+      <ShirtSkeletonBlock className="h-11 w-full rounded-xl" />
+
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="divide-y divide-gray-100">
+          {Array.from({ length: 5 }, (_, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between gap-4 p-4"
+            >
+              <div className="min-w-0 flex-1 space-y-2">
+                <ShirtSkeletonBlock className="h-3.5 w-2/5" />
+                <ShirtSkeletonBlock className="h-2.5 w-1/4" />
+              </div>
+              <ShirtSkeletonBlock className="h-7 w-24 rounded-lg" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function ShirtTrackingModal({
@@ -41,6 +95,7 @@ export default function ShirtTrackingModal({
   onClose,
   campId,
   campName,
+  pageMode = false,
 }: ShirtTrackingModalProps) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ShirtTrackingData | null>(null);
@@ -93,41 +148,76 @@ export default function ShirtTrackingModal({
     <Modal
       backdrop="blur"
       classNames={{
-        base: "bg-white rounded-3xl shadow-xl",
-        backdrop: "bg-black/40 backdrop-blur-sm",
+        base: pageMode
+          ? "!m-0 !h-full !min-h-0 !max-h-none w-full !max-w-none rounded-none bg-[#f5f5f2] shadow-none"
+          : "bg-white rounded-3xl shadow-xl",
+        backdrop: pageMode ? "hidden" : "bg-black/40 backdrop-blur-sm",
+        wrapper: pageMode ? "camp-page-modal items-start p-0" : undefined,
       }}
+      hideCloseButton={pageMode}
+      isDismissable={!pageMode}
       isOpen={isOpen}
       scrollBehavior="inside"
       size="2xl"
       onOpenChange={onClose}
     >
-      <ModalContent>
+      <ModalContent
+        className={
+          pageMode
+            ? "!m-0 !h-full !min-h-0 !max-h-none !rounded-none !bg-[#f5f5f2] !shadow-none overflow-y-auto"
+            : undefined
+        }
+      >
         {() => (
           <>
-            <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
+            <ModalHeader
+              className={`relative flex flex-col gap-1 px-6 ${
+                pageMode
+                  ? "mx-auto w-full max-w-7xl border-0 pb-8 pt-8 sm:px-8"
+                  : "p-6 pb-2"
+              }`}
+            >
+              {pageMode && (
+                <button
+                  className="mb-6 inline-flex w-fit items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
+                  type="button"
+                  onClick={onClose}
+                >
+                  <ArrowLeft size={14} />
+                  กลับไปยังหน้าหลัก
+                </button>
+              )}
+
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#f0f4f2] flex items-center justify-center text-[#6b857a]">
-                  <Shirt size={20} />
-                </div>
+                {pageMode ? (
+                  <Shirt className="shrink-0 text-[#6b857a]" size={20} />
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0f4f2] text-[#6b857a]">
+                    <Shirt size={20} />
+                  </div>
+                )}
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">
+                  <h2 className="text-lg font-bold leading-tight text-gray-900">
                     รายการจองเสื้อ
                   </h2>
-                  <p className="text-sm text-gray-500 font-normal">
-                    {campName}
-                  </p>
+                  {campName && (
+                    <p className="mt-0.5 max-w-[300px] truncate text-sm font-normal text-gray-500">
+                      {campName}
+                    </p>
+                  )}
                 </div>
               </div>
             </ModalHeader>
 
-            <ModalBody className="py-6 px-6">
+            <ModalBody
+              className={
+                pageMode
+                  ? "mx-auto block w-full max-w-7xl overflow-visible bg-[#f5f5f2] px-4 pb-10 pt-0 sm:px-8"
+                  : "px-6 py-6"
+              }
+            >
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <div className="w-8 h-8 border-3 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
-                  <p className="mt-4 text-sm text-gray-500 font-medium animate-pulse">
-                    กำลังโหลดข้อมูลการจองเสื้อ...
-                  </p>
-                </div>
+                <ShirtTrackingSkeleton />
               ) : data && !data.hasShirt ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-gray-500">
                   <Shirt className="h-12 w-12 text-gray-300 mx-auto mb-3" />
@@ -257,14 +347,16 @@ export default function ShirtTrackingModal({
               ) : null}
             </ModalBody>
 
-            <ModalFooter className="p-6 pt-2 border-t border-gray-100">
-              <Button
-                className="bg-gray-100 text-gray-700 font-medium px-6 hover:bg-gray-200"
-                onPress={onClose}
-              >
-                ปิดหน้าต่าง
-              </Button>
-            </ModalFooter>
+            {!pageMode && (
+              <ModalFooter className="border-t border-gray-100 p-6 pt-2">
+                <Button
+                  className="bg-gray-100 px-6 font-medium text-gray-700 hover:bg-gray-200"
+                  onPress={onClose}
+                >
+                  ปิดหน้าต่าง
+                </Button>
+              </ModalFooter>
+            )}
           </>
         )}
       </ModalContent>

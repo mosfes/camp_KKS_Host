@@ -314,7 +314,7 @@ export default function EditMissionModal({
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 p-6 pb-2">
-              <h2 className="text-2xl font-bold text-gray-900">แก้ไขภารกิจ</h2>
+              <h2 className="text-xl font-bold text-gray-900">แก้ไขภารกิจ</h2>
               <p className="text-sm text-gray-500 font-normal">
                 แก้ไขรายละเอียดภารกิจ
               </p>

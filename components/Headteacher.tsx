@@ -1,11 +1,5 @@
 "use client";
 import { Navbar, NavbarBrand, NavbarContent, NavbarItem } from "@heroui/navbar";
-import {
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-} from "@heroui/dropdown";
 import { Avatar } from "@heroui/avatar";
 import {
   GraduationCap,
@@ -15,7 +9,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 
 export function HeadteacherNavbar({
@@ -38,6 +32,8 @@ export function HeadteacherNavbar({
   const [isNavigating, setIsNavigating] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("กำลังโหลดข้อมูล...");
   const [mounted, setMounted] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -47,6 +43,27 @@ export function HeadteacherNavbar({
   useEffect(() => {
     setIsNavigating(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsProfileMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isProfileMenuOpen]);
 
   // ดึงข้อมูลครูจาก session cookie
   useEffect(() => {
@@ -77,7 +94,7 @@ export function HeadteacherNavbar({
   return (
     <>
       <Navbar
-        className="bg-white border-b border-gray-200"
+        className="relative z-[100] overflow-visible border-b border-gray-200 bg-white"
         height="64px"
         maxWidth="full"
       >
@@ -115,17 +132,20 @@ export function HeadteacherNavbar({
 
         {/* RIGHT */}
         <NavbarContent className="gap-3" justify="end">
-          <NavbarItem>
-            <Dropdown placement="bottom-end">
-              <DropdownTrigger>
-                <div
-                  className="flex items-center gap-2 cursor-pointer"
-                  id="headteacher-profile-menu-trigger"
-                >
-                  {mounted &&
-                    (
-                      teacher?.roles ?? (teacher?.role ? [teacher.role] : [])
-                    ).map((r) => (
+          <NavbarItem className="relative z-[101]">
+            <div ref={profileMenuRef} className="relative">
+              <button
+                aria-expanded={isProfileMenuOpen}
+                aria-haspopup="menu"
+                aria-label="เปิดเมนูโปรไฟล์"
+                className="flex h-auto min-w-0 items-center gap-2 rounded-full bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f] focus-visible:ring-offset-2"
+                id="headteacher-profile-menu-trigger"
+                type="button"
+                onClick={() => setIsProfileMenuOpen((open) => !open)}
+              >
+                {mounted &&
+                  (teacher?.roles ?? (teacher?.role ? [teacher.role] : [])).map(
+                    (r) => (
                       <span
                         key={r}
                         className={`hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
@@ -142,99 +162,120 @@ export function HeadteacherNavbar({
                               ? "ครูประจำชั้น"
                               : r}
                       </span>
-                    ))}
-                  <Avatar
-                    as="button"
-                    className="bg-[#5d7c6f] text-white transition-transform"
-                    name={initials}
-                    size="sm"
-                  />
-                </div>
-              </DropdownTrigger>
+                    ),
+                  )}
+                <Avatar
+                  className="bg-[#5d7c6f] text-white transition-transform"
+                  name={initials}
+                  size="sm"
+                />
+              </button>
 
-              <DropdownMenu aria-label="Profile Actions" variant="flat">
-                <DropdownItem key="profile" className="h-14 gap-2">
-                  <div>
-                    <p className="font-semibold">{displayName}</p>
-                    <p className="text-xs text-gray-500">{displayEmail}</p>
-                  </div>
-                </DropdownItem>
-
-                {/* ── โปรไฟล์ของฉัน ── */}
-                <DropdownItem
-                  key="my_profile"
-                  startContent={<UserCircle size={16} />}
-                  onClick={() => {
-                    setLoadingMessage("กำลังโหลดข้อมูล...");
-                    setIsNavigating(true);
-                    const isAdmin =
-                      teacher?.roles?.includes("ADMIN") ||
-                      teacher?.role === "ADMIN";
-
-                    router.push(
-                      isAdmin
-                        ? "/admin_add_user/profile"
-                        : "/headteacher/profile",
-                    );
-                  }}
+              {isProfileMenuOpen && (
+                <div
+                  aria-label="Profile Actions"
+                  className="absolute right-0 top-[calc(100%+0.5rem)] z-[60] w-72 overflow-hidden rounded-xl border border-gray-200 bg-white p-1 shadow-xl"
+                  role="menu"
                 >
-                  โปรไฟล์ของฉัน
-                </DropdownItem>
+                  <div className="border-b border-gray-100 px-3 py-3">
+                    <p className="font-semibold">{displayName}</p>
+                    <p className="truncate text-xs text-gray-500">
+                      {displayEmail}
+                    </p>
+                  </div>
 
-                {teacher?.roles?.includes("ADMIN") ||
-                teacher?.role === "ADMIN" ? (
-                  <>
-                    {!pathname.startsWith("/admin_add_user") ? (
-                      <DropdownItem
-                        key="admin_dashboard"
-                        startContent={<Settings size={16} />}
-                        onClick={() => {
-                          setLoadingMessage("กำลังโหลดข้อมูล...");
-                          setIsNavigating(true);
-                          router.push("/admin_add_user");
-                        }}
-                      >
-                        หน้าหลักผู้ดูแลระบบ
-                      </DropdownItem>
-                    ) : null}
-                    {!pathname.startsWith("/headteacher") ? (
-                      <DropdownItem
-                        key="headteacher_dashboard"
-                        startContent={<GraduationCap size={16} />}
-                        onClick={() => {
-                          setLoadingMessage("กำลังโหลดข้อมูล...");
-                          setIsNavigating(true);
-                          router.push("/headteacher/dashboard");
-                        }}
-                      >
-                        เข้าสู่โหมดครู
-                      </DropdownItem>
-                    ) : null}
-                  </>
-                ) : !pathname.startsWith("/headteacher") ? (
-                  <DropdownItem
-                    key="settings"
-                    startContent={<Settings size={16} />}
+                  {/* ── โปรไฟล์ของฉัน ── */}
+                  <button
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem"
+                    type="button"
                     onClick={() => {
+                      setIsProfileMenuOpen(false);
                       setLoadingMessage("กำลังโหลดข้อมูล...");
                       setIsNavigating(true);
-                      router.push("/headteacher/dashboard");
+                      const isAdmin =
+                        teacher?.roles?.includes("ADMIN") ||
+                        teacher?.role === "ADMIN";
+
+                      router.push(
+                        isAdmin
+                          ? "/admin_add_user/profile"
+                          : "/headteacher/profile",
+                      );
                     }}
                   >
-                    หน้าหลัก
-                  </DropdownItem>
-                ) : null}
+                    <UserCircle size={16} />
+                    โปรไฟล์ของฉัน
+                  </button>
 
-                <DropdownItem
-                  key="logout"
-                  color="danger"
-                  startContent={<LogOut size={16} />}
-                  onClick={handleLogout}
-                >
-                  ออกจากระบบ
-                </DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
+                  {teacher?.roles?.includes("ADMIN") ||
+                  teacher?.role === "ADMIN" ? (
+                    <>
+                      {!pathname.startsWith("/admin_add_user") ? (
+                        <button
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            setLoadingMessage("กำลังโหลดข้อมูล...");
+                            setIsNavigating(true);
+                            router.push("/admin_add_user");
+                          }}
+                        >
+                          <Settings size={16} />
+                          หน้าหลักผู้ดูแลระบบ
+                        </button>
+                      ) : null}
+                      {!pathname.startsWith("/headteacher") ? (
+                        <button
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            setLoadingMessage("กำลังโหลดข้อมูล...");
+                            setIsNavigating(true);
+                            router.push("/headteacher/dashboard");
+                          }}
+                        >
+                          <GraduationCap size={16} />
+                          เข้าสู่โหมดครู
+                        </button>
+                      ) : null}
+                    </>
+                  ) : !pathname.startsWith("/headteacher") ? (
+                    <button
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                      type="button"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        setLoadingMessage("กำลังโหลดข้อมูล...");
+                        setIsNavigating(true);
+                        router.push("/headteacher/dashboard");
+                      }}
+                    >
+                      <Settings size={16} />
+                      หน้าหลัก
+                    </button>
+                  ) : null}
+
+                  <button
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      void handleLogout();
+                    }}
+                  >
+                    <LogOut size={16} />
+                    ออกจากระบบ
+                  </button>
+                </div>
+              )}
+            </div>
           </NavbarItem>
         </NavbarContent>
       </Navbar>

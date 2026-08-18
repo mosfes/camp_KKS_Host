@@ -7,6 +7,7 @@ import fontkit from "@pdf-lib/fontkit";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { getCertificateEligibility } from "@/lib/certificate-eligibility";
 
 let cachedFontBytes: Buffer | null = null;
 function getFontBytes(): Buffer {
@@ -55,11 +56,13 @@ export async function GET(request: Request, context: any) {
     const camp = await prisma.camp.findUnique({
       where: { camp_id: campId, deletedAt: null },
       include: {
-        survey: true,
         station: {
           where: { deletedAt: null },
           include: {
-            mission: true,
+            mission: {
+              where: { deletedAt: null },
+              select: { mission_id: true },
+            },
           },
         },
       },
@@ -143,55 +146,23 @@ export async function GET(request: Request, context: any) {
     }
 
     if (condition === "passed_conditions") {
-      const isSurveyRequired =
-        camp.survey &&
-        camp.survey.length > 0 &&
-        camp.survey[0].is_required_for_cert;
-
-      const hasPostTest = camp.station?.some((s) =>
-        s.mission?.some((m) => m.type === "POST_TEST"),
+      const missionIds = new Set(
+        camp.station.flatMap((station) =>
+          station.mission.map((mission) => mission.mission_id),
+        ),
       );
 
-      const requiredStations =
-        camp.station?.filter((s) => s.is_required_for_cert) || [];
-
       enrollments = enrollments.filter((e) => {
-        // 1. Survey Check
-        if (isSurveyRequired && e.survey_response.length === 0) {
-          return false;
-        }
-
-        const completedMissionIds = new Set(
-          e.mission_result.map((r) => r.mission_mission_id),
-        );
-
-        // 2. Post-Test Check
-        if (hasPostTest) {
-          const isPostTestCompleted = camp.station?.some((s) =>
-            s.mission?.some(
-              (m) =>
-                m.type === "POST_TEST" && completedMissionIds.has(m.mission_id),
-            ),
-          );
-          if (!isPostTestCompleted) return false;
-        }
-
-        // 3. Required Stations Check
-        const areRequiredStationsCompleted = requiredStations.every(
-          (station) => {
-            const stationMissions = station.mission || [];
-            if (stationMissions.length === 0) return true;
-
-            const completedMissions = stationMissions.filter((m) =>
-              completedMissionIds.has(m.mission_id),
-            );
-            return completedMissions.length === stationMissions.length;
-          },
-        );
-
-        if (!areRequiredStationsCompleted) return false;
-
-        return true;
+        return getCertificateEligibility({
+          totalMissions: missionIds.size,
+          completedMissionIds: e.mission_result
+            .map((result) => result.mission_mission_id)
+            .filter((missionId) => missionIds.has(missionId)),
+          missionPercent: camp.cert_mission_completion_percent,
+          requireSurvey: camp.cert_require_survey,
+          hasSurveyResponse: e.survey_response.length > 0,
+          hasIssuedCertificate: e.certificate.length > 0,
+        }).eligible;
       });
     }
 

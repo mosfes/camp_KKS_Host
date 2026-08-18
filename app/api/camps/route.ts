@@ -96,6 +96,20 @@ export async function POST(req) {
         img_camp_url: body.img_camp_url || "",
         img_shirt_url: body.img_shirt_url || "",
         img_certificate_url: body.img_certificate_url || null,
+        img_certificate_public_id: body.img_certificate_public_id || null,
+        img_certificate_bytes:
+          body.img_certificate_bytes != null
+            ? Number(body.img_certificate_bytes)
+            : null,
+        img_certificate_width:
+          body.img_certificate_width != null
+            ? Number(body.img_certificate_width)
+            : null,
+        img_certificate_height:
+          body.img_certificate_height != null
+            ? Number(body.img_certificate_height)
+            : null,
+        img_certificate_format: body.img_certificate_format || null,
         cert_name_x: body.cert_name_x ? parseFloat(body.cert_name_x) : null,
         cert_name_y: body.cert_name_y ? parseFloat(body.cert_name_y) : null,
         cert_font_size: body.cert_font_size
@@ -115,6 +129,9 @@ export async function POST(req) {
           : null,
         location_sharing_enabled: Boolean(
           body.locationTrackingEnabled && hasValidDestination,
+        ),
+        has_transport: Boolean(
+          body.hasTransport || body.locationTrackingEnabled,
         ),
         location_update_interval:
           body.locationUpdateInterval === 5 ? 5 : 10,
@@ -380,11 +397,14 @@ export async function GET(request) {
         "Cache-Control": "no-store, max-age=0",
       },
     });
-  } catch {
-    //     console.error("API_GET_CAMPS_ERROR:", error);
+  } catch (error) {
+    console.error("[GET /api/camps] failed:", error);
 
     return NextResponse.json(
-      { _error: "ไม่สามารถดึงข้อมูลค่ายได้" },
+      {
+        _error: "ไม่สามารถดึงข้อมูลค่ายได้",
+        errorCode: error?.code || "CAMPS_QUERY_FAILED",
+      },
       { status: 500 },
     );
   }

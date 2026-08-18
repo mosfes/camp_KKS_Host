@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Save, Download } from "lucide-react";
+import { ArrowLeft, Award, Download, Save, X } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Select, SelectItem } from "@heroui/react";
 
@@ -12,6 +12,11 @@ import { useStatusModal } from "@/components/StatusModalProvider";
 interface CampDetail {
   camp_id: number;
   img_certificate_url?: string;
+  img_certificate_public_id?: string | null;
+  img_certificate_bytes?: number | null;
+  img_certificate_width?: number | null;
+  img_certificate_height?: number | null;
+  img_certificate_format?: string | null;
   cert_name_x?: number;
   cert_name_y?: number;
   cert_font_size?: number;
@@ -26,16 +31,37 @@ interface CampDetail {
   cert_number_prefix?: string | null;
   cert_number_is_thai?: boolean;
   cert_year?: string | null;
+  cert_mission_completion_percent?: number;
+  cert_require_survey?: boolean;
+  certificate_total_missions?: number;
+  certificate_has_survey?: boolean;
   // จำนวนนักเรียนที่สามารถออกเกียรติบัตรได้ทั้งหมด
   certificate_candidate_count?: number;
   student_enrollment?: { student_enrollment_id: number }[];
 }
+
+interface CertificateImageMetadata {
+  publicId: string | null;
+  bytes: number | null;
+  width: number | null;
+  height: number | null;
+  format: string | null;
+}
+
+const EMPTY_CERTIFICATE_IMAGE_METADATA: CertificateImageMetadata = {
+  publicId: null,
+  bytes: null,
+  width: null,
+  height: null,
+  format: null,
+};
 
 interface EditCertificateModalProps {
   isOpen: boolean;
   onClose: () => void;
   campData: CampDetail | null;
   onSuccess: () => void;
+  pageMode?: boolean;
 }
 
 export default function EditCertificateModal({
@@ -43,12 +69,15 @@ export default function EditCertificateModal({
   onClose,
   campData,
   onSuccess,
+  pageMode = false,
 }: EditCertificateModalProps) {
   const { showError, showSuccess } = useStatusModal();
 
   // ชื่อ
   const [certImage, setCertImage] = useState<string | null>(null);
   const [certImageFile, setCertImageFile] = useState<File | null>(null);
+  const [certImageMetadata, setCertImageMetadata] =
+    useState<CertificateImageMetadata>(EMPTY_CERTIFICATE_IMAGE_METADATA);
   const [certNameX, setCertNameX] = useState<number>(50);
   const [certNameY, setCertNameY] = useState<number>(50);
   const [certFontSize, setCertFontSize] = useState<number>(48);
@@ -68,6 +97,11 @@ export default function EditCertificateModal({
   const [certNumberIsThai, setCertNumberIsThai] = useState<boolean>(false);
   const [certYear, setCertYear] = useState<string | null>(null);
 
+  // เงื่อนไขการรับเกียรติบัตร
+  const [certMissionCompletionPercent, setCertMissionCompletionPercent] =
+    useState<number>(100);
+  const [certRequireSurvey, setCertRequireSurvey] = useState<boolean>(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
@@ -84,6 +118,13 @@ export default function EditCertificateModal({
     if (isOpen && campData) {
       setCertImage(campData.img_certificate_url || null);
       setCertImageFile(null);
+      setCertImageMetadata({
+        publicId: campData.img_certificate_public_id ?? null,
+        bytes: campData.img_certificate_bytes ?? null,
+        width: campData.img_certificate_width ?? null,
+        height: campData.img_certificate_height ?? null,
+        format: campData.img_certificate_format ?? null,
+      });
       setCertNameX(campData.cert_name_x ?? 50);
       setCertNameY(campData.cert_name_y ?? 50);
       setCertFontSize(campData.cert_font_size ?? 48);
@@ -102,6 +143,10 @@ export default function EditCertificateModal({
       );
       setCertNumberIsThai(campData.cert_number_is_thai ?? false);
       setCertYear(campData.cert_year ?? null);
+      setCertMissionCompletionPercent(
+        campData.cert_mission_completion_percent ?? 100,
+      );
+      setCertRequireSurvey(campData.cert_require_survey ?? false);
     }
   }, [isOpen, campData]);
 
@@ -151,60 +196,121 @@ export default function EditCertificateModal({
     }
   };
 
-  const compressImage = async (file: File) => {
-    if (!file || !file.type.startsWith("image/")) return file;
-    try {
-      const imageCompression = (await import("browser-image-compression"))
-        .default;
-
-      return await imageCompression(file, {
-        maxSizeMB: 2,
-        maxWidthOrHeight: 2000,
-        useWebWorker: true,
-      });
-    } catch (e) {
-      console.error("Compression error:", e);
-
-      return file;
-    }
-  };
-
-  const uploadCertificateImage = (file: File): Promise<string> =>
+  const uploadCertificateImage = (
+    file: File,
+  ): Promise<CertificateImageMetadata & { url: string }> =>
     new Promise((resolve, reject) => {
-      const uploadForm = new FormData();
-      const request = new XMLHttpRequest();
+      if (!campData) {
+        reject(new Error("ไม่พบข้อมูลค่าย"));
+        return;
+      }
 
-      uploadForm.append("file", file);
-      request.open("POST", "/api/upload");
+      fetch(`/api/camps/${campData.camp_id}/certificate/upload-signature`, {
+        method: "POST",
+      })
+        .then(async (signatureResponse) => {
+          const signatureData = await signatureResponse
+            .json()
+            .catch(() => ({}));
 
-      request.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable) {
-          setUploadProgress(Math.round((event.loaded / event.total) * 100));
-        }
-      });
-
-      request.addEventListener("load", () => {
-        if (request.status >= 200 && request.status < 300) {
-          try {
-            const data = JSON.parse(request.responseText);
-
-            if (!data.url) throw new Error("Upload response has no URL");
-            setUploadProgress(100);
-            resolve(data.url);
-          } catch (error) {
-            reject(error);
+          if (!signatureResponse.ok) {
+            throw new Error(
+              signatureData.error ||
+                "ไม่สามารถเตรียมการอัปโหลดกรอบเกียรติบัตรได้",
+            );
           }
-        } else {
-          reject(new Error("Certificate upload failed"));
-        }
-      });
-      request.addEventListener("error", () =>
-        reject(new Error("Certificate upload failed")),
-      );
-      request.addEventListener("abort", () =>
-        reject(new Error("Certificate upload was cancelled")),
-      );
-      request.send(uploadForm);
+
+          const uploadForm = new FormData();
+          const request = new XMLHttpRequest();
+          const cloudinaryUploadUrl = `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`;
+
+          uploadForm.append(
+            "file",
+            file,
+            file.name || "certificate-template.jpg",
+          );
+          uploadForm.append("api_key", signatureData.apiKey);
+          uploadForm.append("timestamp", String(signatureData.timestamp));
+          uploadForm.append("folder", signatureData.folder);
+          uploadForm.append("public_id", signatureData.publicId);
+          uploadForm.append("upload_preset", signatureData.uploadPreset);
+          uploadForm.append("overwrite", String(signatureData.overwrite));
+          uploadForm.append("invalidate", String(signatureData.invalidate));
+          uploadForm.append("signature", signatureData.signature);
+
+          request.open("POST", cloudinaryUploadUrl);
+
+          request.upload.addEventListener("progress", (event) => {
+            if (event.lengthComputable) {
+              setUploadProgress(Math.round((event.loaded / event.total) * 100));
+            }
+          });
+
+          request.addEventListener("load", async () => {
+            if (request.status >= 200 && request.status < 300) {
+              try {
+                const data = JSON.parse(request.responseText);
+
+                if (!data.secure_url && !data.url) {
+                  throw new Error("Cloudinary response has no URL");
+                }
+
+                const commitResponse = await fetch(
+                  `/api/camps/${campData.camp_id}/certificate/upload-commit`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      publicId: data.public_id || signatureData.publicId,
+                    }),
+                  },
+                );
+                const commitData = await commitResponse
+                  .json()
+                  .catch(() => ({}));
+
+                if (!commitResponse.ok || !commitData.url) {
+                  throw new Error(
+                    commitData.error ||
+                      "กรอบเกียรติบัตรไม่ผ่านการตรวจสอบจากเซิร์ฟเวอร์",
+                  );
+                }
+
+                setUploadProgress(100);
+                resolve({
+                  url: commitData.url,
+                  publicId: commitData.publicId,
+                  bytes: commitData.bytes,
+                  width: commitData.width,
+                  height: commitData.height,
+                  format: commitData.format,
+                });
+              } catch (error) {
+                reject(error);
+              }
+            } else {
+              let message = "Certificate upload failed";
+
+              try {
+                const data = JSON.parse(request.responseText);
+
+                message = data.error?.message || data.error || message;
+              } catch {
+                // Keep the generic upload error when Cloudinary returns non-JSON.
+              }
+
+              reject(new Error(message));
+            }
+          });
+          request.addEventListener("error", () =>
+            reject(new Error("Certificate upload failed")),
+          );
+          request.addEventListener("abort", () =>
+            reject(new Error("Certificate upload was cancelled")),
+          );
+          request.send(uploadForm);
+        })
+        .catch(reject);
     });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -239,27 +345,59 @@ export default function EditCertificateModal({
 
     try {
       setIsSubmitting(true);
-      let finalCertUrl = certImage || null;
+      let finalCertUrl =
+        certImage && !certImage.startsWith("blob:") ? certImage : null;
+      let finalCertMetadata = certImageMetadata;
 
       if (certImageFile) {
-        const compressedFile = await compressImage(certImageFile);
-
         try {
           setUploadProgress(0);
-          finalCertUrl = await uploadCertificateImage(compressedFile);
+          const uploaded = await uploadCertificateImage(certImageFile);
+
+          finalCertUrl = uploaded.url;
+          finalCertMetadata = {
+            publicId: uploaded.publicId,
+            bytes: uploaded.bytes,
+            width: uploaded.width,
+            height: uploaded.height,
+            format: uploaded.format,
+          };
+          setCertImageMetadata(finalCertMetadata);
         } catch (error) {
           console.error("Certificate upload error:", error);
-          showError("อัปโหลดรูปล้มเหลว", "ไม่สามารถอัปโหลดรูปเกียรติบัตรได้");
+          showError(
+            "อัปโหลดรูปล้มเหลว",
+            error instanceof Error
+              ? error.message
+              : "ไม่สามารถอัปโหลดรูปเกียรติบัตรได้",
+          );
 
           return;
         }
       }
+
+      const imageMetadata = finalCertUrl
+        ? {
+            img_certificate_public_id: finalCertMetadata.publicId,
+            img_certificate_bytes: finalCertMetadata.bytes,
+            img_certificate_width: finalCertMetadata.width,
+            img_certificate_height: finalCertMetadata.height,
+            img_certificate_format: finalCertMetadata.format,
+          }
+        : {
+            img_certificate_public_id: null,
+            img_certificate_bytes: null,
+            img_certificate_width: null,
+            img_certificate_height: null,
+            img_certificate_format: null,
+          };
 
       const response = await fetch(`/api/camps/${campData.camp_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           img_certificate_url: finalCertUrl,
+          ...imageMetadata,
           cert_name_x: certNameX,
           cert_name_y: certNameY,
           cert_font_size: certFontSize,
@@ -274,6 +412,8 @@ export default function EditCertificateModal({
           cert_number_prefix: certNumberPrefix,
           cert_number_is_thai: certNumberIsThai,
           cert_year: certYear,
+          cert_mission_completion_percent: certMissionCompletionPercent,
+          cert_require_survey: certRequireSurvey,
         }),
       });
 
@@ -297,21 +437,67 @@ export default function EditCertificateModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden transform scale-100 animate-in zoom-in-95 duration-200">
-        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-white sticky top-0 z-10">
-          <h2 className="text-xl font-bold text-gray-800">
-            ตั้งค่าเกียรติบัตร
-          </h2>
-          <button
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
-            onClick={onClose}
-          >
-            <X size={20} />
-          </button>
+    <div
+      className={
+        pageMode
+          ? "min-h-[calc(100dvh-4rem)] w-full bg-[#f5f5f2]"
+          : "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      }
+    >
+      <div
+        className={
+          pageMode
+            ? "flex min-h-[calc(100dvh-4rem)] w-full flex-col overflow-hidden bg-[#f5f5f2]"
+            : "flex max-h-[90vh] w-full max-w-5xl transform flex-col overflow-hidden rounded-2xl bg-white shadow-xl animate-in zoom-in-95 duration-200"
+        }
+      >
+        <div
+          className={
+            pageMode
+              ? "mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-8 pt-8 sm:px-8"
+              : "sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4"
+          }
+        >
+          {pageMode && (
+            <button
+              className="inline-flex w-fit items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
+              type="button"
+              onClick={onClose}
+            >
+              <ArrowLeft size={14} />
+              กลับไปยังหน้าหลัก
+            </button>
+          )}
+
+          <div className="flex items-center gap-2">
+            {pageMode && <Award className="text-[#6b857a]" size={20} />}
+            <h2
+              className={`${
+                pageMode ? "text-lg leading-tight" : "text-xl"
+              } font-bold text-gray-800`}
+            >
+              ตั้งค่าเกียรติบัตร
+            </h2>
+          </div>
+
+          {!pageMode && (
+            <button
+              className="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100"
+              type="button"
+              onClick={onClose}
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+        <div
+          className={
+            pageMode
+              ? "mx-auto w-full max-w-6xl flex-1 overflow-y-auto bg-[#f5f5f2] px-4 pb-10 pt-0 sm:px-8"
+              : "flex-1 overflow-y-auto bg-gray-50/50 p-6"
+          }
+        >
           <form id="certForm" onSubmit={handleSubmit}>
             <CertificateSettings
               certFontColor={certFontColor}
@@ -329,6 +515,10 @@ export default function EditCertificateModal({
               certNumberY={certNumberY}
               certShowNumber={certShowNumber}
               certYear={certYear}
+              certMissionCompletionPercent={certMissionCompletionPercent}
+              certRequireSurvey={certRequireSurvey}
+              hasSurvey={campData?.certificate_has_survey ?? false}
+              totalMissions={campData?.certificate_total_missions ?? 0}
               enrolledCount={enrolledCount}
               hasAttemptedSubmit={hasAttemptedSubmit}
               setCertFontColor={setCertFontColor}
@@ -347,6 +537,8 @@ export default function EditCertificateModal({
               setCertNumberY={setCertNumberY}
               setCertShowNumber={setCertShowNumber}
               setCertYear={setCertYear}
+              setCertMissionCompletionPercent={setCertMissionCompletionPercent}
+              setCertRequireSurvey={setCertRequireSurvey}
             />
           </form>
         </div>
@@ -354,7 +546,11 @@ export default function EditCertificateModal({
         {uploadProgress !== null && (
           <div
             aria-live="polite"
-            className="px-6 pt-3 bg-white border-t border-gray-100"
+            className={
+              pageMode
+                ? "mx-auto w-full max-w-6xl border-t border-gray-100 bg-[#f5f5f2] px-4 pt-3 sm:px-8"
+                : "border-t border-gray-100 bg-white px-6 pt-3"
+            }
           >
             <div className="flex items-center justify-between mb-1.5 text-xs font-medium text-[#1a3a32]">
               <span>กำลังอัปโหลดไฟล์เกียรติบัตร...</span>
@@ -377,12 +573,12 @@ export default function EditCertificateModal({
         )}
 
         <div
-          className={`flex flex-wrap justify-between items-center gap-3 px-6 py-4 bg-white sticky bottom-0 z-10 ${uploadProgress === null ? "border-t border-gray-100" : ""}`}
+          className={`sticky bottom-0 z-10 mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:px-8 sm:py-4 lg:flex-row lg:items-center lg:justify-between ${pageMode ? "bg-[#f5f5f2]" : "bg-white"} ${uploadProgress === null ? "border-t border-gray-100" : ""}`}
         >
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
             <Select
               aria-label="เลือกกลุ่มนักเรียนสำหรับดาวน์โหลดเกียรติบัตร"
-              className="w-80 max-w-full shrink-0"
+              className="w-full sm:w-80"
               selectedKeys={[exportCondition]}
               size="sm"
               onChange={(e) => setExportCondition(e.target.value)}
@@ -396,18 +592,19 @@ export default function EditCertificateModal({
               </SelectItem>
             </Select>
             <Button
-              className="font-medium bg-[#1a3a32]/10 text-[#1a3a32] hover:bg-[#1a3a32]/20"
+              className="w-full font-medium bg-[#1a3a32]/10 text-[#1a3a32] hover:bg-[#1a3a32]/20 sm:w-auto"
+              isDisabled={!campData?.img_certificate_url}
               isLoading={isExporting}
               size="sm"
               startContent={!isExporting && <Download size={16} />}
               onPress={handleExport}
             >
-              ดาวน์โหลด PDF แบบรวม
+              ดาวน์โหลด PDF รวม
             </Button>
           </div>
-          <div className="flex justify-end gap-3">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:justify-end sm:gap-3">
             <Button
-              className="font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+              className="w-full font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 sm:w-auto"
               isDisabled={isSubmitting}
               variant="flat"
               onPress={onClose}
@@ -415,7 +612,7 @@ export default function EditCertificateModal({
               ยกเลิก
             </Button>
             <Button
-              className="font-medium bg-[#1a3a32] text-white shadow-md shadow-[#1a3a32]/20"
+              className="w-full font-medium bg-[#1a3a32] text-white shadow-md shadow-[#1a3a32]/20 sm:w-auto"
               form="certForm"
               isLoading={isSubmitting}
               startContent={<Save size={18} />}

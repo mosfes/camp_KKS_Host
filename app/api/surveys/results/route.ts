@@ -1,10 +1,8 @@
 // @ts-nocheck
-import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { requireTeacher } from "@/lib/auth";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db";
 
 // GET /api/surveys/results?campId=<id>
 export async function GET(request) {

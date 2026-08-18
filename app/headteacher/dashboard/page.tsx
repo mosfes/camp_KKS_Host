@@ -43,6 +43,79 @@ function DefaultCampImage() {
   );
 }
 
+function DashboardSkeleton() {
+  return (
+    <div
+      aria-label="กำลังโหลดข้อมูลค่าย"
+      aria-live="polite"
+      className="min-h-full bg-[#f5f5f2]"
+      role="status"
+    >
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        {/* Greeting skeleton */}
+        <div className="mb-8 rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 w-64 rounded-lg bg-gray-200 sm:h-10 sm:w-80" />
+            <div className="h-4 w-full max-w-2xl rounded bg-gray-200" />
+            <div className="flex flex-wrap gap-2">
+              <div className="h-8 w-32 rounded-full bg-gray-200" />
+              <div className="h-8 w-36 rounded-full bg-gray-200" />
+              <div className="h-8 w-40 rounded-full bg-gray-200" />
+            </div>
+          </div>
+        </div>
+
+        {/* Camp heading skeleton */}
+        <div className="mb-6 flex flex-col gap-4 rounded-2xl bg-[#f6f2ea] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="animate-pulse space-y-2">
+            <div className="h-7 w-36 rounded bg-gray-300" />
+            <div className="h-4 w-64 rounded bg-gray-200" />
+          </div>
+          <div className="h-10 w-32 animate-pulse rounded-full bg-gray-300" />
+        </div>
+
+        {/* Filters skeleton */}
+        <div className="mb-6 flex flex-wrap justify-end gap-2">
+          {["w-44", "w-40", "w-52"].map((width) => (
+            <div
+              key={width}
+              className={`h-8 ${width} animate-pulse rounded-lg bg-white shadow-sm`}
+            />
+          ))}
+        </div>
+
+        {/* Camp cards skeleton */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div
+              key={index}
+              className="overflow-hidden rounded-2xl bg-white shadow-sm"
+            >
+              <div className="h-48 animate-pulse bg-gray-200" />
+              <div className="animate-pulse space-y-4 p-4 sm:p-6">
+                <div className="flex gap-2">
+                  <div className="h-6 w-20 rounded-full bg-gray-200" />
+                  <div className="h-6 w-28 rounded-full bg-gray-200" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-5 w-4/5 rounded bg-gray-200" />
+                  <div className="h-4 w-full rounded bg-gray-200" />
+                  <div className="h-4 w-3/4 rounded bg-gray-200" />
+                </div>
+                <div className="h-4 w-2/3 rounded bg-gray-200" />
+                <div className="h-4 w-4/5 rounded bg-gray-200" />
+                <div className="border-t border-gray-100 pt-4">
+                  <div className="h-4 w-full rounded bg-gray-200" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ... imports
 import { useStatusModal } from "@/components/StatusModalProvider";
 import {
@@ -419,6 +492,7 @@ function DashboardContent() {
           shirtEndDate: data.shirtEndDate,
           description: data.description || "",
           hasShirt: data.hasShirt,
+          hasTransport: data.hasTransport,
           classroom_ids: data.classroom_ids,
           projectType: selectedProjectType,
           gradeLevel: data.gradeLevel,
@@ -559,6 +633,7 @@ function DashboardContent() {
         end_shirt_date: formData.end_shirt_date,
         description: formData.description,
         has_shirt: formData.has_shirt,
+        has_transport: formData.has_transport,
         status: formData.status || "OPEN",
         classroom_ids: formData.classroom_ids,
         dailySchedule: formData.dailySchedule,
@@ -643,6 +718,10 @@ function DashboardContent() {
     setCampPage(1);
   }, [campStatusFilter, campRoleFilter, campAcademicYearFilter]);
 
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div className="bg-[#f5f5f2] min-h-full">
       {/* Edit-fetch loading overlay */}
@@ -664,7 +743,7 @@ function DashboardContent() {
         {/* Greeting Card (Student Style) */}
         <div className="bg-[#5d7c6f] rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden mb-8">
           <div className="relative z-10">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-medium mb-2 flex items-center gap-2">
               สวัสดีคุณครู{teacherInfo?.firstname || "หัวหน้าค่าย"}{" "}
               <Sparkles className="text-white" size={28} />
             </h1>
@@ -932,7 +1011,7 @@ function DashboardContent() {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#f6f2ea] rounded-2xl px-6 py-4">
               <div>
-                <h2 className="text-xl font-bold text-[#2d3748]">ค่ายของฉัน</h2>
+                <h2 className="text-xl font-medium text-[#2d3748]">ค่ายของฉัน</h2>
                 <p className="text-sm text-gray-500">
                   จัดการและดูแลค่ายกิจกรรมการเรียนรู้ของคุณ
                 </p>
@@ -1063,14 +1142,7 @@ function DashboardContent() {
               </div>
             </div>
 
-            {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="text-center">
-                  <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-gray-500">กำลังโหลดข้อมูลค่าย...</p>
-                </div>
-              </div>
-            ) : filteredMyCamps.length === 0 ? (
+            {filteredMyCamps.length === 0 ? (
               <div className="w-full py-20 text-center text-gray-500">
                 ยังไม่มีค่ายในขณะนี้
               </div>
@@ -1173,7 +1245,7 @@ function DashboardContent() {
                             ) : null}
                           </div>
                           <div className="mb-3">
-                            <h3 className="text-base sm:text-lg font-bold mb-1 text-[#2d3748] leading-snug line-clamp-2">
+                            <h3 className="text-base sm:text-lg font-medium mb-1 text-[#2d3748] leading-snug line-clamp-2">
                               {camp.title}
                             </h3>
                             <p className="mb-1 text-[#718096] text-sm line-clamp-2 leading-relaxed">
@@ -1239,7 +1311,7 @@ function DashboardContent() {
                                 ? `ลงทะเบียนแล้ว ${camp.enrolled}/${camp.totalStudents} คน`
                                 : `ลงทะเบียนแล้ว ${camp.enrolled} คน`}
                             </span>
-                            <div className="flex items-center gap-1 text-[#5d7c6f] font-semibold text-sm">
+                            <div className="flex items-center gap-1 text-[#5d7c6f] font-medium text-sm">
                               ดูรายละเอียด
                               <ChevronRight size={18} />
                             </div>
@@ -1321,11 +1393,7 @@ function DashboardContent() {
 export default function StudentDashboard() {
   return (
     <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-screen bg-[#f5f5f2]">
-          <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
+      fallback={<DashboardSkeleton />}
     >
       <DashboardContent />
     </Suspense>

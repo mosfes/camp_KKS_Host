@@ -22,6 +22,32 @@ const EMPTY_FORM = {
   is_active: true,
 };
 
+function PersonnelListSkeleton() {
+  return (
+    <div
+      aria-label="กำลังโหลดรายชื่อบุคลากร"
+      className="divide-y divide-gray-100"
+      role="status"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <div
+          className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
+          key={index}
+        >
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="h-4 w-48 animate-pulse rounded bg-gray-200" />
+            <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-5 w-28 animate-pulse rounded-full bg-gray-200" />
+            <div className="h-8 w-8 animate-pulse rounded-lg bg-gray-200" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function DocumentPersonnelManager() {
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const { showError, showSuccess, setIsLoading } = useStatusModal();
@@ -175,9 +201,7 @@ export default function DocumentPersonnelManager() {
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         {loading ? (
-          <div className="p-12 text-center text-gray-500">
-            กำลังโหลดข้อมูล...
-          </div>
+          <PersonnelListSkeleton />
         ) : filteredPeople.length === 0 ? (
           <div className="flex flex-col items-center gap-3 p-12 text-center text-gray-500">
             <UserRoundCheck size={40} className="text-gray-300" />

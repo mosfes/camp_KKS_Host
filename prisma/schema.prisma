@@ -36,6 +36,7 @@ model teachers {
   survey_template           survey_template[]
   camp_location_update      camp_location_update[]
   project_document_template project_document_template[]
+  camp_bus_events           camp_bus_event[]
 
   @@index([deletedAt])
 }
@@ -99,6 +100,7 @@ model classrooms {
   classroom_teacher  classroom_teacher[]
   classroom_students classroom_students[]
   camp_classroom     camp_classroom[]
+  camp_bus           camp_bus[]
 
   @@index([deletedAt])
 }
@@ -139,26 +141,31 @@ model classroom_students {
 }
 
 model camp {
-  camp_id             Int         @id @default(autoincrement())
-  deletedAt           DateTime?
-  location            String      @db.VarChar(255)
-  name                String      @db.VarChar(255)
-  start_date          DateTime
-  end_date            DateTime
-  start_shirt_date    DateTime
-  end_shirt_date      DateTime
-  start_regis_date    DateTime
-  end_regis_date      DateTime
-  description         String      @db.Text
-  status              camp_status @default(OPEN)
-  has_shirt           Boolean     @default(false)
-  img_camp_url        String      @db.VarChar(500)
-  img_shirt_url       String      @db.VarChar(500)
-  img_certificate_url String?     @db.VarChar(500)
-  cert_name_x         Float?
-  cert_name_y         Float?
-  cert_font_size      Float?
-  cert_font_color     String?     @db.VarChar(50)
+  camp_id                   Int         @id @default(autoincrement())
+  deletedAt                 DateTime?
+  location                  String      @db.VarChar(255)
+  name                      String      @db.VarChar(255)
+  start_date                DateTime
+  end_date                  DateTime
+  start_shirt_date          DateTime
+  end_shirt_date            DateTime
+  start_regis_date          DateTime
+  end_regis_date            DateTime
+  description               String      @db.Text
+  status                    camp_status @default(OPEN)
+  has_shirt                 Boolean     @default(false)
+  img_camp_url              String      @db.VarChar(500)
+  img_shirt_url             String      @db.VarChar(500)
+  img_certificate_url       String?     @db.VarChar(500)
+  img_certificate_public_id String?     @db.VarChar(255)
+  img_certificate_bytes     Int?
+  img_certificate_width     Int?
+  img_certificate_height    Int?
+  img_certificate_format    String?     @db.VarChar(20)
+  cert_name_x               Float?
+  cert_name_y               Float?
+  cert_font_size            Float?
+  cert_font_color           String?     @db.VarChar(50)
 
   // เลขที่เกียรติบัตรแบบรัน
   cert_show_number    Boolean @default(false)
@@ -172,12 +179,17 @@ model camp {
   cert_number_is_thai Boolean @default(false)
   cert_year           String? @db.VarChar(20)
 
+  // เงื่อนไขการรับเกียรติบัตร
+  cert_mission_completion_percent Int     @default(100)
+  cert_require_survey             Boolean @default(false)
+
   // จุดหมายและการตั้งค่าการแชร์ตำแหน่งของนักเรียนในค่าย
   destination_name         String? @db.VarChar(255)
   destination_address      String? @db.VarChar(500)
   destination_latitude     Float?
   destination_longitude    Float?
   location_sharing_enabled Boolean @default(false)
+  has_transport            Boolean @default(false)
   location_update_interval Int     @default(10)
 
   // plan_type_plane_id Int
@@ -188,6 +200,7 @@ model camp {
 
   camp_template            camp_template[]
   camp_classroom           camp_classroom[]
+  camp_bus                 camp_bus[]
   teacher_enrollment       teacher_enrollment[]
   student_enrollment       student_enrollment[]
   attendance_session       attendance_session[]
@@ -364,6 +377,106 @@ model camp_classroom {
   classroom classrooms @relation(fields: [classroom_classroom_id], references: [classroom_id])
 }
 
+enum camp_bus_status {
+  PARKED
+  TRAVELING
+}
+
+enum camp_bus_student_status {
+  OFF_BUS
+  ON_BUS
+}
+
+enum camp_bus_event_type {
+  BOARD
+  ALIGHT
+  PARK
+  DEPART
+}
+
+model camp_bus {
+  bus_id                 Int             @id @default(autoincrement())
+  camp_camp_id           Int
+  classroom_classroom_id Int
+  name                   String          @db.VarChar(100)
+  registration_plate     String          @db.VarChar(30)
+  floor_count            Int             @default(1)
+  status                 camp_bus_status @default(PARKED)
+  layout_locked          Boolean         @default(false) // legacy: no longer used by the application
+  created_at             DateTime        @default(now())
+  updated_at             DateTime        @updatedAt
+
+  camp        camp               @relation(fields: [camp_camp_id], references: [camp_id], onDelete: Cascade)
+  classroom   classrooms         @relation(fields: [classroom_classroom_id], references: [classroom_id])
+  floors      camp_bus_floor[]
+  assignments camp_bus_student[]
+  events      camp_bus_event[]
+
+  @@unique([camp_camp_id, classroom_classroom_id])
+  @@index([camp_camp_id])
+}
+
+model camp_bus_floor {
+  floor_id     Int @id @default(autoincrement())
+  bus_bus_id   Int
+  floor_number Int
+  row_count    Int
+
+  bus       camp_bus            @relation(fields: [bus_bus_id], references: [bus_id], onDelete: Cascade)
+  positions camp_bus_position[]
+
+  @@unique([bus_bus_id, floor_number])
+}
+
+model camp_bus_position {
+  position_id    Int    @id @default(autoincrement())
+  floor_floor_id Int
+  row_number     Int
+  seat_index     Int
+  label          String @db.VarChar(20)
+
+  floor      camp_bus_floor    @relation(fields: [floor_floor_id], references: [floor_id], onDelete: Cascade)
+  assignment camp_bus_student?
+
+  @@unique([floor_floor_id, row_number, seat_index])
+  @@unique([floor_floor_id, label])
+}
+
+model camp_bus_student {
+  assignment_id         Int                     @id @default(autoincrement())
+  bus_bus_id            Int
+  student_enrollment_id Int                     @unique
+  position_position_id  Int?                    @unique
+  status                camp_bus_student_status @default(OFF_BUS)
+  last_boarded_at       DateTime?
+  updated_at            DateTime                @updatedAt
+
+  bus                camp_bus           @relation(fields: [bus_bus_id], references: [bus_id], onDelete: Cascade)
+  student_enrollment student_enrollment @relation(fields: [student_enrollment_id], references: [student_enrollment_id], onDelete: Cascade)
+  position           camp_bus_position? @relation(fields: [position_position_id], references: [position_id], onDelete: SetNull)
+  events             camp_bus_event[]
+
+  @@unique([bus_bus_id, student_enrollment_id])
+  @@index([bus_bus_id, status])
+}
+
+model camp_bus_event {
+  event_id              Int                 @id @default(autoincrement())
+  bus_bus_id            Int
+  student_assignment_id Int?
+  teacher_teachers_id   Int?
+  event_type            camp_bus_event_type
+  created_at            DateTime            @default(now())
+
+  bus                camp_bus          @relation(fields: [bus_bus_id], references: [bus_id], onDelete: Cascade)
+  student_assignment camp_bus_student? @relation(fields: [student_assignment_id], references: [assignment_id], onDelete: SetNull)
+  teacher            teachers?         @relation(fields: [teacher_teachers_id], references: [teachers_id], onDelete: SetNull)
+
+  @@index([bus_bus_id, created_at])
+  @@index([student_assignment_id, created_at])
+  @@index([event_type, created_at])
+}
+
 model teacher_enrollment {
   teacher_enrollment_id Int @id @default(autoincrement())
 
@@ -385,12 +498,13 @@ model student_enrollment {
   // jorn DateTime @default(now()) // นักเรียนลงทะเบียน
 
   student_students_id Int
-  student             students          @relation(fields: [student_students_id], references: [students_id])
+  student             students           @relation(fields: [student_students_id], references: [students_id])
   camp_camp_id        Int
-  camp                camp              @relation(fields: [camp_camp_id], references: [camp_id])
+  camp                camp               @relation(fields: [camp_camp_id], references: [camp_id])
   certificate         certificate[]
   mission_result      mission_result[]
   survey_response     survey_response[]
+  camp_bus_student    camp_bus_student[]
 
   @@unique([student_students_id, camp_camp_id])
   @@index([camp_camp_id])

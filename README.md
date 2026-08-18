@@ -28,6 +28,34 @@ unavailable, the UI falls back to a straight line and an approximate distance.
 The reverse-geocoded subdistrict, district, and province are stored in the same
 cache and requested only after the student opens the map, so page visits and GPS
 polling do not generate additional Geocoding requests.
+
+### Direct Cloudinary image uploads
+
+Student profile images and certificate templates upload directly from the
+browser to Cloudinary. Configure two signed upload presets in Cloudinary and
+set their server-side file limits before deploying:
+
+```env
+CLOUDINARY_PROFILE_UPLOAD_PRESET=your_profile_preset
+CLOUDINARY_CERTIFICATE_UPLOAD_PRESET=your_certificate_preset
+CLOUDINARY_MISSION_UPLOAD_PRESET=your_mission_preset
+```
+
+Set `max_file_size` to 5 MB on the profile preset and 3 MB on the certificate
+preset. The mission preset should also enforce the file policy used by the
+camp. The app verifies the actual Cloudinary asset on the server before
+accepting the returned URL. The old `/api/student/profile/upload-image` route
+no longer accepts file bytes through Vercel.
+
+Production schema changes are deployed separately from the Next.js build:
+
+```bash
+npm run db:migrate:deploy
+npm run build
+```
+
+The build no longer runs `prisma db push --accept-data-loss`.
+
 To prevent unexpected charges, set billing alerts for the project and a daily
 quota for Routes: Compute Routes Essentials. A daily Routes quota around 300
 requests keeps a 31-day month below 10,000 requests. Dynamic Maps usage is

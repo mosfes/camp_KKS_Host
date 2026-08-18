@@ -23,7 +23,6 @@ const surveySchema = z.object({
     .optional(),
   saveAsTemplate: z.boolean().optional(),
   templateTitle: z.string().optional(),
-  isRequiredForCert: z.boolean().optional(),
 });
 
 // GET /api/surveys?campId=<id>
@@ -80,7 +79,6 @@ export async function POST(request) {
       questions,
       saveAsTemplate,
       templateTitle,
-      isRequiredForCert,
     } = body;
 
     // ตรวจสอบว่าค่ายนี้มีแบบสอบถามอยู่แล้วหรือไม่ และเช็ค ownership
@@ -115,7 +113,6 @@ export async function POST(request) {
         title,
         description,
         camp_camp_id: parseInt(campId),
-        is_required_for_cert: isRequiredForCert ?? true,
         survey_question: {
           create: (questions || []).map((q) => ({
             question_text: q.text,
@@ -185,7 +182,6 @@ export async function PUT(request) {
       questions,
       saveAsTemplate,
       templateTitle,
-      isRequiredForCert,
     } = body;
 
     // เช็คว่ามีอยู่จริงหรือไม่ และเช็ค ownership
@@ -232,7 +228,6 @@ export async function PUT(request) {
         data: {
           title,
           description,
-          is_required_for_cert: isRequiredForCert ?? true,
           survey_question: {
             create: (questions || []).map((q) => ({
               question_text: q.text,

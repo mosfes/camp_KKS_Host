@@ -1,0 +1,123 @@
+// @ts-nocheck
+
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/db";
+import { requireCampBusPermission } from "@/lib/camp-bus-auth";
+import { formatStudentName } from "@/lib/student-display-name";
+
+export async function GET(_request: Request, context: any) {
+  const { id, busId: rawBusId } = await context.params;
+  const campId = Number(id);
+  const busId = Number(rawBusId);
+
+  if (!Number.isInteger(campId) || !Number.isInteger(busId)) {
+    return NextResponse.json({ error: "รหัสรถไม่ถูกต้อง" }, { status: 400 });
+  }
+
+  const permission = await requireCampBusPermission(campId);
+
+  if (permission.error) return permission.error;
+
+  const bus = await prisma.camp_bus.findFirst({
+    where: {
+      bus_id: busId,
+      camp_camp_id: campId,
+      classroom_classroom_id: { in: permission.classroomIds },
+    },
+    select: {
+      bus_id: true,
+      status: true,
+      events: {
+        where: { event_type: "DEPART" },
+        select: { event_id: true },
+      },
+      assignments: {
+        orderBy: { assignment_id: "asc" },
+        select: {
+          assignment_id: true,
+          status: true,
+          last_boarded_at: true,
+          student_enrollment: {
+            select: {
+              student: {
+                select: {
+                  prefix_name: true,
+                  firstname: true,
+                  lastname: true,
+                },
+              },
+            },
+          },
+          events: {
+            where: { event_type: { in: ["BOARD", "ALIGHT"] } },
+            orderBy: [{ created_at: "desc" }, { event_id: "desc" }],
+            take: 2,
+            select: {
+              event_id: true,
+              event_type: true,
+              created_at: true,
+              teacher: { select: { firstname: true, lastname: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!bus) {
+    return NextResponse.json({ error: "ไม่พบรถของค่ายนี้" }, { status: 404 });
+  }
+
+  const assignmentStatuses = bus.assignments.map((assignment) => {
+    const latestEvent = assignment.events[0] || null;
+    const departedBeforeEvent = latestEvent
+      ? bus.events.filter((event) => event.event_id < latestEvent.event_id)
+          .length
+      : 0;
+    const previousBoardEvent = assignment.events
+      .slice(1)
+      .find((event) => event.event_type === "BOARD");
+    const departedBeforePreviousBoard = previousBoardEvent
+      ? bus.events.filter(
+          (event) => event.event_id < previousBoardEvent.event_id,
+        ).length
+      : 0;
+    const student = assignment.student_enrollment.student;
+    const studentName = formatStudentName(student);
+
+    return {
+      assignmentId: assignment.assignment_id,
+      status: assignment.status,
+      lastBoardedAt: assignment.last_boarded_at,
+      lastStatusEvent: latestEvent
+        ? {
+            eventType: latestEvent.event_type,
+            happenedAt: latestEvent.created_at,
+            tripNumber:
+              latestEvent.event_type === "BOARD"
+                ? departedBeforeEvent + 1
+                : previousBoardEvent
+                  ? departedBeforePreviousBoard + 1
+                  : Math.max(1, departedBeforeEvent),
+            actorType: latestEvent.teacher ? "TEACHER" : "STUDENT",
+            actorName: latestEvent.teacher
+              ? `${latestEvent.teacher.firstname} ${latestEvent.teacher.lastname}`.trim()
+              : studentName,
+          }
+        : null,
+    };
+  });
+
+  return NextResponse.json(
+    {
+      busId: bus.bus_id,
+      status: bus.status,
+      checkedInCount: assignmentStatuses.filter(
+        (assignment) => assignment.status === "ON_BUS",
+      ).length,
+      assignmentStatuses,
+    },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
+}

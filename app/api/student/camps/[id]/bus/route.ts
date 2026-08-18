@@ -1,0 +1,149 @@
+// @ts-nocheck
+
+import { NextResponse } from "next/server";
+
+import { requireStudent } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+
+export async function GET(request: Request, context: any) {
+  const { student, error: authError } = await requireStudent();
+
+  if (authError) return authError;
+
+  const { id } = await context.params;
+  const campId = Number(id);
+  const studentId = Number(student.students_id);
+
+  if (!Number.isInteger(campId) || campId <= 0) {
+    return NextResponse.json({ error: "รหัสค่ายไม่ถูกต้อง" }, { status: 400 });
+  }
+
+  const enrollment = await prisma.student_enrollment.findFirst({
+    where: {
+      camp_camp_id: campId,
+      student_students_id: studentId,
+      enrolled_at: { not: null },
+    },
+    select: {
+      student_enrollment_id: true,
+      camp: { select: { name: true, has_transport: true } },
+      camp_bus_student: {
+        select: {
+          assignment_id: true,
+          status: true,
+          last_boarded_at: true,
+          position: {
+            select: {
+              position_id: true,
+              label: true,
+              row_number: true,
+              seat_index: true,
+              floor: { select: { floor_number: true } },
+            },
+          },
+          bus: {
+            select: {
+              bus_id: true,
+              name: true,
+              registration_plate: true,
+              status: true,
+              floor_count: true,
+              classroom: {
+                select: {
+                  grade: true,
+                  classroom_types: { select: { name: true } },
+                },
+              },
+              floors: {
+                orderBy: { floor_number: "asc" },
+                select: {
+                  floor_number: true,
+                  row_count: true,
+                  positions: {
+                    orderBy: [{ row_number: "asc" }, { seat_index: "asc" }],
+                    select: {
+                      position_id: true,
+                      label: true,
+                      row_number: true,
+                      seat_index: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        take: 1,
+      },
+    },
+  });
+
+  if (!enrollment) {
+    return NextResponse.json(
+      { error: "คุณยังไม่ได้ลงทะเบียนค่ายนี้" },
+      { status: 403 },
+    );
+  }
+
+  const assignment = enrollment.camp_bus_student[0];
+
+  if (!assignment) {
+    return NextResponse.json({
+      configured: false,
+      hasTransport: enrollment.camp.has_transport,
+      campName: enrollment.camp.name,
+      message: "ยังไม่มีข้อมูลรถหรือที่นั่งของคุณ",
+    });
+  }
+
+  const ownPosition = assignment.position;
+  const ownFloor = ownPosition?.floor?.floor_number;
+
+  return NextResponse.json(
+    {
+      configured: true,
+      hasTransport: enrollment.camp.has_transport,
+      campName: enrollment.camp.name,
+      bus: {
+        busId: assignment.bus.bus_id,
+        name: assignment.bus.name,
+        registrationPlate: assignment.bus.registration_plate,
+        status: assignment.bus.status,
+        floorCount: assignment.bus.floor_count,
+        classroom: {
+          grade: assignment.bus.classroom.grade,
+          roomName:
+            assignment.bus.classroom.classroom_types?.name || "ห้องเรียน",
+        },
+        floors: assignment.bus.floors
+          .filter((floor: any) => floor.floor_number === ownFloor)
+          .map((floor: any) => ({
+            floorNumber: floor.floor_number,
+            rowCount: floor.row_count,
+            positions: floor.positions.map((position: any) => ({
+              positionId: position.position_id,
+              label: position.label,
+              rowNumber: position.row_number,
+              seatIndex: position.seat_index,
+              isOwn: position.position_id === ownPosition?.position_id,
+            })),
+          })),
+      },
+      student: {
+        status: assignment.status,
+        isOnBus: assignment.status === "ON_BUS",
+        lastBoardedAt: assignment.last_boarded_at,
+        position: ownPosition
+          ? {
+              positionId: ownPosition.position_id,
+              label: ownPosition.label,
+              rowNumber: ownPosition.row_number,
+              seatIndex: ownPosition.seat_index,
+              floorNumber: ownFloor,
+            }
+          : null,
+      },
+    },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
+}

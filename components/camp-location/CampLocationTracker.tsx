@@ -30,7 +30,6 @@ import {
   reverseGeocodeThaiAdministrativeArea,
   searchGooglePlaces,
 } from "@/lib/google-maps-client";
-import LoadingSpinner from "@/components/LoadingSpinner";
 
 const CampLocationMap = dynamic(() => import("./CampLocationMap"), {
   ssr: false,
@@ -338,6 +337,60 @@ function minutesSince(value: string) {
 
 function formatCoordinates(point: MapPoint) {
   return `${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}`;
+}
+
+function LocationSkeletonBlock({ className }: { className: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`animate-pulse rounded-lg bg-gray-200 ${className}`}
+    />
+  );
+}
+
+function LocationTrackerSkeleton({ showMap }: { showMap: boolean }) {
+  return (
+    <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      {showMap && (
+        <LocationSkeletonBlock className="h-[420px] w-full rounded-none sm:h-[520px] lg:h-[58vh] lg:min-h-[560px]" />
+      )}
+
+      <div className="space-y-4 p-4">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 p-4">
+          <div className="space-y-2">
+            <LocationSkeletonBlock className="h-4 w-40" />
+            <LocationSkeletonBlock className="h-3 w-64 max-w-full" />
+          </div>
+          <div className="flex gap-2">
+            <LocationSkeletonBlock className="h-6 w-20 rounded-full" />
+            <LocationSkeletonBlock className="h-6 w-20 rounded-full" />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-gray-100 p-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <LocationSkeletonBlock className="h-4 w-36" />
+            <LocationSkeletonBlock className="h-3 w-24" />
+          </div>
+          <div className="grid gap-3 py-4 sm:grid-cols-2">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-3 rounded-xl border border-gray-100 p-3"
+              >
+                <LocationSkeletonBlock className="h-8 w-8 rounded-full" />
+                <div className="flex-1 space-y-1.5">
+                  <LocationSkeletonBlock className="h-3 w-28" />
+                  <LocationSkeletonBlock className="h-2.5 w-20" />
+                </div>
+                <LocationSkeletonBlock className="h-5 w-16 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 async function responseError(response: Response) {
@@ -937,14 +990,9 @@ export default function CampLocationTracker({
 
   if (loading) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="flex h-72 flex-col items-center justify-center rounded-xl bg-slate-50 text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-sm font-medium text-slate-500">
-            กำลังโหลดข้อมูลการติดตามนักเรียน...
-          </p>
-        </div>
-      </section>
+      <LocationTrackerSkeleton
+        showMap={viewer !== "teacher" || showDestination}
+      />
     );
   }
 

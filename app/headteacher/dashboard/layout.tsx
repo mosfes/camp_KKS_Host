@@ -2,15 +2,28 @@
 
 import type { ReactNode } from "react";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
+  Award,
+  BarChart3,
+  BookOpen,
+  Bus,
+  ClipboardList,
+  ChevronDown,
   Users,
   Tent,
   ChevronLeft,
   ChevronRight,
+  FileText,
   LayoutDashboard,
+  MapPin,
+  Shirt,
+  Target,
+  TrendingUp,
+  UserCheck,
   X,
+  type LucideIcon,
 } from "lucide-react";
 
 import { HeadteacherNavbar } from "@/components/Headteacher";
@@ -21,7 +34,344 @@ const teacherMenuItems = [
   { id: "camp", label: "ค่ายที่เกี่ยวข้อง", icon: Tent },
 ];
 
-type MenuItem = (typeof teacherMenuItems)[number];
+type SidebarMenuItem = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  group?: string;
+  access?: "owner" | "ownerOrHomeroom";
+  disabled?: boolean;
+};
+
+const campMenuItems: SidebarMenuItem[] = [
+  {
+    id: "overview",
+    label: "ภาพรวมค่าย",
+    icon: LayoutDashboard,
+    group: "ภาพรวม",
+  },
+  {
+    id: "students",
+    label: "ข้อมูลนักเรียน",
+    icon: BookOpen,
+    group: "ผู้เข้าร่วม",
+  },
+  {
+    id: "tracking",
+    label: "ติดตามนักเรียน",
+    icon: Users,
+    group: "ผู้เข้าร่วม",
+  },
+  {
+    id: "location",
+    label: "ติดตามตำแหน่ง",
+    icon: MapPin,
+    group: "ผู้เข้าร่วม",
+  },
+  {
+    id: "shirts",
+    label: "รายการจองเสื้อ",
+    icon: Shirt,
+    group: "ผู้เข้าร่วม",
+    access: "ownerOrHomeroom",
+  },
+  {
+    id: "attendance",
+    label: "เช็คชื่อนักเรียน",
+    icon: UserCheck,
+    group: "เช็คชื่อ",
+  },
+  {
+    id: "bus",
+    label: "เช็คชื่อขึ้นรถ",
+    icon: Bus,
+    group: "เช็คชื่อ",
+    access: "ownerOrHomeroom",
+  },
+  {
+    id: "bases",
+    label: "ฐานกิจกรรม",
+    icon: Target,
+    group: "กิจกรรม",
+    access: "owner",
+  },
+  {
+    id: "compare",
+    label: "เปรียบเทียบคะแนน",
+    icon: TrendingUp,
+    group: "กิจกรรม",
+    access: "owner",
+  },
+  {
+    id: "documents",
+    label: "เอกสารข้อเสนอโครงการ",
+    icon: FileText,
+    group: "เอกสาร",
+    access: "owner",
+  },
+  {
+    id: "summary-documents",
+    label: "เอกสารสรุป",
+    icon: FileText,
+    group: "เอกสาร",
+    access: "owner",
+    disabled: true,
+  },
+  {
+    id: "survey",
+    label: "จัดการแบบสอบถาม",
+    icon: ClipboardList,
+    group: "แบบสอบถาม",
+    access: "owner",
+  },
+  {
+    id: "survey-results",
+    label: "ดูผลการตอบกลับ",
+    icon: BarChart3,
+    group: "แบบสอบถาม",
+    access: "owner",
+  },
+  {
+    id: "certificate",
+    label: "ตั้งค่าเกียรติบัตร",
+    icon: Award,
+    group: "ตั้งค่า",
+    access: "owner",
+  },
+];
+
+type CampAccess = {
+  isOwner: boolean;
+  isHomeroomTeacher: boolean;
+  hasTransport: boolean;
+};
+
+function getCampIdFromPath(pathname: string) {
+  return pathname.match(/^\/headteacher\/dashboard\/camp\/(\d+)/)?.[1] ?? null;
+}
+
+function getCampMenuId(pathname: string, requestedMenu: string | null) {
+  if (requestedMenu) return requestedMenu;
+  if (pathname.includes("/students")) return "students";
+  if (pathname.includes("/project-document")) return "documents";
+  if (pathname.includes("/location")) return "location";
+  if (pathname.includes("/attendance")) return "attendance";
+  if (pathname.includes("/tracking")) return "tracking";
+  if (pathname.includes("/bus-checkin")) return "bus";
+  if (pathname.includes("/shirts")) return "shirts";
+  if (pathname.includes("/bases")) return "bases";
+  if (pathname.includes("/base/")) return "bases";
+  if (pathname.includes("/survey/results")) return "survey-results";
+  if (pathname.includes("/survey")) return "survey";
+  if (pathname.includes("/score-comparison")) return "compare";
+  if (pathname.includes("/certificate")) return "certificate";
+
+  return "overview";
+}
+
+function filterCampMenuItems(
+  items: SidebarMenuItem[],
+  access: CampAccess | null,
+) {
+  if (!access) return items.filter((item) => item.id !== "bus");
+
+  return items.filter((item) => {
+    if (item.id === "bus" && !access.hasTransport) return false;
+    if (item.access === "owner") return access.isOwner;
+    if (item.access === "ownerOrHomeroom") {
+      return access.isOwner || access.isHomeroomTeacher;
+    }
+
+    return true;
+  });
+}
+
+type SidebarMenuSection = {
+  group?: string;
+  items: SidebarMenuItem[];
+};
+
+const campGroupIcons: Record<string, LucideIcon> = {
+  ภาพรวม: LayoutDashboard,
+  ผู้เข้าร่วม: Users,
+  เช็คชื่อ: UserCheck,
+  เอกสาร: FileText,
+  กิจกรรม: Target,
+  แบบสอบถาม: ClipboardList,
+  ตั้งค่า: Award,
+};
+
+const defaultOpenSidebarGroups = new Set(["เช็คชื่อ"]);
+
+function groupSidebarMenuItems(items: SidebarMenuItem[]) {
+  return items.reduce<SidebarMenuSection[]>((sections, item) => {
+    const currentSection = sections[sections.length - 1];
+
+    if (currentSection && currentSection.group === item.group) {
+      currentSection.items.push(item);
+    } else {
+      sections.push({ group: item.group, items: [item] });
+    }
+
+    return sections;
+  }, []);
+}
+
+function SidebarNav({
+  menuItems,
+  collapsed,
+  isCampContext,
+  activeMenu,
+  activeTab,
+  onNavigate,
+  mobile = false,
+}: {
+  menuItems: SidebarMenuItem[];
+  collapsed: boolean;
+  isCampContext: boolean;
+  activeMenu: string;
+  activeTab: string;
+  onNavigate: (id: string) => void;
+  mobile?: boolean;
+}) {
+  const activeKey = isCampContext ? activeMenu : activeTab;
+  const menuSignature = menuItems.map(({ id }) => id).join("|");
+  const sections = useMemo(
+    () => groupSidebarMenuItems(menuItems),
+    [menuSignature, menuItems],
+  );
+  const activeGroup = sections.find((section) =>
+    section.items.some((item) => item.id === activeKey),
+  )?.group;
+  const [collapsedGroups, setCollapsedGroups] = useState<
+    Record<string, boolean>
+  >({});
+
+  useEffect(() => {
+    setCollapsedGroups((current) => {
+      const next = { ...current };
+
+      sections.forEach((section) => {
+        if (section.group && section.items.length > 1) {
+          next[section.group] =
+            section.group !== activeGroup &&
+            !defaultOpenSidebarGroups.has(section.group);
+        }
+      });
+
+      return next;
+    });
+  }, [activeGroup, menuSignature, sections]);
+
+  const renderMenuItem = (item: SidebarMenuItem, nested = false) => {
+    const isActive = activeKey === item.id;
+    const Icon = item.icon;
+    const isDisabled = Boolean(item.disabled);
+
+    return (
+      <button
+        key={item.id}
+        type="button"
+        className={`
+          flex items-center gap-3 w-full text-left transition-all duration-150
+          ${
+            nested
+              ? "rounded-lg px-3 py-2 text-[13px] font-normal"
+              : `rounded-xl px-3 ${mobile ? "py-3" : "py-2.5"} text-sm font-normal`
+          }
+          ${collapsed ? "justify-center" : ""}
+          ${
+            isDisabled
+              ? "cursor-not-allowed text-gray-300"
+              : isActive
+                ? nested
+                  ? "bg-[#eef4f0] text-[#5d7c6f]"
+                  : "bg-[#5d7c6f] text-white shadow-sm"
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          }
+        `}
+        disabled={isDisabled}
+        title={collapsed ? item.label : undefined}
+        aria-current={isActive ? "page" : undefined}
+        aria-disabled={isDisabled || undefined}
+        onClick={() => {
+          if (!isDisabled) onNavigate(item.id);
+        }}
+      >
+        {(!nested || collapsed) && (
+          <Icon className="shrink-0" size={mobile ? 20 : 18} />
+        )}
+        {!collapsed && <span className="truncate">{item.label}</span>}
+      </button>
+    );
+  };
+
+  return (
+    <>
+      {sections.map((section, index) => {
+        const isCollapsible = Boolean(
+          section.group && section.items.length > 1,
+        );
+        const isGroupCollapsed = section.group
+          ? (collapsedGroups[section.group] ?? false)
+          : false;
+        const GroupIcon = section.group
+          ? (campGroupIcons[section.group] ?? section.items[0].icon)
+          : null;
+
+        if (!section.group || !isCollapsible || collapsed) {
+          return (
+            <div
+              key={section.group ?? `ungrouped-${index}`}
+              className="contents"
+            >
+              {section.items.map((item) => renderMenuItem(item))}
+            </div>
+          );
+        }
+
+        return (
+          <div key={section.group} className="mb-1 last:mb-0">
+            <button
+              type="button"
+              aria-expanded={!isGroupCollapsed}
+              className={`flex items-center gap-3 w-full rounded-xl px-3 ${
+                mobile ? "py-3" : "py-2.5"
+              } text-left text-sm font-normal transition-colors ${
+                activeGroup === section.group
+                  ? "text-[#5d7c6f]"
+                  : "text-gray-600"
+              } hover:bg-gray-100 hover:text-gray-900`}
+              onClick={() =>
+                setCollapsedGroups((current) => ({
+                  ...current,
+                  [section.group!]: !isGroupCollapsed,
+                }))
+              }
+            >
+              {GroupIcon && (
+                <GroupIcon className="shrink-0" size={mobile ? 20 : 18} />
+              )}
+              <span className="truncate">{section.group}</span>
+              <ChevronDown
+                className={`ml-auto shrink-0 transition-transform duration-200 ${
+                  isGroupCollapsed ? "-rotate-90" : ""
+                }`}
+                size={16}
+              />
+            </button>
+
+            {!isGroupCollapsed && (
+              <div className="relative ml-5 mt-1 mb-2 space-y-1 border-l border-[#dbe6e1] pl-3">
+                {section.items.map((item) => renderMenuItem(item, true))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
 
 /* ── Sidebar (Desktop only) ─────────────────────────────────── */
 function TeacherSidebar({
@@ -31,11 +381,50 @@ function TeacherSidebar({
 }: {
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
-  menuItems: MenuItem[];
+  menuItems: SidebarMenuItem[];
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const activeTab = searchParams.get("tab") || "camp";
+  const campId = getCampIdFromPath(pathname);
+  const isCampContext = Boolean(campId);
+  const activeMenu = getCampMenuId(pathname, searchParams.get("menu"));
+
+  const handleNavigate = (id: string) => {
+    if (!isCampContext || !campId) {
+      router.push(`/headteacher/dashboard?tab=${id}`);
+
+      return;
+    }
+
+    const campPath = `/headteacher/dashboard/camp/${campId}`;
+
+    const campPageRoutes: Record<string, string> = {
+      attendance: "attendance",
+      tracking: "tracking",
+      location: "location",
+      bus: "bus-checkin",
+      shirts: "shirts",
+      bases: "bases",
+      survey: "survey",
+      "survey-results": "survey/results",
+      compare: "score-comparison",
+      certificate: "certificate",
+    };
+
+    if (id === "students") {
+      router.push(`${campPath}/students`);
+    } else if (id === "documents") {
+      router.push(`${campPath}/project-document`);
+    } else if (id === "overview") {
+      router.push(campPath);
+    } else if (campPageRoutes[id]) {
+      router.push(`${campPath}/${campPageRoutes[id]}`);
+    } else {
+      router.push(`${campPath}?menu=${id}`);
+    }
+  };
 
   return (
     <aside
@@ -70,31 +459,15 @@ function TeacherSidebar({
       </div>
 
       {/* Nav */}
-      <nav className="flex flex-col gap-1 p-2 flex-1">
-        {menuItems.map(({ id, label, icon: Icon }) => {
-          const isActive = activeTab === id;
-
-          return (
-            <button
-              key={id}
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
-                transition-all duration-150 w-full
-                ${collapsed ? "justify-center" : "text-left"}
-                ${
-                  isActive
-                    ? "bg-[#5d7c6f] text-white shadow-sm"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }
-              `}
-              title={collapsed ? label : undefined}
-              onClick={() => router.push(`/headteacher/dashboard?tab=${id}`)}
-            >
-              <Icon className="shrink-0" size={18} />
-              {!collapsed && <span className="truncate">{label}</span>}
-            </button>
-          );
-        })}
+      <nav className="sidebar-scrollbar flex flex-col gap-1 p-2 flex-1 overflow-y-auto">
+        <SidebarNav
+          activeMenu={activeMenu}
+          activeTab={activeTab}
+          collapsed={collapsed}
+          isCampContext={isCampContext}
+          menuItems={menuItems}
+          onNavigate={handleNavigate}
+        />
       </nav>
 
       {!collapsed && (
@@ -114,11 +487,53 @@ function MobileSidebar({
 }: {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
-  menuItems: MenuItem[];
+  menuItems: SidebarMenuItem[];
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const activeTab = searchParams.get("tab") || "camp";
+  const campId = getCampIdFromPath(pathname);
+  const isCampContext = Boolean(campId);
+  const activeMenu = getCampMenuId(pathname, searchParams.get("menu"));
+
+  const handleNavigate = (id: string) => {
+    if (!isCampContext || !campId) {
+      router.push(`/headteacher/dashboard?tab=${id}`);
+      setIsOpen(false);
+
+      return;
+    }
+
+    const campPath = `/headteacher/dashboard/camp/${campId}`;
+
+    const campPageRoutes: Record<string, string> = {
+      attendance: "attendance",
+      tracking: "tracking",
+      location: "location",
+      bus: "bus-checkin",
+      shirts: "shirts",
+      bases: "bases",
+      survey: "survey",
+      "survey-results": "survey/results",
+      compare: "score-comparison",
+      certificate: "certificate",
+    };
+
+    if (id === "students") {
+      router.push(`${campPath}/students`);
+    } else if (id === "documents") {
+      router.push(`${campPath}/project-document`);
+    } else if (id === "overview") {
+      router.push(campPath);
+    } else if (campPageRoutes[id]) {
+      router.push(`${campPath}/${campPageRoutes[id]}`);
+    } else {
+      router.push(`${campPath}?menu=${id}`);
+    }
+
+    setIsOpen(false);
+  };
 
   return (
     <div
@@ -157,32 +572,16 @@ function MobileSidebar({
           </button>
         </div>
 
-        <nav className="flex flex-col gap-1 p-3 flex-1 overflow-y-auto">
-          {menuItems.map(({ id, label, icon: Icon }) => {
-            const isActive = activeTab === id;
-
-            return (
-              <button
-                key={id}
-                className={`
-                  flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium
-                  transition-all duration-150 w-full text-left
-                  ${
-                    isActive
-                      ? "bg-[#5d7c6f] text-white shadow-sm"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }
-                `}
-                onClick={() => {
-                  router.push(`/headteacher/dashboard?tab=${id}`);
-                  setIsOpen(false);
-                }}
-              >
-                <Icon className="shrink-0" size={20} />
-                <span className="truncate">{label}</span>
-              </button>
-            );
-          })}
+        <nav className="sidebar-scrollbar flex flex-col gap-1 p-3 flex-1 overflow-y-auto">
+          <SidebarNav
+            activeMenu={activeMenu}
+            activeTab={activeTab}
+            collapsed={false}
+            isCampContext={isCampContext}
+            menuItems={menuItems}
+            mobile
+            onNavigate={handleNavigate}
+          />
         </nav>
       </aside>
     </div>
@@ -215,11 +614,62 @@ function TabDefaultRedirect() {
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [campAccess, setCampAccess] = useState<CampAccess | null>(null);
+  const pathname = usePathname();
+  const campId = getCampIdFromPath(pathname);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--teacher-sidebar-width",
+      collapsed ? "4rem" : "14rem",
+    );
+
+    return () => {
+      document.documentElement.style.removeProperty("--teacher-sidebar-width");
+    };
+  }, [collapsed]);
+
+  useEffect(() => {
+    if (!campId) {
+      setCampAccess(null);
+
+      return;
+    }
+
+    let cancelled = false;
+
+    fetch(`/api/camps/${campId}/access`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancelled) {
+          setCampAccess(
+            data
+              ? {
+                  isOwner: Boolean(data.isOwner),
+                  isHomeroomTeacher: Boolean(data.isHomeroomTeacher),
+                  hasTransport: Boolean(data.hasTransport),
+                }
+              : null,
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCampAccess(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [campId]);
+
+  const menuItems = campId
+    ? filterCampMenuItems(campMenuItems, campAccess)
+    : teacherMenuItems;
 
   return (
     <StatusModalProvider>
       <div className="min-h-screen bg-[#f5f5f2] flex flex-col">
-        <div className="sticky top-0 z-50 w-full">
+        <div className="sticky top-0 z-[1000] w-full">
           <HeadteacherNavbar onMenuClick={() => setMobileOpen(true)} />
         </div>
 
@@ -232,7 +682,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           >
             <TeacherSidebar
               collapsed={collapsed}
-              menuItems={teacherMenuItems}
+              menuItems={menuItems}
               setCollapsed={setCollapsed}
             />
           </Suspense>
@@ -245,7 +695,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <Suspense fallback={null}>
           <MobileSidebar
             isOpen={mobileOpen}
-            menuItems={teacherMenuItems}
+            menuItems={menuItems}
             setIsOpen={setMobileOpen}
           />
         </Suspense>

@@ -21,6 +21,41 @@ import { useStatusModal } from "@/components/StatusModalProvider";
 import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
 import { PlusIcon } from "./Icons";
 
+function VulgarWordsLoadingTable() {
+  const columns = ["คำหยาบ", "แหล่งที่มา", "วันที่เพิ่ม", "ดำเนินการ"];
+
+  return (
+    <div
+      aria-label="กำลังโหลดคลังคำหยาบ"
+      className="min-w-[600px] overflow-hidden rounded-xl border-2 border-[#efece5] bg-white"
+      role="status"
+    >
+      <div className="grid grid-cols-[1.5fr_1fr_1fr_0.8fr] gap-4 border-b border-[#efece5] bg-white px-4 py-4">
+        {columns.map((column) => (
+          <span className="text-sm font-semibold text-gray-800" key={column}>
+            {column}
+          </span>
+        ))}
+      </div>
+
+      {Array.from({ length: 7 }, (_, index) => (
+        <div
+          className="grid grid-cols-[1.5fr_1fr_1fr_0.8fr] items-center gap-4 border-b border-[#efece5] px-4 py-4 last:border-b-0"
+          key={index}
+        >
+          <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+          <div className="h-6 w-24 animate-pulse rounded-full bg-gray-200" />
+          <div className="h-4 w-28 animate-pulse rounded bg-gray-200" />
+          <div className="flex gap-3">
+            <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+            <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function VulgarWordsManager() {
   const { showSuccess, showError, showConfirm, setIsLoading } = useStatusModal();
   const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
@@ -218,6 +253,9 @@ export default function VulgarWordsManager() {
           </div>
 
           <div className="overflow-x-auto w-full">
+            {loading ? (
+              <VulgarWordsLoadingTable />
+            ) : (
             <Table 
               aria-label="Vulgar Words Table"
               shadow="none"
@@ -235,14 +273,7 @@ export default function VulgarWordsManager() {
                 <TableColumn>ดำเนินการ</TableColumn>
               </TableHeader>
               <TableBody
-                emptyContent={loading ? "กำลังโหลดข้อมูล..." : "ไม่พบข้อมูลคำหยาบ"}
-                isLoading={loading}
-                loadingContent={
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-[#6b857a] text-sm">กำลังโหลดข้อมูล...</p>
-                  </div>
-                }
+                emptyContent="ไม่พบข้อมูลคำหยาบ"
                 items={items}
               >
                 {(item) => (
@@ -285,6 +316,7 @@ export default function VulgarWordsManager() {
                 )}
               </TableBody>
             </Table>
+            )}
           </div>
 
           <div className="flex flex-col md:flex-row items-center mt-6 gap-4 px-2 w-full relative">

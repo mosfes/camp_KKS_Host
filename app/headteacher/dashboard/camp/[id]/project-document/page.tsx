@@ -457,39 +457,46 @@ export default function ProjectDocumentPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f2] pb-24">
-      <div className="sticky top-16 z-30 border-b border-gray-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+      <main className="mx-auto max-w-6xl space-y-5 px-4 pb-24 pt-8">
+        <div className="space-y-6">
           <button
-            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
-            onClick={() => router.push(`/headteacher/dashboard/camp/${campId}`)}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
+            onClick={() => router.push("/headteacher/dashboard")}
+            type="button"
           >
-            <ArrowLeft size={18} /> กลับหน้าค่าย
+            <ArrowLeft size={14} /> กลับไปยังหน้าหลัก
           </button>
-          <div className="flex gap-2">
-            <button
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              onClick={save}
-            >
-              <Save size={17} /> บันทึกแบบร่าง
-            </button>
-            <button
-              className="inline-flex items-center gap-2 rounded-xl bg-[#5d7c6f] px-4 py-2 text-sm font-medium text-white hover:bg-[#4b685c]"
-              onClick={download}
-            >
-              <Download size={17} /> บันทึกและดาวน์โหลด PDF
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <main className="mx-auto max-w-6xl space-y-5 px-4 py-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            เอกสารโครงการตามแผนปฏิบัติการ
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            กรอกข้อมูลและเลือกบุคลากรให้แต่ละช่องลงนามได้อย่างอิสระ
-          </p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex items-center gap-2">
+              <LayoutTemplate className="shrink-0 text-[#6b857a]" size={20} />
+              <div>
+                <h1 className="text-lg font-bold leading-tight text-gray-900">
+                  เอกสารโครงการตามแผนปฏิบัติการ
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  กรอกข้อมูลและเลือกบุคลากรให้แต่ละช่องลงนามได้อย่างอิสระ
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              <button
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                onClick={save}
+                type="button"
+              >
+                <Save size={17} /> บันทึกแบบร่าง
+              </button>
+              <button
+                className="inline-flex items-center gap-2 rounded-xl bg-[#5d7c6f] px-4 py-2 text-sm font-medium text-white hover:bg-[#4b685c]"
+                onClick={download}
+                type="button"
+              >
+                <Download size={17} /> บันทึกและดาวน์โหลด PDF
+              </button>
+            </div>
+          </div>
         </div>
 
         <section className="rounded-2xl border border-[#cad8d2] bg-[#f2f7f5] p-5 shadow-sm">

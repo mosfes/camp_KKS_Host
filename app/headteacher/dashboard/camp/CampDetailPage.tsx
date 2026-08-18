@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import {
+  useRouter,
+  useParams,
+  usePathname,
+  useSearchParams,
+} from "next/navigation";
 import Image from "next/image";
 import {
   ChevronLeft,
@@ -24,6 +29,7 @@ import {
   TrendingUp,
   BookOpen,
   FileText,
+  Bus,
 } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -37,10 +43,15 @@ import SurveyResultsModal from "./SurveyResultsModal";
 import TrackingModal from "./TrackingModal";
 import ShirtTrackingModal from "./ShirtTrackingModal";
 import AttendanceModal from "./AttendanceModal";
+import BusManagementModal from "./BusManagementModal";
 import PrePostTestModal from "./PrePostTestModal";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
-import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
+import {
+  BANGKOK_TIME_ZONE,
+  getCampScheduleSlotState,
+  isCampScheduleDayToday,
+} from "@/lib/bangkok-date";
 
 interface TimeSlot {
   startTime: string;
@@ -67,6 +78,7 @@ interface CampDetail {
   gradeDisplay?: string;
   gradeDisplayList?: { type: string; grades: string[] }[];
   has_shirt: boolean;
+  has_transport?: boolean;
   start_shirt_date?: string;
   end_shirt_date?: string;
   img_shirt_url?: string;
@@ -104,6 +116,89 @@ interface CampDetail {
   student_enrollment?: any[];
 }
 
+function CampSkeletonBlock({ className }: { className: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`animate-pulse rounded-lg bg-gray-200 ${className}`}
+    />
+  );
+}
+
+function CampOverviewSkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="กำลังโหลดข้อมูลค่าย"
+      className="min-h-screen bg-[#f5f5f2]"
+    >
+      <div className="max-w-[1240px] mx-auto px-3 pt-3 pb-1">
+        <div className="flex items-center gap-0.5 mb-3">
+          <CampSkeletonBlock className="h-3.5 w-3.5 rounded-full" />
+          <CampSkeletonBlock className="h-3 w-28" />
+        </div>
+
+        <div className="relative min-h-[220px] rounded-[1.5rem] bg-[#dfe8e3] p-5 md:p-6 flex flex-col justify-end overflow-hidden">
+          <CampSkeletonBlock className="h-3 w-16 bg-white/60" />
+          <CampSkeletonBlock className="h-6 w-1/2 max-w-sm mt-2 bg-white/70" />
+          <div className="flex flex-col sm:flex-row gap-4 mt-4">
+            <CampSkeletonBlock className="h-4 w-32 bg-white/60" />
+            <CampSkeletonBlock className="h-4 w-40 bg-white/60" />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-[1240px] mx-auto px-3 py-5">
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div
+              key={index}
+              className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm"
+            >
+              <CampSkeletonBlock className="h-7 w-16 mx-auto" />
+              <CampSkeletonBlock className="h-2.5 w-8 mx-auto mt-2" />
+              <CampSkeletonBlock className="h-3 w-20 mx-auto mt-2" />
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-6">
+          <CampSkeletonBlock className="h-5 w-24 mb-3" />
+          <CampSkeletonBlock className="h-3 w-48 mb-3" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {Array.from({ length: 3 }, (_, index) => (
+              <div
+                key={index}
+                className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm"
+              >
+                <CampSkeletonBlock className="h-6 w-6 rounded-full mx-auto" />
+                <CampSkeletonBlock className="h-3 w-28 mx-auto mt-3" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {Array.from({ length: 3 }, (_, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-xl shadow-sm overflow-hidden mb-6"
+          >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+              <CampSkeletonBlock className="h-8 w-8 rounded-lg" />
+              <CampSkeletonBlock className="h-4 w-24" />
+            </div>
+            <div className="px-4 py-4 space-y-3">
+              <CampSkeletonBlock className="h-3 w-40" />
+              <CampSkeletonBlock className="h-3 w-64 max-w-full" />
+              <CampSkeletonBlock className="h-3 w-52 max-w-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CampDetailPage() {
   const router = useRouter();
 
@@ -125,9 +220,11 @@ export default function CampDetailPage() {
     }
   };
   const params = useParams();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const campId = params?.id;
   const isEdit = searchParams.get("edit");
+  const campMenu = searchParams.get("menu");
 
   const [camp, setCamp] = useState<CampDetail | null>(null);
   const { showError, showSuccess, showConfirm, setIsLoading } =
@@ -152,11 +249,13 @@ export default function CampDetailPage() {
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
   const [isShirtModalOpen, setIsShirtModalOpen] = useState(false);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+  const [isBusModalOpen, setIsBusModalOpen] = useState(false);
   const [isPrePostTestModalOpen, setIsPrePostTestModalOpen] = useState(false);
   const [isStudentsLoading, setIsStudentsLoading] = useState(false);
   const [shirtCount, setShirtCount] = useState<number | null>(null);
   const [isShirtOpen, setIsShirtOpen] = useState(true);
   const [isScheduleOpen, setIsScheduleOpen] = useState(true);
+  const [scheduleNow, setScheduleNow] = useState(() => new Date());
   const [isInfoOpen, setIsInfoOpen] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -186,6 +285,52 @@ export default function CampDetailPage() {
       router.replace(`/headteacher/dashboard/camp/${campId}`);
     }
   }, [campId, isEdit]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(
+      () => setScheduleNow(new Date()),
+      30_000,
+    );
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const clearCampMenu = () => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    nextParams.delete("menu");
+    const query = nextParams.toString();
+
+    router.replace(`${pathname}${query ? `?${query}` : ""}`, {
+      scroll: false,
+    });
+  };
+
+  useEffect(() => {
+    if (!camp || loading || !campMenu) return;
+
+    if (campMenu === "tracking") {
+      setIsTrackingModalOpen(true);
+    } else if (campMenu === "attendance") {
+      setIsAttendanceModalOpen(true);
+    } else if (campMenu === "bus" && camp.has_transport) {
+      setIsBusModalOpen(true);
+    } else if (campMenu === "shirts" && camp.has_shirt) {
+      setIsShirtModalOpen(true);
+    } else if (campMenu === "base" && camp.isOwner) {
+      setIsCreateBaseModalOpen(true);
+    } else if (campMenu === "survey" && camp.isOwner && !surveyLoading) {
+      if (survey) {
+        setIsSurveyResultsModalOpen(true);
+      } else {
+        setIsCreateSurveyModalOpen(true);
+      }
+    } else if (campMenu === "compare" && camp.isOwner) {
+      setIsPrePostTestModalOpen(true);
+    } else if (campMenu === "certificate" && camp.isOwner) {
+      setIsEditCertificateModalOpen(true);
+    }
+  }, [camp, campMenu, loading, survey, surveyLoading]);
 
   const fetchShirtCount = async () => {
     try {
@@ -383,7 +528,6 @@ export default function CampDetailPage() {
 
       let img_shirt_url = formData.shirtImage || "";
       let img_camp_url = formData.campImage || "";
-      let img_certificate_url = formData.certImage || "";
 
       // Upload new shirt images if files were picked
       let finalShirtUrls: (string | null)[] = [];
@@ -452,30 +596,6 @@ export default function CampDetailPage() {
         }
       }
 
-      // Upload new certificate image if a file was picked
-      if (formData.certImageFile) {
-        try {
-          const compressedFile = await compressImage(formData.certImageFile);
-          const uploadForm = new FormData();
-
-          uploadForm.append("file", compressedFile);
-          const uploadRes = await fetch("/api/upload", {
-            method: "POST",
-            body: uploadForm,
-          });
-
-          if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-
-            img_certificate_url = uploadData.url;
-          } else {
-            showError("อัปโหลดรูปล้มเหลว", "ไม่สามารถอัปโหลดรูปเกียรติบัตรได้");
-          }
-        } catch (uploadErr) {
-          console.error("Error during certificate image upload:", uploadErr);
-        }
-      }
-
       const response = await fetch(`/api/camps/${campId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -483,7 +603,6 @@ export default function CampDetailPage() {
           ...formData,
           img_shirt_url,
           img_camp_url,
-          img_certificate_url,
           cert_name_x: formData.certNameX,
           cert_name_y: formData.certNameY,
           cert_font_size: formData.certFontSize,
@@ -523,15 +642,7 @@ export default function CampDetailPage() {
   };
 
   if (loading) {
-    // ... existing loading state
-    return (
-      <div className="min-h-screen bg-[#f5f5f2] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">กำลังโหลดข้อมูลค่าย...</p>
-        </div>
-      </div>
-    );
+    return <CampOverviewSkeleton />;
   }
 
   if (!camp) {
@@ -551,22 +662,37 @@ export default function CampDetailPage() {
     );
   }
 
+  const currentScheduleSlot = camp.daily_schedule
+    ?.flatMap((day: any) =>
+      (day.timeSlots || []).map((slot: any) => ({ day: day.day, slot })),
+    )
+    .find(
+      ({ day, slot }: any) =>
+        getCampScheduleSlotState(
+          camp.start_date,
+          day,
+          slot.startTime,
+          slot.endTime,
+          scheduleNow,
+        ) === "current",
+    );
+
   // const totalActivities = ...
 
   return (
     <div className="min-h-screen bg-[#f5f5f2]">
       {/* Header Banner */}
-      <div className="max-w-7xl mx-auto px-4 pt-4 pb-2 z-10">
+      <div className="max-w-[1240px] mx-auto px-3 pt-3 pb-1 z-10">
         <button
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
+          className="flex items-center gap-0.5 text-[11px] text-gray-600 hover:text-gray-900 transition-colors mb-3"
           onClick={() => router.push("/headteacher/dashboard")}
         >
-          <ChevronLeft size={20} />
+          <ChevronLeft size={14} />
           <span className="font-medium">กลับไปยังหน้าหลัก</span>
         </button>
 
         <div
-          className="relative w-full rounded-[2rem] overflow-hidden min-h-[260px] flex flex-col justify-end p-6 md:p-8 shadow-sm border border-gray-100"
+          className="relative w-full rounded-[1.5rem] overflow-hidden min-h-[220px] flex flex-col justify-end p-5 md:p-6 shadow-sm border border-gray-100"
           style={
             !camp.img_camp_url
               ? { background: "linear-gradient(to right, #6b857a, #8ea69b)" }
@@ -585,28 +711,21 @@ export default function CampDetailPage() {
           <div className="absolute inset-0 bg-black/30 backdrop-blur-[3px] z-0" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-0" />
 
-          <div className="relative z-10 w-full flex flex-col gap-3">
-            {/* ID */}
-            <div className="flex items-center gap-3 mb-1">
-              <span className="text-gray-300 text-sm font-medium">
-                ID: {camp.camp_id}
-              </span>
-            </div>
-
+          <div className="relative z-10 w-full flex flex-col gap-2">
             {/* Title */}
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            <h1 className="text-lg md:text-xl font-bold text-white mb-1">
               {camp.name}
             </h1>
 
             {/* Bottom Row */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-6 text-gray-200 text-sm md:text-base font-medium">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-gray-200 text-xs md:text-sm font-medium">
                 <div className="flex items-center gap-2">
-                  <MapPin className="text-[#00C48C]" size={20} />
+                  <MapPin className="text-[#00C48C]" size={18} />
                   <span>{camp.location}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="text-[#00C48C]" size={20} />
+                  <Calendar className="text-[#00C48C]" size={18} />
                   <span>
                     {formatDate(camp.start_date)} – {formatDate(camp.end_date)}
                   </span>
@@ -614,20 +733,20 @@ export default function CampDetailPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {camp.isOwner && (
                   <>
                     <Button
                       isIconOnly
-                      className="bg-[#4a0d0d] text-white border border-[#ff847c]/10 hover:bg-[#5c1616] transition-colors h-11 w-11 rounded-xl"
+                      className="bg-[#4a0d0d] text-white border border-[#ff847c]/10 hover:bg-[#5c1616] transition-colors h-10 w-10 rounded-lg"
                       onPress={handleDeleteCamp}
                     >
-                      <Trash2 size={20} />
+                      <Trash2 size={18} />
                     </Button>
                     <Button
-                      className="bg-white text-[#1a3a32] font-bold hover:bg-gray-100 transition-colors h-11 px-6 rounded-xl shadow-sm"
+                      className="bg-white text-[#1a3a32] font-bold hover:bg-gray-100 transition-colors h-10 px-5 rounded-lg shadow-sm"
                       startContent={
-                        <Pencil className="text-[#1a3a32]" size={18} />
+                        <Pencil className="text-[#1a3a32]" size={16} />
                       }
                       onPress={() => setIsEditModalOpen(true)}
                     >
@@ -642,21 +761,23 @@ export default function CampDetailPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-[1240px] mx-auto px-3 py-5">
         {/* ... existing detailed content ... */}
         {/* Stats Summary */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div
+          className={`grid ${camp?.has_shirt ? "grid-cols-3" : "grid-cols-2"} gap-3 mb-6`}
+        >
           {/* Participants Card */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-2xl md:text-3xl font-bold text-[#6b857a] mb-0.5">
+          <div className="bg-white border border-gray-100 rounded-xl p-3 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-xl md:text-2xl font-bold text-[#6b857a] mb-0.5">
               {camp?.enrolled_student_count ?? 0}
               {Math.max(
                 camp?.enrolled_student_count ?? 0,
                 camp?.total_eligible_students ?? 0,
               ) > 0 && (
                 <>
-                  <span className="text-xl text-gray-300 mx-1">/</span>
-                  <span className="text-xl text-gray-400">
+                  <span className="text-lg text-gray-300 mx-1">/</span>
+                  <span className="text-lg text-gray-400">
                     {Math.max(
                       camp?.enrolled_student_count ?? 0,
                       camp?.total_eligible_students ?? 0,
@@ -665,233 +786,341 @@ export default function CampDetailPage() {
                 </>
               )}
             </p>
-            <p className="text-gray-400 text-[10px] font-medium mb-1">คน</p>
-            <p className="text-[#1a3a32] font-semibold text-sm">ผู้เข้าร่วม</p>
+            <p className="text-gray-400 text-[9px] font-medium mb-1">คน</p>
+            <p className="text-[#1a3a32] font-semibold text-xs">ผู้เข้าร่วม</p>
           </div>
 
           {/* Shirt Reservations Card */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-2xl md:text-3xl font-bold text-[#6b857a] mb-0.5">
-              {shirtCount ?? 0}
-            </p>
-            <p className="text-gray-400 text-[10px] font-medium mb-1">คน</p>
-            <p className="text-[#1a3a32] font-semibold text-sm">จองเสื้อ</p>
-          </div>
+          {camp?.has_shirt && (
+            <div className="bg-white border border-gray-100 rounded-xl p-3 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
+              <p className="text-xl md:text-2xl font-bold text-[#6b857a] mb-0.5">
+                {shirtCount ?? 0}
+              </p>
+              <p className="text-gray-400 text-[9px] font-medium mb-1">คน</p>
+              <p className="text-[#1a3a32] font-semibold text-xs">จองเสื้อ</p>
+            </div>
+          )}
 
           {/* Activities Card */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
-            <p className="text-2xl md:text-3xl font-bold text-[#6b857a] mb-0.5">
+          <div className="bg-white border border-gray-100 rounded-xl p-3 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-xl md:text-2xl font-bold text-[#6b857a] mb-0.5">
               {camp?.station?.length ?? 0}
             </p>
-            <p className="text-gray-400 text-[10px] font-medium mb-1">ฐาน</p>
-            <p className="text-[#1a3a32] font-semibold text-sm">กิจกรรม</p>
+            <p className="text-gray-400 text-[9px] font-medium mb-1">ฐาน</p>
+            <p className="text-[#1a3a32] font-semibold text-xs">กิจกรรม</p>
           </div>
         </div>
 
+        {/* Quick Actions are now provided by the camp Sidebar. */}
+        {camp
+          ? false && (
+              <div className="mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {camp?.isOwner && (
+                    <button
+                      className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                      onClick={() =>
+                        router.push(
+                          `/headteacher/dashboard/camp/${campId}/project-document`,
+                        )
+                      }
+                    >
+                      <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                        <FileText size={32} />
+                      </div>
+                      <span className="font-semibold text-sm text-center text-gray-700">
+                        เอกสาร
+                        <br />
+                        โครงการ
+                      </span>
+                    </button>
+                  )}
+                  {camp?.isOwner && (
+                    <button
+                      className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                      onClick={() => setIsCreateBaseModalOpen(true)}
+                    >
+                      <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                        <Target size={32} />
+                      </div>
+                      <span className="font-semibold text-sm text-center text-gray-700">
+                        สร้าง
+                        <br />
+                        ฐานกิจกรรม
+                      </span>
+                    </button>
+                  )}
+
+                  {camp?.isOwner && (
+                    <button
+                      className={`rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] cursor-pointer`}
+                      onClick={() =>
+                        survey !== null
+                          ? setIsSurveyResultsModalOpen(true)
+                          : setIsCreateSurveyModalOpen(true)
+                      }
+                    >
+                      <div
+                        className={`text-[#6b857a] group-hover:scale-110 transition-transform`}
+                      >
+                        {survey !== null ? (
+                          <BarChart3 size={32} />
+                        ) : (
+                          <ClipboardList size={32} />
+                        )}
+                      </div>
+                      <span
+                        className={`font-semibold text-sm text-center text-gray-700`}
+                      >
+                        {survey !== null ? (
+                          <>
+                            ดูผลการ
+                            <br />
+                            ตอบกลับ
+                          </>
+                        ) : (
+                          <>
+                            สร้าง
+                            <br />
+                            แบบสอบถาม
+                          </>
+                        )}
+                      </span>
+                    </button>
+                  )}
+
+                  {camp?.has_transport &&
+                    (camp?.isOwner || camp?.isHomeroomTeacher) && (
+                      <button
+                        className={`bg-white rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 border shadow-sm ${
+                          camp?.has_shirt
+                            ? "hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] group cursor-pointer"
+                            : "opacity-50 cursor-not-allowed border-gray-100 bg-gray-50"
+                        }`}
+                        disabled={!camp?.has_shirt}
+                        onClick={() => setIsShirtModalOpen(true)}
+                      >
+                        <div
+                          className={`text-[#6b857a] ${
+                            camp?.has_shirt
+                              ? "group-hover:scale-110 transition-transform"
+                              : ""
+                          }`}
+                        >
+                          <Shirt size={32} />
+                        </div>
+                        <span className="font-semibold text-sm text-center text-gray-700">
+                          รายการ
+                          <br />
+                          จองเสื้อ
+                        </span>
+                      </button>
+                    )}
+
+                  {camp?.isOwner && (
+                    <button
+                      className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                      onClick={() => setIsPrePostTestModalOpen(true)}
+                    >
+                      <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                        <TrendingUp size={32} />
+                      </div>
+                      <span className="font-semibold text-sm text-center text-gray-700">
+                        เปรียบเทียบ
+                        <br />
+                        คะแนน
+                      </span>
+                    </button>
+                  )}
+
+                  <button
+                    className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                    onClick={() => setIsTrackingModalOpen(true)}
+                  >
+                    <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                      <Users size={32} />
+                    </div>
+                    <span className="font-semibold text-sm text-center text-gray-700">
+                      ติดตาม
+                      <br />
+                      นักเรียน
+                    </span>
+                  </button>
+
+                  <button
+                    className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                    onClick={() =>
+                      router.push(
+                        `/headteacher/dashboard/camp/${campId}/attendance`,
+                      )
+                    }
+                  >
+                    <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                      <UserCheck size={32} />
+                    </div>
+                    <span className="font-semibold text-sm text-center text-gray-700">
+                      เช็คชื่อ
+                      <br />
+                      นักเรียน
+                    </span>
+                  </button>
+
+                  {(camp?.isOwner || camp?.isHomeroomTeacher) && (
+                    <button
+                      className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                      onClick={() =>
+                        router.push(
+                          `/headteacher/dashboard/camp/${campId}/bus-checkin`,
+                        )
+                      }
+                    >
+                      <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                        <Bus size={32} />
+                      </div>
+                      <span className="font-semibold text-sm text-center text-gray-700">
+                        เช็คชื่อ
+                        <br />
+                        ขึ้นรถ
+                      </span>
+                    </button>
+                  )}
+
+                  {camp?.isOwner && (
+                    <button
+                      className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                      onClick={() => setIsEditCertificateModalOpen(true)}
+                    >
+                      <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                        <Award size={32} />
+                      </div>
+                      <span className="font-semibold text-sm text-center text-gray-700">
+                        ตั้งค่า
+                        <br />
+                        เกียรติบัตร
+                      </span>
+                    </button>
+                  )}
+
+                  <button
+                    className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                    disabled={isStudentsLoading}
+                    onClick={() => {
+                      setIsStudentsLoading(true);
+                      router.push(
+                        `/headteacher/dashboard/camp/${campId}/students`,
+                      );
+                    }}
+                  >
+                    <div className="text-[#6b857a] group-hover:scale-110 transition-transform flex items-center justify-center w-[32px] h-[32px]">
+                      {isStudentsLoading ? (
+                        <div className="w-8 h-8 border-3 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <BookOpen size={32} />
+                      )}
+                    </div>
+                    <span className="font-semibold text-sm text-center text-gray-700">
+                      ข้อมูล
+                      <br />
+                      นักเรียน
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )
+          : null}
+
         {/* Quick Actions */}
-        <div className="mb-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {camp.isOwner && (
-              <button
-                className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                onClick={() => router.push(`/headteacher/dashboard/camp/${campId}/project-document`)}
-              >
-                <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                  <FileText size={32} />
-                </div>
-                <span className="font-semibold text-sm text-center text-gray-700">
-                  เอกสาร<br />โครงการ
-                </span>
-              </button>
-            )}
-            {camp.isOwner && (
-              <button
-                className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                onClick={() => setIsCreateBaseModalOpen(true)}
-              >
-                <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                  <Target size={32} />
-                </div>
-                <span className="font-semibold text-sm text-center text-gray-700">
-                  สร้าง
-                  <br />
-                  ฐานกิจกรรม
-                </span>
-              </button>
-            )}
-
-            {camp.isOwner && (
-              <button
-                className={`rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] cursor-pointer`}
-                onClick={() =>
-                  survey !== null
-                    ? setIsSurveyResultsModalOpen(true)
-                    : setIsCreateSurveyModalOpen(true)
-                }
-              >
-                <div
-                  className={`text-[#6b857a] group-hover:scale-110 transition-transform`}
-                >
-                  {survey !== null ? (
-                    <BarChart3 size={32} />
-                  ) : (
-                    <ClipboardList size={32} />
-                  )}
-                </div>
-                <span
-                  className={`font-semibold text-sm text-center text-gray-700`}
-                >
-                  {survey !== null ? (
-                    <>
-                      ดูผลการ
-                      <br />
-                      ตอบกลับ
-                    </>
-                  ) : (
-                    <>
-                      สร้าง
-                      <br />
-                      แบบสอบถาม
-                    </>
-                  )}
-                </span>
-              </button>
-            )}
-
-            {(camp.isOwner || camp.isHomeroomTeacher) && (
-              <button
-                className={`bg-white rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 border shadow-sm ${
-                  camp.has_shirt
-                    ? "hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] group cursor-pointer"
-                    : "opacity-50 cursor-not-allowed border-gray-100 bg-gray-50"
-                }`}
-                disabled={!camp.has_shirt}
-                onClick={() => setIsShirtModalOpen(true)}
-              >
-                <div
-                  className={`text-[#6b857a] ${
-                    camp.has_shirt
-                      ? "group-hover:scale-110 transition-transform"
-                      : ""
-                  }`}
-                >
-                  <Shirt size={32} />
-                </div>
-                <span className="font-semibold text-sm text-center text-gray-700">
-                  รายการ
-                  <br />
-                  จองเสื้อ
-                </span>
-              </button>
-            )}
-
-            {camp.isOwner && (
-              <button
-                className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                onClick={() => setIsPrePostTestModalOpen(true)}
-              >
-                <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                  <TrendingUp size={32} />
-                </div>
-                <span className="font-semibold text-sm text-center text-gray-700">
-                  เปรียบเทียบ
-                  <br />
-                  คะแนน
-                </span>
-              </button>
-            )}
-
+        <div className="mb-6">
+          <div className="mb-3">
+            <h3 className="text-base font-semibold text-gray-900">เมนูด่วน</h3>
+            <p className="text-xs text-gray-500">
+              งานที่ใช้บ่อยระหว่างดำเนินค่าย
+            </p>
+          </div>
+          <div
+            className={`grid ${
+              camp?.has_transport && (camp.isOwner || camp.isHomeroomTeacher)
+                ? "grid-cols-3"
+                : "grid-cols-2"
+            } gap-2 sm:gap-3`}
+          >
             <button
-              className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-              onClick={() => setIsTrackingModalOpen(true)}
+              className="group flex min-h-[8rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-gray-100 bg-white p-2 shadow-sm transition-all hover:border-[#6b857a] hover:bg-[#f0f4f2] sm:gap-2 sm:p-4"
+              onClick={() =>
+                router.push(`/headteacher/dashboard/camp/${campId}/attendance`)
+              }
             >
-              <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                <Users size={32} />
-              </div>
-              <span className="font-semibold text-sm text-center text-gray-700">
-                ติดตาม
-                <br />
-                นักเรียน
+              <UserCheck
+                className="h-6 w-6 text-[#6b857a] transition-transform group-hover:scale-110 sm:h-8 sm:w-8"
+                size={32}
+              />
+              <span className="text-center text-xs font-semibold leading-tight text-gray-700 sm:text-sm">
+                เช็คชื่อนักเรียน
               </span>
             </button>
 
-            <button
-              className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-              onClick={() => setIsAttendanceModalOpen(true)}
-            >
-              <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                <UserCheck size={32} />
-              </div>
-              <span className="font-semibold text-sm text-center text-gray-700">
-                เช็คชื่อ
-                <br />
-                นักเรียน
-              </span>
-            </button>
-
-            {camp.isOwner && (
-              <button
-                className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                onClick={() => setIsEditCertificateModalOpen(true)}
-              >
-                <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                  <Award size={32} />
-                </div>
-                <span className="font-semibold text-sm text-center text-gray-700">
-                  ตั้งค่า
-                  <br />
-                  เกียรติบัตร
-                </span>
-              </button>
-            )}
+            {camp?.has_transport &&
+              (camp.isOwner || camp.isHomeroomTeacher) && (
+                <button
+                  className="group flex min-h-[8rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-gray-100 bg-white p-2 shadow-sm transition-all hover:border-[#6b857a] hover:bg-[#f0f4f2] sm:gap-2 sm:p-4"
+                  onClick={() =>
+                    router.push(
+                      `/headteacher/dashboard/camp/${campId}/bus-checkin`,
+                    )
+                  }
+                >
+                  <Bus
+                    className="h-6 w-6 text-[#6b857a] transition-transform group-hover:scale-110 sm:h-8 sm:w-8"
+                    size={32}
+                  />
+                  <span className="text-center text-xs font-semibold leading-tight text-gray-700 sm:text-sm">
+                    เช็คชื่อขึ้นรถ
+                  </span>
+                </button>
+              )}
 
             <button
-              className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-              disabled={isStudentsLoading}
-              onClick={() => {
-                setIsStudentsLoading(true);
-                router.push(`/headteacher/dashboard/camp/${campId}/students`);
-              }}
+              className="group flex min-h-[8rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-gray-100 bg-white p-2 shadow-sm transition-all hover:border-[#6b857a] hover:bg-[#f0f4f2] sm:gap-2 sm:p-4"
+              onClick={() =>
+                router.push(`/headteacher/dashboard/camp/${campId}/tracking`)
+              }
             >
-              <div className="text-[#6b857a] group-hover:scale-110 transition-transform flex items-center justify-center w-[32px] h-[32px]">
-                {isStudentsLoading ? (
-                  <div className="w-8 h-8 border-3 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <BookOpen size={32} />
-                )}
-              </div>
-              <span className="font-semibold text-sm text-center text-gray-700">
-                ข้อมูล
-                <br />
-                นักเรียน
+              <Users
+                className="h-6 w-6 text-[#6b857a] transition-transform group-hover:scale-110 sm:h-8 sm:w-8"
+                size={32}
+              />
+              <span className="text-center text-xs font-semibold leading-tight text-gray-700 sm:text-sm">
+                ติดตามนักเรียน
               </span>
             </button>
           </div>
         </div>
 
         {/* Camp Information - Collapsible */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-8">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
           {/* Header - clickable toggle */}
           <button
-            className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
             onClick={() => setIsInfoOpen((prev) => !prev)}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#f0f4f2] flex items-center justify-center flex-shrink-0">
-                <MapPin className="text-[#6b857a]" size={18} />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-[#f0f4f2] flex items-center justify-center flex-shrink-0">
+                <MapPin className="text-[#6b857a]" size={16} />
               </div>
-              <h3 className="font-semibold text-gray-900">ข้อมูลค่าย</h3>
+              <h3 className="text-sm font-semibold text-gray-900">
+                ข้อมูลค่าย
+              </h3>
             </div>
             <div className="text-gray-400 transition-transform duration-200">
-              {isInfoOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              {isInfoOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </div>
           </button>
 
           {/* Collapsible Body */}
           {isInfoOpen && (
-            <div className="border-t border-gray-100 px-6 py-5">
-              <div className="flex flex-col md:flex-row gap-6">
-                <div className="flex-1 space-y-4 text-sm">
+            <div className="border-t border-gray-100 px-4 py-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 space-y-3 text-sm">
                   <div>
                     <div className="flex items-center gap-2 mb-2 font-medium text-gray-500">
                       <GraduationCap size={16} />
@@ -986,17 +1215,17 @@ export default function CampDetailPage() {
         </div>
 
         {/* Shirt Reservations - Collapsible */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-8">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
           {/* Header - clickable toggle */}
           <button
-            className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
             onClick={() => setIsShirtOpen((prev) => !prev)}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#f0f4f2] flex items-center justify-center flex-shrink-0">
-                <Shirt className="text-[#6b857a]" size={18} />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-[#f0f4f2] flex items-center justify-center flex-shrink-0">
+                <Shirt className="text-[#6b857a]" size={16} />
               </div>
-              <h3 className="font-semibold text-gray-900">
+              <h3 className="text-sm font-semibold text-gray-900">
                 การจองและจัดการเสื้อ
               </h3>
               {camp.has_shirt ? (
@@ -1013,18 +1242,18 @@ export default function CampDetailPage() {
             </div>
             <div className="text-gray-400 transition-transform duration-200">
               {isShirtOpen ? (
-                <ChevronUp size={20} />
+                <ChevronUp size={18} />
               ) : (
-                <ChevronDown size={20} />
+                <ChevronDown size={18} />
               )}
             </div>
           </button>
 
           {/* Collapsible Body */}
           {isShirtOpen && (
-            <div className="border-t border-gray-100 px-6 py-5">
+            <div className="border-t border-gray-100 px-4 py-4">
               {camp.has_shirt ? (
-                <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex flex-col md:flex-row gap-4">
                   {/* Left: Status + Date */}
                   <div className="flex-1 space-y-4">
                     <div>
@@ -1068,8 +1297,8 @@ export default function CampDetailPage() {
                   {(camp.isOwner || camp.isHomeroomTeacher) && (
                     <div className="flex-shrink-0 w-full md:w-56 bg-white border border-gray-100 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
                       <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <p className="text-sm font-medium text-gray-500">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-xs font-medium text-gray-500">
                             ยอดการจองทั้งหมด
                           </p>
                           <div className="w-8 h-8 bg-[#f0f4f2] rounded-lg flex items-center justify-center">
@@ -1077,7 +1306,7 @@ export default function CampDetailPage() {
                           </div>
                         </div>
                         <div className="flex items-baseline gap-2">
-                          <p className="text-4xl font-extrabold text-gray-900">
+                          <p className="text-3xl font-extrabold text-gray-900">
                             {shirtCount !== null ? shirtCount : "—"}
                           </p>
                           <span className="text-sm font-medium text-gray-500">
@@ -1087,7 +1316,7 @@ export default function CampDetailPage() {
                       </div>
 
                       <button
-                        className="w-full mt-5 flex items-center justify-center gap-2 text-sm font-semibold text-[#6b857a] bg-white border-2 border-[#6b857a] hover:bg-[#6b857a] hover:text-white rounded-xl py-2.5 px-4 transition-all"
+                        className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-[#6b857a] bg-white border-2 border-[#6b857a] hover:bg-[#6b857a] hover:text-white rounded-lg py-2 px-3 transition-all"
                         onClick={() => setIsShirtModalOpen(true)}
                       >
                         ดูรายการทั้งหมด
@@ -1131,71 +1360,119 @@ export default function CampDetailPage() {
         </div>
 
         {/* Complete Schedule - Collapsible */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-8">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
           {/* Header - clickable toggle */}
           <button
-            className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
             onClick={() => setIsScheduleOpen((prev) => !prev)}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#f0f4f2] flex items-center justify-center flex-shrink-0">
-                <Clock className="text-[#6b857a]" size={18} />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-[#f0f4f2] flex items-center justify-center flex-shrink-0">
+                <Clock className="text-[#6b857a]" size={16} />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 text-left">
+                <h3 className="text-sm font-semibold text-gray-900 text-left">
                   กำหนดการค่าย
                 </h3>
               </div>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                 {camp.daily_schedule?.length || 0} วัน
               </span>
+              {currentScheduleSlot && (
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                  ตอนนี้: {currentScheduleSlot.slot.activity}
+                </span>
+              )}
             </div>
             <div className="text-gray-400 transition-transform duration-200">
               {isScheduleOpen ? (
-                <ChevronUp size={20} />
+                <ChevronUp size={18} />
               ) : (
-                <ChevronDown size={20} />
+                <ChevronDown size={18} />
               )}
             </div>
           </button>
 
           {/* Collapsible Body */}
           {isScheduleOpen && (
-            <div className="border-t border-gray-100 px-6 py-5 space-y-6">
-              {camp.daily_schedule?.map((day: any, dayIndex: number) => (
-                <div key={dayIndex}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-semibold text-gray-700">
-                      {day.day}
-                    </div>
-                    <h4 className="font-semibold text-gray-900">
-                      วันที่ {day.day}
-                    </h4>
-                  </div>
+            <div className="border-t border-gray-100 px-4 py-4 space-y-4">
+              {camp.daily_schedule?.map((day: any, dayIndex: number) => {
+                const isToday = isCampScheduleDayToday(
+                  camp.start_date,
+                  day.day,
+                  scheduleNow,
+                );
 
-                  <div className="space-y-3 ml-13">
-                    {day.timeSlots.map((slot: any, slotIndex: number) => (
-                      <div
-                        key={slotIndex}
-                        className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex items-center gap-2 text-gray-600 min-w-[120px]">
-                          <Clock size={16} />
-                          <span className="text-sm font-medium">
-                            {formatTime(slot.startTime)} -{" "}
-                            {formatTime(slot.endTime)}
-                          </span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-gray-900 font-medium">
-                            {slot.activity}
-                          </p>
-                        </div>
+                return (
+                  <div
+                    key={dayIndex}
+                    className={
+                      isToday
+                        ? "rounded-xl border border-emerald-200 bg-emerald-50/30 p-3"
+                        : ""
+                    }
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm font-semibold text-gray-700">
+                        {day.day}
                       </div>
-                    ))}
+                      <h4 className="font-semibold text-gray-900">
+                        วันที่ {day.day}
+                      </h4>
+                      {isToday && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                          วันนี้
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 ml-10">
+                      {day.timeSlots.map((slot: any, slotIndex: number) => {
+                        const isCurrent =
+                          getCampScheduleSlotState(
+                            camp.start_date,
+                            day.day,
+                            slot.startTime,
+                            slot.endTime,
+                            scheduleNow,
+                          ) === "current";
+
+                        return (
+                          <div
+                            key={slotIndex}
+                            aria-current={isCurrent ? "step" : undefined}
+                            className={`flex flex-col items-stretch gap-2 rounded-lg p-3 transition-colors sm:flex-row sm:items-center sm:gap-3 ${
+                              isCurrent
+                                ? "bg-emerald-100 ring-1 ring-inset ring-emerald-300"
+                                : "bg-gray-50 hover:bg-gray-100"
+                            }`}
+                          >
+                            <div className="flex w-full flex-wrap items-center gap-2 text-gray-600 sm:w-auto sm:min-w-[120px] sm:flex-shrink-0">
+                              <Clock size={16} />
+                              <span className="text-xs font-medium">
+                                {formatTime(slot.startTime)} -{" "}
+                                {formatTime(slot.endTime)}
+                              </span>
+                              {isCurrent && (
+                                <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white">
+                                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                                  กำลังดำเนินการ
+                                </span>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-gray-900 font-medium">
+                                {slot.activity}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {(!camp.daily_schedule || camp.daily_schedule.length === 0) && (
                 <div className="text-center py-6 text-gray-500">
                   ไม่มีข้อมูลกำหนดการ
@@ -1442,20 +1719,29 @@ export default function CampDetailPage() {
       <EditCertificateModal
         campData={camp}
         isOpen={isEditCertificateModalOpen}
-        onClose={() => setIsEditCertificateModalOpen(false)}
+        onClose={() => {
+          setIsEditCertificateModalOpen(false);
+          clearCampMenu();
+        }}
         onSuccess={fetchCampDetail}
       />
 
       <CreateBaseModal
         campId={Number(campId)}
         isOpen={isCreateBaseModalOpen}
-        onClose={() => setIsCreateBaseModalOpen(false)}
+        onClose={() => {
+          setIsCreateBaseModalOpen(false);
+          clearCampMenu();
+        }}
       />
 
       <EditBaseModal
         baseData={selectedBase}
         isOpen={isEditBaseModalOpen}
-        onClose={() => setIsEditBaseModalOpen(false)}
+        onClose={() => {
+          setIsEditBaseModalOpen(false);
+          clearCampMenu();
+        }}
         onSuccess={fetchCampDetail}
       />
 
@@ -1463,7 +1749,10 @@ export default function CampDetailPage() {
         campId={Number(campId)}
         isOpen={isCreateSurveyModalOpen}
         teacherId={camp?.created_by_teacher_id || 0}
-        onClose={() => setIsCreateSurveyModalOpen(false)}
+        onClose={() => {
+          setIsCreateSurveyModalOpen(false);
+          clearCampMenu();
+        }}
         onSurveyCreated={fetchSurvey}
       />
 
@@ -1472,14 +1761,20 @@ export default function CampDetailPage() {
         initialData={survey}
         isOpen={isEditSurveyModalOpen}
         teacherId={camp?.created_by_teacher_id || 0}
-        onClose={() => setIsEditSurveyModalOpen(false)}
+        onClose={() => {
+          setIsEditSurveyModalOpen(false);
+          clearCampMenu();
+        }}
         onSurveyCreated={fetchSurvey}
       />
 
       <SurveyResultsModal
         campId={Number(campId)}
         isOpen={isSurveyResultsModalOpen}
-        onClose={() => setIsSurveyResultsModalOpen(false)}
+        onClose={() => {
+          setIsSurveyResultsModalOpen(false);
+          clearCampMenu();
+        }}
       />
 
       <TrackingModal
@@ -1487,7 +1782,11 @@ export default function CampDetailPage() {
         campName={camp?.name || ""}
         isOpen={isTrackingModalOpen}
         locationTrackingEnabled={Boolean(camp?.location_sharing_enabled)}
-        onClose={() => setIsTrackingModalOpen(false)}
+        view="progress"
+        onClose={() => {
+          setIsTrackingModalOpen(false);
+          clearCampMenu();
+        }}
       />
 
       {camp && (
@@ -1495,7 +1794,10 @@ export default function CampDetailPage() {
           campId={camp.camp_id}
           campName={camp.name}
           isOpen={isShirtModalOpen}
-          onClose={() => setIsShirtModalOpen(false)}
+          onClose={() => {
+            setIsShirtModalOpen(false);
+            clearCampMenu();
+          }}
         />
       )}
 
@@ -1504,13 +1806,30 @@ export default function CampDetailPage() {
           campId={camp.camp_id}
           campName={camp.name}
           isOpen={isAttendanceModalOpen}
-          onClose={() => setIsAttendanceModalOpen(false)}
+          onClose={() => {
+            setIsAttendanceModalOpen(false);
+            clearCampMenu();
+          }}
+        />
+      )}
+      {camp && (
+        <BusManagementModal
+          campId={camp.camp_id}
+          campName={camp.name}
+          isOpen={isBusModalOpen}
+          onClose={() => {
+            setIsBusModalOpen(false);
+            clearCampMenu();
+          }}
         />
       )}
       <PrePostTestModal
         campId={Number(campId)}
         isOpen={isPrePostTestModalOpen}
-        onClose={() => setIsPrePostTestModalOpen(false)}
+        onClose={() => {
+          setIsPrePostTestModalOpen(false);
+          clearCampMenu();
+        }}
       />
 
       {selectedImage && (

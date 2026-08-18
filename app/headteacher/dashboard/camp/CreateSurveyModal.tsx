@@ -12,6 +12,7 @@ import {
 } from "@heroui/react";
 import { useState, useEffect } from "react";
 import {
+  ArrowLeft,
   Plus,
   Trash2,
   FileText,
@@ -54,6 +55,7 @@ interface CreateSurveyModalProps {
   teacherId: number;
   onSurveyCreated: () => void;
   initialData?: any;
+  pageMode?: boolean;
 }
 
 const inputCls =
@@ -66,6 +68,7 @@ export default function CreateSurveyModal({
   teacherId,
   onSurveyCreated,
   initialData,
+  pageMode = false,
 }: CreateSurveyModalProps) {
   const { showError, showSuccess, showConfirm } = useStatusModal();
 
@@ -81,7 +84,6 @@ export default function CreateSurveyModal({
   const [templateTitle, setTemplateTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [globalScaleMax, setGlobalScaleMax] = useState<number>(5);
-  const [isRequiredForCert, setIsRequiredForCert] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
@@ -110,11 +112,6 @@ export default function CreateSurveyModal({
             setGlobalScaleMax(5);
           }
         }
-        setIsRequiredForCert(
-          initialData.is_required_for_cert !== undefined
-            ? initialData.is_required_for_cert
-            : true,
-        );
       } else {
         // Reset for create mode
         setTitle("");
@@ -124,7 +121,6 @@ export default function CreateSurveyModal({
           { text: "", type: "text", scaleMax: 5 },
         ]);
         setGlobalScaleMax(5);
-        setIsRequiredForCert(true);
       }
       setSaveAsTemplate(false);
       setTemplateTitle("");
@@ -341,7 +337,6 @@ export default function CreateSurveyModal({
           saveAsTemplate,
           templateTitle: templateTitle || finalTitle,
           teacherId,
-          isRequiredForCert,
         }),
       });
 
@@ -377,29 +372,65 @@ export default function CreateSurveyModal({
       <Modal
         backdrop="opaque"
         classNames={{
-          base: "bg-[#f0f2f5] rounded-xl shadow-2xl overflow-hidden",
-          backdrop: "bg-black/40",
+          base: pageMode
+            ? "!m-0 !h-full !min-h-0 !max-h-none w-full !max-w-none rounded-none bg-[#f5f5f2] shadow-none"
+            : "bg-[#f0f2f5] rounded-xl shadow-2xl overflow-hidden",
+          backdrop: pageMode ? "hidden" : "bg-black/40",
+          wrapper: pageMode ? "camp-page-modal items-start p-0" : undefined,
         }}
+        hideCloseButton={pageMode}
+        isDismissable={!pageMode}
         isOpen={isOpen}
         scrollBehavior="inside"
         size="5xl"
         onOpenChange={handleClose}
       >
-        <ModalContent>
+        <ModalContent
+          className={
+            pageMode
+              ? "!m-0 !h-full !min-h-0 !max-h-none !rounded-none !bg-[#f5f5f2] !shadow-none overflow-y-auto"
+              : undefined
+          }
+        >
           {() => (
             <>
               {/* ── Top Header Bar (Google Forms style) ── */}
-              <ModalHeader className="bg-white border-b border-gray-200 px-6 py-4 flex flex-col gap-1 z-10 shadow-sm rounded-t-xl shrink-0">
-                <div className="flex justify-between items-center w-full">
+              <ModalHeader
+                className={`relative z-10 flex shrink-0 flex-col gap-1 px-6 ${
+                  pageMode
+                    ? "mx-auto w-full max-w-6xl border-0 pb-8 pt-8 sm:px-8"
+                    : "rounded-t-xl border-b border-gray-200 bg-white py-4 shadow-sm"
+                }`}
+              >
+                {pageMode && (
+                  <button
+                    className="mb-6 inline-flex w-fit items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
+                    type="button"
+                    onClick={handleClose}
+                  >
+                    <ArrowLeft size={14} />
+                    กลับไปยังหน้าหลัก
+                  </button>
+                )}
+
+                <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div className="flex items-center gap-2">
-                    <FileText className="text-[#6b857a]" size={24} />
-                    <h2 className="text-lg font-medium text-gray-800">
+                    {pageMode ? (
+                      <FileText className="shrink-0 text-[#6b857a]" size={20} />
+                    ) : (
+                      <FileText className="text-[#6b857a]" size={24} />
+                    )}
+                    <h2
+                      className={`${
+                        pageMode ? "text-lg leading-tight" : "text-lg"
+                      } font-medium text-gray-800`}
+                    >
                       {isEditing ? "แก้ไขแบบสอบถาม" : "แบบฟอร์มแบบสอบถาม"}
                     </h2>
                   </div>
                   <div className="flex items-center gap-3">
                     <Button
-                      className="font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md"
+                      className="rounded-md bg-gray-100 font-medium text-gray-600 hover:bg-gray-200"
                       size="sm"
                       variant="flat"
                       onPress={handleClose}
@@ -407,7 +438,7 @@ export default function CreateSurveyModal({
                       ยกเลิก
                     </Button>
                     <Button
-                      className="bg-[#6b857a] text-white rounded-md font-medium shadow-sm hover:bg-[#5a7268]"
+                      className="rounded-md bg-[#6b857a] font-medium text-white shadow-sm hover:bg-[#5a7268]"
                       isLoading={loading}
                       size="sm"
                       onPress={handleSubmit}
@@ -418,13 +449,23 @@ export default function CreateSurveyModal({
                 </div>
               </ModalHeader>
 
-              <ModalBody className="py-6 px-4 sm:px-12 space-y-6">
+              <ModalBody
+                className={
+                  pageMode
+                    ? "mx-auto block w-full max-w-6xl space-y-6 overflow-visible bg-[#f5f5f2] px-4 pb-10 pt-0 sm:px-8"
+                    : "space-y-6 px-4 py-6 sm:px-12"
+                }
+              >
                 {/* ── Header Card ── */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden relative">
+                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                   <div className="absolute top-0 left-0 right-0 h-2.5 bg-[#6b857a]" />
-                  <div className="p-8 pt-10 space-y-4">
+                  <div
+                    className={
+                      pageMode ? "space-y-4 p-6 pt-8" : "space-y-4 p-8 pt-10"
+                    }
+                  >
                     <input
-                      className="w-full text-3xl font-medium border-b border-transparent hover:border-gray-200 focus:border-[#6b857a] focus:border-b-2 outline-none pb-2 transition-all"
+                      className={`w-full border-b border-transparent pb-2 font-medium outline-none transition-all hover:border-gray-200 focus:border-[#6b857a] focus:border-b-2 ${pageMode ? "text-2xl" : "text-3xl"}`}
                       placeholder="ฟอร์มไม่มีชื่อ"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -441,7 +482,7 @@ export default function CreateSurveyModal({
 
                 {/* ── Template Banner ── */}
                 <div
-                  className="bg-gradient-to-r from-[#6b857a]/10 to-transparent border border-[#6b857a]/20 hover:border-[#6b857a]/50 rounded-xl p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer group transition-all gap-4"
+                  className={`group flex cursor-pointer flex-col justify-between gap-4 rounded-xl border border-[#6b857a]/20 bg-gradient-to-r from-[#6b857a]/10 to-transparent transition-all hover:border-[#6b857a]/50 sm:flex-row sm:items-center ${pageMode ? "p-4 sm:p-5" : "p-4 sm:p-6"}`}
                   onClick={() => setShowTemplates(true)}
                 >
                   <div className="flex items-center gap-4">
@@ -468,7 +509,9 @@ export default function CreateSurveyModal({
                 </div>
 
                 {/* ── Settings Card ── */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+                <div
+                  className={`space-y-4 rounded-xl border border-gray-200 bg-white shadow-sm ${pageMode ? "p-5" : "p-6"}`}
+                >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8">
                     <div className="flex items-center justify-between w-full">
                       <label className="text-sm font-medium text-gray-700">
@@ -479,18 +522,6 @@ export default function CreateSurveyModal({
                         isSelected={saveAsTemplate}
                         size="sm"
                         onValueChange={setSaveAsTemplate}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between w-full">
-                      <label className="text-sm font-medium text-gray-700">
-                        จำเป็นต้องทำแบบสอบถามก่อนรับเกียรติบัตร
-                      </label>
-                      <Switch
-                        color="success"
-                        isSelected={isRequiredForCert}
-                        size="sm"
-                        onValueChange={setIsRequiredForCert}
                       />
                     </div>
                   </div>
@@ -512,7 +543,7 @@ export default function CreateSurveyModal({
                   {questions.map((q, i) => (
                     <div
                       key={i}
-                      className={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col gap-5 relative group ${
+                      className={`relative flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm group ${pageMode ? "gap-4 p-5" : "gap-5 p-6"} ${
                         q.type === "header"
                           ? "border-l-4 border-l-purple-500"
                           : ""
@@ -813,7 +844,13 @@ export default function CreateSurveyModal({
                   ))}
 
                   {/* ── Floating Add Action Bar ── */}
-                  <div className="flex justify-center sticky bottom-6 z-20">
+                  <div
+                    className={
+                      pageMode
+                        ? "flex justify-center pb-4 pt-2"
+                        : "sticky bottom-6 z-20 flex justify-center"
+                    }
+                  >
                     <div className="bg-white rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.1)] border border-gray-200 px-2 py-2 flex items-center gap-1">
                       <button
                         className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"

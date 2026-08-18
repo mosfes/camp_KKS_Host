@@ -132,7 +132,7 @@ export default function BaseDetailPage() {
 
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 break-words">
+            <h1 className="text-xl font-bold text-gray-900 mb-2 break-words">
               {base.name}
             </h1>
             <p className="text-gray-600 break-words whitespace-pre-wrap">
