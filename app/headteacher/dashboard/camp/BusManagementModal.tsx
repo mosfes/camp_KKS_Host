@@ -29,6 +29,10 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import {
+  BUS_LAYOUT_TEMPLATES,
+  getBusLayoutTemplate,
+} from "@/lib/camp-bus-layout-templates";
 
 type Classroom = {
   classroomId: number;
@@ -80,6 +84,7 @@ type Bus = {
   name: string;
   registrationPlate: string;
   floorCount: number;
+  layoutTemplateId: string | null;
   status: "PARKED" | "TRAVELING";
   lastParkedAt: string | null;
   lastDepartedAt: string | null;
@@ -169,6 +174,12 @@ function rowCountLabel(floorNumber: number, floorCount: number) {
   const label = floorLabel(floorNumber, floorCount);
 
   return label ? `จำนวนแถว ${label}` : "จำนวนแถว";
+}
+
+function seatGridColumnClass(seatIndex: number) {
+  return ["col-start-1", "col-start-2", "col-start-4", "col-start-5"][
+    seatIndex
+  ];
 }
 
 function BusManagementSkeleton() {
@@ -328,6 +339,7 @@ export default function BusManagementModal({
   const [createForm, setCreateForm] = useState({
     classroomId: "",
     name: "",
+    layoutTemplateId: "custom",
     floorCount: "1",
     rowCounts: [10] as RowCountValue[],
   });
@@ -351,6 +363,7 @@ export default function BusManagementModal({
             busId: selectedBus.busId,
             name: selectedBus.name,
             floorCount: selectedBus.floorCount,
+            layoutTemplateId: selectedBus.layoutTemplateId,
             floors: selectedBus.floors.map((floor) => ({
               floorId: floor.floorId,
               floorNumber: floor.floorNumber,
@@ -368,6 +381,9 @@ export default function BusManagementModal({
     [selectedBus],
   );
   const hasMultipleFloors = selectedBus ? selectedBus.floorCount > 1 : false;
+  const selectedLayoutTemplate = getBusLayoutTemplate(
+    selectedBus?.layoutTemplateId,
+  );
 
   const currentFloor = selectedBus?.floors.find(
     (floor) => floor.floorNumber === selectedFloor,
@@ -592,8 +608,12 @@ export default function BusManagementModal({
   }, [selectedBusLayoutVersion]);
 
   const handleCreate = async () => {
-    const floorCount = Number(createForm.floorCount);
-    const rowCountValues = createForm.rowCounts.slice(0, floorCount);
+    const layoutTemplate = getBusLayoutTemplate(createForm.layoutTemplateId);
+    const floorCount =
+      layoutTemplate?.floors.length || Number(createForm.floorCount);
+    const rowCountValues = layoutTemplate
+      ? layoutTemplate.floors.map((floor) => floor.rowCount)
+      : createForm.rowCounts.slice(0, floorCount);
 
     if (
       rowCountValues.length !== floorCount ||
@@ -621,6 +641,7 @@ export default function BusManagementModal({
           registrationPlate: "",
           floorCount,
           rowCounts,
+          layoutTemplateId: layoutTemplate?.id,
         }),
       });
       const data = await response.json();
@@ -632,6 +653,7 @@ export default function BusManagementModal({
       setCreateForm({
         classroomId: "",
         name: "",
+        layoutTemplateId: "custom",
         floorCount: "1",
         rowCounts: [10],
       });
@@ -682,6 +704,7 @@ export default function BusManagementModal({
             registrationPlate: selectedBus.registrationPlate || "",
             floorCount,
             rowCounts,
+            layoutTemplateId: selectedLayoutTemplate?.id,
           }),
         },
       );
@@ -1233,80 +1256,149 @@ export default function BusManagementModal({
                           }
                         />
                       </label>
-                      <div className="text-sm font-semibold text-gray-700 md:col-span-2">
-                        จำนวนชั้น
-                        <FloorCountRadioGroup
-                          name="create-floor-count"
-                          value={createForm.floorCount}
-                          onChange={(value) => {
-                            const floorCount = Number(value);
-
-                            setCreateForm((form) => ({
-                              ...form,
-                              floorCount: value,
-                              rowCounts:
-                                floorCount === 2
-                                  ? [
-                                      form.rowCounts[0] || 10,
-                                      form.rowCounts[1] || 10,
-                                    ]
-                                  : [form.rowCounts[0] || 10],
-                            }));
-                          }}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 md:col-span-2">
-                        {createForm.rowCounts
-                          .map((rowCount, index) => ({ rowCount, index }))
-                          .reverse()
-                          .map(({ rowCount, index }) => (
-                            <label
-                              key={index}
-                              className="text-sm font-semibold text-gray-700"
+                      <div className="md:col-span-2">
+                        <p className="text-sm font-semibold text-gray-700">
+                          เทมเพลตผังรถ
+                        </p>
+                        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                          <button
+                            className={`rounded-2xl border p-4 text-left transition ${
+                              createForm.layoutTemplateId === "custom"
+                                ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
+                                : "border-gray-200 bg-white hover:border-[#9ab4a7]"
+                            }`}
+                            type="button"
+                            onClick={() =>
+                              setCreateForm((form) => ({
+                                ...form,
+                                layoutTemplateId: "custom",
+                              }))
+                            }
+                          >
+                            <span className="block text-sm font-bold text-gray-900">
+                              ผังรถทั่วไป
+                            </span>
+                            <span className="mt-1 block text-xs font-normal text-gray-500">
+                              กำหนดจำนวนชั้นและจำนวนแถวเอง
+                            </span>
+                          </button>
+                          {BUS_LAYOUT_TEMPLATES.map((template) => (
+                            <button
+                              key={template.id}
+                              className={`rounded-2xl border p-4 text-left transition ${
+                                createForm.layoutTemplateId === template.id
+                                  ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
+                                  : "border-gray-200 bg-white hover:border-[#9ab4a7]"
+                              }`}
+                              type="button"
+                              onClick={() =>
+                                setCreateForm((form) => ({
+                                  ...form,
+                                  name: form.name || template.defaultBusName,
+                                  layoutTemplateId: template.id,
+                                  floorCount: String(template.floors.length),
+                                  rowCounts: template.floors.map(
+                                    (floor) => floor.rowCount,
+                                  ),
+                                }))
+                              }
                             >
-                              {rowCountLabel(
-                                index + 1,
-                                Number(createForm.floorCount),
-                              )}
-                              <input
-                                className={[
-                                  "mt-1 w-full rounded-xl border px-3 py-2.5 font-normal outline-none focus:border-[#6b857a]",
-                                  rowCount === ""
-                                    ? "border-red-400 bg-red-50"
-                                    : "border-gray-200",
-                                ].join(" ")}
-                                inputMode="numeric"
-                                max={50}
-                                min={1}
-                                type="number"
-                                value={rowCount}
-                                onChange={(event) => {
-                                  const value = event.target.value;
-
-                                  setCreateForm((form) => ({
-                                    ...form,
-                                    rowCounts: form.rowCounts.map(
-                                      (currentValue, rowIndex) =>
-                                        rowIndex === index
-                                          ? value === ""
-                                            ? ""
-                                            : Math.max(1, Number(value))
-                                          : currentValue,
-                                    ),
-                                  }));
-                                }}
-                              />
-                              {rowCount === "" && (
-                                <span className="mt-1 block text-xs font-normal text-red-600">
-                                  กรุณากรอกจำนวนแถว
+                              <span className="flex items-center justify-between gap-2 text-sm font-bold text-gray-900">
+                                {template.name}
+                                <span className="rounded-full bg-[#dce9e1] px-2 py-0.5 text-[10px] font-semibold text-[#365f4f]">
+                                  เจ้าประจำ
                                 </span>
-                              )}
-                              <span className="mt-1 block text-xs font-normal text-gray-400">
-                                4 ที่นั่งต่อแถว
                               </span>
-                            </label>
+                              <span className="mt-1 block text-xs font-normal text-gray-500">
+                                {template.description}
+                              </span>
+                            </button>
                           ))}
+                        </div>
                       </div>
+                      {createForm.layoutTemplateId === "custom" ? (
+                        <>
+                          <div className="text-sm font-semibold text-gray-700 md:col-span-2">
+                            จำนวนชั้น
+                            <FloorCountRadioGroup
+                              name="create-floor-count"
+                              value={createForm.floorCount}
+                              onChange={(value) => {
+                                const floorCount = Number(value);
+
+                                setCreateForm((form) => ({
+                                  ...form,
+                                  floorCount: value,
+                                  rowCounts:
+                                    floorCount === 2
+                                      ? [
+                                          form.rowCounts[0] || 10,
+                                          form.rowCounts[1] || 10,
+                                        ]
+                                      : [form.rowCounts[0] || 10],
+                                }));
+                              }}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                            {createForm.rowCounts
+                              .map((rowCount, index) => ({ rowCount, index }))
+                              .reverse()
+                              .map(({ rowCount, index }) => (
+                                <label
+                                  key={index}
+                                  className="text-sm font-semibold text-gray-700"
+                                >
+                                  {rowCountLabel(
+                                    index + 1,
+                                    Number(createForm.floorCount),
+                                  )}
+                                  <input
+                                    className={[
+                                      "mt-1 w-full rounded-xl border px-3 py-2.5 font-normal outline-none focus:border-[#6b857a]",
+                                      rowCount === ""
+                                        ? "border-red-400 bg-red-50"
+                                        : "border-gray-200",
+                                    ].join(" ")}
+                                    inputMode="numeric"
+                                    max={50}
+                                    min={1}
+                                    type="number"
+                                    value={rowCount}
+                                    onChange={(event) => {
+                                      const value = event.target.value;
+
+                                      setCreateForm((form) => ({
+                                        ...form,
+                                        rowCounts: form.rowCounts.map(
+                                          (currentValue, rowIndex) =>
+                                            rowIndex === index
+                                              ? value === ""
+                                                ? ""
+                                                : Math.max(1, Number(value))
+                                              : currentValue,
+                                        ),
+                                      }));
+                                    }}
+                                  />
+                                  {rowCount === "" && (
+                                    <span className="mt-1 block text-xs font-normal text-red-600">
+                                      กรุณากรอกจำนวนแถว
+                                    </span>
+                                  )}
+                                  <span className="mt-1 block text-xs font-normal text-gray-400">
+                                    4 ที่นั่งต่อแถว
+                                  </span>
+                                </label>
+                              ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="rounded-xl border border-[#dce8e0] bg-[#f7faf8] px-4 py-3 text-xs leading-relaxed text-[#365f4f] md:col-span-2">
+                          ระบบจะสร้างหมายเลขที่นั่ง 1–50 ตามผังจริงให้ทันที
+                          พร้อมช่องว่างบริเวณบันได โซฟา โต๊ะกลาง และห้องน้ำ
+                        </div>
+                      )}
                       <div className="flex items-end justify-end gap-2 md:col-span-2">
                         {buses.length > 0 && (
                           <Button
@@ -1444,8 +1536,9 @@ export default function BusManagementModal({
                           คลิกตำแหน่ง แล้วเลือกชื่อนักเรียนที่นั่งตรงนั้น
                         </p>
                         <p className="mt-1 text-[11px] text-gray-400">
-                          บันทึกผังครั้งแรก = อยู่บนรถแล้ว · A/D ติดหน้าต่าง ·
-                          B/C ติดทางเดิน
+                          {selectedLayoutTemplate
+                            ? `ใช้เทมเพลต ${selectedLayoutTemplate.name} · หมายเลขที่นั่งตามผังจริง`
+                            : "บันทึกผังครั้งแรก = อยู่บนรถแล้ว · A/D ติดหน้าต่าง · B/C ติดทางเดิน"}
                         </p>
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
                           <span className="rounded-full bg-[#e8f2ed] px-2.5 py-1 font-semibold text-[#365f4f]">
@@ -1506,7 +1599,7 @@ export default function BusManagementModal({
                                     key={rowIndex}
                                     className="grid grid-cols-[1fr_1fr_0.35fr_1fr_1fr] gap-1.5"
                                   >
-                                    {rowPositions.map((position, index) => {
+                                    {rowPositions.map((position) => {
                                       const assignmentId = Object.entries(
                                         draftAssignments,
                                       ).find(
@@ -1529,7 +1622,7 @@ export default function BusManagementModal({
                                       return (
                                         <button
                                           key={position.positionId}
-                                          className={`min-h-16 min-w-0 overflow-hidden rounded-xl border p-1.5 text-center transition ${seatStateClass} ${selectedPositionId === position.positionId ? "border-[#365f4f] ring-2 ring-[#6b857a]/30" : ""} ${index === 2 ? "col-start-4" : ""}`}
+                                          className={`min-h-16 min-w-0 overflow-hidden rounded-xl border p-1.5 text-center transition ${seatStateClass} ${selectedPositionId === position.positionId ? "border-[#365f4f] ring-2 ring-[#6b857a]/30" : ""} ${seatGridColumnClass(position.seatIndex)}`}
                                           disabled={savingAction !== null}
                                           title={
                                             assignment
@@ -1942,7 +2035,7 @@ export default function BusManagementModal({
                               key={rowIndex}
                               className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_0.35fr_minmax(0,1fr)_minmax(0,1fr)] gap-1"
                             >
-                              {rowPositions.map((position, index) => {
+                              {rowPositions.map((position) => {
                                 const assignmentId = Object.entries(
                                   draftAssignments,
                                 ).find(
@@ -1969,7 +2062,7 @@ export default function BusManagementModal({
                                       isCurrent
                                         ? "border-[#365f4f] ring-2 ring-[#6b857a]/30 shadow-sm"
                                         : "",
-                                      index === 2 ? "col-start-4" : "",
+                                      seatGridColumnClass(position.seatIndex),
                                     ].join(" ")}
                                     type="button"
                                     onClick={() =>
@@ -2443,7 +2536,9 @@ export default function BusManagementModal({
                   แก้ไขข้อมูลรถและผัง
                 </p>
                 <p className="mt-1 text-xs font-normal text-gray-500">
-                  ปรับจำนวนชั้นและจำนวนแถว แล้วบันทึกได้ตลอดเวลา
+                  {selectedLayoutTemplate
+                    ? "แก้ไขชื่อรถได้ โดยระบบจะรักษาผังเทมเพลตเดิมไว้"
+                    : "ปรับจำนวนชั้นและจำนวนแถว แล้วบันทึกได้ตลอดเวลา"}
                 </p>
               </div>
             </ModalHeader>
@@ -2462,80 +2557,96 @@ export default function BusManagementModal({
                     }
                   />
                 </label>
-                <div className="space-y-3">
-                  <div className="block text-sm font-semibold text-gray-700">
-                    จำนวนชั้น
-                    <FloorCountRadioGroup
-                      disabled={savingAction !== null}
-                      name="edit-floor-count"
-                      value={editBusForm.floorCount}
-                      onChange={(value) => {
-                        const floorCount = Number(value);
-
-                        setEditBusForm((form) => ({
-                          ...form,
-                          floorCount: value,
-                          rowCounts:
-                            floorCount === 2
-                              ? [
-                                  form.rowCounts[0] || 10,
-                                  form.rowCounts[1] || 10,
-                                ]
-                              : [form.rowCounts[0] || 10],
-                        }));
-                      }}
-                    />
+                {selectedLayoutTemplate ? (
+                  <div className="rounded-2xl border border-[#cfe0d6] bg-[#edf5f0] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-[#365f4f]">
+                          {selectedLayoutTemplate.name}
+                        </p>
+                        <p className="mt-1 text-xs text-[#587466]">
+                          {selectedLayoutTemplate.description}
+                        </p>
+                      </div>
+                      <Check className="shrink-0 text-[#6b857a]" size={20} />
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {editBusForm.rowCounts
-                      .map((rowCount, index) => ({ rowCount, index }))
-                      .reverse()
-                      .map(({ rowCount, index }) => (
-                        <label
-                          key={index}
-                          className="block text-sm font-semibold text-gray-700"
-                        >
-                          {rowCountLabel(
-                            index + 1,
-                            Number(editBusForm.floorCount),
-                          )}
-                          <input
-                            className={[
-                              "mt-1 w-full rounded-xl border bg-white px-3 py-2.5 font-normal outline-none transition focus:border-[#6b857a] focus:ring-2 focus:ring-[#6b857a]/15 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400",
-                              rowCount === ""
-                                ? "border-red-400 bg-red-50"
-                                : "border-gray-200",
-                            ].join(" ")}
-                            disabled={savingAction !== null}
-                            max={50}
-                            min={1}
-                            type="number"
-                            value={rowCount}
-                            onChange={(event) => {
-                              const value = event.target.value;
+                ) : (
+                  <div className="space-y-3">
+                    <div className="block text-sm font-semibold text-gray-700">
+                      จำนวนชั้น
+                      <FloorCountRadioGroup
+                        disabled={savingAction !== null}
+                        name="edit-floor-count"
+                        value={editBusForm.floorCount}
+                        onChange={(value) => {
+                          const floorCount = Number(value);
 
-                              setEditBusForm((form) => ({
-                                ...form,
-                                rowCounts: form.rowCounts.map(
-                                  (currentValue, rowIndex) =>
-                                    rowIndex === index
-                                      ? value === ""
-                                        ? ""
-                                        : Math.max(1, Number(value))
-                                      : currentValue,
-                                ),
-                              }));
-                            }}
-                          />
-                          {rowCount === "" && (
-                            <span className="mt-1 block text-xs font-normal text-red-600">
-                              กรุณากรอกจำนวนแถว
-                            </span>
-                          )}
-                        </label>
-                      ))}
+                          setEditBusForm((form) => ({
+                            ...form,
+                            floorCount: value,
+                            rowCounts:
+                              floorCount === 2
+                                ? [
+                                    form.rowCounts[0] || 10,
+                                    form.rowCounts[1] || 10,
+                                  ]
+                                : [form.rowCounts[0] || 10],
+                          }));
+                        }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {editBusForm.rowCounts
+                        .map((rowCount, index) => ({ rowCount, index }))
+                        .reverse()
+                        .map(({ rowCount, index }) => (
+                          <label
+                            key={index}
+                            className="block text-sm font-semibold text-gray-700"
+                          >
+                            {rowCountLabel(
+                              index + 1,
+                              Number(editBusForm.floorCount),
+                            )}
+                            <input
+                              className={[
+                                "mt-1 w-full rounded-xl border bg-white px-3 py-2.5 font-normal outline-none transition focus:border-[#6b857a] focus:ring-2 focus:ring-[#6b857a]/15 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400",
+                                rowCount === ""
+                                  ? "border-red-400 bg-red-50"
+                                  : "border-gray-200",
+                              ].join(" ")}
+                              disabled={savingAction !== null}
+                              max={50}
+                              min={1}
+                              type="number"
+                              value={rowCount}
+                              onChange={(event) => {
+                                const value = event.target.value;
+
+                                setEditBusForm((form) => ({
+                                  ...form,
+                                  rowCounts: form.rowCounts.map(
+                                    (currentValue, rowIndex) =>
+                                      rowIndex === index
+                                        ? value === ""
+                                          ? ""
+                                          : Math.max(1, Number(value))
+                                        : currentValue,
+                                  ),
+                                }));
+                              }}
+                            />
+                            {rowCount === "" && (
+                              <span className="mt-1 block text-xs font-normal text-red-600">
+                                กรุณากรอกจำนวนแถว
+                              </span>
+                            )}
+                          </label>
+                        ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="rounded-xl bg-blue-50 px-3 py-2.5 text-xs leading-relaxed text-blue-800">
                   สามารถกลับมาแก้ไขผังและกดบันทึกได้ตลอดเวลา

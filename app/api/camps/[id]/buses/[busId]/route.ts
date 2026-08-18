@@ -4,6 +4,10 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { requireSpecificCampBus } from "@/lib/camp-bus-auth";
+import {
+  getBusLayoutTemplate,
+  PHEUNG_THIN_BUS_TEMPLATE_ID,
+} from "@/lib/camp-bus-layout-templates";
 import { positionLabel } from "@/lib/camp-bus-seating";
 
 const updateBusSchema = z.object({
@@ -11,6 +15,7 @@ const updateBusSchema = z.object({
   registrationPlate: z.string().trim().max(30).optional().default(""),
   floorCount: z.number().int().min(1).max(2),
   rowCounts: z.array(z.number().int().min(1).max(50)).min(1).max(2),
+  layoutTemplateId: z.enum([PHEUNG_THIN_BUS_TEMPLATE_ID]).optional(),
 });
 
 function positionKey(
@@ -45,7 +50,13 @@ export async function PUT(request: Request, context: any) {
     );
   }
 
-  if (body.rowCounts.length !== body.floorCount) {
+  const layoutTemplate = getBusLayoutTemplate(body.layoutTemplateId);
+  const floorCount = layoutTemplate?.floors.length || body.floorCount;
+  const rowCounts = layoutTemplate
+    ? layoutTemplate.floors.map((floor) => floor.rowCount)
+    : body.rowCounts;
+
+  if (rowCounts.length !== floorCount) {
     return NextResponse.json(
       { error: "จำนวนแถวต้องตรงกับจำนวนชั้นของรถ" },
       { status: 400 },
@@ -79,7 +90,9 @@ export async function PUT(request: Request, context: any) {
     );
   }
 
-  const capacity = body.rowCounts.reduce((sum, rows) => sum + rows * 4, 0);
+  const capacity =
+    layoutTemplate?.capacity ||
+    rowCounts.reduce((sum, rows) => sum + rows * 4, 0);
 
   if (capacity < bus.assignments.length) {
     return NextResponse.json(
@@ -97,10 +110,24 @@ export async function PUT(request: Request, context: any) {
 
   const targetPositionKeys = new Set<string>();
 
-  for (let floorIndex = 0; floorIndex < body.floorCount; floorIndex += 1) {
-    for (let row = 1; row <= body.rowCounts[floorIndex]; row += 1) {
-      for (let seatIndex = 0; seatIndex < 4; seatIndex += 1) {
-        targetPositionKeys.add(positionKey(floorIndex + 1, row, seatIndex));
+  if (layoutTemplate) {
+    for (const floor of layoutTemplate.floors) {
+      for (const position of floor.positions) {
+        targetPositionKeys.add(
+          positionKey(
+            floor.floorNumber,
+            position.rowNumber,
+            position.seatIndex,
+          ),
+        );
+      }
+    }
+  } else {
+    for (let floorIndex = 0; floorIndex < floorCount; floorIndex += 1) {
+      for (let row = 1; row <= rowCounts[floorIndex]; row += 1) {
+        for (let seatIndex = 0; seatIndex < 4; seatIndex += 1) {
+          targetPositionKeys.add(positionKey(floorIndex + 1, row, seatIndex));
+        }
       }
     }
   }
@@ -137,15 +164,18 @@ export async function PUT(request: Request, context: any) {
         data: {
           name: body.name,
           registration_plate: body.registrationPlate,
-          floor_count: body.floorCount,
+          floor_count: floorCount,
         },
       });
 
       const activeFloorIds = new Set<number>();
 
-      for (let floorIndex = 0; floorIndex < body.floorCount; floorIndex += 1) {
+      for (let floorIndex = 0; floorIndex < floorCount; floorIndex += 1) {
         const floorNumber = floorIndex + 1;
-        const rowCount = body.rowCounts[floorIndex];
+        const rowCount = rowCounts[floorIndex];
+        const templateFloor = layoutTemplate?.floors.find(
+          (item) => item.floorNumber === floorNumber,
+        );
         const existingFloor = bus.floors.find(
           (floor) => floor.floor_number === floorNumber,
         );
@@ -191,27 +221,38 @@ export async function PUT(request: Request, context: any) {
 
         const positionsToCreate = [];
 
-        for (let row = 1; row <= rowCount; row += 1) {
-          for (let seatIndex = 0; seatIndex < 4; seatIndex += 1) {
-            const key = positionKey(floorNumber, row, seatIndex);
-            const label = positionLabel(row, seatIndex);
-            const existingPosition = existingPositions.get(key);
+        const targetPositions = templateFloor
+          ? templateFloor.positions
+          : Array.from({ length: rowCount }, (_, rowIndex) =>
+              Array.from({ length: 4 }, (_, seatIndex) => ({
+                rowNumber: rowIndex + 1,
+                seatIndex,
+                label: positionLabel(rowIndex + 1, seatIndex),
+              })),
+            ).flat();
 
-            if (existingPosition) {
-              if (existingPosition.label !== label) {
-                await tx.camp_bus_position.update({
-                  where: { position_id: existingPosition.position_id },
-                  data: { label },
-                });
-              }
-            } else {
-              positionsToCreate.push({
-                floor_floor_id: floor.floor_id,
-                row_number: row,
-                seat_index: seatIndex,
-                label,
+        for (const targetPosition of targetPositions) {
+          const key = positionKey(
+            floorNumber,
+            targetPosition.rowNumber,
+            targetPosition.seatIndex,
+          );
+          const existingPosition = existingPositions.get(key);
+
+          if (existingPosition) {
+            if (existingPosition.label !== targetPosition.label) {
+              await tx.camp_bus_position.update({
+                where: { position_id: existingPosition.position_id },
+                data: { label: targetPosition.label },
               });
             }
+          } else {
+            positionsToCreate.push({
+              floor_floor_id: floor.floor_id,
+              row_number: targetPosition.rowNumber,
+              seat_index: targetPosition.seatIndex,
+              label: targetPosition.label,
+            });
           }
         }
 
