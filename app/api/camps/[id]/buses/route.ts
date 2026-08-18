@@ -4,6 +4,11 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { requireCampBusPermission } from "@/lib/camp-bus-auth";
+import {
+  detectBusLayoutTemplate,
+  getBusLayoutTemplate,
+  PHEUNG_THIN_BUS_TEMPLATE_ID,
+} from "@/lib/camp-bus-layout-templates";
 import { positionLabel } from "@/lib/camp-bus-seating";
 import { formatStudentName } from "@/lib/student-display-name";
 
@@ -13,6 +18,7 @@ const createBusSchema = z.object({
   registrationPlate: z.string().trim().max(30).optional().default(""),
   floorCount: z.number().int().min(1).max(2),
   rowCounts: z.array(z.number().int().min(1).max(50)).min(1).max(2),
+  layoutTemplateId: z.enum([PHEUNG_THIN_BUS_TEMPLATE_ID]).optional(),
 });
 
 function getTeacherName(classroom: any) {
@@ -68,12 +74,7 @@ function formatBus(bus: any) {
       studentId: assignment.student_enrollment.student.students_id,
       studentName,
       positionId: assignment.position_position_id,
-      positionLabel: assignment.position
-        ? positionLabel(
-            assignment.position.row_number,
-            assignment.position.seat_index,
-          )
-        : null,
+      positionLabel: assignment.position?.label || null,
       floorNumber: assignment.position?.floor?.floor_number || null,
       status: assignment.status,
       isRegistered: Boolean(assignment.student_enrollment.enrolled_at),
@@ -97,6 +98,7 @@ function formatBus(bus: any) {
     name: bus.name,
     registrationPlate: bus.registration_plate,
     floorCount: bus.floor_count,
+    layoutTemplateId: detectBusLayoutTemplate(bus.floors),
     status: bus.status,
     lastParkedAt: lastParkedEvent?.created_at || null,
     lastDepartedAt: lastDepartedEvent?.created_at || null,
@@ -115,7 +117,7 @@ function formatBus(bus: any) {
         positionId: position.position_id,
         rowNumber: position.row_number,
         seatIndex: position.seat_index,
-        label: positionLabel(position.row_number, position.seat_index),
+        label: position.label,
         assignmentId: position.assignment?.assignment_id || null,
       })),
     })),
@@ -401,7 +403,13 @@ export async function POST(request: Request, context: any) {
     );
   }
 
-  if (body.rowCounts.length !== body.floorCount) {
+  const layoutTemplate = getBusLayoutTemplate(body.layoutTemplateId);
+  const floorCount = layoutTemplate?.floors.length || body.floorCount;
+  const rowCounts = layoutTemplate
+    ? layoutTemplate.floors.map((floor) => floor.rowCount)
+    : body.rowCounts;
+
+  if (rowCounts.length !== floorCount) {
     return NextResponse.json(
       { error: "จำนวนแถวต้องตรงกับจำนวนชั้นของรถ" },
       { status: 400 },
@@ -436,7 +444,9 @@ export async function POST(request: Request, context: any) {
     ),
   );
 
-  const capacity = body.rowCounts.reduce((sum, rows) => sum + rows * 4, 0);
+  const capacity =
+    layoutTemplate?.capacity ||
+    rowCounts.reduce((sum, rows) => sum + rows * 4, 0);
 
   if (capacity < classroomStudentIds.length) {
     return NextResponse.json(
@@ -486,32 +496,46 @@ export async function POST(request: Request, context: any) {
         classroom_classroom_id: body.classroomId,
         name: body.name,
         registration_plate: body.registrationPlate,
-        floor_count: body.floorCount,
+        floor_count: floorCount,
       },
     });
 
-    for (let floorIndex = 0; floorIndex < body.floorCount; floorIndex += 1) {
+    for (let floorIndex = 0; floorIndex < floorCount; floorIndex += 1) {
       const floorNumber = floorIndex + 1;
+      const templateFloor = layoutTemplate?.floors.find(
+        (item) => item.floorNumber === floorNumber,
+      );
       const floor = await tx.camp_bus_floor.create({
         data: {
           bus_bus_id: createdBus.bus_id,
           floor_number: floorNumber,
-          row_count: body.rowCounts[floorIndex],
+          row_count: rowCounts[floorIndex],
         },
       });
 
       const positions = [];
 
-      for (let row = 1; row <= body.rowCounts[floorIndex]; row += 1) {
-        for (let seatIndex = 0; seatIndex < 4; seatIndex += 1) {
-          const label = positionLabel(row, seatIndex);
-
-          positions.push({
+      if (templateFloor) {
+        positions.push(
+          ...templateFloor.positions.map((position) => ({
             floor_floor_id: floor.floor_id,
-            row_number: row,
-            seat_index: seatIndex,
-            label,
-          });
+            row_number: position.rowNumber,
+            seat_index: position.seatIndex,
+            label: position.label,
+          })),
+        );
+      } else {
+        for (let row = 1; row <= rowCounts[floorIndex]; row += 1) {
+          for (let seatIndex = 0; seatIndex < 4; seatIndex += 1) {
+            const label = positionLabel(row, seatIndex);
+
+            positions.push({
+              floor_floor_id: floor.floor_id,
+              row_number: row,
+              seat_index: seatIndex,
+              label,
+            });
+          }
         }
       }
 
