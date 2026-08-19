@@ -819,6 +819,7 @@ export default function BusManagementModal({
         );
       }
       await fetchBuses(selectedBus.busId);
+      setSelectedPositionId(null);
 
       return true;
     } catch (error: any) {
@@ -912,6 +913,7 @@ export default function BusManagementModal({
         `${assignment.studentName} · บันทึกว่าครูเป็นผู้กดในรอบนี้แล้ว`,
       );
       await fetchBuses(selectedBus.busId);
+      setSelectedPositionId(null);
     } catch (error: any) {
       showError(
         "เปลี่ยนสถานะนักเรียนไม่สำเร็จ",
