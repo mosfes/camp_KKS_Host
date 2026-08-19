@@ -424,9 +424,13 @@ export default function EditCertificateModal({
         throw new Error(`Failed to update certificate: ${errorText}`);
       }
 
+      // Keep the saved Cloudinary URL in state so a page-mode save does not
+      // navigate away or accidentally clear the image on the next save.
+      setCertImage(finalCertUrl);
+      setCertImageFile(null);
       showSuccess("สำเร็จ", "อัปเดตการตั้งค่าเกียรติบัตรเรียบร้อยแล้ว");
       onSuccess();
-      onClose();
+      if (!pageMode) onClose();
     } catch (error) {
       console.error("Error updating certificate:", error);
       showError("ข้อผิดพลาด", "ไม่สามารถบันทึกการตั้งค่าเกียรติบัตรได้");
