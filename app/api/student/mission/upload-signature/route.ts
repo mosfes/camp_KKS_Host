@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 const UPLOAD_FOLDER = "camp-submissions";
 const FALLBACK_TRANSFORMATION = "c_limit,h_1920,w_1920,q_auto";
-const UPLOAD_PRESET_ENV = "CLOUDINARY_MISSION_UPLOAD_PRESET";
+const UPLOAD_PRESET_ENV = "CLOUDINARY_UPLOAD_PRESET";
 
 /**
  * Issue a short-lived signed upload request for one photo question only.

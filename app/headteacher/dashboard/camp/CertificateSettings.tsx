@@ -17,8 +17,9 @@ import { Input } from "@heroui/input";
 import { useStatusModal } from "@/components/StatusModalProvider";
 import { getRequiredMissionCount } from "@/lib/certificate-eligibility";
 
-const MAX_CERTIFICATE_SOURCE_BYTES = 10 * 1024 * 1024;
-const MAX_UNCOMPRESSED_UPLOAD_BYTES = 3 * 1024 * 1024;
+const MAX_CERTIFICATE_SOURCE_BYTES = 5 * 1024 * 1024;
+const MAX_UNCOMPRESSED_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_CERTIFICATE_COMPRESSION_MB = 4;
 
 // ---- Color Picker Component ----
 function ColorPicker({
@@ -274,7 +275,7 @@ export default function CertificateSettings({
       return;
     }
     if (file.size > MAX_CERTIFICATE_SOURCE_BYTES) {
-      showWarning("ขนาดไฟล์เกิน", "ขนาดไฟล์ต้องไม่เกิน 10MB");
+      showWarning("ขนาดไฟล์เกิน", "ขนาดไฟล์ต้องไม่เกิน 5MB");
 
       return;
     }
@@ -284,7 +285,7 @@ export default function CertificateSettings({
       const imageCompression = (await import("browser-image-compression"))
         .default;
       const compressedFile = await imageCompression(file, {
-        maxSizeMB: 2,
+        maxSizeMB: MAX_CERTIFICATE_COMPRESSION_MB,
         maxWidthOrHeight: 2000,
         onProgress: (progress) => {
           setImagePreparingProgress(Math.min(90, Math.round(progress * 0.9)));
@@ -294,9 +295,12 @@ export default function CertificateSettings({
         initialQuality: 0.92,
       });
 
-      if (compressedFile.size > 2 * 1024 * 1024) {
+      if (
+        compressedFile.size >
+        MAX_CERTIFICATE_COMPRESSION_MB * 1024 * 1024
+      ) {
         throw new Error(
-          "Compressed certificate image is still larger than 2MB",
+          "Compressed certificate image is still larger than 4MB",
         );
       }
 
@@ -326,7 +330,7 @@ export default function CertificateSettings({
         setImagePreparingProgress(null);
         showWarning(
           "ข้ามการบีบอัดไฟล์",
-          "บีบอัดรูปไม่สำเร็จ แต่ไฟล์มีขนาดไม่เกิน 3MB ระบบจะอัปโหลดไฟล์เดิมตรงไปยัง Cloudinary",
+          "บีบอัดรูปไม่สำเร็จ แต่ไฟล์มีขนาดไม่เกิน 5MB ระบบจะอัปโหลดไฟล์เดิมตรงไปยัง Cloudinary",
         );
       } else {
         setCertImageFile(null);
@@ -334,7 +338,7 @@ export default function CertificateSettings({
         showWarning(
           "เตรียมรูปไม่สำเร็จ",
           file.size > MAX_UNCOMPRESSED_UPLOAD_BYTES
-            ? "ไม่สามารถบีบอัดกรอบเกียรติบัตรได้ และไฟล์เดิมมีขนาดเกิน 3MB ระบบจึงหยุดการอัปโหลด"
+            ? "ไม่สามารถบีบอัดกรอบเกียรติบัตรได้ และไฟล์เดิมมีขนาดเกิน 5MB ระบบจึงหยุดการอัปโหลด"
             : "บีบอัดไม่สำเร็จ ไฟล์ต้นฉบับต้องเป็น JPG/PNG เท่านั้นจึงจะอัปโหลดตรงได้",
         );
       }
@@ -657,7 +661,7 @@ export default function CertificateSettings({
                     : "คลิกเพื่ออัปโหลด หรือลากไฟล์มาวางที่นี่"}
                 </p>
                 <p className="mt-1 text-xs text-gray-400">
-                  รองรับ JPG, PNG, WEBP, HEIC และ HEIF ขนาดไม่เกิน 10MB
+                  รองรับ JPG, PNG, WEBP, HEIC และ HEIF ขนาดไม่เกิน 5MB
                 </p>
               </>
             ) : (

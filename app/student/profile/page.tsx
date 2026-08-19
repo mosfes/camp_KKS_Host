@@ -302,7 +302,15 @@ export default function StudentProfilePage() {
 
     setUploadingImage(true);
     try {
-      const uploaded = await uploadStudentProfileImage(file);
+      const imageCompression = (await import("browser-image-compression"))
+        .default;
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 800,
+        useWebWorker: true,
+        fileType: "image/jpeg",
+      });
+      const uploaded = await uploadStudentProfileImage(compressedFile);
 
       setPendingImageUrl(uploaded.url);
     } catch (err: any) {

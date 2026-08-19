@@ -91,8 +91,8 @@
 
 ### งานอัปโหลด
 
-- [ ] ตั้ง `CLOUDINARY_PROFILE_UPLOAD_PRESET`, `CLOUDINARY_CERTIFICATE_UPLOAD_PRESET` และ `CLOUDINARY_MISSION_UPLOAD_PRESET` บน Vercel ทุก environment *(ต้องทำใน Cloudinary/Vercel)*
-- [ ] ตั้ง server-side `max_file_size` ของ profile 5 MB และ certificate 3 MB ใน Cloudinary preset *(ต้องทำใน Cloudinary)*
+- [ ] ตั้ง `CLOUDINARY_UPLOAD_PRESET` บน Vercel ทุก environment *(ต้องทำใน Cloudinary/Vercel)*
+- [ ] ตั้ง server-side `max_file_size` ของ shared Cloudinary preset เป็น 20 MB *(ต้องทำใน Cloudinary)*
 - [x] เพิ่ม preset/commit verification ให้ mission image; ห้ามพึ่ง browser size check อย่างเดียว
 - [x] ตรวจ `public_id`, folder, resource type และ Cloudinary host ก่อนบันทึก URL ลง DB
 - [ ] ใช้ temporary public ID สำหรับ profile replacement หรือไม่ทำลายรูปเดิมจนกว่า asset ใหม่จะผ่าน commit

@@ -8,7 +8,7 @@ import { prisma } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_CERTIFICATE_UPLOAD_BYTES = 3 * 1024 * 1024;
+const MAX_CERTIFICATE_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_FORMATS = new Set(["jpg", "jpeg", "png"]);
 
 export async function POST(
@@ -80,7 +80,7 @@ export async function POST(
       !ALLOWED_FORMATS.has(format)
     ) {
       return NextResponse.json(
-        { error: "กรอบเกียรติบัตรต้องเป็น JPG/PNG และมีขนาดไม่เกิน 3MB" },
+        { error: "กรอบเกียรติบัตรต้องเป็น JPG/PNG และมีขนาดไม่เกิน 5MB" },
         { status: 413 },
       );
     }

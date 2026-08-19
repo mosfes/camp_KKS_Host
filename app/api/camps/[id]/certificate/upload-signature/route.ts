@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const UPLOAD_FOLDER = "camp-certificates";
 const PUBLIC_ID = "template";
-const UPLOAD_PRESET_ENV = "CLOUDINARY_CERTIFICATE_UPLOAD_PRESET";
+const UPLOAD_PRESET_ENV = "CLOUDINARY_UPLOAD_PRESET";
 
 /**
  * Issue a short-lived signature for the certificate template only.

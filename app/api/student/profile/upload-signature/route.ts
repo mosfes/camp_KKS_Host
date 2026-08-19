@@ -6,7 +6,7 @@ import { requireStudent } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const UPLOAD_PRESET_ENV = "CLOUDINARY_PROFILE_UPLOAD_PRESET";
+const UPLOAD_PRESET_ENV = "CLOUDINARY_UPLOAD_PRESET";
 const UPLOAD_FOLDER = "camp_profiles";
 const TRANSFORMATION = "c_fill,g_face,h_400,w_400";
 

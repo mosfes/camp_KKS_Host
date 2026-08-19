@@ -31,21 +31,19 @@ polling do not generate additional Geocoding requests.
 
 ### Direct Cloudinary image uploads
 
-Student profile images and certificate templates upload directly from the
-browser to Cloudinary. Configure two signed upload presets in Cloudinary and
-set their server-side file limits before deploying:
+Student profile images, mission photos, and certificate templates upload
+directly from the browser to Cloudinary. Configure one signed upload preset in
+Cloudinary and set its server-side file limit before deploying:
 
 ```env
-CLOUDINARY_PROFILE_UPLOAD_PRESET=your_profile_preset
-CLOUDINARY_CERTIFICATE_UPLOAD_PRESET=your_certificate_preset
-CLOUDINARY_MISSION_UPLOAD_PRESET=your_mission_preset
+CLOUDINARY_UPLOAD_PRESET=your_shared_preset
 ```
 
-Set `max_file_size` to 5 MB on the profile preset and 3 MB on the certificate
-preset. The mission preset should also enforce the file policy used by the
-camp. The app verifies the actual Cloudinary asset on the server before
-accepting the returned URL. The old `/api/student/profile/upload-image` route
-no longer accepts file bytes through Vercel.
+Set `max_file_size` to 20 MB on the shared preset. The app still verifies the
+actual Cloudinary asset on the server and applies the stricter 5 MB limits to
+profile images and certificate templates. The old
+`/api/student/profile/upload-image` route no longer accepts file bytes through
+Vercel.
 
 Production schema changes are deployed separately from the Next.js build:
 
