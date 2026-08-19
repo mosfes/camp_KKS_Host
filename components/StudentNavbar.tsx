@@ -70,8 +70,8 @@ export function AppNavbar() {
           <GraduationCap size={20} />
         </div>
         <div className="flex flex-col leading-tight">
-          <span className="font-medium text-sm text-black">KKS Camp</span>
-          <span className="text-xs text-gray-700 font-normal">ค่ายของฉัน</span>
+          <span className="font-semibold text-sm text-black">KKS Camp</span>
+          <span className="text-xs text-gray-500">ค่ายของฉัน</span>
         </div>
       </NavbarBrand>
 
@@ -123,7 +123,7 @@ export function AppNavbar() {
               <DropdownMenu aria-label="Profile Actions" variant="flat">
                 <DropdownItem key="profile" className="h-14 gap-2">
                   <div>
-                    <p className="font-medium">
+                    <p className="font-semibold">
                       {displayNickname ? `น้อง${displayNickname}` : displayName}
                     </p>
                     <p className="text-xs text-gray-500">{displayEmail}</p>
@@ -172,7 +172,7 @@ export function AppNavbar() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/50 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
             <LoadingSpinner />
-            <p className="text-sm font-normal text-[#5d7c6f]">
+            <p className="text-[#5d7c6f] font-medium text-sm">
               กำลังออกจากระบบ...
             </p>
           </div>

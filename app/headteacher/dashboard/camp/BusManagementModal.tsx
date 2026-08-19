@@ -1130,7 +1130,7 @@ export default function BusManagementModal({
               </h2>
             </div>
             <Button
-              className="shrink-0 bg-[#6b857a] px-3 text-sm font-semibold text-white"
+              className="shrink-0 bg-[#6b857a] px-3 text-sm font-medium text-white"
               size="sm"
               startContent={
                 showCreate ? <ArrowLeft size={15} /> : <Plus size={15} />
@@ -1303,11 +1303,8 @@ export default function BusManagementModal({
                                 }))
                               }
                             >
-                              <span className="flex items-center justify-between gap-2 text-sm font-bold text-gray-900">
+                              <span className="block text-sm font-bold text-gray-900">
                                 {template.name}
-                                <span className="rounded-full bg-[#dce9e1] px-2 py-0.5 text-[10px] font-semibold text-[#365f4f]">
-                                  เจ้าประจำ
-                                </span>
                               </span>
                               <span className="mt-1 block text-xs font-normal text-gray-500">
                                 {template.description}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import {
@@ -73,36 +73,47 @@ export default function StudentBusCheckinPage() {
   const [alighting, setAlighting] = useState(false);
   const [pendingBoarding, setPendingBoarding] = useState(false);
 
-  const fetchBus = async (showRefresh = false) => {
-    if (showRefresh) setRefreshing(true);
+  const fetchBus = useCallback(
+    async (showRefresh = false, notifyError = true) => {
+      if (showRefresh) setRefreshing(true);
 
-    try {
-      const response = await fetch(`/api/student/camps/${id}/bus`, {
-        cache: "no-store",
-      });
-      const result = await response.json();
+      try {
+        const response = await fetch(`/api/student/camps/${id}/bus`, {
+          cache: "no-store",
+        });
+        const result = await response.json();
 
-      if (response.status === 403) {
-        toast.error(result.error || "กรุณาลงทะเบียนเข้าร่วมค่ายก่อน");
-        router.replace(`/student/dashboard/camp/${id}`);
+        if (response.status === 403) {
+          toast.error(result.error || "กรุณาลงทะเบียนเข้าร่วมค่ายก่อน");
+          router.replace(`/student/dashboard/camp/${id}`);
 
-        return;
+          return;
+        }
+
+        if (!response.ok)
+          throw new Error(result.error || "โหลดข้อมูลรถไม่สำเร็จ");
+        setData(result);
+      } catch (error: any) {
+        if (notifyError) toast.error(error.message || "โหลดข้อมูลรถไม่สำเร็จ");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-
-      if (!response.ok)
-        throw new Error(result.error || "โหลดข้อมูลรถไม่สำเร็จ");
-      setData(result);
-    } catch (error: any) {
-      toast.error(error.message || "โหลดข้อมูลรถไม่สำเร็จ");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+    },
+    [id, router],
+  );
 
   useEffect(() => {
-    fetchBus();
-  }, [id]);
+    void fetchBus();
+  }, [fetchBus]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void fetchBus(false, false);
+    }, 15000);
+
+    return () => window.clearInterval(timer);
+  }, [fetchBus]);
 
   const boardBus = async () => {
     if (
@@ -281,7 +292,7 @@ export default function StudentBusCheckinPage() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium text-white/70">รถของคุณ</p>
-              <h2 className="mt-1 text-xl font-semibold truncate">
+              <h2 className="mt-1 line-clamp-2 text-lg font-semibold leading-tight">
                 {data.bus.name}
               </h2>
             </div>
@@ -333,29 +344,23 @@ export default function StudentBusCheckinPage() {
                 </p>
               </div>
             </div>
-            <Button
-              className={
-                isOnBus
-                  ? isTraveling
-                    ? "min-h-9 min-w-[104px] shrink-0 bg-gray-200 px-3 text-xs font-medium text-gray-400"
-                    : "min-h-9 min-w-[104px] shrink-0 bg-amber-100 px-3 text-xs font-medium text-amber-800"
-                  : isTraveling
+            {!isTraveling && (
+              <Button
+                className={
+                  isOnBus
                     ? "min-h-9 min-w-[104px] shrink-0 bg-amber-100 px-3 text-xs font-medium text-amber-800"
-                    : "min-h-9 min-w-[104px] shrink-0 bg-[#365f4f] px-3 text-xs font-medium text-white"
-              }
-              isDisabled={isOnBus ? isTraveling : isTraveling || !hasSeat}
-              isLoading={isOnBus ? alighting : boarding}
-              size="sm"
-              onPress={isOnBus ? alightBus : () => setPendingBoarding(true)}
-            >
-              {isOnBus
-                ? "ลงจากรถ"
-                : isTraveling
-                  ? "รถกำลังเดินทาง"
-                  : hasSeat
-                    ? "ขึ้นรถ"
-                    : "รอจัดที่นั่ง"}
-            </Button>
+                    : hasSeat
+                      ? "min-h-9 min-w-[104px] shrink-0 bg-[#365f4f] px-3 text-xs font-medium text-white"
+                      : "min-h-9 min-w-[104px] shrink-0 bg-gray-200 px-3 text-xs font-medium text-gray-400"
+                }
+                isDisabled={!isOnBus && !hasSeat}
+                isLoading={isOnBus ? alighting : boarding}
+                size="sm"
+                onPress={isOnBus ? alightBus : () => setPendingBoarding(true)}
+              >
+                {isOnBus ? "ลงจากรถ" : hasSeat ? "ขึ้นรถ" : "รอจัดที่นั่ง"}
+              </Button>
+            )}
           </div>
         </section>
 

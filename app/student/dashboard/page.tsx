@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardBody } from "@heroui/card";
 import { Tabs, Tab } from "@heroui/tabs";
 import {
@@ -24,7 +24,7 @@ import {
   Users,
   Bus,
   LogOut,
-  ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -101,6 +101,7 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState<any>(null);
   const [busAssignments, setBusAssignments] = useState<any[]>([]);
+  const [refreshingBus, setRefreshingBus] = useState(false);
   const [boardingCampId, setBoardingCampId] = useState<number | null>(null);
   const [alightingCampId, setAlightingCampId] = useState<number | null>(null);
   const [pendingBoardingAssignment, setPendingBoardingAssignment] =
@@ -130,6 +131,28 @@ export default function StudentDashboard() {
     setNavigatingTo(campId);
     router.push(`/student/dashboard/camp/${campId}/bus`);
   };
+
+  const refreshBusAssignments = useCallback(async (showRefresh = false) => {
+    if (showRefresh) setRefreshingBus(true);
+
+    try {
+      const response = await fetch("/api/student/bus", { cache: "no-store" });
+
+      if (!response.ok) throw new Error("โหลดสถานะรถไม่สำเร็จ");
+
+      const busData = await response.json();
+
+      setBusAssignments(
+        Array.isArray(busData.assignments) ? busData.assignments : [],
+      );
+
+      if (showRefresh) toast.success("อัปเดตสถานะรถแล้ว");
+    } catch {
+      if (showRefresh) toast.error("ไม่สามารถอัปเดตสถานะรถได้");
+    } finally {
+      if (showRefresh) setRefreshingBus(false);
+    }
+  }, []);
 
   const confirmBusBoarding = async (assignment: any) => {
     if (
@@ -281,6 +304,14 @@ export default function StudentDashboard() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void refreshBusAssignments();
+    }, 15000);
+
+    return () => window.clearInterval(timer);
+  }, [refreshBusAssignments]);
+
   const onProfileSaved = () => {
     setShowProfileModal(false);
   };
@@ -410,23 +441,37 @@ export default function StudentDashboard() {
 
         {busAssignments.length > 0 && (
           <section aria-labelledby="student-transport-heading">
-            <div className="mb-2 flex items-center gap-2.5 px-1">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e8f0ee] text-[#3d6357]">
-                <Bus size={18} />
+            <div className="mb-2 flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e8f0ee] text-[#3d6357]">
+                  <Bus size={18} />
+                </div>
+                <div>
+                  <h2
+                    className="text-sm font-semibold text-gray-900"
+                    id="student-transport-heading"
+                  >
+                    การเดินทางของฉัน
+                  </h2>
+                  <p className="text-[11px] text-gray-500">
+                    ตรวจสอบสถานะรถและที่นั่ง พร้อมยืนยันขึ้นรถ/ลงจากรถ
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2
-                  className="text-sm font-semibold text-gray-900"
-                  id="student-transport-heading"
-                >
-                  การเดินทางของฉัน
-                </h2>
-                <p className="text-[11px] text-gray-500">
-                  ตรวจสอบสถานะรถและที่นั่ง พร้อมยืนยันขึ้นรถ/ลงจากรถ
-                </p>
-              </div>
+              <button
+                aria-label="รีเฟรชสถานะรถ"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#3d6357] transition hover:bg-[#e8f0ee] disabled:cursor-wait disabled:opacity-60"
+                disabled={refreshingBus}
+                title="รีเฟรชสถานะรถ"
+                type="button"
+                onClick={() => void refreshBusAssignments(true)}
+              >
+                <RefreshCw
+                  className={refreshingBus ? "animate-spin" : undefined}
+                  size={15}
+                />
+              </button>
             </div>
-
             <div className="grid gap-2 sm:grid-cols-2">
               {busAssignments.map((assignment: any) => {
                 const isOnBus = Boolean(assignment.student?.isOnBus);
@@ -536,7 +581,7 @@ export default function StudentDashboard() {
                             : "ยืนยันขึ้นรถ"}
                         </button>
                       </div>
-                    ) : isOnBus && assignment.configured ? (
+                    ) : isOnBus && assignment.configured && !isTraveling ? (
                       <div className="mt-2">
                         <button
                           aria-label={`ลงจากรถ ${assignment.bus.name}`}
@@ -556,21 +601,6 @@ export default function StudentDashboard() {
                             : "ลงจากรถ"}
                         </button>
                       </div>
-                    ) : !isOnBus ? (
-                      <button
-                        aria-label={`ดูรายละเอียดรถ ${assignment.campName}`}
-                        className="mt-2 flex min-h-10 w-full items-center justify-between border-t border-gray-100 pt-2 text-[11px] font-semibold text-[#3d6357]"
-                        disabled={
-                          boardingCampId !== null ||
-                          alightingCampId !== null ||
-                          navigatingTo !== null
-                        }
-                        type="button"
-                        onClick={() => goToBus(assignment.campId)}
-                      >
-                        ดูรายละเอียด
-                        <ChevronRight size={16} />
-                      </button>
                     ) : null}
                   </article>
                 );

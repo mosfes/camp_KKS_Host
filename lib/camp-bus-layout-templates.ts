@@ -35,11 +35,26 @@ function positions(
   );
 }
 
+function letteredPositions(
+  rows: Array<Array<[seatIndex: number, label: number]>>,
+): BusLayoutTemplatePosition[] {
+  const seatLetters = ["A", "B", "C", "D"];
+
+  return rows.flatMap((row, rowIndex) =>
+    row.map(([seatIndex, label]) => ({
+      rowNumber: rowIndex + 1,
+      seatIndex,
+      label: `${seatLetters[seatIndex]}${String(label).padStart(2, "0")}`,
+    })),
+  );
+}
+
 export const BUS_LAYOUT_TEMPLATES: readonly BusLayoutTemplate[] = [
   {
     id: PHEUNG_THIN_BUS_TEMPLATE_ID,
     name: "เชี่ยวชาญแทรเวล 30-0205",
-    description: "รถสองชั้น 50 ที่นั่ง · ชั้นบน 1–38 · ชั้นล่าง 39–50",
+    description:
+      "รถสองชั้น 50 ที่นั่ง · ชั้นบน A/B/C/D + เลขตามผัง 1–38 · ชั้นล่าง 39–50",
     defaultBusName: "เชี่ยวชาญแทรเวล 30-0205",
     capacity: 50,
     floors: [
@@ -76,7 +91,7 @@ export const BUS_LAYOUT_TEMPLATES: readonly BusLayoutTemplate[] = [
       {
         floorNumber: 2,
         rowCount: 11,
-        positions: positions([
+        positions: letteredPositions([
           [
             [2, 1],
             [3, 2],
