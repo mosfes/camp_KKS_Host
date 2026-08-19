@@ -23,6 +23,7 @@ import {
   Clock,
   Users,
   Bus,
+  LogOut,
   ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -101,6 +102,7 @@ export default function StudentDashboard() {
   const [student, setStudent] = useState<any>(null);
   const [busAssignments, setBusAssignments] = useState<any[]>([]);
   const [boardingCampId, setBoardingCampId] = useState<number | null>(null);
+  const [alightingCampId, setAlightingCampId] = useState<number | null>(null);
   const [pendingBoardingAssignment, setPendingBoardingAssignment] =
     useState<any>(null);
   const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
@@ -119,13 +121,23 @@ export default function StudentDashboard() {
   };
 
   const goToBus = (campId: number) => {
-    if (navigatingTo !== null || boardingCampId !== null) return;
+    if (
+      navigatingTo !== null ||
+      boardingCampId !== null ||
+      alightingCampId !== null
+    )
+      return;
     setNavigatingTo(campId);
     router.push(`/student/dashboard/camp/${campId}/bus`);
   };
 
   const confirmBusBoarding = async (assignment: any) => {
-    if (boardingCampId !== null || navigatingTo !== null) return;
+    if (
+      boardingCampId !== null ||
+      alightingCampId !== null ||
+      navigatingTo !== null
+    )
+      return;
 
     setBoardingCampId(assignment.campId);
 
@@ -167,8 +179,59 @@ export default function StudentDashboard() {
   };
 
   const requestBusBoarding = (assignment: any) => {
-    if (boardingCampId !== null || navigatingTo !== null) return;
+    if (
+      boardingCampId !== null ||
+      alightingCampId !== null ||
+      navigatingTo !== null
+    )
+      return;
     setPendingBoardingAssignment(assignment);
+  };
+
+  const confirmBusAlighting = async (assignment: any) => {
+    if (
+      alightingCampId !== null ||
+      boardingCampId !== null ||
+      navigatingTo !== null ||
+      assignment.bus?.status === "TRAVELING"
+    )
+      return;
+
+    setAlightingCampId(assignment.campId);
+
+    try {
+      const response = await fetch(
+        `/api/student/camps/${assignment.campId}/bus/alight`,
+        { method: "POST" },
+      );
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast.error(result.error || "บันทึกลงจากรถไม่สำเร็จ");
+
+        return;
+      }
+
+      setBusAssignments((current) =>
+        current.map((item) =>
+          item.campId === assignment.campId
+            ? {
+                ...item,
+                student: {
+                  ...item.student,
+                  status: "OFF_BUS",
+                  isOnBus: false,
+                },
+              }
+            : item,
+        ),
+      );
+      toast.success(result.message || "บันทึกว่าลงจากรถแล้ว");
+    } catch {
+      toast.error("เชื่อมต่อระบบไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      setAlightingCampId(null);
+    }
   };
 
   useEffect(() => {
@@ -359,7 +422,7 @@ export default function StudentDashboard() {
                   การเดินทางของฉัน
                 </h2>
                 <p className="text-[11px] text-gray-500">
-                  ตรวจสอบรถและที่นั่งก่อนยืนยันขึ้นรถ
+                  ตรวจสอบสถานะรถและที่นั่ง พร้อมยืนยันขึ้นรถ/ลงจากรถ
                 </p>
               </div>
             </div>
@@ -369,15 +432,18 @@ export default function StudentDashboard() {
                 const isOnBus = Boolean(assignment.student?.isOnBus);
                 const isTraveling = assignment.bus?.status === "TRAVELING";
                 const position = assignment.student?.position;
-                const statusLabel = !assignment.configured
+                const busStatusLabel = !assignment.configured
+                  ? "รอจัดรถ"
+                  : isTraveling
+                    ? "กำลังเดินทาง"
+                    : "รถจอด";
+                const studentStatusLabel = !assignment.configured
                   ? "ยังไม่ได้จัดรถ"
                   : isOnBus
                     ? `อยู่บนรถแล้ว${assignment.student.lastBoardedAt ? ` · ${formatBusCheckedAt(assignment.student.lastBoardedAt)} น.` : ""}`
-                    : isTraveling
-                      ? "รถกำลังเดินทาง"
-                      : position
-                        ? "พร้อมเช็กชื่อ"
-                        : "รอจัดที่นั่ง";
+                    : position
+                      ? "พร้อมเช็กชื่อ"
+                      : "รอจัดที่นั่ง";
 
                 return (
                   <article
@@ -388,7 +454,9 @@ export default function StudentDashboard() {
                       aria-label={`เปิดการเดินทางของ ${assignment.campName}`}
                       className="block w-full rounded-lg text-left transition hover:bg-[#f7faf8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40"
                       disabled={
-                        boardingCampId !== null || navigatingTo !== null
+                        boardingCampId !== null ||
+                        alightingCampId !== null ||
+                        navigatingTo !== null
                       }
                       type="button"
                       onClick={() => goToBus(assignment.campId)}
@@ -404,18 +472,27 @@ export default function StudentDashboard() {
                               : "รอข้อมูลรถจากครู"}
                           </h3>
                         </div>
-                        <span
-                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
-                            isOnBus
-                              ? "bg-green-100 text-green-700"
-                              : isTraveling
+                        <span className="flex shrink-0 flex-col items-end gap-1">
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
+                              isTraveling
                                 ? "bg-amber-100 text-amber-700"
-                                : assignment.configured && position
+                                : assignment.configured
                                   ? "bg-[#e8f0ee] text-[#3d6357]"
                                   : "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {statusLabel}
+                            }`}
+                          >
+                            {busStatusLabel}
+                          </span>
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
+                              isOnBus
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {studentStatusLabel}
+                          </span>
                         </span>
                       </div>
 
@@ -446,7 +523,9 @@ export default function StudentDashboard() {
                           aria-label={`ยืนยันขึ้นรถ ${assignment.bus.name}`}
                           className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-[#5d7c6f] px-3 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#4f6d61] disabled:cursor-wait disabled:opacity-60"
                           disabled={
-                            boardingCampId !== null || navigatingTo !== null
+                            boardingCampId !== null ||
+                            alightingCampId !== null ||
+                            navigatingTo !== null
                           }
                           type="button"
                           onClick={() => requestBusBoarding(assignment)}
@@ -457,12 +536,34 @@ export default function StudentDashboard() {
                             : "ยืนยันขึ้นรถ"}
                         </button>
                       </div>
+                    ) : isOnBus && assignment.configured ? (
+                      <div className="mt-2">
+                        <button
+                          aria-label={`ลงจากรถ ${assignment.bus.name}`}
+                          className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-amber-100 px-3 text-[11px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={
+                            isTraveling ||
+                            alightingCampId !== null ||
+                            boardingCampId !== null ||
+                            navigatingTo !== null
+                          }
+                          type="button"
+                          onClick={() => void confirmBusAlighting(assignment)}
+                        >
+                          <LogOut size={14} />
+                          {alightingCampId === assignment.campId
+                            ? "กำลังบันทึก..."
+                            : "ลงจากรถ"}
+                        </button>
+                      </div>
                     ) : !isOnBus ? (
                       <button
                         aria-label={`ดูรายละเอียดรถ ${assignment.campName}`}
                         className="mt-2 flex min-h-10 w-full items-center justify-between border-t border-gray-100 pt-2 text-[11px] font-semibold text-[#3d6357]"
                         disabled={
-                          boardingCampId !== null || navigatingTo !== null
+                          boardingCampId !== null ||
+                          alightingCampId !== null ||
+                          navigatingTo !== null
                         }
                         type="button"
                         onClick={() => goToBus(assignment.campId)}

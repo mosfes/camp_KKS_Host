@@ -304,52 +304,60 @@ export default function StudentBusCheckinPage() {
           </div>
         </section>
 
-        {!isOnBus && (
-          <section className="sticky top-0 z-10 -mx-1 rounded-2xl border border-[#d8e5de] bg-[#f7faf8]/95 p-3 shadow-sm backdrop-blur">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                    isTraveling
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-[#e2eee7] text-[#365f4f]"
-                  }`}
-                >
-                  <Bus size={18} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-900">
-                    การขึ้นรถ
-                  </p>
-                  <p className="truncate text-[11px] text-gray-500">
-                    {isTraveling
+        <section className="sticky top-0 z-10 -mx-1 rounded-2xl border border-[#d8e5de] bg-[#f7faf8]/95 p-3 shadow-sm backdrop-blur">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                  isTraveling
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-[#e2eee7] text-[#365f4f]"
+                }`}
+              >
+                {isOnBus ? <LogOut size={18} /> : <Bus size={18} />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-900">
+                  {isOnBus ? "การลงรถ" : "การขึ้นรถ"}
+                </p>
+                <p className="truncate text-[11px] text-gray-500">
+                  {isOnBus
+                    ? isTraveling
+                      ? "รถกำลังเดินทาง"
+                      : "รถจอดแล้ว"
+                    : isTraveling
                       ? "รถกำลังเดินทาง"
                       : hasSeat
                         ? "พร้อมขึ้นรถ"
                         : "รอจัดที่นั่ง"}
-                  </p>
-                </div>
+                </p>
               </div>
-              <Button
-                className={
-                  isTraveling
+            </div>
+            <Button
+              className={
+                isOnBus
+                  ? isTraveling
+                    ? "min-h-9 min-w-[104px] shrink-0 bg-gray-200 px-3 text-xs font-medium text-gray-400"
+                    : "min-h-9 min-w-[104px] shrink-0 bg-amber-100 px-3 text-xs font-medium text-amber-800"
+                  : isTraveling
                     ? "min-h-9 min-w-[104px] shrink-0 bg-amber-100 px-3 text-xs font-medium text-amber-800"
                     : "min-h-9 min-w-[104px] shrink-0 bg-[#365f4f] px-3 text-xs font-medium text-white"
-                }
-                isDisabled={isTraveling || !hasSeat}
-                isLoading={boarding}
-                size="sm"
-                onPress={() => setPendingBoarding(true)}
-              >
-                {isTraveling
+              }
+              isDisabled={isOnBus ? isTraveling : isTraveling || !hasSeat}
+              isLoading={isOnBus ? alighting : boarding}
+              size="sm"
+              onPress={isOnBus ? alightBus : () => setPendingBoarding(true)}
+            >
+              {isOnBus
+                ? "ลงจากรถ"
+                : isTraveling
                   ? "รถกำลังเดินทาง"
                   : hasSeat
                     ? "ขึ้นรถ"
                     : "รอจัดที่นั่ง"}
-              </Button>
-            </div>
-          </section>
-        )}
+            </Button>
+          </div>
+        </section>
 
         <section className="rounded-3xl bg-white border border-gray-100 shadow-sm p-6">
           <div className="flex items-center gap-3">
@@ -494,31 +502,6 @@ export default function StudentBusCheckinPage() {
               </p>
             </div>
           </div>
-
-          {isOnBus && (
-            <div className="mt-5 flex justify-end">
-              <Button
-                className={`min-h-11 min-w-[118px] shrink-0 rounded-xl px-3 text-xs font-medium ${
-                  isTraveling
-                    ? "bg-gray-200 text-gray-400"
-                    : "bg-amber-100 text-amber-800"
-                }`}
-                isDisabled={isTraveling}
-                isLoading={alighting}
-                size="sm"
-                startContent={
-                  isTraveling ? (
-                    <CheckCircle2 size={18} />
-                  ) : (
-                    <LogOut size={18} />
-                  )
-                }
-                onPress={alightBus}
-              >
-                {isTraveling ? "อยู่บนรถ (รถกำลังเดินทาง)" : "ลงจากรถแล้ว"}
-              </Button>
-            </div>
-          )}
         </section>
       </main>
 
