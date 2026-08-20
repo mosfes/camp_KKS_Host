@@ -669,7 +669,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <StatusModalProvider>
       <div className="min-h-screen bg-[#f5f5f2] flex flex-col">
-        <div className="sticky top-0 z-[1000] w-full">
+        <div className="sticky top-0 z-30 w-full">
           <HeadteacherNavbar onMenuClick={() => setMobileOpen(true)} />
         </div>
 

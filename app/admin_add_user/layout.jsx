@@ -186,7 +186,7 @@ export default function AdminLayout({ children }) {
   return (
     <StatusModalProvider>
       <div className="min-h-screen bg-[#f5f5f2] flex flex-col">
-        <div className="sticky top-0 z-50 w-full">
+        <div className="sticky top-0 z-30 w-full">
           <HeadteacherNavbar onMenuClick={() => setMobileOpen(true)} />
         </div>
 

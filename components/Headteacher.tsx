@@ -94,7 +94,7 @@ export function HeadteacherNavbar({
   return (
     <>
       <Navbar
-        className="relative z-[100] overflow-visible border-b border-gray-200 bg-white"
+        className="relative z-30 overflow-visible border-b border-gray-200 bg-white"
         height="64px"
         maxWidth="full"
       >
@@ -132,7 +132,7 @@ export function HeadteacherNavbar({
 
         {/* RIGHT */}
         <NavbarContent className="gap-3" justify="end">
-          <NavbarItem className="relative z-[101]">
+          <NavbarItem className="relative">
             <div ref={profileMenuRef} className="relative">
               <button
                 aria-expanded={isProfileMenuOpen}
@@ -174,7 +174,7 @@ export function HeadteacherNavbar({
               {isProfileMenuOpen && (
                 <div
                   aria-label="Profile Actions"
-                  className="absolute right-0 top-[calc(100%+0.5rem)] z-[60] w-72 overflow-hidden rounded-xl border border-gray-200 bg-white p-1 shadow-xl"
+                  className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-72 overflow-hidden rounded-xl border border-gray-200 bg-white p-1 shadow-xl"
                   role="menu"
                 >
                   <div className="border-b border-gray-100 px-3 py-3">
