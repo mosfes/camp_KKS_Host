@@ -186,6 +186,18 @@ export default function StudentCampDetailPage() {
     return () => window.clearInterval(intervalId);
   }, []);
 
+  // พับเมนูอัตโนมัติเมื่อค่ายยังไม่เริ่ม
+  useEffect(() => {
+    if (!camp) return;
+    const startDate = camp.rawStartDate ? new Date(camp.rawStartDate) : null;
+    const campNotStarted = Boolean(
+      startDate && isBangkokDateBefore(new Date(), startDate),
+    );
+    if (camp.isRegistered && campNotStarted) {
+      setIsBottomMenuExpanded(false);
+    }
+  }, [camp]);
+
   const fetchSurvey = async () => {
     try {
       const res = await fetch(`/api/student/surveys?campId=${id}`);
@@ -465,6 +477,7 @@ export default function StudentCampDetailPage() {
     startDate && isBangkokDateBefore(new Date(), startDate),
   );
   const menuLocked = camp.isRegistered && campNotStarted;
+
   const currentScheduleSlot = camp.camp_daily_schedule
     ?.flatMap((day: any) =>
       (day.time_slots || []).map((slot: any) => ({ day: day.day, slot })),
@@ -867,13 +880,10 @@ export default function StudentCampDetailPage() {
           <button
             aria-controls="camp-bottom-menu-content"
             aria-expanded={isBottomMenuExpanded}
-            className={`flex w-full items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40 ${menuLocked ? "cursor-not-allowed opacity-60" : "hover:bg-gray-50"}`}
-            disabled={menuLocked}
+            className="flex w-full items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40 hover:bg-gray-50"
             type="button"
             onClick={() => {
-              if (!menuLocked) {
-                setIsBottomMenuExpanded((expanded) => !expanded);
-              }
+              setIsBottomMenuExpanded((expanded) => !expanded);
             }}
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -886,7 +896,9 @@ export default function StudentCampDetailPage() {
                 </span>
                 {!isBottomMenuExpanded && (
                   <span className="block truncate text-[11px] font-medium text-gray-400">
-                    แตะเพื่อแสดงภารกิจและเมนูอื่น ๆ
+                    {menuLocked
+                      ? `เปิดใช้งานวันที่ ${formatDate(camp.rawStartDate)}`
+                      : "แตะเพื่อแสดงภารกิจและเมนูอื่น ๆ"}
                   </span>
                 )}
               </span>
@@ -911,9 +923,20 @@ export default function StudentCampDetailPage() {
                 : "mt-0 grid-rows-[0fr] opacity-0"
             }`}
             id="camp-bottom-menu-content"
-            inert={menuLocked || !isBottomMenuExpanded}
+            inert={!isBottomMenuExpanded}
           >
-            <div className="min-h-0 overflow-hidden">
+            <div className="relative min-h-0 overflow-hidden">
+              {menuLocked && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 rounded-2xl border border-gray-200 bg-white/95 px-4 text-center shadow-sm backdrop-blur-sm">
+                  <Lock className="text-[#5d7c6f]" size={24} />
+                  <p className="text-sm font-black text-gray-900">
+                    เมนูนี้จะเปิดให้ใช้งานในวันเข้าค่าย
+                  </p>
+                  <p className="text-xs font-bold text-gray-400">
+                    เริ่มใช้งานได้วันที่ {formatDate(camp.rawStartDate)}
+                  </p>
+                </div>
+              )}
               {!camp.isRegistered ? (
                 camp.isEnded ? (
                   <Button
@@ -1168,17 +1191,7 @@ export default function StudentCampDetailPage() {
             </div>
           </div>
 
-          {menuLocked && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 rounded-2xl border border-gray-200 bg-white/95 px-4 text-center shadow-sm backdrop-blur-sm">
-              <Lock className="text-[#5d7c6f]" size={24} />
-              <p className="text-sm font-black text-gray-900">
-                เมนูนี้จะเปิดให้ใช้งานในวันเข้าค่าย
-              </p>
-              <p className="text-xs font-bold text-gray-400">
-                เริ่มใช้งานได้วันที่ {formatDate(camp.rawStartDate)}
-              </p>
-            </div>
-          )}
+
         </div>
       </div>
 
