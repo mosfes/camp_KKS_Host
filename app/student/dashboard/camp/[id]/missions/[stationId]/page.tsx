@@ -28,6 +28,7 @@ import { isBangkokDateBefore } from "@/lib/bangkok-date";
 import dynamic from "next/dynamic";
 import VideoPlayer from "@/components/VideoPlayer";
 import { getVideoSource, supportedVideoUrlMessage } from "@/lib/video";
+import { toThumbnail } from "@/lib/cloudinary-url";
 
 const QrScanner = dynamic(() => import("@/components/QrScanner"), {
   ssr: false,
@@ -1237,7 +1238,7 @@ export default function StudentStationDetailPage() {
                                       <img
                                         alt="Uploaded"
                                         className="w-full h-48 object-cover rounded-xl border border-gray-200"
-                                        src={answers[q.question_id]}
+                                        src={toThumbnail(answers[q.question_id])}
                                       />
                                       {!isSubmitted && (
                                         <button

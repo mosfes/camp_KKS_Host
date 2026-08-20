@@ -31,6 +31,7 @@ import QRCode from "react-qr-code";
 import { useStatusModal } from "@/components/StatusModalProvider";
 import VideoPlayer from "@/components/VideoPlayer";
 import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
+import { toThumbnail } from "@/lib/cloudinary-url";
 
 interface MonitorMissionModalProps {
   isOpen: boolean;
@@ -626,7 +627,7 @@ export default function MonitorMissionModal({
                                                 <img
                                                   alt="Student submission"
                                                   className="w-full max-w-md rounded-lg shadow-sm border border-gray-200 cursor-zoom-in hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
-                                                  src={ans.answerText}
+                                                  src={toThumbnail(ans.answerText)}
                                                   onClick={(e) => {
                                                     e.stopPropagation();
                                                     e.nativeEvent.stopImmediatePropagation();

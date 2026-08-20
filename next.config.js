@@ -6,6 +6,10 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
+    // Bypass Vercel's image optimizer (quota-limited on the free plan) and
+    // let Cloudinary resize/compress via URL transformations instead.
+    loader: 'custom',
+    loaderFile: './lib/cloudinary-image-loader.ts',
     remotePatterns: [
       {
         protocol: 'https',

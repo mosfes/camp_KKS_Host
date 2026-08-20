@@ -32,6 +32,7 @@ import SelectProjectTypeModal from "./SelectProjectTypeModal";
 import EditCampModal from "./camp/EditCampModal";
 import EnrollmentModal from "./EnrollmentModal";
 import HomeroomStudentModal from "./HomeroomStudentModal";
+import { toThumbnail } from "@/lib/cloudinary-url";
 
 /* ---------- Default SVG Component ---------- */
 function DefaultCampImage() {
@@ -1208,7 +1209,7 @@ function DashboardContent() {
                             <img
                               alt={camp.title}
                               className="w-full h-full object-cover"
-                              src={camp.image}
+                              src={toThumbnail(camp.image)}
                             />
                           ) : (
                             <DefaultCampImage />

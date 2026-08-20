@@ -35,6 +35,7 @@ import {
   isBangkokDateBefore,
 } from "@/lib/bangkok-date";
 import { uploadStudentProfileImage } from "@/lib/student-profile-upload";
+import { toThumbnail } from "@/lib/cloudinary-url";
 
 // Utility to format date (with optional range)
 const formatDate = (start: string, end?: string) => {
@@ -910,7 +911,7 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
             <img
               alt={camp.title}
               className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isEnded ? "opacity-70" : ""}`}
-              src={camp.img_camp_url}
+              src={toThumbnail(camp.img_camp_url)}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-200">

@@ -26,6 +26,7 @@ import {
   getBangkokDaysUntil,
   isBangkokDateBefore,
 } from "@/lib/bangkok-date";
+import { toThumbnail } from "@/lib/cloudinary-url";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface Teacher {
@@ -562,7 +563,7 @@ function CampCard({
             <img
               alt={camp.title}
               className={`w-full h-full object-cover ${isEnded ? "opacity-80" : ""}`}
-              src={camp.img_camp_url}
+              src={toThumbnail(camp.img_camp_url)}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
