@@ -21,6 +21,31 @@ function getFontBytes(): Buffer {
   return cachedFontBytes;
 }
 
+// Cache Template Image ไว้ใน Memory โดยใช้ URL เป็น key
+// - URL เดิม → ใช้ buffer เดิมทันที ไม่ fetch Cloudinary ซ้ำ
+// - Admin อัปโหลดใหม่ → URL เปลี่ยน → cache miss → fetch ใหม่อัตโนมัติ
+const templateCache = new Map<
+  string,
+  { buffer: ArrayBuffer; contentType: string }
+>();
+
+async function fetchTemplate(
+  url: string,
+): Promise<{ buffer: ArrayBuffer; contentType: string }> {
+  const cached = templateCache.get(url);
+  if (cached) return cached;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch template: ${res.status}`);
+
+  const entry = {
+    buffer: await res.arrayBuffer(),
+    contentType: res.headers.get("content-type") || "",
+  };
+  templateCache.set(url, entry);
+  return entry;
+}
+
 // In-memory rate limiter to prevent rapid spam requests
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
@@ -304,17 +329,16 @@ export async function GET(request: Request, context: any) {
       }
     }
 
-    // Fetch the image
-    const imageRes = await fetch(camp.img_certificate_url);
+    // Fetch the image (ใช้ cache — URL เดิมไม่ fetch Cloudinary ซ้ำ)
+    const { buffer: imageBuffer, contentType } = await fetchTemplate(
+      camp.img_certificate_url,
+    );
 
-    if (!imageRes.ok) {
-      return NextResponse.json(
-        { error: "Failed to load certificate template image." },
-        { status: 500 },
-      );
-    }
-    const imageBuffer = await imageRes.arrayBuffer();
-    const contentType = imageRes.headers.get("content-type") || "";
+    // คำนวณ hash สั้นจาก URL สำหรับใช้เป็น browser cache-buster
+    const templateHash = Buffer.from(camp.img_certificate_url)
+      .toString("base64")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 10);
 
     const prefix = enrollment.student.prefix_name?.trim() || "";
     const fullName = `${prefix}${enrollment.student.firstname.trim()} ${enrollment.student.lastname.trim()}`;
@@ -468,12 +492,18 @@ export async function GET(request: Request, context: any) {
         "Content-Disposition",
         `${disposition}; filename="certificate_${student.students_id}_${campId}.png"`,
       );
-      resHeaders.set(
-        "Cache-Control",
-        "no-store, no-cache, must-revalidate, proxy-revalidate",
-      );
-      resHeaders.set("Pragma", "no-cache");
-      resHeaders.set("Expires", "0");
+      // preview: cache ได้ตลอด (browser ใช้ซ้ำได้) เพราะ frontend จะเปลี่ยน ?t= เมื่อ template เปลี่ยน
+      // download: ไม่ cache เพราะต้องการให้ได้ไฟล์ล่าสุดเสมอ
+      if (isDownload) {
+        resHeaders.set("Cache-Control", "no-store");
+        resHeaders.delete("Pragma");
+        resHeaders.delete("Expires");
+      } else {
+        resHeaders.set("Cache-Control", "private, max-age=31536000, immutable");
+        resHeaders.delete("Pragma");
+        resHeaders.delete("Expires");
+      }
+      resHeaders.set("X-Template-Hash", templateHash);
       if (assignedCertNo != null) {
         resHeaders.set("X-Certificate-No", String(assignedCertNo));
       }

@@ -261,10 +261,11 @@ export default function StudentDashboard() {
     window.scrollTo(0, 0);
     async function fetchData() {
       try {
-        const [campsRes, studentRes, profileRes, busRes] = await Promise.all([
+        // /api/auth/student/me คืนข้อมูลนักเรียน + classroom ครบ
+        // ใช้เป็น source เดียว แทนการ fetch /api/student/profile แยก
+        const [campsRes, studentRes, busRes] = await Promise.all([
           fetch("/api/student/camps"),
           fetch("/api/auth/student/me"),
-          fetch("/api/student/profile"),
           fetch("/api/student/bus", { cache: "no-store" }),
         ]);
 
@@ -272,7 +273,19 @@ export default function StudentDashboard() {
           setCamps(await campsRes.json());
         }
         if (studentRes.ok) {
-          setStudent(await studentRes.json());
+          const studentData = await studentRes.json();
+
+          setStudent(studentData);
+
+          // ใช้ข้อมูลเดิมสำหรับ profile modal — ไม่ต้อง fetch ซ้ำ
+          if (!studentData.nickname?.trim()) {
+            setProfileData({
+              nickname: studentData.nickname || "",
+              food_allergy: studentData.food_allergy || "",
+              profile_image_url: studentData.profile_image_url || null,
+            });
+            setShowProfileModal(true);
+          }
         }
         if (busRes.ok) {
           const busData = await busRes.json();
@@ -280,20 +293,6 @@ export default function StudentDashboard() {
           setBusAssignments(
             Array.isArray(busData.assignments) ? busData.assignments : [],
           );
-        }
-        if (profileRes.ok) {
-          const profile = await profileRes.json();
-
-          // Ask for a nickname the first time a student enters without one.
-          // The profile image is shown in the same form but remains optional.
-          if (!profile.nickname?.trim()) {
-            setProfileData({
-              nickname: profile.nickname || "",
-              food_allergy: profile.food_allergy || "",
-              profile_image_url: profile.profile_image_url || null,
-            });
-            setShowProfileModal(true);
-          }
         }
       } catch (error) {
         console.error("Failed to fetch data", error);
@@ -305,11 +304,34 @@ export default function StudentDashboard() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      void refreshBusAssignments();
-    }, 15000);
+    // ป้องกัน request ซ้อน — ถ้า request ก่อนหน้ายังไม่เสร็จ ให้ข้ามรอบนี้ไป
+    let isPolling = false;
 
-    return () => window.clearInterval(timer);
+    const poll = async () => {
+      if (isPolling || document.visibilityState !== "visible") return;
+      isPolling = true;
+      try {
+        await refreshBusAssignments();
+      } finally {
+        isPolling = false;
+      }
+    };
+
+    const timer = window.setInterval(poll, 15000);
+
+    // fetch ทันทีเมื่อ user กลับมาที่ tab (แทนที่จะรอ interval ถัดไป)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void poll();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [refreshBusAssignments]);
 
   const onProfileSaved = () => {

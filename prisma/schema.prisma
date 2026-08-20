@@ -538,6 +538,8 @@ model attendance_record_student {
 
   attendance_teachers_session_id attendance_teachers @relation(fields: [attendance_teacher_session_id], references: [session_id])
   student                        students            @relation(fields: [student_students_id], references: [students_id])
+
+  @@unique([attendance_teacher_session_id, student_students_id], map: "attendance_record_session_student_key")
 }
 
 model attendance_teachers {

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
+import { recordStudentAttendanceOnce } from "@/lib/attendance-record";
 
 /** ตรวจสอบ QR payload จาก DB */
 async function verifyQR(payload) {
@@ -122,38 +123,18 @@ export async function POST(req) {
       );
     }
 
-    // ตรวจว่าเช็คชื่อไปแล้วหรือยัง
-    const existing = await prisma.attendance_record_student.findFirst({
-      where: {
-        attendance_teacher_session_id: teacherSession.session_id,
-        student_students_id: studentId,
-      },
-    });
-
-    if (existing) {
-      return NextResponse.json({
-        success: true,
-        alreadyCheckedIn: true,
-        message: "คุณเช็คชื่อไปแล้วในรอบนี้",
-        checkedAt: existing.checkin_time,
-      });
-    }
-
-    const checkedAt = new Date();
-
-    await prisma.attendance_record_student.create({
-      data: {
-        attendance_teacher_session_id: teacherSession.session_id,
-        student_students_id: studentId,
-        checkin_time: checkedAt,
-      },
+    const attendance = await recordStudentAttendanceOnce({
+      sessionId: teacherSession.session_id,
+      studentId,
     });
 
     return NextResponse.json({
       success: true,
-      alreadyCheckedIn: false,
-      message: "เช็คชื่อสำเร็จ!",
-      checkedAt,
+      alreadyCheckedIn: !attendance.created,
+      message: attendance.created
+        ? "เช็คชื่อสำเร็จ!"
+        : "คุณเช็คชื่อไปแล้วในรอบนี้",
+      checkedAt: attendance.checkedAt,
     });
   } catch (e) {
     console.error("Attendance check-in error:", e);

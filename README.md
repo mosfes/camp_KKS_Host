@@ -39,9 +39,10 @@ Cloudinary and set its server-side file limit before deploying:
 CLOUDINARY_UPLOAD_PRESET=your_shared_preset
 ```
 
-Set `max_file_size` to 20 MB on the shared preset. The app still verifies the
-actual Cloudinary asset on the server and applies the stricter 5 MB limits to
-profile images and certificate templates. The old
+Set `max_file_size` to 20 MB on the shared preset. Mission uploads verify
+Cloudinary's signed upload response without using Admin API quota; profile
+images and certificate templates still apply their stricter 5 MB commit limits.
+The old
 `/api/student/profile/upload-image` route no longer accepts file bytes through
 Vercel.
 

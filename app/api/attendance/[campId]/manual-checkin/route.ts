@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { NextResponse } from "next/server";
 
+import { recordStudentAttendanceOnce } from "@/lib/attendance-record";
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
 
@@ -15,7 +16,7 @@ export async function POST(req, { params }) {
 
   try {
     const body = await req.json();
-    const { roundId, studentId, enrollmentId, action } = body;
+    const { roundId, studentId, action } = body;
 
     if (!roundId || !studentId || !action) {
       return NextResponse.json({ error: "ข้อมูลไม่ครบถ้วน" }, { status: 400 });
@@ -34,22 +35,10 @@ export async function POST(req, { params }) {
     }
 
     if (action === "checkin") {
-      const existing = await prisma.attendance_record_student.findFirst({
-        where: {
-          attendance_teacher_session_id: teacherSession.session_id,
-          student_students_id: studentId,
-        },
+      await recordStudentAttendanceOnce({
+        sessionId: teacherSession.session_id,
+        studentId,
       });
-
-      if (!existing) {
-        await prisma.attendance_record_student.create({
-          data: {
-            attendance_teacher_session_id: teacherSession.session_id,
-            student_students_id: studentId,
-            checkin_time: new Date(),
-          },
-        });
-      }
     } else if (action === "uncheck") {
       await prisma.attendance_record_student.deleteMany({
         where: {

@@ -445,19 +445,23 @@ export default function StudentStationDetailPage() {
       );
     }
 
-    const commitResponse = await fetch(
-      "/api/student/mission/upload-commit",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campId,
-          missionId,
-          questionId,
-          publicId: uploadData.public_id,
-        }),
-      },
-    );
+    const commitResponse = await fetch("/api/student/mission/upload-commit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        campId,
+        missionId,
+        questionId,
+        publicId: uploadData.public_id,
+        version: uploadData.version,
+        responseSignature: uploadData.signature,
+        resourceType: uploadData.resource_type,
+        bytes: uploadData.bytes,
+        width: uploadData.width,
+        height: uploadData.height,
+        format: uploadData.format,
+      }),
+    });
     const commitData = await commitResponse.json().catch(() => null);
 
     if (!commitResponse.ok || !commitData?.url || !commitData?.publicId) {

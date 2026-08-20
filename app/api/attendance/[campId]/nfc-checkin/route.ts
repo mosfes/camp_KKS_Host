@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireCampTeacher } from "@/lib/attendance-auth";
+import { recordStudentAttendanceOnce } from "@/lib/attendance-record";
 import { prisma } from "@/lib/db";
 import { parseNfcStudentId } from "@/lib/nfc-card";
 
@@ -97,42 +98,20 @@ export async function POST(
     );
   }
 
-  const existing = await prisma.attendance_record_student.findFirst({
-    where: {
-      attendance_teacher_session_id: teacherSession.session_id,
-      student_students_id: student.students_id,
-    },
-    select: { checkin_time: true },
-  });
   const studentName = `${student.prefix_name || ""}${student.firstname} ${student.lastname}`;
-
-  if (existing) {
-    return NextResponse.json({
-      success: true,
-      alreadyCheckedIn: true,
-      studentId: student.students_id,
-      studentName,
-      checkedAt: existing.checkin_time,
-      message: `${studentName} เช็คชื่อในรอบนี้แล้ว`,
-    });
-  }
-
-  const checkedAt = new Date();
-
-  await prisma.attendance_record_student.create({
-    data: {
-      attendance_teacher_session_id: teacherSession.session_id,
-      student_students_id: student.students_id,
-      checkin_time: checkedAt,
-    },
+  const attendance = await recordStudentAttendanceOnce({
+    sessionId: teacherSession.session_id,
+    studentId: student.students_id,
   });
 
   return NextResponse.json({
     success: true,
-    alreadyCheckedIn: false,
+    alreadyCheckedIn: !attendance.created,
     studentId: student.students_id,
     studentName,
-    checkedAt,
-    message: `เช็คชื่อ ${studentName} สำเร็จ`,
+    checkedAt: attendance.checkedAt,
+    message: attendance.created
+      ? `เช็คชื่อ ${studentName} สำเร็จ`
+      : `${studentName} เช็คชื่อในรอบนี้แล้ว`,
   });
 }

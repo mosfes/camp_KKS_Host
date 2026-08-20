@@ -10,9 +10,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_MISSION_UPLOAD_BYTES = 20 * 1024 * 1024;
+const cloudinaryUtils = cloudinary.utils as typeof cloudinary.utils & {
+  verify_api_response_signature: (
+    publicId: string,
+    version: string | number,
+    signature: string,
+  ) => boolean;
+};
 
 /**
- * Verify a mission image after the browser uploads it directly to Cloudinary.
+ * Verify Cloudinary's signed upload response without spending Admin API quota.
  * The returned URL is accepted by mission submit only after this check.
  */
 export async function POST(request: Request) {
@@ -33,6 +40,15 @@ export async function POST(request: Request) {
     const missionIdResult = positiveIntSchema.safeParse(body?.missionId);
     const questionIdResult = positiveIntSchema.safeParse(body?.questionId);
     const publicId = typeof body?.publicId === "string" ? body.publicId : "";
+    const version = Number(body?.version);
+    const responseSignature =
+      typeof body?.responseSignature === "string" ? body.responseSignature : "";
+    const resourceType =
+      typeof body?.resourceType === "string" ? body.resourceType : "";
+    const bytes = Number(body?.bytes);
+    const width = Number(body?.width);
+    const height = Number(body?.height);
+    const format = typeof body?.format === "string" ? body.format : "";
 
     if (
       !campIdResult.success ||
@@ -41,6 +57,25 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { error: "ข้อมูลภารกิจไม่ถูกต้อง" },
+        { status: 400 },
+      );
+    }
+
+    if (
+      !Number.isSafeInteger(version) ||
+      version <= 0 ||
+      !/^[a-f\d]{32,128}$/i.test(responseSignature) ||
+      resourceType !== "image" ||
+      !Number.isFinite(bytes) ||
+      bytes <= 0 ||
+      !Number.isFinite(width) ||
+      width <= 0 ||
+      !Number.isFinite(height) ||
+      height <= 0 ||
+      !/^[a-z0-9]+$/i.test(format)
+    ) {
+      return NextResponse.json(
+        { error: "ผลการอัปโหลดรูปจาก Cloudinary ไม่ถูกต้อง" },
         { status: 400 },
       );
     }
@@ -110,13 +145,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const resource = await cloudinary.api.resource(publicId, {
-      resource_type: "image",
-      type: "upload",
-    });
-    const bytes = Number(resource.bytes);
+    const hasValidResponseSignature =
+      cloudinaryUtils.verify_api_response_signature(
+        publicId,
+        version,
+        responseSignature,
+      );
 
-    if (!Number.isFinite(bytes) || bytes <= 0 || bytes > MAX_MISSION_UPLOAD_BYTES) {
+    if (!hasValidResponseSignature) {
+      return NextResponse.json(
+        { error: "ไม่สามารถยืนยันผลการอัปโหลดจาก Cloudinary ได้" },
+        { status: 403 },
+      );
+    }
+
+    if (bytes > MAX_MISSION_UPLOAD_BYTES) {
       await cloudinary.uploader.destroy(publicId, {
         invalidate: true,
         resource_type: "image",
@@ -129,17 +172,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const url = cloudinary.url(publicId, {
+      secure: true,
+      resource_type: "image",
+      type: "upload",
+      version,
+    });
+
     return NextResponse.json({
-      url: resource.secure_url,
-      publicId: resource.public_id,
+      url,
+      publicId,
       bytes,
-      width: Number.isFinite(Number(resource.width))
-        ? Number(resource.width)
-        : null,
-      height: Number.isFinite(Number(resource.height))
-        ? Number(resource.height)
-        : null,
-      format: resource.format || null,
+      width,
+      height,
+      format,
     });
   } catch (error: any) {
     console.error("[student mission upload commit] error:", error);

@@ -1562,7 +1562,7 @@ export default function StudentCampDetailPage() {
                 <img
                   alt="Certificate Preview"
                   className={`w-full h-auto object-contain rounded-xl shadow-md transition-opacity duration-300 ${certImageLoading ? "opacity-0" : "opacity-100"}`}
-                  src={`/api/camps/${id}/certificate?format=png&v=2`}
+                  src={`/api/camps/${id}/certificate?format=png&t=${Buffer.from(camp?.img_certificate_url ?? "").toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10)}`}
                   onLoad={() => setCertImageLoading(false)}
                 />
                 {certImageLoading && (
