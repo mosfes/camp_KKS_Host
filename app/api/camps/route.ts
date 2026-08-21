@@ -121,9 +121,7 @@ export async function POST(req) {
         destination_address: hasValidDestination
           ? (destination.address || "").trim().slice(0, 500) || null
           : null,
-        destination_latitude: hasValidDestination
-          ? destination.latitude
-          : null,
+        destination_latitude: hasValidDestination ? destination.latitude : null,
         destination_longitude: hasValidDestination
           ? destination.longitude
           : null,
@@ -133,8 +131,7 @@ export async function POST(req) {
         has_transport: Boolean(
           body.hasTransport || body.locationTrackingEnabled,
         ),
-        location_update_interval:
-          body.locationUpdateInterval === 5 ? 5 : 10,
+        location_update_interval: body.locationUpdateInterval === 5 ? 5 : 10,
         created_by_teacher_id: teacher.teachers_id,
         camp_daily_schedule: {
           create: body.dailySchedule.map((day) => ({
@@ -335,6 +332,7 @@ export async function GET(request) {
 
     const campsWithMeta = camps.map((camp) => {
       const updated = { ...camp };
+
       updated.isOwner =
         camp.created_by_teacher_id === teacher.teachers_id ||
         teacher.role === "ADMIN";

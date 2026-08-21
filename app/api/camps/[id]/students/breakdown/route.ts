@@ -29,7 +29,10 @@ export async function GET(
       );
     }
 
-    const fieldMap: Record<string, "food_allergy" | "chronic_disease" | "remark"> = {
+    const fieldMap: Record<
+      string,
+      "food_allergy" | "chronic_disease" | "remark"
+    > = {
       allergy: "food_allergy",
       disease: "chronic_disease",
       remark: "remark",
@@ -78,6 +81,7 @@ export async function GET(
 
     for (const e of enrollments) {
       const raw = e.student[field];
+
       if (!raw) continue;
 
       // Normalize: trim, split by common delimiters to handle "โรคA, โรคB"
@@ -86,13 +90,15 @@ export async function GET(
         .map((s) => s.trim())
         .filter((s) => s.length > 0 && s !== "-" && s !== "ไม่มี");
 
-      const studentName = `${e.student.prefix_name ?? ""}${e.student.firstname} ${e.student.lastname}`.trim();
+      const studentName =
+        `${e.student.prefix_name ?? ""}${e.student.firstname} ${e.student.lastname}`.trim();
 
       for (const entry of entries) {
         if (!groupMap.has(entry)) {
           groupMap.set(entry, { text: entry, count: 0, students: [] });
         }
         const group = groupMap.get(entry)!;
+
         group.count += 1;
         group.students.push({ id: e.student.students_id, name: studentName });
       }

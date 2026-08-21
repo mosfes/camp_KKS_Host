@@ -11,6 +11,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
   const { id } = await context.params;
   const campId = Number(id);
@@ -19,6 +20,7 @@ export async function GET(
     where: { camp_id: campId, deletedAt: null },
     include: { project_document: true },
   });
+
   if (!camp) return NextResponse.json({ error: "ไม่พบค่าย" }, { status: 404 });
   if (
     teacher.role !== "ADMIN" &&
@@ -37,6 +39,7 @@ export async function GET(
   }
 
   const bytes = await createProjectDocumentPdf(camp.project_document);
+
   return new NextResponse(Buffer.from(bytes), {
     headers: {
       "Content-Type": "application/pdf",

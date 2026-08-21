@@ -13,11 +13,14 @@ import { getCertificateEligibility } from "@/lib/certificate-eligibility";
 
 // Cache Font ไว้ใน Memory เพื่อไม่ต้องอ่านไฟล์ใหม่ทุกครั้งที่กดโหลด
 let cachedFontBytes: Buffer | null = null;
+
 function getFontBytes(): Buffer {
   if (!cachedFontBytes) {
     const fontPath = path.join(process.cwd(), "public/fonts/THSarabunNew.ttf");
+
     cachedFontBytes = fs.readFileSync(fontPath);
   }
+
   return cachedFontBytes;
 }
 
@@ -33,16 +36,20 @@ async function fetchTemplate(
   url: string,
 ): Promise<{ buffer: ArrayBuffer; contentType: string }> {
   const cached = templateCache.get(url);
+
   if (cached) return cached;
 
   const res = await fetch(url);
+
   if (!res.ok) throw new Error(`Failed to fetch template: ${res.status}`);
 
   const entry = {
     buffer: await res.arrayBuffer(),
     contentType: res.headers.get("content-type") || "",
   };
+
   templateCache.set(url, entry);
+
   return entry;
 }
 
@@ -216,6 +223,7 @@ export async function GET(request: Request, context: any) {
               },
               select: { certificate_no: true },
             });
+
             if (existing?.certificate_no != null) {
               assignedCertNo = existing.certificate_no;
               break;
@@ -250,6 +258,7 @@ export async function GET(request: Request, context: any) {
                 );
 
                 let newNo = camp.cert_number_start!;
+
                 while (usedSet.has(newNo)) {
                   newNo++;
                 }
@@ -292,6 +301,7 @@ export async function GET(request: Request, context: any) {
                 },
                 select: { certificate_no: true },
               });
+
               if (existingCert?.certificate_no != null) {
                 assignedCertNo = existingCert.certificate_no;
                 lastError = null;

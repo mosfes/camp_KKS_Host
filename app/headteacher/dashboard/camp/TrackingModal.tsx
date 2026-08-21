@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import {
   Modal,
   ModalContent,
@@ -20,8 +20,9 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  ArrowLeft,
 } from "lucide-react";
+
+import CampBreadcrumb from "./CampBreadcrumb";
 
 import CampLocationTracker from "@/components/camp-location/CampLocationTracker";
 
@@ -58,6 +59,42 @@ interface TrackingModalProps {
   locationTrackingEnabled?: boolean;
   pageMode?: boolean;
   view?: TrackingView;
+}
+
+function TrackingShell({
+  pageMode,
+  isOpen,
+  onClose,
+  children,
+}: {
+  pageMode: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (pageMode) {
+    return (
+      <main className="flex h-full min-h-0 flex-col overflow-hidden bg-[#f5f5f2]">
+        {children}
+      </main>
+    );
+  }
+
+  return (
+    <Modal
+      backdrop="blur"
+      classNames={{
+        base: "mx-2 my-2 max-h-[98vh] w-[calc(100vw-1rem)] max-w-[1280px] rounded-3xl bg-white shadow-xl sm:w-[calc(100vw-2rem)]",
+        backdrop: "bg-black/40 backdrop-blur-sm",
+      }}
+      isDismissable={true}
+      isOpen={isOpen}
+      scrollBehavior="inside"
+      onOpenChange={onClose}
+    >
+      <ModalContent className="max-h-[98vh]">{children}</ModalContent>
+    </Modal>
+  );
 }
 
 function TrackingSkeletonBlock({ className }: { className: string }) {
@@ -207,389 +244,363 @@ export default function TrackingModal({
     return filteredStudents?.slice(start, end);
   }, [page, filteredStudents]);
 
+  const Header = pageMode ? "header" : ModalHeader;
+  const Body = pageMode ? "section" : ModalBody;
+
   return (
-    <Modal
-      backdrop="blur"
-      classNames={{
-        base: pageMode
-          ? "!m-0 !h-full !min-h-0 !max-h-none w-full !max-w-none rounded-none bg-[#f5f5f2] shadow-none"
-          : "mx-2 my-2 max-h-[98vh] w-[calc(100vw-1rem)] max-w-[1280px] rounded-3xl bg-white shadow-xl sm:w-[calc(100vw-2rem)]",
-        backdrop: pageMode ? "hidden" : "bg-black/40 backdrop-blur-sm",
-        wrapper: pageMode ? "camp-page-modal items-start p-0" : undefined,
-      }}
-      hideCloseButton={pageMode}
-      isDismissable={!pageMode}
-      isOpen={isOpen}
-      scrollBehavior="inside"
-      onOpenChange={onClose}
-    >
-      <ModalContent
-        className={
-          pageMode
-            ? "!m-0 !h-full !min-h-0 !max-h-none flex min-h-0 flex-col overflow-hidden bg-[#f5f5f2]"
-            : "max-h-[98vh]"
-        }
-      >
-        {() => (
-          <>
-            <ModalHeader
-              className={`relative flex shrink-0 flex-col gap-1 border-b border-gray-100 px-6 ${
-                pageMode ? "pb-3 pt-4" : "pb-4 pt-6"
+    <TrackingShell isOpen={isOpen} pageMode={pageMode} onClose={onClose}>
+      <>
+        <Header
+          className={`relative flex shrink-0 flex-col gap-1 border-b border-gray-100 px-6 ${
+            pageMode ? "pb-3 pt-4" : "pb-4 pt-6"
+          }`}
+        >
+          {pageMode && (
+            <CampBreadcrumb
+              campId={campId}
+              className="mb-4"
+              currentPage={
+                view === "location" ? "ติดตามตำแหน่ง" : "ติดตามความคืบหน้า"
+              }
+            />
+          )}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#eaf1ee] flex items-center justify-center text-[#5d7c6f] shrink-0">
+              {view === "location" ? <MapPin size={20} /> : <Users size={20} />}
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 leading-tight">
+                {pageMode
+                  ? view === "location"
+                    ? "ติดตามตำแหน่ง"
+                    : "ติดตามนักเรียน"
+                  : "การติดตามนักเรียน"}
+              </h2>
+              {campName && (
+                <p className="mt-0.5 max-w-[300px] truncate text-sm font-normal text-gray-500">
+                  {campName}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {view === "both" && (
+            <div
+              className={`mt-4 grid gap-2 rounded-xl bg-gray-100 p-1 ${
+                locationTrackingEnabled ? "grid-cols-2" : "grid-cols-1"
               }`}
             >
-              {pageMode && (
+              {locationTrackingEnabled && (
                 <button
-                  className="mb-2 inline-flex w-fit items-center gap-0.5 rounded-lg px-2 py-1.5 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
+                  className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                    activeSection === "location"
+                      ? "bg-white text-[#5d7c6f] shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
                   type="button"
-                  onClick={onClose}
+                  onClick={() => setActiveSection("location")}
                 >
-                  <ArrowLeft size={14} />
-                  กลับไปยังหน้าหลัก
+                  <MapPin size={16} />
+                  ตำแหน่งนักเรียน
                 </button>
               )}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#eaf1ee] flex items-center justify-center text-[#5d7c6f] shrink-0">
-                  {view === "location" ? (
-                    <MapPin size={20} />
-                  ) : (
-                    <Users size={20} />
-                  )}
+              <button
+                className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  activeSection === "progress"
+                    ? "bg-white text-[#5d7c6f] shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+                type="button"
+                onClick={() => setActiveSection("progress")}
+              >
+                <Users size={16} />
+                ความก้าวหน้านักเรียน
+              </button>
+            </div>
+          )}
+
+          {activeSection === "progress" && (
+            <>
+              <div className="mt-4 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="text-gray-400" size={16} />
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 leading-tight">
-                    {pageMode
-                      ? view === "location"
-                        ? "ติดตามตำแหน่ง"
-                        : "ติดตามนักเรียน"
-                      : "การติดตามนักเรียน"}
-                  </h2>
-                  {campName && (
-                    <p className="mt-0.5 max-w-[300px] truncate text-sm font-normal text-gray-500">
-                      {campName}
-                    </p>
-                  )}
-                </div>
+                <input
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/20 focus:border-[#5d7c6f] transition-all bg-white"
+                  placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
 
-              {view === "both" && (
-                <div
-                  className={`mt-4 grid gap-2 rounded-xl bg-gray-100 p-1 ${
-                    locationTrackingEnabled ? "grid-cols-2" : "grid-cols-1"
-                  }`}
-                >
-                  {locationTrackingEnabled && (
-                    <button
-                      className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                        activeSection === "location"
-                          ? "bg-white text-[#5d7c6f] shadow-sm"
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}
-                      type="button"
-                      onClick={() => setActiveSection("location")}
-                    >
-                      <MapPin size={16} />
-                      ตำแหน่งนักเรียน
-                    </button>
-                  )}
+              {data && (
+                <section className="mt-3 rounded-xl border border-gray-200 bg-white p-2.5 sm:p-3">
                   <button
-                    className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                      activeSection === "progress"
-                        ? "bg-white text-[#5d7c6f] shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    aria-expanded={isCertificateStatusOpen}
+                    className="flex w-full items-center justify-between gap-2 text-left"
                     type="button"
-                    onClick={() => setActiveSection("progress")}
+                    onClick={() =>
+                      setIsCertificateStatusOpen((current) => !current)
+                    }
                   >
-                    <Users size={16} />
-                    ความก้าวหน้านักเรียน
+                    <span className="flex min-w-0 items-start gap-2">
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#5d7c6f] shadow-sm">
+                        <Award size={16} />
+                      </span>
+                      <span>
+                        <span className="block text-xs font-bold text-gray-900">
+                          สถานะการรับเกียรติบัตร
+                        </span>
+                        <span className="mt-0.5 block text-[11px] leading-relaxed text-gray-500">
+                          “ได้รับแล้ว” หมายถึง
+                          ระบบเคยออกเกียรติบัตรให้นักเรียนแล้ว
+                        </span>
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[#5d7c6f]">
+                      {isCertificateStatusOpen ? (
+                        <ChevronUp size={16} />
+                      ) : (
+                        <ChevronDown size={16} />
+                      )}
+                    </span>
                   </button>
-                </div>
-              )}
 
-              {activeSection === "progress" && (
-                <>
-                  <div className="mt-4 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search className="text-gray-400" size={16} />
+                  <div
+                    className={
+                      isCertificateStatusOpen ? "mt-2 block" : "hidden"
+                    }
+                  >
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      {[
+                        {
+                          key: "all" as const,
+                          label: "นักเรียนทั้งหมด",
+                          helper: "ทุกสถานะ",
+                          value: data.summary.totalStudents,
+                          activeClass: "border-[#5d7c6f] bg-[#eef4f1]",
+                          iconClass: "bg-[#e2ece7] text-[#5d7c6f]",
+                        },
+                        {
+                          key: "issued" as const,
+                          label: "ได้รับเกียรติบัตรแล้ว",
+                          helper: "มีประวัติออกเกียรติบัตร",
+                          value: data.summary.issuedCertificates,
+                          activeClass: "border-emerald-500 bg-emerald-50",
+                          iconClass: "bg-emerald-100 text-emerald-700",
+                        },
+                        {
+                          key: "pending" as const,
+                          label: "ยังไม่ได้รับเกียรติบัตร",
+                          helper: "ยังไม่มีประวัติออกเกียรติบัตร",
+                          value: data.summary.pendingCertificates,
+                          activeClass: "border-amber-500 bg-amber-50",
+                          iconClass: "bg-amber-100 text-amber-700",
+                        },
+                      ].map((item) => (
+                        <button
+                          key={item.key}
+                          aria-pressed={certificateFilter === item.key}
+                          className={`relative flex items-center gap-2 rounded-lg border px-2.5 py-2.5 text-left transition ${
+                            certificateFilter === item.key
+                              ? `${item.activeClass} shadow-sm`
+                              : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                          }`}
+                          type="button"
+                          onClick={() => setCertificateFilter(item.key)}
+                        >
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${item.iconClass}`}
+                          >
+                            {item.key === "all" ? (
+                              <Users size={16} />
+                            ) : item.key === "issued" ? (
+                              <CheckCircle2 size={16} />
+                            ) : (
+                              <Clock size={16} />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-semibold leading-tight text-gray-800">
+                              {item.label}
+                            </span>
+                            <span className="mt-0.5 block text-[10px] leading-tight text-gray-500">
+                              {item.helper}
+                            </span>
+                          </span>
+                          <span className="text-lg font-bold text-gray-900">
+                            {item.value}
+                            <span className="ml-1 text-[11px] font-normal text-gray-500">
+                              คน
+                            </span>
+                          </span>
+                        </button>
+                      ))}
                     </div>
-                    <input
-                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/20 focus:border-[#5d7c6f] transition-all bg-white"
-                      placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+
+                    <p className="mt-1.5 text-center text-[10px] text-gray-400">
+                      กดสถานะด้านบนเพื่อกรองรายชื่อนักเรียน
+                    </p>
                   </div>
+                </section>
+              )}
+            </>
+          )}
+        </Header>
 
-                  {data && (
-                    <section className="mt-3 rounded-xl border border-gray-200 bg-white p-2.5 sm:p-3">
-                      <button
-                        aria-expanded={isCertificateStatusOpen}
-                        className="flex w-full items-center justify-between gap-2 text-left"
-                        type="button"
-                        onClick={() =>
-                          setIsCertificateStatusOpen((current) => !current)
-                        }
-                      >
-                        <span className="flex min-w-0 items-start gap-2">
-                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#5d7c6f] shadow-sm">
-                            <Award size={16} />
-                          </span>
-                          <span>
-                            <span className="block text-xs font-bold text-gray-900">
-                              สถานะการรับเกียรติบัตร
-                            </span>
-                            <span className="mt-0.5 block text-[11px] leading-relaxed text-gray-500">
-                              “ได้รับแล้ว” หมายถึง
-                              ระบบเคยออกเกียรติบัตรให้นักเรียนแล้ว
-                            </span>
-                          </span>
-                        </span>
-                        <span className="shrink-0 text-[#5d7c6f]">
-                          {isCertificateStatusOpen ? (
-                            <ChevronUp size={16} />
-                          ) : (
-                            <ChevronDown size={16} />
-                          )}
-                        </span>
-                      </button>
+        <Body
+          className={`flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-4 ${
+            pageMode ? "bg-[#f5f5f2]" : "bg-gray-50/30"
+          }`}
+        >
+          {activeSection === "location" ? (
+            <CampLocationTracker
+              campId={campId}
+              configureDestination={false}
+              showDestination={false}
+              viewer="teacher"
+            />
+          ) : loading ? (
+            <TrackingProgressSkeleton />
+          ) : !data ? (
+            <p className="text-center text-gray-400 py-8">
+              {loadError || "ไม่สามารถโหลดข้อมูลได้"}
+            </p>
+          ) : filteredStudents?.length === 0 ? (
+            <div className="text-center py-10 text-gray-400">
+              <Search className="mx-auto mb-2 opacity-30" size={32} />
+              <p className="text-sm">
+                {certificateFilter === "issued"
+                  ? "ยังไม่มีนักเรียนที่ได้รับเกียรติบัตร"
+                  : certificateFilter === "pending"
+                    ? "นักเรียนทุกคนได้รับเกียรติบัตรแล้ว"
+                    : "ไม่พบรายชื่อในระบบ"}
+              </p>
+            </div>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+              <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(240px,1fr)_auto] gap-4 border-b border-gray-100 bg-gray-50/70 px-4 py-3 text-xs font-semibold text-gray-500 sm:grid">
+                <span>นักเรียน</span>
+                <span>ความก้าวหน้าภารกิจ</span>
+                <span className="text-right">สถานะ</span>
+              </div>
 
-                      <div
-                        className={
-                          isCertificateStatusOpen ? "mt-2 block" : "hidden"
-                        }
-                      >
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                          {[
-                            {
-                              key: "all" as const,
-                              label: "นักเรียนทั้งหมด",
-                              helper: "ทุกสถานะ",
-                              value: data.summary.totalStudents,
-                              activeClass: "border-[#5d7c6f] bg-[#eef4f1]",
-                              iconClass: "bg-[#e2ece7] text-[#5d7c6f]",
-                            },
-                            {
-                              key: "issued" as const,
-                              label: "ได้รับเกียรติบัตรแล้ว",
-                              helper: "มีประวัติออกเกียรติบัตร",
-                              value: data.summary.issuedCertificates,
-                              activeClass: "border-emerald-500 bg-emerald-50",
-                              iconClass: "bg-emerald-100 text-emerald-700",
-                            },
-                            {
-                              key: "pending" as const,
-                              label: "ยังไม่ได้รับเกียรติบัตร",
-                              helper: "ยังไม่มีประวัติออกเกียรติบัตร",
-                              value: data.summary.pendingCertificates,
-                              activeClass: "border-amber-500 bg-amber-50",
-                              iconClass: "bg-amber-100 text-amber-700",
-                            },
-                          ].map((item) => (
-                            <button
-                              key={item.key}
-                              aria-pressed={certificateFilter === item.key}
-                              className={`relative flex items-center gap-2 rounded-lg border px-2.5 py-2.5 text-left transition ${
-                                certificateFilter === item.key
-                                  ? `${item.activeClass} shadow-sm`
-                                  : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                              }`}
-                              type="button"
-                              onClick={() => setCertificateFilter(item.key)}
-                            >
-                              <span
-                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${item.iconClass}`}
-                              >
-                                {item.key === "all" ? (
-                                  <Users size={16} />
-                                ) : item.key === "issued" ? (
-                                  <CheckCircle2 size={16} />
-                                ) : (
-                                  <Clock size={16} />
-                                )}
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block text-xs font-semibold leading-tight text-gray-800">
-                                  {item.label}
-                                </span>
-                                <span className="mt-0.5 block text-[10px] leading-tight text-gray-500">
-                                  {item.helper}
-                                </span>
-                              </span>
-                              <span className="text-lg font-bold text-gray-900">
-                                {item.value}
-                                <span className="ml-1 text-[11px] font-normal text-gray-500">
-                                  คน
-                                </span>
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-
-                        <p className="mt-1.5 text-center text-[10px] text-gray-400">
-                          กดสถานะด้านบนเพื่อกรองรายชื่อนักเรียน
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain divide-y divide-gray-100 [touch-action:pan-y]">
+                {paginatedStudents?.map((student, i) => (
+                  <div
+                    key={student.studentId}
+                    className="grid gap-3 px-4 py-2.5 sm:grid-cols-[minmax(0,1.2fr)_minmax(240px,1fr)_auto] sm:items-center"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-600">
+                        {(page - 1) * ITEMS_PER_PAGE + i + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="break-words text-sm font-semibold leading-6 text-gray-900">
+                          {student.name}
+                        </h3>
+                        <p className="text-xs text-gray-400">
+                          รหัสนักเรียน {student.studentId}
                         </p>
                       </div>
-                    </section>
-                  )}
-                </>
-              )}
-            </ModalHeader>
+                    </div>
 
-            <ModalBody
-              className={`flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-4 ${
-                pageMode ? "bg-[#f5f5f2]" : "bg-gray-50/30"
-              }`}
-            >
-              {activeSection === "location" ? (
-                <CampLocationTracker
-                  campId={campId}
-                  configureDestination={false}
-                  showDestination={false}
-                  viewer="teacher"
-                />
-              ) : loading ? (
-                <TrackingProgressSkeleton />
-              ) : !data ? (
-                <p className="text-center text-gray-400 py-8">
-                  {loadError || "ไม่สามารถโหลดข้อมูลได้"}
-                </p>
-              ) : filteredStudents?.length === 0 ? (
-                <div className="text-center py-10 text-gray-400">
-                  <Search className="mx-auto mb-2 opacity-30" size={32} />
-                  <p className="text-sm">
-                    {certificateFilter === "issued"
-                      ? "ยังไม่มีนักเรียนที่ได้รับเกียรติบัตร"
-                      : certificateFilter === "pending"
-                        ? "นักเรียนทุกคนได้รับเกียรติบัตรแล้ว"
-                        : "ไม่พบรายชื่อในระบบ"}
-                  </p>
-                </div>
-              ) : (
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                  <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(240px,1fr)_auto] gap-4 border-b border-gray-100 bg-gray-50/70 px-4 py-3 text-xs font-semibold text-gray-500 sm:grid">
-                    <span>นักเรียน</span>
-                    <span>ความก้าวหน้าภารกิจ</span>
-                    <span className="text-right">สถานะ</span>
-                  </div>
+                    <div className="min-w-0 space-y-1.5">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="font-medium text-gray-500 sm:sr-only">
+                          ความก้าวหน้าภารกิจ
+                        </span>
+                        <span className="font-bold text-[#5d7c6f]">
+                          {student.progressPercentage}%
+                        </span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                        <div
+                          className="h-2 rounded-full bg-[#5d7c6f] transition-all duration-1000 ease-in-out"
+                          style={{
+                            width: `${student.progressPercentage}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="text-right text-[11px] text-gray-400">
+                        สำเร็จ {student.completedMissions} /{" "}
+                        {student.totalMissions} ภารกิจ
+                      </p>
+                    </div>
 
-                  <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain divide-y divide-gray-100 [touch-action:pan-y]">
-                    {paginatedStudents?.map((student, i) => (
-                      <div
-                        key={student.studentId}
-                        className="grid gap-3 px-4 py-2.5 sm:grid-cols-[minmax(0,1.2fr)_minmax(240px,1fr)_auto] sm:items-center"
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-600">
-                            {(page - 1) * ITEMS_PER_PAGE + i + 1}
+                    <div className="flex items-center justify-start sm:justify-end">
+                      {student.hasCertificate ? (
+                        <div className="text-left sm:text-right">
+                          <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                            <Trophy size={14} />
+                            <span>ได้รับเกียรติบัตรแล้ว</span>
                           </div>
-                          <div className="min-w-0">
-                            <h3 className="break-words text-sm font-semibold leading-6 text-gray-900">
-                              {student.name}
-                            </h3>
-                            <p className="text-xs text-gray-400">
-                              รหัสนักเรียน {student.studentId}
+                          {(student.certificateNo != null ||
+                            student.certificateIssuedAt) && (
+                            <p className="mt-1 text-[11px] text-gray-400 sm:text-right">
+                              {student.certificateNo != null &&
+                                `เลขที่ ${student.certificateNo}`}
+                              {student.certificateNo != null &&
+                                student.certificateIssuedAt &&
+                                " · "}
+                              {student.certificateIssuedAt &&
+                                new Date(
+                                  student.certificateIssuedAt,
+                                ).toLocaleDateString("th-TH", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
                             </p>
-                          </div>
-                        </div>
-
-                        <div className="min-w-0 space-y-1.5">
-                          <div className="flex items-center justify-between gap-3 text-xs">
-                            <span className="font-medium text-gray-500 sm:sr-only">
-                              ความก้าวหน้าภารกิจ
-                            </span>
-                            <span className="font-bold text-[#5d7c6f]">
-                              {student.progressPercentage}%
-                            </span>
-                          </div>
-                          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                            <div
-                              className="h-2 rounded-full bg-[#5d7c6f] transition-all duration-1000 ease-in-out"
-                              style={{
-                                width: `${student.progressPercentage}%`,
-                              }}
-                            />
-                          </div>
-                          <p className="text-right text-[11px] text-gray-400">
-                            สำเร็จ {student.completedMissions} /{" "}
-                            {student.totalMissions} ภารกิจ
-                          </p>
-                        </div>
-
-                        <div className="flex items-center justify-start sm:justify-end">
-                          {student.hasCertificate ? (
-                            <div className="text-left sm:text-right">
-                              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                                <Trophy size={14} />
-                                <span>ได้รับเกียรติบัตรแล้ว</span>
-                              </div>
-                              {(student.certificateNo != null ||
-                                student.certificateIssuedAt) && (
-                                <p className="mt-1 text-[11px] text-gray-400 sm:text-right">
-                                  {student.certificateNo != null &&
-                                    `เลขที่ ${student.certificateNo}`}
-                                  {student.certificateNo != null &&
-                                    student.certificateIssuedAt &&
-                                    " · "}
-                                  {student.certificateIssuedAt &&
-                                    new Date(
-                                      student.certificateIssuedAt,
-                                    ).toLocaleDateString("th-TH", {
-                                      day: "numeric",
-                                      month: "short",
-                                      year: "numeric",
-                                    })}
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-500">
-                              <Clock size={14} />
-                              <span>ยังไม่ได้รับเกียรติบัตร</span>
-                            </div>
                           )}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {pages > 1 && (
-                    <div className="flex justify-center border-t border-gray-100 bg-gray-50/40 pb-2 pt-3">
-                      <Pagination
-                        isCompact
-                        showControls
-                        showShadow
-                        className="bg-transparent"
-                        classNames={{
-                          cursor: "bg-[#5d7c6f] text-white font-medium",
-                        }}
-                        page={page}
-                        total={pages}
-                        onChange={(newPage) => {
-                          setPage(newPage);
-                        }}
-                      />
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-500">
+                          <Clock size={14} />
+                          <span>ยังไม่ได้รับเกียรติบัตร</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                ))}
+              </div>
+
+              {pages > 1 && (
+                <div className="flex justify-center border-t border-gray-100 bg-gray-50/40 pb-2 pt-3">
+                  <Pagination
+                    isCompact
+                    showControls
+                    showShadow
+                    className="bg-transparent"
+                    classNames={{
+                      cursor: "bg-[#5d7c6f] text-white font-medium",
+                    }}
+                    page={page}
+                    total={pages}
+                    onChange={(newPage) => {
+                      setPage(newPage);
+                    }}
+                  />
                 </div>
               )}
-            </ModalBody>
+            </div>
+          )}
+        </Body>
 
-            {activeSection === "progress" && !pageMode && (
-              <ModalFooter className="shrink-0 rounded-b-3xl border-t border-gray-100 bg-white px-6 py-4">
-                <Button
-                  className="w-full font-medium sm:w-auto"
-                  size="md"
-                  variant="flat"
-                  onPress={onClose}
-                >
-                  ปิดหน้าต่าง
-                </Button>
-              </ModalFooter>
-            )}
-          </>
+        {activeSection === "progress" && !pageMode && (
+          <ModalFooter className="shrink-0 rounded-b-3xl border-t border-gray-100 bg-white px-6 py-4">
+            <Button
+              className="w-full font-medium sm:w-auto"
+              size="md"
+              variant="flat"
+              onPress={onClose}
+            >
+              ปิดหน้าต่าง
+            </Button>
+          </ModalFooter>
         )}
-      </ModalContent>
-    </Modal>
+      </>
+    </TrackingShell>
   );
 }

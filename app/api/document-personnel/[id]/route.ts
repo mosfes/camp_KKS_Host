@@ -17,6 +17,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
   if (teacher.role !== "ADMIN") {
     return NextResponse.json(
@@ -28,6 +29,7 @@ export async function PATCH(
   const { id } = await context.params;
   const personId = Number(id);
   const parsed = updateSchema.safeParse(await request.json());
+
   if (!Number.isInteger(personId) || personId <= 0 || !parsed.success) {
     return NextResponse.json({ error: "ข้อมูลไม่ถูกต้อง" }, { status: 400 });
   }
@@ -37,6 +39,7 @@ export async function PATCH(
       where: { document_personnel_id: personId },
       data: parsed.data,
     });
+
     return NextResponse.json(person);
   } catch {
     return NextResponse.json(

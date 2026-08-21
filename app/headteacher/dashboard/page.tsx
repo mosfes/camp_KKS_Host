@@ -32,6 +32,7 @@ import SelectProjectTypeModal from "./SelectProjectTypeModal";
 import EditCampModal from "./camp/EditCampModal";
 import EnrollmentModal from "./EnrollmentModal";
 import HomeroomStudentModal from "./HomeroomStudentModal";
+
 import { toThumbnail } from "@/lib/cloudinary-url";
 
 /* ---------- Default SVG Component ---------- */
@@ -145,12 +146,11 @@ async function uploadImageDirect(file: File) {
   const signatureData = await readResponseBody(signatureResponse);
 
   if (!signatureResponse.ok) {
-    throw new Error(
-      signatureData?.error || "ไม่สามารถเตรียมการอัปโหลดรูปได้",
-    );
+    throw new Error(signatureData?.error || "ไม่สามารถเตรียมการอัปโหลดรูปได้");
   }
 
   const formData = new FormData();
+
   formData.append("file", file, "camp-image.jpg");
   formData.append("api_key", signatureData.apiKey);
   formData.append("timestamp", String(signatureData.timestamp));
@@ -614,9 +614,7 @@ function DashboardContent() {
         } catch (uploadErr) {
           console.error("Error during camp image upload:", uploadErr);
 
-          throw new Error(
-            "อัปโหลดรูปหน้าปกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
-          );
+          throw new Error("อัปโหลดรูปหน้าปกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
         }
       }
 
@@ -1012,7 +1010,9 @@ function DashboardContent() {
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#f6f2ea] rounded-2xl px-6 py-4">
               <div>
-                <h2 className="text-xl font-medium text-[#2d3748]">ค่ายของฉัน</h2>
+                <h2 className="text-xl font-medium text-[#2d3748]">
+                  ค่ายของฉัน
+                </h2>
                 <p className="text-sm text-gray-500">
                   จัดการและดูแลค่ายกิจกรรมการเรียนรู้ของคุณ
                 </p>
@@ -1393,9 +1393,7 @@ function DashboardContent() {
 
 export default function StudentDashboard() {
   return (
-    <Suspense
-      fallback={<DashboardSkeleton />}
-    >
+    <Suspense fallback={<DashboardSkeleton />}>
       <DashboardContent />
     </Suspense>
   );

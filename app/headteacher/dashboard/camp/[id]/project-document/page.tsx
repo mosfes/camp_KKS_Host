@@ -2,20 +2,96 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  Download,
-  LayoutTemplate,
-  Plus,
-  Save,
-  Trash2,
-} from "lucide-react";
+import { Download, LayoutTemplate, Plus, Save, Trash2 } from "lucide-react";
+
+import CampBreadcrumb from "../../CampBreadcrumb";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-[#6b857a] focus:ring-2 focus:ring-[#6b857a]/15";
 const labelClass = "mb-1.5 block text-sm font-medium text-gray-700";
+
+function SkeletonBlock({ className }: { className: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`animate-pulse rounded-lg bg-gray-200 ${className}`}
+    />
+  );
+}
+
+function ProjectDocumentSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#f5f5f2] pb-24">
+      <main className="mx-auto max-w-6xl space-y-5 px-4 pb-24 pt-8">
+        {/* Breadcrumb Skeleton */}
+        <div className="flex items-center gap-2">
+          <SkeletonBlock className="h-4 w-20" />
+          <span className="text-gray-300">/</span>
+          <SkeletonBlock className="h-4 w-32" />
+          <span className="text-gray-300">/</span>
+          <SkeletonBlock className="h-4 w-28" />
+        </div>
+
+        {/* Page Header Skeleton */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <SkeletonBlock className="h-5 w-5 rounded-md" />
+              <SkeletonBlock className="h-6 w-64" />
+            </div>
+            <SkeletonBlock className="h-4 w-80 max-w-full" />
+          </div>
+
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            <SkeletonBlock className="h-10 w-32 rounded-xl" />
+            <SkeletonBlock className="h-10 w-44 rounded-xl" />
+          </div>
+        </div>
+
+        {/* Template Box Skeleton */}
+        <div className="rounded-2xl border border-[#cad8d2]/60 bg-[#f2f7f5]/70 p-5">
+          <div className="mb-4 flex items-start gap-3">
+            <SkeletonBlock className="h-10 w-10 rounded-xl" />
+            <div className="flex-1 space-y-1.5">
+              <SkeletonBlock className="h-5 w-44" />
+              <SkeletonBlock className="h-3.5 w-80 max-w-full" />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <SkeletonBlock className="h-10 w-full rounded-xl" />
+            <SkeletonBlock className="h-10 w-full rounded-xl" />
+            <SkeletonBlock className="h-10 w-full rounded-xl" />
+            <SkeletonBlock className="h-10 w-full rounded-xl" />
+          </div>
+        </div>
+
+        {/* Form Card 1 Skeleton: ข้อมูลส่วนหัว */}
+        <div className="space-y-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-xs">
+          <SkeletonBlock className="h-6 w-36" />
+          <div className="grid gap-4 md:grid-cols-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <SkeletonBlock className="h-4 w-28" />
+                <SkeletonBlock className="h-10 w-full rounded-xl" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Form Card 2 Skeleton */}
+        <div className="space-y-5 rounded-2xl border border-gray-100 bg-white p-6 shadow-xs">
+          <SkeletonBlock className="h-6 w-48" />
+          <div className="space-y-2">
+            <SkeletonBlock className="h-4 w-32" />
+            <SkeletonBlock className="h-28 w-full rounded-xl" />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
 
 function Field({
   label,
@@ -64,7 +140,7 @@ function StringList({
   return (
     <div className="space-y-3">
       {values.map((value, index) => (
-        <div className="flex items-start gap-2" key={index}>
+        <div key={index} className="flex items-start gap-2">
           <span className="mt-2.5 w-8 shrink-0 text-sm text-gray-500">
             {index + 1}.
           </span>
@@ -84,10 +160,10 @@ function StringList({
             aria-label="ลบรายการ"
             className="mt-1 rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
             disabled={values.length === 1}
+            type="button"
             onClick={() =>
               onChange(values.filter((_, itemIndex) => itemIndex !== index))
             }
-            type="button"
           >
             <Trash2 size={17} />
           </button>
@@ -95,8 +171,8 @@ function StringList({
       ))}
       <button
         className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-[#5d7c6f] hover:bg-[#f0f4f2]"
-        onClick={() => onChange([...values, ""])}
         type="button"
+        onClick={() => onChange([...values, ""])}
       >
         <Plus size={16} /> เพิ่มรายการ
       </button>
@@ -142,8 +218,8 @@ function ReferenceMultiSelect({
         <div className="space-y-2">
           {options.map((option) => (
             <label
-              className="flex cursor-pointer items-start gap-3 rounded-lg p-2 hover:bg-gray-50"
               key={option.document_reference_option_id}
+              className="flex cursor-pointer items-start gap-3 rounded-lg p-2 hover:bg-gray-50"
             >
               <input
                 checked={selected.has(option.label)}
@@ -151,6 +227,7 @@ function ReferenceMultiSelect({
                 type="checkbox"
                 onChange={(event) => {
                   const next = new Set(selected);
+
                   if (event.target.checked) next.add(option.label);
                   else next.delete(option.label);
                   merge(next, customLines.join("\n"));
@@ -267,10 +344,12 @@ export default function ProjectDocumentPage() {
 
   const loadTemplates = async () => {
     const response = await fetch("/api/project-document-templates");
+
     if (!response.ok) return [];
     const data = await response.json();
 
     setTemplates(data);
+
     return data;
   };
 
@@ -281,6 +360,7 @@ export default function ProjectDocumentPage() {
           throw new Error(
             (await response.json()).error || "โหลดเอกสารไม่สำเร็จ",
           );
+
         return response.json();
       }),
       fetch("/api/document-personnel").then((response) =>
@@ -335,12 +415,15 @@ export default function ProjectDocumentPage() {
         body: JSON.stringify(document),
       });
       const data = await response.json();
+
       if (!response.ok) throw new Error(data.error || "บันทึกเอกสารไม่สำเร็จ");
       setDocument(data);
       showSuccess("บันทึกแล้ว", "บันทึกข้อมูลเอกสารโครงการเรียบร้อยแล้ว");
+
       return true;
     } catch (error: any) {
       showError("บันทึกไม่สำเร็จ", error.message);
+
       return false;
     } finally {
       setIsLoading(false);
@@ -357,12 +440,15 @@ export default function ProjectDocumentPage() {
       (item) =>
         item.project_document_template_id === Number(selectedTemplateId),
     );
+
     if (!template) {
       showError("ยังไม่ได้เลือกเทมเพลต", "กรุณาเลือกเทมเพลตที่ต้องการใช้");
+
       return;
     }
 
     const data = JSON.parse(JSON.stringify(template.template_data || {}));
+
     setDocument((current: any) => ({
       ...current,
       ...data,
@@ -384,6 +470,7 @@ export default function ProjectDocumentPage() {
   const saveTemplate = async () => {
     if (!templateName.trim()) {
       showError("ยังไม่ได้ตั้งชื่อ", "กรุณาระบุชื่อเทมเพลต");
+
       return;
     }
 
@@ -398,6 +485,7 @@ export default function ProjectDocumentPage() {
         }),
       });
       const data = await response.json();
+
       if (!response.ok) throw new Error(data.error || "บันทึกเทมเพลตไม่สำเร็จ");
       await loadTemplates();
       setSelectedTemplateId(String(data.project_document_template_id));
@@ -417,8 +505,10 @@ export default function ProjectDocumentPage() {
       (item) =>
         item.project_document_template_id === Number(selectedTemplateId),
     );
+
     if (!template) {
       showError("ยังไม่ได้เลือกเทมเพลต", "กรุณาเลือกเทมเพลตที่ต้องการลบ");
+
       return;
     }
 
@@ -432,6 +522,7 @@ export default function ProjectDocumentPage() {
             `/api/project-document-templates/${template.project_document_template_id}`,
             { method: "DELETE" },
           );
+
           if (!response.ok) throw new Error();
           setSelectedTemplateId("");
           setTemplateName("");
@@ -448,24 +539,14 @@ export default function ProjectDocumentPage() {
   };
 
   if (loading || !document) {
-    return (
-      <div className="flex min-h-[70vh] items-center justify-center text-gray-500">
-        กำลังเตรียมแบบฟอร์มเอกสาร...
-      </div>
-    );
+    return <ProjectDocumentSkeleton />;
   }
 
   return (
     <div className="min-h-screen bg-[#f5f5f2] pb-24">
       <main className="mx-auto max-w-6xl space-y-5 px-4 pb-24 pt-8">
         <div className="space-y-6">
-          <button
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
-            onClick={() => router.push("/headteacher/dashboard")}
-            type="button"
-          >
-            <ArrowLeft size={14} /> กลับไปยังหน้าหลัก
-          </button>
+          <CampBreadcrumb campId={campId} currentPage="เอกสารข้อเสนอโครงการ" />
 
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex items-center gap-2">
@@ -483,15 +564,15 @@ export default function ProjectDocumentPage() {
             <div className="flex flex-wrap gap-2 lg:justify-end">
               <button
                 className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                onClick={save}
                 type="button"
+                onClick={save}
               >
                 <Save size={17} /> บันทึกแบบร่าง
               </button>
               <button
                 className="inline-flex items-center gap-2 rounded-xl bg-[#5d7c6f] px-4 py-2 text-sm font-medium text-white hover:bg-[#4b685c]"
-                onClick={download}
                 type="button"
+                onClick={download}
               >
                 <Download size={17} /> บันทึกและดาวน์โหลด PDF
               </button>
@@ -525,6 +606,7 @@ export default function ProjectDocumentPage() {
                     item.project_document_template_id ===
                     Number(event.target.value),
                 );
+
                 if (selected) setTemplateName(selected.name);
               }}
             >
@@ -541,16 +623,16 @@ export default function ProjectDocumentPage() {
             <div className="flex gap-2">
               <button
                 className="rounded-xl bg-[#5d7c6f] px-4 py-2 text-sm font-medium text-white hover:bg-[#4b685c]"
-                onClick={applyTemplate}
                 type="button"
+                onClick={applyTemplate}
               >
                 ใช้เทมเพลต
               </button>
               <button
                 aria-label="ลบเทมเพลต"
                 className="rounded-xl border border-red-200 px-3 text-red-500 hover:bg-red-50"
-                onClick={deleteTemplate}
                 type="button"
+                onClick={deleteTemplate}
               >
                 <Trash2 size={17} />
               </button>
@@ -563,8 +645,8 @@ export default function ProjectDocumentPage() {
             />
             <button
               className="rounded-xl border border-[#5d7c6f] bg-white px-4 py-2 text-sm font-medium text-[#5d7c6f] hover:bg-[#edf4f1]"
-              onClick={saveTemplate}
               type="button"
+              onClick={saveTemplate}
             >
               บันทึกข้อมูลปัจจุบันเป็นเทมเพลต
             </button>
@@ -651,18 +733,18 @@ export default function ProjectDocumentPage() {
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <ReferenceMultiSelect
-              title="สนองมาตรฐานการศึกษา"
               options={referenceOptions.filter(
                 (option) => option.category === "STANDARD",
               )}
+              title="สนองมาตรฐานการศึกษา"
               value={document.standards || ""}
               onChange={(value) => update("standards", value)}
             />
             <ReferenceMultiSelect
-              title="กลยุทธ์โรงเรียน"
               options={referenceOptions.filter(
                 (option) => option.category === "STRATEGY",
               )}
+              title="กลยุทธ์โรงเรียน"
               value={document.strategy || ""}
               onChange={(value) => update("strategy", value)}
             />
@@ -704,8 +786,8 @@ export default function ProjectDocumentPage() {
           <div className="space-y-4">
             {document.procedures.map((row: any, index: number) => (
               <div
-                className="rounded-xl border border-gray-200 bg-gray-50 p-4"
                 key={index}
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <span className="font-medium text-gray-700">
@@ -713,6 +795,7 @@ export default function ProjectDocumentPage() {
                   </span>
                   <button
                     className="text-gray-400 hover:text-red-500"
+                    type="button"
                     onClick={() =>
                       update(
                         "procedures",
@@ -721,7 +804,6 @@ export default function ProjectDocumentPage() {
                         ),
                       )
                     }
-                    type="button"
                   >
                     <Trash2 size={17} />
                   </button>
@@ -830,6 +912,7 @@ export default function ProjectDocumentPage() {
             ))}
             <button
               className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-[#5d7c6f] hover:bg-[#f0f4f2]"
+              type="button"
               onClick={() =>
                 update("procedures", [
                   ...document.procedures,
@@ -842,7 +925,6 @@ export default function ProjectDocumentPage() {
                   },
                 ])
               }
-              type="button"
             >
               <Plus size={16} /> เพิ่มขั้นตอน
             </button>
@@ -897,8 +979,8 @@ export default function ProjectDocumentPage() {
           <div className="space-y-4">
             {document.budget_items.map((row: any, index: number) => (
               <div
-                className="rounded-xl border border-gray-200 bg-gray-50 p-4"
                 key={index}
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <span className="font-medium text-gray-700">
@@ -906,6 +988,7 @@ export default function ProjectDocumentPage() {
                   </span>
                   <button
                     className="text-gray-400 hover:text-red-500"
+                    type="button"
                     onClick={() =>
                       update(
                         "budget_items",
@@ -914,7 +997,6 @@ export default function ProjectDocumentPage() {
                         ),
                       )
                     }
-                    type="button"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -976,7 +1058,10 @@ export default function ProjectDocumentPage() {
                           document.budget_items.map(
                             (item: any, rowIndex: number) =>
                               rowIndex === index
-                                ? { ...item, expenses: Number(event.target.value) }
+                                ? {
+                                    ...item,
+                                    expenses: Number(event.target.value),
+                                  }
                                 : item,
                           ),
                         )
@@ -996,7 +1081,10 @@ export default function ProjectDocumentPage() {
                           document.budget_items.map(
                             (item: any, rowIndex: number) =>
                               rowIndex === index
-                                ? { ...item, materials: Number(event.target.value) }
+                                ? {
+                                    ...item,
+                                    materials: Number(event.target.value),
+                                  }
                                 : item,
                           ),
                         )
@@ -1028,6 +1116,7 @@ export default function ProjectDocumentPage() {
           </div>
           <button
             className="mt-3 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-[#5d7c6f] hover:bg-[#f0f4f2]"
+            type="button"
             onClick={() =>
               update("budget_items", [
                 ...document.budget_items,
@@ -1040,7 +1129,6 @@ export default function ProjectDocumentPage() {
                 },
               ])
             }
-            type="button"
           >
             <Plus size={16} /> เพิ่มรายการงบประมาณ
           </button>
@@ -1050,8 +1138,8 @@ export default function ProjectDocumentPage() {
           <div className="space-y-4">
             {document.evaluations.map((row: any, index: number) => (
               <div
-                className="rounded-xl border border-gray-200 bg-gray-50 p-4"
                 key={index}
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <span className="font-medium text-gray-700">
@@ -1059,6 +1147,7 @@ export default function ProjectDocumentPage() {
                   </span>
                   <button
                     className="text-gray-400 hover:text-red-500"
+                    type="button"
                     onClick={() =>
                       update(
                         "evaluations",
@@ -1067,7 +1156,6 @@ export default function ProjectDocumentPage() {
                         ),
                       )
                     }
-                    type="button"
                   >
                     <Trash2 size={17} />
                   </button>
@@ -1135,13 +1223,13 @@ export default function ProjectDocumentPage() {
           </div>
           <button
             className="mt-3 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-[#5d7c6f] hover:bg-[#f0f4f2]"
+            type="button"
             onClick={() =>
               update("evaluations", [
                 ...document.evaluations,
                 { indicator: "", method: "", tool: "" },
               ])
             }
-            type="button"
           >
             <Plus size={16} /> เพิ่มตัวชี้วัด
           </button>
@@ -1166,10 +1254,11 @@ export default function ProjectDocumentPage() {
                 (person) =>
                   person.document_personnel_id === Number(row.personnelId),
               );
+
               return (
                 <div
-                  className="rounded-xl border border-gray-200 bg-gray-50 p-4"
                   key={index}
+                  className="rounded-xl border border-gray-200 bg-gray-50 p-4"
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <span className="font-medium text-gray-700">
@@ -1177,6 +1266,7 @@ export default function ProjectDocumentPage() {
                     </span>
                     <button
                       className="text-gray-400 hover:text-red-500"
+                      type="button"
                       onClick={() =>
                         update(
                           "signatories",
@@ -1185,7 +1275,6 @@ export default function ProjectDocumentPage() {
                           ),
                         )
                       }
-                      type="button"
                     >
                       <Trash2 size={17} />
                     </button>
@@ -1224,10 +1313,10 @@ export default function ProjectDocumentPage() {
                                       personnelId: Number(event.target.value),
                                     }
                                   : item,
-                                ),
-                              )
-                            }
-                          >
+                            ),
+                          )
+                        }
+                      >
                         <option value="">เลือกบุคลากร</option>
                         {!currentExists && row.personnelId && (
                           <option value={row.personnelId}>
@@ -1241,7 +1330,8 @@ export default function ProjectDocumentPage() {
                             value={person.document_personnel_id}
                           >
                             {person.prefix_name || ""}
-                            {person.firstname} {person.lastname} - {person.position}
+                            {person.firstname} {person.lastname} -{" "}
+                            {person.position}
                           </option>
                         ))}
                       </select>
@@ -1253,13 +1343,13 @@ export default function ProjectDocumentPage() {
           </div>
           <button
             className="mt-3 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-[#5d7c6f] hover:bg-[#f0f4f2]"
+            type="button"
             onClick={() =>
               update("signatories", [
                 ...(document.signatories || []),
                 { role: "", personnelId: "" },
               ])
             }
-            type="button"
           >
             <Plus size={16} /> เพิ่มช่องลงนาม
           </button>

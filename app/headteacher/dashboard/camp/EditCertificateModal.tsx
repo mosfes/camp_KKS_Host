@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Award, Download, Save, X } from "lucide-react";
+import { Award, Download, Save, X } from "lucide-react";
 import { Button } from "@heroui/button";
 import { Select, SelectItem } from "@heroui/react";
 
 import CertificateSettings from "./CertificateSettings";
+import CampBreadcrumb from "./CampBreadcrumb";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 
@@ -114,6 +115,35 @@ export default function EditCertificateModal({
     campData?.student_enrollment?.length ??
     0;
 
+  const normalizedInitialPrefix =
+    campData?.cert_number_prefix === "เลขที่" ||
+    campData?.cert_number_prefix === "No." ||
+    campData?.cert_number_prefix === ""
+      ? campData.cert_number_prefix
+      : "เลขที่";
+  const hasUnsavedChanges = Boolean(
+    campData &&
+      (certImageFile ||
+        certImage !== (campData.img_certificate_url || null) ||
+        certNameX !== (campData.cert_name_x ?? 50) ||
+        certNameY !== (campData.cert_name_y ?? 50) ||
+        certFontSize !== (campData.cert_font_size ?? 48) ||
+        certFontColor !== (campData.cert_font_color ?? "#000000") ||
+        certShowNumber !== (campData.cert_show_number ?? false) ||
+        certNumberStart !== (campData.cert_number_start ?? null) ||
+        certNumberEnd !== (campData.cert_number_end ?? null) ||
+        certNumberX !== (campData.cert_number_x ?? 50) ||
+        certNumberY !== (campData.cert_number_y ?? 10) ||
+        certNumberSize !== (campData.cert_number_size ?? 36) ||
+        certNumberColor !== (campData.cert_number_color ?? "#000000") ||
+        certNumberPrefix !== normalizedInitialPrefix ||
+        certNumberIsThai !== (campData.cert_number_is_thai ?? false) ||
+        certYear !== (campData.cert_year ?? null) ||
+        certMissionCompletionPercent !==
+          (campData.cert_mission_completion_percent ?? 100) ||
+        certRequireSurvey !== (campData.cert_require_survey ?? false)),
+  );
+
   useEffect(() => {
     if (isOpen && campData) {
       setCertImage(campData.img_certificate_url || null);
@@ -202,6 +232,7 @@ export default function EditCertificateModal({
     new Promise((resolve, reject) => {
       if (!campData) {
         reject(new Error("ไม่พบข้อมูลค่าย"));
+
         return;
       }
 
@@ -444,33 +475,29 @@ export default function EditCertificateModal({
     <div
       className={
         pageMode
-          ? "min-h-[calc(100dvh-4rem)] w-full bg-[#f5f5f2]"
+          ? "h-[calc(100dvh-4rem)] w-full overflow-hidden bg-[#f5f5f2]"
           : "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200"
       }
     >
       <div
         className={
           pageMode
-            ? "flex min-h-[calc(100dvh-4rem)] w-full flex-col overflow-hidden bg-[#f5f5f2]"
+            ? "flex h-[calc(100dvh-4rem)] w-full flex-col overflow-hidden bg-[#f5f5f2]"
             : "flex max-h-[90vh] w-full max-w-5xl transform flex-col overflow-hidden rounded-2xl bg-white shadow-xl animate-in zoom-in-95 duration-200"
         }
       >
         <div
           className={
             pageMode
-              ? "mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-8 pt-8 sm:px-8"
+              ? "mx-auto flex w-full max-w-[1440px] shrink-0 flex-col gap-4 px-4 pb-5 pt-6 sm:px-8"
               : "sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4"
           }
         >
           {pageMode && (
-            <button
-              className="inline-flex w-fit items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
-              type="button"
-              onClick={onClose}
-            >
-              <ArrowLeft size={14} />
-              กลับไปยังหน้าหลัก
-            </button>
+            <CampBreadcrumb
+              campId={campData?.camp_id}
+              currentPage="ตั้งค่าเกียรติบัตร"
+            />
           )}
 
           <div className="flex items-center gap-2">
@@ -483,6 +510,11 @@ export default function EditCertificateModal({
               ตั้งค่าเกียรติบัตร
             </h2>
           </div>
+          {pageMode && (
+            <p className="max-w-2xl text-xs leading-relaxed text-gray-500">
+              กำหนดเงื่อนไข เลือกเทมเพลต และจัดตำแหน่งข้อมูลบนเกียรติบัตร
+            </p>
+          )}
 
           {!pageMode && (
             <button
@@ -498,7 +530,7 @@ export default function EditCertificateModal({
         <div
           className={
             pageMode
-              ? "mx-auto w-full max-w-6xl flex-1 overflow-y-auto bg-[#f5f5f2] px-4 pb-10 pt-0 sm:px-8"
+              ? "mx-auto min-h-0 w-full max-w-[1440px] flex-1 overflow-y-auto overscroll-contain bg-[#f5f5f2] px-4 pb-10 pt-0 sm:px-8"
               : "flex-1 overflow-y-auto bg-gray-50/50 p-6"
           }
         >
@@ -507,6 +539,7 @@ export default function EditCertificateModal({
               certFontColor={certFontColor}
               certFontSize={certFontSize}
               certImage={certImage}
+              certMissionCompletionPercent={certMissionCompletionPercent}
               certNameX={certNameX}
               certNameY={certNameY}
               certNumberColor={certNumberColor}
@@ -517,18 +550,18 @@ export default function EditCertificateModal({
               certNumberStart={certNumberStart}
               certNumberX={certNumberX}
               certNumberY={certNumberY}
+              certRequireSurvey={certRequireSurvey}
               certShowNumber={certShowNumber}
               certYear={certYear}
-              certMissionCompletionPercent={certMissionCompletionPercent}
-              certRequireSurvey={certRequireSurvey}
-              hasSurvey={campData?.certificate_has_survey ?? false}
-              totalMissions={campData?.certificate_total_missions ?? 0}
+              certificateImageMetadata={certImageMetadata}
               enrolledCount={enrolledCount}
               hasAttemptedSubmit={hasAttemptedSubmit}
+              hasSurvey={campData?.certificate_has_survey ?? false}
               setCertFontColor={setCertFontColor}
               setCertFontSize={setCertFontSize}
               setCertImage={setCertImage}
               setCertImageFile={setCertImageFile}
+              setCertMissionCompletionPercent={setCertMissionCompletionPercent}
               setCertNameX={setCertNameX}
               setCertNameY={setCertNameY}
               setCertNumberColor={setCertNumberColor}
@@ -539,10 +572,10 @@ export default function EditCertificateModal({
               setCertNumberStart={setCertNumberStart}
               setCertNumberX={setCertNumberX}
               setCertNumberY={setCertNumberY}
+              setCertRequireSurvey={setCertRequireSurvey}
               setCertShowNumber={setCertShowNumber}
               setCertYear={setCertYear}
-              setCertMissionCompletionPercent={setCertMissionCompletionPercent}
-              setCertRequireSurvey={setCertRequireSurvey}
+              totalMissions={campData?.certificate_total_missions ?? 0}
             />
           </form>
         </div>
@@ -552,7 +585,7 @@ export default function EditCertificateModal({
             aria-live="polite"
             className={
               pageMode
-                ? "mx-auto w-full max-w-6xl border-t border-gray-100 bg-[#f5f5f2] px-4 pt-3 sm:px-8"
+                ? "mx-auto w-full max-w-[1440px] border-t border-gray-100 bg-[#f5f5f2] px-4 pt-3 sm:px-8"
                 : "border-t border-gray-100 bg-white px-6 pt-3"
             }
           >
@@ -577,7 +610,7 @@ export default function EditCertificateModal({
         )}
 
         <div
-          className={`sticky bottom-0 z-10 mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:px-8 sm:py-4 lg:flex-row lg:items-center lg:justify-between ${pageMode ? "bg-[#f5f5f2]" : "bg-white"} ${uploadProgress === null ? "border-t border-gray-100" : ""}`}
+          className={`sticky bottom-0 z-10 mx-auto flex w-full max-w-[1440px] shrink-0 flex-col gap-3 px-4 py-3 shadow-[0_-8px_24px_rgba(26,58,50,0.06)] sm:px-8 sm:py-4 lg:flex-row lg:items-center lg:justify-between ${pageMode ? "bg-[#f5f5f2]/95 backdrop-blur" : "bg-white"} ${uploadProgress === null ? "border-t border-gray-100" : ""}`}
         >
           <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
             <Select
@@ -606,24 +639,36 @@ export default function EditCertificateModal({
               ดาวน์โหลด PDF รวม
             </Button>
           </div>
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:justify-end sm:gap-3">
-            <Button
-              className="w-full font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 sm:w-auto"
-              isDisabled={isSubmitting}
-              variant="flat"
-              onPress={onClose}
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+            <p
+              aria-live="polite"
+              className={`text-center text-[11px] font-medium sm:text-right ${
+                hasUnsavedChanges ? "text-amber-700" : "text-gray-400"
+              }`}
             >
-              ยกเลิก
-            </Button>
-            <Button
-              className="w-full font-medium bg-[#1a3a32] text-white shadow-md shadow-[#1a3a32]/20 sm:w-auto"
-              form="certForm"
-              isLoading={isSubmitting}
-              startContent={<Save size={18} />}
-              type="submit"
-            >
-              บันทึกการตั้งค่า
-            </Button>
+              {hasUnsavedChanges
+                ? "มีการแก้ไขที่ยังไม่ได้บันทึก"
+                : "การตั้งค่าปัจจุบันบันทึกแล้ว"}
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end sm:gap-3">
+              <Button
+                className="w-full font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 sm:w-auto"
+                isDisabled={isSubmitting}
+                variant="flat"
+                onPress={onClose}
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                className="w-full font-medium bg-[#1a3a32] text-white shadow-md shadow-[#1a3a32]/20 sm:w-auto"
+                form="certForm"
+                isLoading={isSubmitting}
+                startContent={<Save size={18} />}
+                type="submit"
+              >
+                บันทึกการตั้งค่า
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -6,7 +6,6 @@ import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Award,
-  BarChart3,
   BookOpen,
   Bus,
   ClipboardList,
@@ -119,15 +118,8 @@ const campMenuItems: SidebarMenuItem[] = [
   },
   {
     id: "survey",
-    label: "จัดการแบบสอบถาม",
+    label: "แบบสอบถาม",
     icon: ClipboardList,
-    group: "แบบสอบถาม",
-    access: "owner",
-  },
-  {
-    id: "survey-results",
-    label: "ดูผลการตอบกลับ",
-    icon: BarChart3,
     group: "แบบสอบถาม",
     access: "owner",
   },
@@ -161,7 +153,6 @@ function getCampMenuId(pathname: string, requestedMenu: string | null) {
   if (pathname.includes("/shirts")) return "shirts";
   if (pathname.includes("/bases")) return "bases";
   if (pathname.includes("/base/")) return "bases";
-  if (pathname.includes("/survey/results")) return "survey-results";
   if (pathname.includes("/survey")) return "survey";
   if (pathname.includes("/score-comparison")) return "compare";
   if (pathname.includes("/certificate")) return "certificate";
@@ -271,7 +262,8 @@ function SidebarNav({
     return (
       <button
         key={item.id}
-        type="button"
+        aria-current={isActive ? "page" : undefined}
+        aria-disabled={isDisabled || undefined}
         className={`
           flex items-center gap-3 w-full text-left transition-all duration-150
           ${
@@ -292,8 +284,7 @@ function SidebarNav({
         `}
         disabled={isDisabled}
         title={collapsed ? item.label : undefined}
-        aria-current={isActive ? "page" : undefined}
-        aria-disabled={isDisabled || undefined}
+        type="button"
         onClick={() => {
           if (!isDisabled) onNavigate(item.id);
         }}
@@ -333,7 +324,6 @@ function SidebarNav({
         return (
           <div key={section.group} className="mb-1 last:mb-0">
             <button
-              type="button"
               aria-expanded={!isGroupCollapsed}
               className={`flex items-center gap-3 w-full rounded-xl px-3 ${
                 mobile ? "py-3" : "py-2.5"
@@ -342,6 +332,7 @@ function SidebarNav({
                   ? "text-[#5d7c6f]"
                   : "text-gray-600"
               } hover:bg-gray-100 hover:text-gray-900`}
+              type="button"
               onClick={() =>
                 setCollapsedGroups((current) => ({
                   ...current,
@@ -408,7 +399,6 @@ function TeacherSidebar({
       shirts: "shirts",
       bases: "bases",
       survey: "survey",
-      "survey-results": "survey/results",
       compare: "score-comparison",
       certificate: "certificate",
     };
@@ -515,7 +505,6 @@ function MobileSidebar({
       shirts: "shirts",
       bases: "bases",
       survey: "survey",
-      "survey-results": "survey/results",
       compare: "score-comparison",
       certificate: "certificate",
     };
@@ -574,12 +563,12 @@ function MobileSidebar({
 
         <nav className="sidebar-scrollbar flex flex-col gap-1 p-3 flex-1 overflow-y-auto">
           <SidebarNav
+            mobile
             activeMenu={activeMenu}
             activeTab={activeTab}
             collapsed={false}
             isCampContext={isCampContext}
             menuItems={menuItems}
-            mobile
             onNavigate={handleNavigate}
           />
         </nav>
@@ -688,7 +677,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </Suspense>
 
           {/* Page Content */}
-          <main className="flex-1 min-w-0">{children}</main>
+          <main className="min-h-0 flex-1 min-w-0 bg-[#f5f5f2]">
+            {children}
+          </main>
         </div>
 
         {/* Mobile Sidebar */}

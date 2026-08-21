@@ -26,7 +26,7 @@ export default async function Home() {
     }
 
     const teacher = await prisma.teachers.findFirst({
-      where: { email: email },
+      where: { email: email, deletedAt: null },
     });
 
     if (teacher) {
@@ -38,7 +38,7 @@ export default async function Home() {
     }
 
     const student = await prisma.students.findFirst({
-      where: { email: email },
+      where: { email: email, deletedAt: null },
     });
 
     if (student) {

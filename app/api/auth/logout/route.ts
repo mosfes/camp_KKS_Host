@@ -13,6 +13,8 @@ export async function POST() {
 
   response.cookies.set("teacher_session", "", {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     path: "/",
     maxAge: 0, // ลบ cookie ทันที
   });

@@ -78,9 +78,14 @@ export function HeadteacherNavbar({
   const handleLogout = async () => {
     setLoadingMessage("กำลังออกจากระบบ...");
     setIsNavigating(true);
-    // clear cookie ของเรา + signOut จาก Clerk พร้อมกัน
-    await fetch("/api/auth/logout", { method: "POST" });
+    try {
+      // clear cookie ของเรา + signOut จาก Clerk พร้อมกัน
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Logout API error:", e);
+    }
     await signOut({ redirectUrl: "/" });
+    window.location.href = "/";
   };
 
   const displayName = teacher

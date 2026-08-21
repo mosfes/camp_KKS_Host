@@ -44,9 +44,7 @@ export default function StudentSurveyPage() {
         const errorData = await res.json().catch(() => null);
 
         if (res.status === 403) {
-          toast.error(
-            errorData?.error || "ไม่สามารถทำแบบประเมินได้ในขณะนี้",
-          );
+          toast.error(errorData?.error || "ไม่สามารถทำแบบประเมินได้ในขณะนี้");
           router.replace(`/student/dashboard/camp/${id}`);
         } else {
           toast.error("ดึงข้อมูลแบบประเมินล้มเหลว");
@@ -317,10 +315,10 @@ export default function StudentSurveyPage() {
                               <input
                                 checked={selected}
                                 className="h-4 w-4 rounded accent-[#5d7c6f]"
+                                type="checkbox"
                                 onChange={() =>
                                   toggleCheckboxAnswer(q.question_id, option)
                                 }
-                                type="checkbox"
                               />
                               {option}
                             </label>

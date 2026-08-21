@@ -94,8 +94,10 @@ export default function BreakdownModal({
   const toggleExpand = (text: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
+
       if (next.has(text)) next.delete(text);
       else next.add(text);
+
       return next;
     });
   };
@@ -137,10 +139,7 @@ export default function BreakdownModal({
         <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <Loader2
-                className="animate-spin text-gray-400"
-                size={28}
-              />
+              <Loader2 className="animate-spin text-gray-400" size={28} />
               <p className="text-sm text-gray-400">กำลังโหลด...</p>
             </div>
           ) : groups.length === 0 ? (
@@ -150,6 +149,7 @@ export default function BreakdownModal({
           ) : (
             groups.map((group) => {
               const isOpen = expanded.has(group.text);
+
               return (
                 <div
                   key={group.text}

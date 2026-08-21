@@ -115,14 +115,25 @@ export default clerkMiddleware(async (auth, req) => {
         return NextResponse.redirect(
           new URL("/headteacher/dashboard", req.url),
         );
-      } else {
+      } else if (role === "student") {
         return NextResponse.redirect(new URL("/student/dashboard", req.url));
+      } else {
+        return NextResponse.redirect(new URL("/", req.url));
       }
     }
 
     // อนุญาตทุก role ของครูให้เข้า /headteacher ได้
     if (isTeacherRoute(req) && !isTeacherRole(role)) {
-      return NextResponse.redirect(new URL("/student/dashboard", req.url));
+      if (role === "student") {
+        return NextResponse.redirect(new URL("/student/dashboard", req.url));
+      } else {
+        return NextResponse.redirect(new URL("/", req.url));
+      }
+    }
+
+    // ไม่อนุญาตให้ครูเข้า /student
+    if (isStudentRoute(req) && isTeacherRole(role)) {
+      return NextResponse.redirect(new URL("/headteacher/dashboard", req.url));
     }
   }
 });

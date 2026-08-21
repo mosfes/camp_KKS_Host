@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
+import StudentBusCheckinSkeleton from "./components/StudentBusCheckinSkeleton";
+
 function formatCheckedAt(value: string | null) {
   if (!value) return "";
 
@@ -69,19 +71,35 @@ export default function StudentBusCheckinPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [busRefreshCooldown, setBusRefreshCooldown] = useState(0);
   const [boarding, setBoarding] = useState(false);
   const [alighting, setAlighting] = useState(false);
   const [pendingBoarding, setPendingBoarding] = useState(false);
 
-  const fetchBus = useCallback(
-    async (showRefresh = false, notifyError = true) => {
-      if (showRefresh) setRefreshing(true);
+  useEffect(() => {
+    if (busRefreshCooldown <= 0) return;
 
+    const timer = window.setInterval(() => {
+      setBusRefreshCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [busRefreshCooldown]);
+
+  const fetchBusData = useCallback(
+    async (notifyError = true, statusOnly = false) => {
       try {
-        const response = await fetch(`/api/student/camps/${id}/bus`, {
+        const url = statusOnly
+          ? `/api/student/camps/${id}/bus?statusOnly=1`
+          : `/api/student/camps/${id}/bus`;
+        const response = await fetch(url, {
           cache: "no-store",
         });
         const result = await response.json();
+
+        if (response.status === 429) {
+          throw new Error(result.error || "คุณรีเฟรชถี่เกินไป กรุณารอสักครู่");
+        }
 
         if (response.status === 403) {
           toast.error(result.error || "กรุณาลงทะเบียนเข้าร่วมค่ายก่อน");
@@ -92,28 +110,90 @@ export default function StudentBusCheckinPage() {
 
         if (!response.ok)
           throw new Error(result.error || "โหลดข้อมูลรถไม่สำเร็จ");
-        setData(result);
+
+        if (statusOnly && result.statusOnly) {
+          setData((current: any) => {
+            if (!current || !current.configured) return current;
+
+            return {
+              ...current,
+              bus: {
+                ...current.bus,
+                status: result.busStatus || current.bus.status,
+              },
+              student: {
+                ...current.student,
+                status: result.studentStatus || current.student.status,
+                isOnBus:
+                  result.isOnBus !== undefined
+                    ? result.isOnBus
+                    : current.student.isOnBus,
+                lastBoardedAt:
+                  result.lastBoardedAt !== undefined
+                    ? result.lastBoardedAt
+                    : current.student.lastBoardedAt,
+              },
+            };
+          });
+        } else {
+          setData(result);
+        }
       } catch (error: any) {
         if (notifyError) toast.error(error.message || "โหลดข้อมูลรถไม่สำเร็จ");
       } finally {
         setLoading(false);
-        setRefreshing(false);
       }
     },
     [id, router],
   );
 
+  const handleManualRefresh = async () => {
+    if (refreshing || busRefreshCooldown > 0) return;
+
+    setRefreshing(true);
+
+    try {
+      const response = await fetch(`/api/student/camps/${id}/bus?manual=1`, {
+        cache: "no-store",
+      });
+      const result = await response.json();
+
+      if (response.status === 429) {
+        throw new Error(result.error || "คุณรีเฟรชถี่เกินไป กรุณารอสักครู่");
+      }
+
+      if (response.status === 403) {
+        toast.error(result.error || "กรุณาลงทะเบียนเข้าร่วมค่ายก่อน");
+        router.replace(`/student/dashboard/camp/${id}`);
+
+        return;
+      }
+
+      if (!response.ok)
+        throw new Error(result.error || "โหลดข้อมูลรถไม่สำเร็จ");
+      setData(result);
+      toast.success("อัปเดตข้อมูลรถแล้ว");
+    } catch (error: any) {
+      toast.error(error.message || "โหลดข้อมูลรถไม่สำเร็จ");
+    } finally {
+      setRefreshing(false);
+      setBusRefreshCooldown(5);
+    }
+  };
+
   useEffect(() => {
-    void fetchBus();
-  }, [fetchBus]);
+    void fetchBusData(true, false);
+  }, [fetchBusData]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      void fetchBus(false, false);
-    }, 15000);
+      if (document.visibilityState === "visible") {
+        void fetchBusData(false, true);
+      }
+    }, 30000);
 
     return () => window.clearInterval(timer);
-  }, [fetchBus]);
+  }, [fetchBusData]);
 
   const boardBus = async () => {
     if (
@@ -195,37 +275,33 @@ export default function StudentBusCheckinPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f5f5f2] flex items-center justify-center">
-        <p className="text-sm font-medium text-gray-400">
-          กำลังโหลดข้อมูลรถ...
-        </p>
-      </div>
-    );
-  }
+  if (loading) return <StudentBusCheckinSkeleton />;
 
   if (!data?.configured) {
     return (
       <div className="min-h-screen bg-[#f5f5f2] pb-12">
-        <div className="bg-white px-4 py-6 flex items-center gap-3 border-b border-gray-100">
-          <Button
-            isIconOnly
-            className="text-gray-500"
-            variant="light"
-            onPress={() => router.back()}
-          >
-            <ChevronLeft size={24} />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold text-[#2D3648]">เช็คชื่อขึ้นรถ</h1>
-            <p className="text-xs text-gray-400">
-              {data?.campName || "ค่ายของฉัน"}
-            </p>
+        <div className="bg-white border-b border-gray-100">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-center gap-3">
+            <Button
+              isIconOnly
+              className="text-gray-500"
+              variant="light"
+              onPress={() => router.back()}
+            >
+              <ChevronLeft size={24} />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold text-[#2D3648]">
+                เช็คชื่อขึ้นรถ
+              </h1>
+              <p className="text-xs text-gray-400">
+                {data?.campName || "ค่ายของฉัน"}
+              </p>
+            </div>
           </div>
         </div>
-        <div className="max-w-md mx-auto px-4 py-8">
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-7 text-center">
+        <div className="max-w-lg mx-auto px-4 py-12">
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 text-center">
             <div className="mx-auto mb-4 w-16 h-16 rounded-2xl bg-[#e8f0ee] text-[#5d7c6f] flex items-center justify-center">
               <Bus size={32} />
             </div>
@@ -238,11 +314,16 @@ export default function StudentBusCheckinPage() {
             </p>
             <Button
               className="mt-6 bg-[#5d7c6f] text-white font-bold rounded-xl"
+              isDisabled={refreshing || busRefreshCooldown > 0}
               isLoading={refreshing}
-              startContent={<RefreshCw size={17} />}
-              onPress={() => fetchBus(true)}
+              startContent={
+                busRefreshCooldown <= 0 ? <RefreshCw size={17} /> : undefined
+              }
+              onPress={() => void handleManualRefresh()}
             >
-              รีเฟรชข้อมูล
+              {busRefreshCooldown > 0
+                ? `รออีก ${busRefreshCooldown} วินาที`
+                : "รีเฟรชข้อมูล"}
             </Button>
           </div>
         </div>
@@ -257,34 +338,51 @@ export default function StudentBusCheckinPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f2] pb-12">
-      <div className="bg-white px-4 py-6 flex items-center gap-3 border-b border-gray-100">
-        <Button
-          isIconOnly
-          className="text-gray-500"
-          variant="light"
-          onPress={() => router.back()}
-        >
-          <ChevronLeft size={24} />
-        </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-semibold text-[#2D3648]">
-            เช็คชื่อขึ้นรถ
-          </h1>
-          <p className="text-xs text-gray-400 truncate">{data.campName}</p>
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-center gap-3">
+          <Button
+            isIconOnly
+            className="text-gray-500"
+            variant="light"
+            onPress={() => router.back()}
+          >
+            <ChevronLeft size={24} />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-semibold text-[#2D3648]">
+              เช็คชื่อขึ้นรถ
+            </h1>
+            <p className="text-xs text-gray-400 truncate">{data.campName}</p>
+          </div>
+          <Button
+            aria-label={
+              busRefreshCooldown > 0
+                ? `กรุณารอ ${busRefreshCooldown} วินาที`
+                : "รีเฟรชข้อมูลรถ"
+            }
+            className="text-[#5d7c6f] font-medium"
+            isDisabled={refreshing || busRefreshCooldown > 0}
+            isIconOnly={busRefreshCooldown <= 0}
+            isLoading={refreshing}
+            title={
+              busRefreshCooldown > 0
+                ? `กรุณารอ ${busRefreshCooldown} วินาทีก่อนรีเฟรชใหม่`
+                : "รีเฟรชข้อมูลรถ"
+            }
+            variant="light"
+            onPress={() => void handleManualRefresh()}
+          >
+            <RefreshCw size={18} />
+            {busRefreshCooldown > 0 && (
+              <span className="text-xs font-semibold tabular-nums ml-1">
+                {busRefreshCooldown}s
+              </span>
+            )}
+          </Button>
         </div>
-        <Button
-          isIconOnly
-          aria-label="รีเฟรชข้อมูลรถ"
-          className="text-[#5d7c6f]"
-          isLoading={refreshing}
-          variant="light"
-          onPress={() => fetchBus(true)}
-        >
-          <RefreshCw size={18} />
-        </Button>
       </div>
 
-      <main className="max-w-md mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         <section className="rounded-3xl bg-[#5d7c6f] p-6 text-white shadow-lg shadow-[#5d7c6f]/20">
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 shrink-0 rounded-2xl bg-white/15 flex items-center justify-center">

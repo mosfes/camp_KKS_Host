@@ -26,7 +26,9 @@ import {
   UserCheck,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+
+import CampBreadcrumb from "./CampBreadcrumb";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 import {
@@ -127,6 +129,43 @@ interface BusManagementModalProps {
   pageMode?: boolean;
 }
 
+function BusManagementShell({
+  pageMode,
+  isOpen,
+  onClose,
+  children,
+}: {
+  pageMode: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (pageMode) {
+    return (
+      <main className="bus-checkin-theme h-full min-h-0 overflow-y-auto bg-[#f5f5f2]">
+        {children}
+      </main>
+    );
+  }
+
+  return (
+    <Modal
+      backdrop="blur"
+      classNames={{
+        base: "bg-white rounded-2xl shadow-xl max-h-[92vh]",
+        backdrop: "bg-black/60 backdrop-blur-sm",
+      }}
+      isDismissable={true}
+      isOpen={isOpen}
+      scrollBehavior="inside"
+      size="5xl"
+      onOpenChange={onClose}
+    >
+      <ModalContent className="bus-checkin-theme">{children}</ModalContent>
+    </Modal>
+  );
+}
+
 function gradeLabel(grade: string) {
   return grade?.startsWith("Level_")
     ? `ม.${grade.replace("Level_", "")}`
@@ -184,7 +223,7 @@ function seatGridColumnClass(seatIndex: number) {
 
 function BusManagementSkeleton() {
   return (
-    <div className="animate-pulse space-y-4" aria-label="กำลังโหลดข้อมูลรถ">
+    <div aria-label="กำลังโหลดข้อมูลรถ" className="animate-pulse space-y-4">
       <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm md:flex-row md:items-center">
         <div className="flex flex-1 gap-2 overflow-hidden">
           <div className="h-12 w-28 shrink-0 rounded-xl bg-gray-200" />
@@ -1078,31 +1117,13 @@ export default function BusManagementModal({
     setSelectedPositionId(nextPosition.positionId);
   };
 
+  const Header = pageMode ? "header" : ModalHeader;
+  const Body = pageMode ? "section" : ModalBody;
+
   return (
-    <Modal
-      backdrop="blur"
-      classNames={{
-        base: pageMode
-          ? "!m-0 !h-full !min-h-0 !max-h-none w-full !max-w-none rounded-none bg-[#f5f5f2] shadow-none"
-          : "bg-white rounded-2xl shadow-xl max-h-[92vh]",
-        backdrop: pageMode ? "hidden" : "bg-black/60 backdrop-blur-sm",
-        wrapper: pageMode ? "camp-page-modal items-start p-0" : undefined,
-      }}
-      hideCloseButton={pageMode}
-      isDismissable={!pageMode}
-      isOpen={isOpen}
-      scrollBehavior="inside"
-      size="5xl"
-      onOpenChange={onClose}
-    >
-      <ModalContent
-        className={
-          pageMode
-            ? "bus-checkin-theme !m-0 !h-full !min-h-0 !max-h-none !rounded-none !bg-[#f5f5f2] !shadow-none overflow-y-auto"
-            : "bus-checkin-theme"
-        }
-      >
-        <ModalHeader
+    <BusManagementShell isOpen={isOpen} pageMode={pageMode} onClose={onClose}>
+      <>
+        <Header
           className={`relative flex flex-col gap-1 px-6 ${
             pageMode
               ? "mx-auto w-full max-w-7xl border-0 pb-8 pt-8 sm:px-8"
@@ -1110,14 +1131,11 @@ export default function BusManagementModal({
           }`}
         >
           {pageMode && (
-            <button
-              className="mb-6 inline-flex w-fit items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
-              type="button"
-              onClick={onClose}
-            >
-              <ArrowLeft size={14} />
-              กลับไปยังหน้าหลัก
-            </button>
+            <CampBreadcrumb
+              campId={campId}
+              className="mb-6"
+              currentPage="เช็กชื่อขึ้นรถ"
+            />
           )}
 
           <div className="flex items-center justify-between gap-3">
@@ -1150,9 +1168,9 @@ export default function BusManagementModal({
               ค่าย: {campName}
             </p>
           )}
-        </ModalHeader>
+        </Header>
 
-        <ModalBody
+        <Body
           className={
             pageMode
               ? "mx-auto block w-full max-w-7xl overflow-visible bg-[#f5f5f2] px-4 pb-10 pt-0 sm:px-8"
@@ -1235,8 +1253,8 @@ export default function BusManagementModal({
                           {availableClassrooms.map((classroom) => (
                             <SelectItem
                               key={classroom.classroomId}
-                              textValue={`${gradeLabel(classroom.grade)} ห้อง ${classroom.roomName}`}
                               className="rounded-lg text-sm text-gray-700 hover:bg-[#e2eee7] data-[selected=true]:bg-[#6b857a] data-[selected=true]:text-white"
+                              textValue={`${gradeLabel(classroom.grade)} ห้อง ${classroom.roomName}`}
                             >
                               {gradeLabel(classroom.grade)} ห้อง{" "}
                               {classroom.roomName} · {classroom.studentCount} คน
@@ -1830,7 +1848,7 @@ export default function BusManagementModal({
               )}
             </div>
           )}
-        </ModalBody>
+        </Body>
 
         <Modal
           classNames={{
@@ -2000,12 +2018,12 @@ export default function BusManagementModal({
                         .map((floor) => (
                           <button
                             key={floor.floorId}
+                            aria-pressed={selectedFloor === floor.floorNumber}
                             className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
                               selectedFloor === floor.floorNumber
                                 ? "bg-[#365f4f] text-white"
                                 : "bg-[#e2eee7] text-[#365f4f] hover:bg-[#cfe0d6]"
                             }`}
-                            aria-pressed={selectedFloor === floor.floorNumber}
                             type="button"
                             onClick={() => setSelectedFloor(floor.floorNumber)}
                           >
@@ -2212,12 +2230,12 @@ export default function BusManagementModal({
                     return (
                       <button
                         key={assignment.assignmentId}
-                        disabled={isAlreadySeated}
                         className={
                           isAlreadySeated
                             ? "flex h-10 min-h-10 w-full cursor-not-allowed items-center gap-2 rounded-lg bg-gray-100 px-3 py-0 text-left text-gray-400"
                             : "flex h-10 min-h-10 w-full items-center gap-2 rounded-lg px-3 py-0 text-left text-gray-700 transition hover:bg-white"
                         }
+                        disabled={isAlreadySeated}
                         type="button"
                         onClick={() => {
                           if (selectedPositionId !== null && !isAlreadySeated) {
@@ -2725,7 +2743,7 @@ export default function BusManagementModal({
             </ModalFooter>
           </ModalContent>
         </Modal>
-      </ModalContent>
-    </Modal>
+      </>
+    </BusManagementShell>
   );
 }

@@ -14,6 +14,7 @@ const personnelSchema = z.object({
 
 export async function GET(request: Request) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
 
   const { searchParams } = new URL(request.url);
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
   if (teacher.role !== "ADMIN") {
     return NextResponse.json(
@@ -44,6 +46,7 @@ export async function POST(request: Request) {
   }
 
   const parsed = personnelSchema.safeParse(await request.json());
+
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "ข้อมูลไม่ถูกต้อง" },
@@ -59,6 +62,7 @@ export async function POST(request: Request) {
       position: parsed.data.position,
     },
   });
+
   if (duplicate) {
     return NextResponse.json(
       { error: "มีบุคลากรชื่อและตำแหน่งนี้อยู่แล้ว" },

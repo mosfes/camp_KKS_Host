@@ -16,6 +16,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
   if (teacher.role !== "ADMIN") {
     return NextResponse.json(
@@ -27,6 +28,7 @@ export async function PATCH(
   const { id } = await context.params;
   const optionId = Number(id);
   const parsed = updateSchema.safeParse(await request.json());
+
   if (!Number.isInteger(optionId) || !parsed.success) {
     return NextResponse.json({ error: "ข้อมูลไม่ถูกต้อง" }, { status: 400 });
   }
@@ -36,6 +38,7 @@ export async function PATCH(
       where: { document_reference_option_id: optionId },
       data: parsed.data,
     });
+
     return NextResponse.json(option);
   } catch {
     return NextResponse.json(

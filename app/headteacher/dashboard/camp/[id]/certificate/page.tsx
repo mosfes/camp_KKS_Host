@@ -1,9 +1,89 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import EditCertificateModal from "../../EditCertificateModal";
+
+function SkeletonBlock({ className }: { className: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`animate-pulse rounded-lg bg-gray-200 ${className}`}
+    />
+  );
+}
+
+function CertificateSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#f5f5f2] px-4 pb-24 pt-6 sm:px-8">
+      <div className="mx-auto max-w-[1440px] space-y-6">
+        {/* Breadcrumb Skeleton */}
+        <div className="flex items-center gap-2">
+          <SkeletonBlock className="h-4 w-20" />
+          <span className="text-gray-300">/</span>
+          <SkeletonBlock className="h-4 w-32" />
+          <span className="text-gray-300">/</span>
+          <SkeletonBlock className="h-4 w-28" />
+        </div>
+
+        {/* Page Header Skeleton */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <SkeletonBlock className="h-5 w-5 rounded-md" />
+            <SkeletonBlock className="h-6 w-48" />
+          </div>
+          <SkeletonBlock className="h-4 w-80 max-w-full" />
+        </div>
+
+        {/* 2-Column Content Skeleton */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Left Column (5 cols) */}
+          <div className="space-y-6 lg:col-span-5">
+            {/* Card 1: Conditions */}
+            <div className="space-y-4 rounded-2xl border border-gray-100 bg-white p-6 shadow-xs">
+              <div className="flex items-center gap-3">
+                <SkeletonBlock className="h-8 w-8 rounded-full" />
+                <div className="space-y-1">
+                  <SkeletonBlock className="h-4 w-36" />
+                  <SkeletonBlock className="h-3 w-48" />
+                </div>
+              </div>
+              <SkeletonBlock className="h-24 w-full rounded-xl" />
+              <SkeletonBlock className="h-14 w-full rounded-xl" />
+            </div>
+
+            {/* Card 2: Template Upload */}
+            <div className="space-y-4 rounded-2xl border border-gray-100 bg-white p-6 shadow-xs">
+              <div className="flex items-center gap-3">
+                <SkeletonBlock className="h-8 w-8 rounded-full" />
+                <div className="space-y-1">
+                  <SkeletonBlock className="h-4 w-36" />
+                  <SkeletonBlock className="h-3 w-48" />
+                </div>
+              </div>
+              <SkeletonBlock className="h-28 w-full rounded-xl" />
+            </div>
+          </div>
+
+          {/* Right Column (7 cols): Certificate Preview */}
+          <div className="lg:col-span-7">
+            <div className="space-y-4 rounded-2xl border border-gray-100 bg-white p-6 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <SkeletonBlock className="h-4 w-28" />
+                  <SkeletonBlock className="h-3 w-40" />
+                </div>
+                <SkeletonBlock className="h-8 w-32 rounded-lg" />
+              </div>
+              <SkeletonBlock className="aspect-[1.414/1] w-full rounded-xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function CertificatePage() {
   const params = useParams<{ id: string }>();
@@ -11,27 +91,27 @@ export default function CertificatePage() {
   const campId = Number(params.id);
   const [camp, setCamp] = useState<any>(null);
 
-  useEffect(() => {
-    fetch(`/api/camps/${campId}?view=certificate`)
+  const loadCamp = useCallback(() => {
+    return fetch(`/api/camps/${campId}?view=certificate`)
       .then((response) => (response.ok ? response.json() : null))
       .then(setCamp);
   }, [campId]);
 
+  useEffect(() => {
+    void loadCamp();
+  }, [loadCamp]);
+
   if (!camp) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f5f5f2]">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#6b857a] border-t-transparent" />
-      </div>
-    );
+    return <CertificateSkeleton />;
   }
 
   return (
     <EditCertificateModal
-      campData={camp}
       isOpen
       pageMode
-      onClose={() => router.push("/headteacher/dashboard")}
-      onSuccess={() => undefined}
+      campData={camp}
+      onClose={() => router.push(`/headteacher/dashboard/camp/${campId}`)}
+      onSuccess={() => void loadCamp()}
     />
   );
 }

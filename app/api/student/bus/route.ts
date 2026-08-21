@@ -5,11 +5,41 @@ import { NextResponse } from "next/server";
 import { requireStudent } from "@/lib/auth";
 import { isBangkokDateBefore } from "@/lib/bangkok-date";
 import { prisma } from "@/lib/db";
+import { checkRateLimit } from "@/lib/rate-limit";
 
-export async function GET() {
+export async function GET(request: Request) {
   const { student, error: authError } = await requireStudent();
 
   if (authError) return authError;
+
+  const { searchParams } = new URL(request.url);
+  const isManual = searchParams.get("manual") === "1";
+
+  if (isManual) {
+    const rateCheck = checkRateLimit(
+      "student-bus-list-manual",
+      student.students_id,
+      {
+        windowMs: 60_000,
+        max: 10,
+      },
+    );
+
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: `คุณกดรีเฟรชบ่อยเกินไป (จำกัด 10 ครั้ง/นาที) กรุณารอ ${rateCheck.retryAfterSeconds} วินาทีก่อนลองใหม่`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateCheck.retryAfterSeconds),
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    }
+  }
 
   try {
     const enrollments = await prisma.student_enrollment.findMany({

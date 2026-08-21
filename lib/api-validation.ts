@@ -51,28 +51,30 @@ export function isIsoDate(value: string) {
   const date = new Date(`${value}T00:00:00.000Z`);
 
   return (
-    !Number.isNaN(date.getTime()) &&
-    date.toISOString().slice(0, 10) === value
+    !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
   );
 }
 
-export function isCloudinaryUploadUrl(value: string, expectedPublicPath: string) {
+export function isCloudinaryUploadUrl(
+  value: string,
+  expectedPublicPath: string,
+) {
   try {
     const url = new URL(value);
     const path = decodeURIComponent(url.pathname);
     const marker = `/${expectedPublicPath}`;
     const markerIndex = path.indexOf(marker);
     const nextCharacter =
-      markerIndex >= 0
-        ? path[markerIndex + marker.length]
-        : undefined;
+      markerIndex >= 0 ? path[markerIndex + marker.length] : undefined;
 
     return (
       url.protocol === "https:" &&
       url.hostname === "res.cloudinary.com" &&
       path.includes("/image/upload/") &&
       markerIndex >= 0 &&
-      (nextCharacter === undefined || nextCharacter === "/" || nextCharacter === ".")
+      (nextCharacter === undefined ||
+        nextCharacter === "/" ||
+        nextCharacter === ".")
     );
   } catch {
     return false;

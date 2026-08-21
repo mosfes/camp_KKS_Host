@@ -81,13 +81,35 @@ export async function GET(request, context) {
       const camp = await prisma.camp.findFirst({
         where: { camp_id: campId, deletedAt: null },
         select: {
+          camp_id: true,
+          name: true,
+          description: true,
+          start_date: true,
+          end_date: true,
           created_by_teacher_id: true,
           station: {
             where: { deletedAt: null },
+            orderBy: { station_id: "asc" },
             select: {
               station_id: true,
               name: true,
               description: true,
+              is_required_for_cert: true,
+              mission: {
+                where: { deletedAt: null },
+                select: {
+                  mission_id: true,
+                  title: true,
+                  type: true,
+                },
+              },
+              _count: {
+                select: {
+                  mission: {
+                    where: { deletedAt: null },
+                  },
+                },
+              },
             },
           },
         },

@@ -39,6 +39,7 @@ function reusableData(source: Record<string, unknown>) {
 
 export async function GET() {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
 
   const teacherId = Number(teacher.teachers_id);
@@ -52,9 +53,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
 
   const parsed = templateSchema.safeParse(await request.json());
+
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "ข้อมูลเทมเพลตไม่ถูกต้อง" },

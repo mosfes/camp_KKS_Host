@@ -4,11 +4,41 @@ import { NextResponse } from "next/server";
 
 import { requireStudent } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: Request, context: any) {
   const { student, error: authError } = await requireStudent();
 
   if (authError) return authError;
+
+  const { searchParams } = new URL(request.url);
+  const isManual = searchParams.get("manual") === "1";
+
+  if (isManual) {
+    const rateCheck = checkRateLimit(
+      "student-camp-bus-manual",
+      student.students_id,
+      {
+        windowMs: 60_000,
+        max: 10,
+      },
+    );
+
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: `คุณกดรีเฟรชบ่อยเกินไป (จำกัด 10 ครั้ง/นาที) กรุณารอ ${rateCheck.retryAfterSeconds} วินาทีก่อนลองใหม่`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateCheck.retryAfterSeconds),
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    }
+  }
 
   const { id } = await context.params;
   const campId = Number(id);
@@ -16,6 +46,45 @@ export async function GET(request: Request, context: any) {
 
   if (!Number.isInteger(campId) || campId <= 0) {
     return NextResponse.json({ error: "รหัสค่ายไม่ถูกต้อง" }, { status: 400 });
+  }
+
+  const isStatusOnly = searchParams.get("statusOnly") === "1";
+
+  if (isStatusOnly) {
+    const assignment = await prisma.camp_bus_student.findFirst({
+      where: {
+        student_enrollment: {
+          camp_camp_id: campId,
+          student_students_id: studentId,
+          enrolled_at: { not: null },
+        },
+      },
+      select: {
+        status: true,
+        last_boarded_at: true,
+        bus: {
+          select: {
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!assignment) {
+      return NextResponse.json({ configured: false });
+    }
+
+    return NextResponse.json(
+      {
+        statusOnly: true,
+        configured: true,
+        busStatus: assignment.bus.status,
+        studentStatus: assignment.status,
+        isOnBus: assignment.status === "ON_BUS",
+        lastBoardedAt: assignment.last_boarded_at,
+      },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
   }
 
   const enrollment = await prisma.student_enrollment.findFirst({

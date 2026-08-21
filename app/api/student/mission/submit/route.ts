@@ -66,7 +66,10 @@ export async function POST(req) {
     }
 
     const questionsById = new Map(
-      mission.mission_question.map((question) => [question.question_id, question]),
+      mission.mission_question.map((question) => [
+        question.question_id,
+        question,
+      ]),
     );
     const submittedQuestionIds = new Set<number>();
 

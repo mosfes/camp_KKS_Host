@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  ChevronLeft,
   Search,
   AlertCircle,
   Users,
@@ -16,6 +15,9 @@ import { Input } from "@heroui/input";
 import { Chip } from "@heroui/chip";
 import { Pagination } from "@heroui/pagination";
 import { Select, SelectItem } from "@heroui/react";
+
+import CampBreadcrumb from "../../CampBreadcrumb";
+
 import BreakdownModal from "./BreakdownModal";
 
 interface Student {
@@ -190,13 +192,11 @@ export default function CampStudentsPage() {
       {loading && <StudentPageSkeleton />}
 
       <div className={loading ? "hidden" : "max-w-7xl mx-auto px-4 py-8"}>
-        <button
-          className="flex items-center gap-0.5 text-[11px] text-gray-600 hover:text-gray-900 transition-colors mb-6"
-          onClick={() => router.push("/headteacher/dashboard")}
-        >
-          <ChevronLeft size={14} />
-          <span className="font-medium">กลับไปยังหน้าหลัก</span>
-        </button>
+        <CampBreadcrumb
+          campId={campId as string}
+          className="mb-6"
+          currentPage="ข้อมูลนักเรียนในค่าย"
+        />
 
         <h1 className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-8">
           <BookOpen className="text-[#6b857a]" size={20} />
@@ -215,9 +215,7 @@ export default function CampStudentsPage() {
               </div>
               <p className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
                 {summary.totalStudents}{" "}
-                <span className="text-[9px] font-medium text-gray-500">
-                  คน
-                </span>
+                <span className="text-[9px] font-medium text-gray-500">คน</span>
               </p>
             </div>
 
@@ -252,14 +250,10 @@ export default function CampStudentsPage() {
               </div>
               <p className="text-xl md:text-2xl font-bold text-gray-900">
                 {summary.allergiesCount}{" "}
-                <span className="text-[9px] font-medium text-gray-500">
-                  คน
-                </span>
+                <span className="text-[9px] font-medium text-gray-500">คน</span>
               </p>
               {summary.allergiesCount > 0 && (
-                <p className="text-xs text-red-400 mt-2">
-                  กดเพื่อดูรายละเอียด
-                </p>
+                <p className="text-xs text-red-400 mt-2">กดเพื่อดูรายละเอียด</p>
               )}
             </button>
 
@@ -294,9 +288,7 @@ export default function CampStudentsPage() {
               </div>
               <p className="text-xl md:text-2xl font-bold text-gray-900">
                 {summary.chronicDiseasesCount}{" "}
-                <span className="text-[9px] font-medium text-gray-500">
-                  คน
-                </span>
+                <span className="text-[9px] font-medium text-gray-500">คน</span>
               </p>
               {summary.chronicDiseasesCount > 0 && (
                 <p className="text-xs text-[#6b857a] mt-2">
@@ -336,9 +328,7 @@ export default function CampStudentsPage() {
               </div>
               <p className="text-xl md:text-2xl font-bold text-gray-900">
                 {summary.remarksCount}{" "}
-                <span className="text-[9px] font-medium text-gray-500">
-                  คน
-                </span>
+                <span className="text-[9px] font-medium text-gray-500">คน</span>
               </p>
               {summary.remarksCount > 0 && (
                 <p className="text-xs text-blue-400 mt-2">
@@ -394,9 +384,7 @@ export default function CampStudentsPage() {
                   }}
                   placeholder="ค้นหาชื่อ, นามสกุล หรือรหัส..."
                   size="sm"
-                  startContent={
-                    <Search className="text-gray-400" size={18} />
-                  }
+                  startContent={<Search className="text-gray-400" size={18} />}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -448,8 +436,8 @@ export default function CampStudentsPage() {
                         {row.student.students_id}
                       </td>
                       <td className="p-4 text-gray-900">
-                        {row.student.prefix_name || ""}{" "}
-                        {row.student.firstname} {row.student.lastname}
+                        {row.student.prefix_name || ""} {row.student.firstname}{" "}
+                        {row.student.lastname}
                       </td>
                       <td className="p-4 text-gray-600">
                         {row.student.tel || "-"}

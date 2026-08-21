@@ -34,8 +34,12 @@ export function ParentNavbar() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    await fetch("/api/auth/parent/logout", { method: "POST" });
-    router.push("/");
+    try {
+      await fetch("/api/auth/parent/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Parent logout API error:", e);
+    }
+    window.location.href = "/login";
   };
 
   const displayName = student

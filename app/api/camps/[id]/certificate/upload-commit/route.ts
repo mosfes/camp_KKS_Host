@@ -33,14 +33,20 @@ export async function POST(
     const publicId = typeof body?.publicId === "string" ? body.publicId : "";
 
     if (!campIdResult.success) {
-      return NextResponse.json({ error: "รหัสค่ายไม่ถูกต้อง" }, { status: 400 });
+      return NextResponse.json(
+        { error: "รหัสค่ายไม่ถูกต้อง" },
+        { status: 400 },
+      );
     }
 
     const campId = campIdResult.data;
     const expectedPrefix = `camp-certificates/${campId}`;
     const expectedPublicId = `${expectedPrefix}/template`;
 
-    if (publicId !== expectedPublicId || !isCloudinaryPublicId(publicId, expectedPrefix)) {
+    if (
+      publicId !== expectedPublicId ||
+      !isCloudinaryPublicId(publicId, expectedPrefix)
+    ) {
       return NextResponse.json(
         { error: "กรอบเกียรติบัตรไม่ถูกต้องหรือไม่มีสิทธิ์ใช้งานไฟล์นี้" },
         { status: 403 },

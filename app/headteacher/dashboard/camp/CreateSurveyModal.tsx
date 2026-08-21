@@ -10,9 +10,8 @@ import {
   SelectItem,
   Switch,
 } from "@heroui/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import {
-  ArrowLeft,
   Plus,
   Trash2,
   FileText,
@@ -25,6 +24,8 @@ import {
   AlignLeft,
   Heading,
 } from "lucide-react";
+
+import CampBreadcrumb from "./CampBreadcrumb";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 
@@ -60,6 +61,43 @@ interface CreateSurveyModalProps {
 
 const inputCls =
   "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors text-sm bg-white";
+
+function CreateSurveyShell({
+  pageMode,
+  isOpen,
+  onClose,
+  children,
+}: {
+  pageMode: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (pageMode) {
+    return (
+      <main className="h-full min-h-0 overflow-y-auto bg-[#f5f5f2]">
+        {children}
+      </main>
+    );
+  }
+
+  return (
+    <Modal
+      backdrop="opaque"
+      classNames={{
+        base: "bg-[#f0f2f5] rounded-xl shadow-2xl overflow-hidden",
+        backdrop: "bg-black/40",
+      }}
+      isDismissable={true}
+      isOpen={isOpen}
+      scrollBehavior="inside"
+      size="5xl"
+      onOpenChange={onClose}
+    >
+      <ModalContent>{children}</ModalContent>
+    </Modal>
+  );
+}
 
 export default function CreateSurveyModal({
   isOpen,
@@ -263,6 +301,7 @@ export default function CreateSurveyModal({
 
     if (!q[i].options) q[i].options = [];
     const label = q[i].type === "checkbox" ? "ตัวเลือกที่" : "รายการที่";
+
     q[i].options!.push(`${label} ${q[i].options!.length + 1}`);
     setQuestions(q);
   };
@@ -367,533 +406,482 @@ export default function CreateSurveyModal({
     }
   };
 
+  const Header = pageMode ? "header" : ModalHeader;
+  const Body = pageMode ? "section" : ModalBody;
+
   return (
     <>
-      <Modal
-        backdrop="opaque"
-        classNames={{
-          base: pageMode
-            ? "!m-0 !h-full !min-h-0 !max-h-none w-full !max-w-none rounded-none bg-[#f5f5f2] shadow-none"
-            : "bg-[#f0f2f5] rounded-xl shadow-2xl overflow-hidden",
-          backdrop: pageMode ? "hidden" : "bg-black/40",
-          wrapper: pageMode ? "camp-page-modal items-start p-0" : undefined,
-        }}
-        hideCloseButton={pageMode}
-        isDismissable={!pageMode}
+      <CreateSurveyShell
         isOpen={isOpen}
-        scrollBehavior="inside"
-        size="5xl"
-        onOpenChange={handleClose}
+        pageMode={pageMode}
+        onClose={handleClose}
       >
-        <ModalContent
-          className={
-            pageMode
-              ? "!m-0 !h-full !min-h-0 !max-h-none !rounded-none !bg-[#f5f5f2] !shadow-none overflow-y-auto"
-              : undefined
-          }
-        >
-          {() => (
-            <>
-              {/* ── Top Header Bar (Google Forms style) ── */}
-              <ModalHeader
-                className={`relative z-10 flex shrink-0 flex-col gap-1 px-6 ${
-                  pageMode
-                    ? "mx-auto w-full max-w-6xl border-0 pb-8 pt-8 sm:px-8"
-                    : "rounded-t-xl border-b border-gray-200 bg-white py-4 shadow-sm"
-                }`}
-              >
-                {pageMode && (
-                  <button
-                    className="mb-6 inline-flex w-fit items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
-                    type="button"
-                    onClick={handleClose}
-                  >
-                    <ArrowLeft size={14} />
-                    กลับไปยังหน้าหลัก
-                  </button>
+        <>
+          {/* ── Top Header Bar (Google Forms style) ── */}
+          <Header
+            className={`relative z-10 flex shrink-0 flex-col gap-1 px-6 ${
+              pageMode
+                ? "mx-auto w-full max-w-6xl border-0 pb-8 pt-8 sm:px-8"
+                : "rounded-t-xl border-b border-gray-200 bg-white py-4 shadow-sm"
+            }`}
+          >
+            {pageMode && (
+              <CampBreadcrumb
+                campId={campId}
+                className="mb-6"
+                currentPage="จัดการแบบสอบถาม"
+              />
+            )}
+
+            <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2">
+                {pageMode ? (
+                  <FileText className="shrink-0 text-[#6b857a]" size={20} />
+                ) : (
+                  <FileText className="text-[#6b857a]" size={24} />
                 )}
+                <h2
+                  className={`${
+                    pageMode ? "text-lg leading-tight" : "text-lg"
+                  } font-medium text-gray-800`}
+                >
+                  {isEditing ? "แก้ไขแบบสอบถาม" : "แบบฟอร์มแบบสอบถาม"}
+                </h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  className="rounded-md bg-gray-100 font-medium text-gray-600 hover:bg-gray-200"
+                  size="sm"
+                  variant="flat"
+                  onPress={handleClose}
+                >
+                  ยกเลิก
+                </Button>
+                <Button
+                  className="rounded-md bg-[#6b857a] font-medium text-white shadow-sm hover:bg-[#5a7268]"
+                  isLoading={loading}
+                  size="sm"
+                  onPress={handleSubmit}
+                >
+                  {isEditing ? "บันทึก" : "สร้าง"}
+                </Button>
+              </div>
+            </div>
+          </Header>
 
-                <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                  <div className="flex items-center gap-2">
-                    {pageMode ? (
-                      <FileText className="shrink-0 text-[#6b857a]" size={20} />
-                    ) : (
-                      <FileText className="text-[#6b857a]" size={24} />
-                    )}
-                    <h2
-                      className={`${
-                        pageMode ? "text-lg leading-tight" : "text-lg"
-                      } font-medium text-gray-800`}
-                    >
-                      {isEditing ? "แก้ไขแบบสอบถาม" : "แบบฟอร์มแบบสอบถาม"}
-                    </h2>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      className="rounded-md bg-gray-100 font-medium text-gray-600 hover:bg-gray-200"
-                      size="sm"
-                      variant="flat"
-                      onPress={handleClose}
-                    >
-                      ยกเลิก
-                    </Button>
-                    <Button
-                      className="rounded-md bg-[#6b857a] font-medium text-white shadow-sm hover:bg-[#5a7268]"
-                      isLoading={loading}
-                      size="sm"
-                      onPress={handleSubmit}
-                    >
-                      {isEditing ? "บันทึก" : "สร้าง"}
-                    </Button>
-                  </div>
-                </div>
-              </ModalHeader>
-
-              <ModalBody
+          <Body
+            className={
+              pageMode
+                ? "mx-auto block w-full max-w-6xl space-y-6 overflow-visible bg-[#f5f5f2] px-4 pb-10 pt-0 sm:px-8"
+                : "space-y-6 px-4 py-6 sm:px-12"
+            }
+          >
+            {/* ── Header Card ── */}
+            <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="absolute top-0 left-0 right-0 h-2.5 bg-[#6b857a]" />
+              <div
                 className={
-                  pageMode
-                    ? "mx-auto block w-full max-w-6xl space-y-6 overflow-visible bg-[#f5f5f2] px-4 pb-10 pt-0 sm:px-8"
-                    : "space-y-6 px-4 py-6 sm:px-12"
+                  pageMode ? "space-y-4 p-6 pt-8" : "space-y-4 p-8 pt-10"
                 }
               >
-                {/* ── Header Card ── */}
-                <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                  <div className="absolute top-0 left-0 right-0 h-2.5 bg-[#6b857a]" />
-                  <div
-                    className={
-                      pageMode ? "space-y-4 p-6 pt-8" : "space-y-4 p-8 pt-10"
-                    }
-                  >
-                    <input
-                      className={`w-full border-b border-transparent pb-2 font-medium outline-none transition-all hover:border-gray-200 focus:border-[#6b857a] focus:border-b-2 ${pageMode ? "text-2xl" : "text-3xl"}`}
-                      placeholder="ฟอร์มไม่มีชื่อ"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                    />
-                    <textarea
-                      className="w-full text-sm text-gray-600 border-b border-transparent hover:border-gray-200 focus:border-[#6b857a] focus:border-b-2 outline-none pb-1 transition-all resize-none"
-                      placeholder="คำอธิบายแบบฟอร์ม"
-                      rows={2}
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                    />
-                  </div>
+                <input
+                  className={`w-full border-b border-transparent pb-2 font-medium outline-none transition-all hover:border-gray-200 focus:border-[#6b857a] focus:border-b-2 ${pageMode ? "text-2xl" : "text-3xl"}`}
+                  placeholder="ฟอร์มไม่มีชื่อ"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+                <textarea
+                  className="w-full text-sm text-gray-600 border-b border-transparent hover:border-gray-200 focus:border-[#6b857a] focus:border-b-2 outline-none pb-1 transition-all resize-none"
+                  placeholder="คำอธิบายแบบฟอร์ม"
+                  rows={2}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* ── Template Banner ── */}
+            <div
+              className={`group flex cursor-pointer flex-col justify-between gap-4 rounded-xl border border-[#6b857a]/20 bg-gradient-to-r from-[#6b857a]/10 to-transparent transition-all hover:border-[#6b857a]/50 sm:flex-row sm:items-center ${pageMode ? "p-4 sm:p-5" : "p-4 sm:p-6"}`}
+              onClick={() => setShowTemplates(true)}
+            >
+              <div className="flex items-center gap-4">
+                <div className="bg-[#6b857a] p-3 rounded-xl text-white shadow-sm group-hover:scale-105 transition-transform">
+                  <BookTemplate size={24} />
                 </div>
-
-                {/* ── Template Banner ── */}
-                <div
-                  className={`group flex cursor-pointer flex-col justify-between gap-4 rounded-xl border border-[#6b857a]/20 bg-gradient-to-r from-[#6b857a]/10 to-transparent transition-all hover:border-[#6b857a]/50 sm:flex-row sm:items-center ${pageMode ? "p-4 sm:p-5" : "p-4 sm:p-6"}`}
-                  onClick={() => setShowTemplates(true)}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="bg-[#6b857a] p-3 rounded-xl text-white shadow-sm group-hover:scale-105 transition-transform">
-                      <BookTemplate size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800 group-hover:text-[#6b857a] transition-colors text-base sm:text-lg">
-                        เลือกจากเทมเพลตแบบสอบถาม
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-0.5">
-                        ใช้โครงสร้างและคำถามที่เคยบันทึกไว้
-                        เพื่อความรวดเร็วในการสร้างแบบสอบถาม
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    className="bg-white text-[#6b857a] font-medium shadow-sm hover:bg-gray-50 shrink-0 border border-gray-200"
-                    variant="flat"
-                    onPress={() => setShowTemplates(true)}
-                  >
-                    เลือกเทมเพลต
-                  </Button>
+                <div>
+                  <h3 className="font-semibold text-gray-800 group-hover:text-[#6b857a] transition-colors text-base sm:text-lg">
+                    เลือกจากเทมเพลตแบบสอบถาม
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    ใช้โครงสร้างและคำถามที่เคยบันทึกไว้
+                    เพื่อความรวดเร็วในการสร้างแบบสอบถาม
+                  </p>
                 </div>
+              </div>
+              <Button
+                className="bg-white text-[#6b857a] font-medium shadow-sm hover:bg-gray-50 shrink-0 border border-gray-200"
+                variant="flat"
+                onPress={() => setShowTemplates(true)}
+              >
+                เลือกเทมเพลต
+              </Button>
+            </div>
 
-                {/* ── Settings Card ── */}
+            {/* ── Settings Card ── */}
+            <div
+              className={`space-y-4 rounded-xl border border-gray-200 bg-white shadow-sm ${pageMode ? "p-5" : "p-6"}`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8">
+                <div className="flex items-center justify-between w-full">
+                  <label className="text-sm font-medium text-gray-700">
+                    บันทึกเป็นเทมเพลตสำหรับใช้ในครั้งต่อไป
+                  </label>
+                  <Switch
+                    color="success"
+                    isSelected={saveAsTemplate}
+                    size="sm"
+                    onValueChange={setSaveAsTemplate}
+                  />
+                </div>
+              </div>
+
+              {saveAsTemplate && (
+                <div className="pt-2 border-t border-gray-100">
+                  <input
+                    className="w-full sm:w-1/2 text-sm bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#6b857a] outline-none px-4 py-2.5 rounded-lg transition-all"
+                    placeholder="ชื่อเทมเพลต (ค่าเริ่มต้นจะใช้ชื่อฟอร์ม)"
+                    value={templateTitle}
+                    onChange={(e) => setTemplateTitle(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* ── Questions List ── */}
+            <div className="space-y-4 pb-4">
+              {questions.map((q, i) => (
                 <div
-                  className={`space-y-4 rounded-xl border border-gray-200 bg-white shadow-sm ${pageMode ? "p-5" : "p-6"}`}
+                  key={i}
+                  className={`relative flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm group ${pageMode ? "gap-4 p-5" : "gap-5 p-6"} ${
+                    q.type === "header" ? "border-l-4 border-l-purple-500" : ""
+                  }`}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8">
-                    <div className="flex items-center justify-between w-full">
-                      <label className="text-sm font-medium text-gray-700">
-                        บันทึกเป็นเทมเพลตสำหรับใช้ในครั้งต่อไป
-                      </label>
-                      <Switch
-                        color="success"
-                        isSelected={saveAsTemplate}
-                        size="sm"
-                        onValueChange={setSaveAsTemplate}
-                      />
-                    </div>
-                  </div>
-
-                  {saveAsTemplate && (
-                    <div className="pt-2 border-t border-gray-100">
-                      <input
-                        className="w-full sm:w-1/2 text-sm bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#6b857a] outline-none px-4 py-2.5 rounded-lg transition-all"
-                        placeholder="ชื่อเทมเพลต (ค่าเริ่มต้นจะใช้ชื่อฟอร์ม)"
-                        value={templateTitle}
-                        onChange={(e) => setTemplateTitle(e.target.value)}
-                      />
-                    </div>
+                  {/* Left Accent Bar on Hover */}
+                  {q.type !== "header" && (
+                    <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-transparent group-hover:bg-gray-200 transition-colors rounded-l-xl" />
                   )}
-                </div>
 
-                {/* ── Questions List ── */}
-                <div className="space-y-4 pb-4">
-                  {questions.map((q, i) => (
-                    <div
-                      key={i}
-                      className={`relative flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm group ${pageMode ? "gap-4 p-5" : "gap-5 p-6"} ${
-                        q.type === "header"
-                          ? "border-l-4 border-l-purple-500"
-                          : ""
-                      }`}
-                    >
-                      {/* Left Accent Bar on Hover */}
-                      {q.type !== "header" && (
-                        <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-transparent group-hover:bg-gray-200 transition-colors rounded-l-xl" />
-                      )}
-
-                      {/* Top Row: Title Input & Type Selector */}
-                      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                        {q.type !== "header" && (
-                          <span className="shrink-0 rounded-full bg-[#e8f0ec] px-3 py-1.5 text-sm font-semibold text-[#4f6d5f]">
-                            ข้อ{" "}
-                            {
-                              questions
-                                .slice(0, i + 1)
-                                .filter((item) => item.type !== "header").length
-                            }
-                          </span>
-                        )}
-                        <input
-                          className="flex-1 w-full text-base bg-gray-50 hover:bg-gray-100 focus:bg-gray-50 border-b border-gray-300 focus:border-[#6b857a] focus:border-b-2 outline-none px-4 py-3 rounded-t-md transition-all"
-                          placeholder={
-                            q.type === "scale"
-                              ? "คำถามความพึงพอใจ"
-                              : q.type === "text"
-                                ? "คำถามปลายเปิด"
-                                : "ชื่อส่วน/หัวข้อ"
-                          }
-                          value={q.text}
-                          onChange={(e) =>
-                            updateQuestion(i, "text", e.target.value)
-                          }
-                        />
-                        <div className="relative w-full sm:w-56 shrink-0">
-                          <Select
-                            aria-label="ประเภทคำถาม"
-                            className="w-full"
-                            classNames={{
-                              trigger:
-                                "border border-gray-300 rounded-md outline-none focus-within:border-[#6b857a] bg-white h-[46px] shadow-none hover:bg-white data-[hover=true]:bg-white",
-                              value: "text-sm text-gray-700 font-medium",
-                            }}
-                            renderValue={(items) => {
-                              return items.map((item) => (
-                                <div
-                                  key={item.key}
-                                  className="flex items-center gap-2"
-                                >
-                                  {item.key === "scale" && (
-                                    <CircleDot
-                                      className="text-gray-500"
-                                      size={16}
-                                    />
-                                  )}
-                                  {item.key === "grid" && (
-                                    <LayoutGrid
-                                      className="text-gray-500"
-                                      size={16}
-                                    />
-                                  )}
-                                  {item.key === "text" && (
-                                    <AlignLeft
-                                      className="text-gray-500"
-                                      size={16}
-                                    />
-                                  )}
-                                  {item.key === "header" && (
-                                    <Heading
-                                      className="text-gray-500"
-                                      size={16}
-                                    />
-                                  )}
-                                  <span>{item.textValue}</span>
-                                </div>
-                              ));
-                            }}
-                            selectedKeys={[q.type]}
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                updateQuestion(
-                                  i,
-                                  "type",
-                                  e.target.value as
-                                    | "text"
-                                    | "scale"
-                                    | "header"
-                                    | "grid"
-                                    | "checkbox",
-                                );
-                              }
-                            }}
-                          >
-                            <SelectItem
-                              key="scale"
-                              textValue="ระดับความพึงพอใจ"
+                  {/* Top Row: Title Input & Type Selector */}
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                    {q.type !== "header" && (
+                      <span className="shrink-0 rounded-full bg-[#e8f0ec] px-3 py-1.5 text-sm font-semibold text-[#4f6d5f]">
+                        ข้อ{" "}
+                        {
+                          questions
+                            .slice(0, i + 1)
+                            .filter((item) => item.type !== "header").length
+                        }
+                      </span>
+                    )}
+                    <input
+                      className="flex-1 w-full text-base bg-gray-50 hover:bg-gray-100 focus:bg-gray-50 border-b border-gray-300 focus:border-[#6b857a] focus:border-b-2 outline-none px-4 py-3 rounded-t-md transition-all"
+                      placeholder={
+                        q.type === "scale"
+                          ? "คำถามความพึงพอใจ"
+                          : q.type === "text"
+                            ? "คำถามปลายเปิด"
+                            : "ชื่อส่วน/หัวข้อ"
+                      }
+                      value={q.text}
+                      onChange={(e) =>
+                        updateQuestion(i, "text", e.target.value)
+                      }
+                    />
+                    <div className="relative w-full sm:w-56 shrink-0">
+                      <Select
+                        aria-label="ประเภทคำถาม"
+                        className="w-full"
+                        classNames={{
+                          trigger:
+                            "border border-gray-300 rounded-md outline-none focus-within:border-[#6b857a] bg-white h-[46px] shadow-none hover:bg-white data-[hover=true]:bg-white",
+                          value: "text-sm text-gray-700 font-medium",
+                        }}
+                        renderValue={(items) => {
+                          return items.map((item) => (
+                            <div
+                              key={item.key}
+                              className="flex items-center gap-2"
                             >
-                              <div className="flex items-center gap-2">
+                              {item.key === "scale" && (
                                 <CircleDot
                                   className="text-gray-500"
                                   size={16}
                                 />
-                                <span>ระดับความพึงพอใจ</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem
-                              key="text"
-                              textValue="ข้อความ (ปลายเปิด)"
-                            >
-                              <div className="flex items-center gap-2">
+                              )}
+                              {item.key === "grid" && (
+                                <LayoutGrid
+                                  className="text-gray-500"
+                                  size={16}
+                                />
+                              )}
+                              {item.key === "text" && (
                                 <AlignLeft
                                   className="text-gray-500"
                                   size={16}
                                 />
-                                <span>ข้อความ (ปลายเปิด)</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem
-                              key="checkbox"
-                              textValue="เลือกได้หลายข้อ"
-                            >
-                              <div className="flex items-center gap-2">
-                                <ListChecks
-                                  className="text-gray-500"
-                                  size={16}
-                                />
-                                <span>เลือกได้หลายข้อ</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem key="header" textValue="ส่วนแบ่งหัวข้อ">
-                              <div className="flex items-center gap-2">
-                                <Heading className="text-gray-500" size={16} />
-                                <span>ส่วนแบ่งหัวข้อ</span>
-                              </div>
-                            </SelectItem>
-                          </Select>
-                        </div>
-                      </div>
-
-                      {/* Mock UI Preview */}
-                      <div className="pl-2 pt-2">
-                        {q.type === "scale" && (
-                          <div className="flex flex-wrap items-center gap-3 text-gray-500">
-                            <span className="text-sm font-medium text-[#4f6d5f]">
-                              มากที่สุด
-                            </span>
-                            <div className="flex gap-4">
-                              {Array.from({ length: globalScaleMax }).map(
-                                (_, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="flex flex-col items-center gap-2"
-                                  >
-                                    <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
-                                    <span className="text-xs text-gray-400">
-                                      {globalScaleMax - idx}
-                                    </span>
-                                  </div>
-                                ),
                               )}
+                              {item.key === "header" && (
+                                <Heading className="text-gray-500" size={16} />
+                              )}
+                              <span>{item.textValue}</span>
                             </div>
-                            <span className="text-sm font-medium text-gray-500">
-                              น้อยที่สุด
-                            </span>
-                          </div>
-                        )}
-                        {q.type === "text" && (
-                          <div className="border-b border-dotted border-gray-400 w-full sm:w-2/3 pb-1 text-sm text-gray-400">
-                            ข้อความคำตอบแบบยาว
-                          </div>
-                        )}
-                        {q.type === "header" && (
-                          <div className="border-b-2 border-purple-200 w-full pb-2 text-sm text-purple-600 font-medium italic">
-                            (ส่วนนี้จะแสดงเป็นตัวหนาขนาดใหญ่
-                            เพื่อคั่นเนื้อหาแบบสอบถาม)
-                          </div>
-                        )}
-                        {q.type === "grid" && (
-                          <div className="w-full space-y-2 mt-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <p className="text-sm font-medium text-gray-700 mb-2">
-                              หัวข้อย่อยที่จะให้คะแนน 1-5 (แถว)
-                            </p>
-                            {q.options?.map((opt, rIdx) => (
-                              <div
-                                key={rIdx}
-                                className="flex items-center gap-3"
-                              >
-                                <span className="text-sm font-medium text-gray-400 w-4 text-right">
-                                  {rIdx + 1}.
-                                </span>
-                                <input
-                                  className="flex-1 text-sm bg-white border border-gray-300 focus:border-[#6b857a] outline-none px-3 py-2 rounded-md transition-all"
-                                  placeholder="เช่น ความสะอาดของสถานที่"
-                                  value={opt}
-                                  onChange={(e) =>
-                                    updateGridRow(i, rIdx, e.target.value)
-                                  }
-                                />
-                                <button
-                                  className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-30 disabled:hover:text-gray-400"
-                                  disabled={(q.options?.length || 0) <= 1}
-                                  onClick={() => removeGridRow(i, rIdx)}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            ))}
-                            <button
-                              className="mt-2 text-sm text-[#6b857a] hover:text-[#5a7268] font-medium flex items-center gap-1 transition-colors"
-                              onClick={() => addGridRow(i)}
-                            >
-                              <Plus size={14} /> เพิ่มรายการย่อย
-                            </button>
-                          </div>
-                        )}
-                        {q.type === "checkbox" && (
-                          <div className="w-full space-y-2 mt-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                            <p className="mb-2 text-sm font-medium text-gray-700">
-                              ตัวเลือก (นักเรียนเลือกได้มากกว่าหนึ่งข้อ)
-                            </p>
-                            {q.options?.map((option, optionIndex) => (
-                              <div
-                                key={optionIndex}
-                                className="flex items-center gap-3"
-                              >
-                                <input
-                                  aria-hidden="true"
-                                  checked={false}
-                                  className="h-4 w-4 accent-[#6b857a]"
-                                  readOnly
-                                  tabIndex={-1}
-                                  type="checkbox"
-                                />
-                                <input
-                                  className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition-all focus:border-[#6b857a]"
-                                  placeholder="เช่น ได้รับข้อมูลข่าวสารจากครู"
-                                  value={option}
-                                  onChange={(e) =>
-                                    updateGridRow(
-                                      i,
-                                      optionIndex,
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                                <button
-                                  className="text-gray-400 transition-colors hover:text-red-500 disabled:opacity-30"
-                                  disabled={(q.options?.length || 0) <= 1}
-                                  onClick={() => removeGridRow(i, optionIndex)}
-                                  type="button"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            ))}
-                            <button
-                              className="mt-2 flex items-center gap-1 text-sm font-medium text-[#6b857a] transition-colors hover:text-[#5a7268]"
-                              onClick={() => addGridRow(i)}
-                              type="button"
-                            >
-                              <Plus size={14} /> เพิ่มตัวเลือก
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Footer Actions */}
-                      <div className="flex items-center justify-end gap-1 pt-4 border-t border-gray-100 mt-2 text-gray-500">
-                        <button
-                          className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30"
-                          disabled={i === 0}
-                          title="เลื่อนขึ้น"
-                          onClick={() => moveQuestion(i, -1)}
-                        >
-                          <ChevronUp size={20} />
-                        </button>
-                        <button
-                          className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30"
-                          disabled={i === questions.length - 1}
-                          title="เลื่อนลง"
-                          onClick={() => moveQuestion(i, 1)}
-                        >
-                          <ChevronDown size={20} />
-                        </button>
-                        <div className="w-px h-6 bg-gray-300 mx-2" />
-                        <button
-                          className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors disabled:opacity-30"
-                          disabled={questions.length === 1}
-                          title="ลบคำถาม"
-                          onClick={() => removeQuestion(i)}
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* ── Floating Add Action Bar ── */}
-                  <div
-                    className={
-                      pageMode
-                        ? "flex justify-center pb-4 pt-2"
-                        : "sticky bottom-6 z-20 flex justify-center"
-                    }
-                  >
-                    <div className="bg-white rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.1)] border border-gray-200 px-2 py-2 flex items-center gap-1">
-                      <button
-                        className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
-                        onClick={() => addQuestion("scale")}
+                          ));
+                        }}
+                        selectedKeys={[q.type]}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            updateQuestion(
+                              i,
+                              "type",
+                              e.target.value as
+                                | "text"
+                                | "scale"
+                                | "header"
+                                | "grid"
+                                | "checkbox",
+                            );
+                          }
+                        }}
                       >
-                        <Plus className="text-[#6b857a]" size={16} />
-                        ระดับคะแนน
-                      </button>
-                      <div className="w-px h-6 bg-gray-200 mx-1" />
-                      <button
-                        className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
-                        onClick={() => addQuestion("checkbox")}
-                      >
-                        <Plus className="text-[#6b857a]" size={16} />
-                        เลือกได้หลายข้อ
-                      </button>
-                      <div className="w-px h-6 bg-gray-200 mx-1" />
-                      <button
-                        className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
-                        onClick={() => addQuestion("text")}
-                      >
-                        <Plus className="text-[#6b857a]" size={16} />
-                        ข้อความ
-                      </button>
-                      <div className="w-px h-6 bg-gray-200 mx-1" />
-                      <button
-                        className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
-                        onClick={() => addQuestion("header")}
-                      >
-                        <Plus className="text-[#6b857a]" size={16} />
-                        หัวข้อ
-                      </button>
+                        <SelectItem key="scale" textValue="ระดับความพึงพอใจ">
+                          <div className="flex items-center gap-2">
+                            <CircleDot className="text-gray-500" size={16} />
+                            <span>ระดับความพึงพอใจ</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem key="text" textValue="ข้อความ (ปลายเปิด)">
+                          <div className="flex items-center gap-2">
+                            <AlignLeft className="text-gray-500" size={16} />
+                            <span>ข้อความ (ปลายเปิด)</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem key="checkbox" textValue="เลือกได้หลายข้อ">
+                          <div className="flex items-center gap-2">
+                            <ListChecks className="text-gray-500" size={16} />
+                            <span>เลือกได้หลายข้อ</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem key="header" textValue="ส่วนแบ่งหัวข้อ">
+                          <div className="flex items-center gap-2">
+                            <Heading className="text-gray-500" size={16} />
+                            <span>ส่วนแบ่งหัวข้อ</span>
+                          </div>
+                        </SelectItem>
+                      </Select>
                     </div>
                   </div>
-                </div>
 
-                {/* ── Bottom Padding ── */}
-                <div className="pb-4" />
-              </ModalBody>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+                  {/* Mock UI Preview */}
+                  <div className="pl-2 pt-2">
+                    {q.type === "scale" && (
+                      <div className="flex flex-wrap items-center gap-3 text-gray-500">
+                        <span className="text-sm font-medium text-[#4f6d5f]">
+                          มากที่สุด
+                        </span>
+                        <div className="flex gap-4">
+                          {Array.from({ length: globalScaleMax }).map(
+                            (_, idx) => (
+                              <div
+                                key={idx}
+                                className="flex flex-col items-center gap-2"
+                              >
+                                <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
+                                <span className="text-xs text-gray-400">
+                                  {globalScaleMax - idx}
+                                </span>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-gray-500">
+                          น้อยที่สุด
+                        </span>
+                      </div>
+                    )}
+                    {q.type === "text" && (
+                      <div className="border-b border-dotted border-gray-400 w-full sm:w-2/3 pb-1 text-sm text-gray-400">
+                        ข้อความคำตอบแบบยาว
+                      </div>
+                    )}
+                    {q.type === "header" && (
+                      <div className="border-b-2 border-purple-200 w-full pb-2 text-sm text-purple-600 font-medium italic">
+                        (ส่วนนี้จะแสดงเป็นตัวหนาขนาดใหญ่
+                        เพื่อคั่นเนื้อหาแบบสอบถาม)
+                      </div>
+                    )}
+                    {q.type === "grid" && (
+                      <div className="w-full space-y-2 mt-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <p className="text-sm font-medium text-gray-700 mb-2">
+                          หัวข้อย่อยที่จะให้คะแนน 1-5 (แถว)
+                        </p>
+                        {q.options?.map((opt, rIdx) => (
+                          <div key={rIdx} className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-gray-400 w-4 text-right">
+                              {rIdx + 1}.
+                            </span>
+                            <input
+                              className="flex-1 text-sm bg-white border border-gray-300 focus:border-[#6b857a] outline-none px-3 py-2 rounded-md transition-all"
+                              placeholder="เช่น ความสะอาดของสถานที่"
+                              value={opt}
+                              onChange={(e) =>
+                                updateGridRow(i, rIdx, e.target.value)
+                              }
+                            />
+                            <button
+                              className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-30 disabled:hover:text-gray-400"
+                              disabled={(q.options?.length || 0) <= 1}
+                              onClick={() => removeGridRow(i, rIdx)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          className="mt-2 text-sm text-[#6b857a] hover:text-[#5a7268] font-medium flex items-center gap-1 transition-colors"
+                          onClick={() => addGridRow(i)}
+                        >
+                          <Plus size={14} /> เพิ่มรายการย่อย
+                        </button>
+                      </div>
+                    )}
+                    {q.type === "checkbox" && (
+                      <div className="w-full space-y-2 mt-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <p className="mb-2 text-sm font-medium text-gray-700">
+                          ตัวเลือก (นักเรียนเลือกได้มากกว่าหนึ่งข้อ)
+                        </p>
+                        {q.options?.map((option, optionIndex) => (
+                          <div
+                            key={optionIndex}
+                            className="flex items-center gap-3"
+                          >
+                            <input
+                              readOnly
+                              aria-hidden="true"
+                              checked={false}
+                              className="h-4 w-4 accent-[#6b857a]"
+                              tabIndex={-1}
+                              type="checkbox"
+                            />
+                            <input
+                              className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition-all focus:border-[#6b857a]"
+                              placeholder="เช่น ได้รับข้อมูลข่าวสารจากครู"
+                              value={option}
+                              onChange={(e) =>
+                                updateGridRow(i, optionIndex, e.target.value)
+                              }
+                            />
+                            <button
+                              className="text-gray-400 transition-colors hover:text-red-500 disabled:opacity-30"
+                              disabled={(q.options?.length || 0) <= 1}
+                              type="button"
+                              onClick={() => removeGridRow(i, optionIndex)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          className="mt-2 flex items-center gap-1 text-sm font-medium text-[#6b857a] transition-colors hover:text-[#5a7268]"
+                          type="button"
+                          onClick={() => addGridRow(i)}
+                        >
+                          <Plus size={14} /> เพิ่มตัวเลือก
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="flex items-center justify-end gap-1 pt-4 border-t border-gray-100 mt-2 text-gray-500">
+                    <button
+                      className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30"
+                      disabled={i === 0}
+                      title="เลื่อนขึ้น"
+                      onClick={() => moveQuestion(i, -1)}
+                    >
+                      <ChevronUp size={20} />
+                    </button>
+                    <button
+                      className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30"
+                      disabled={i === questions.length - 1}
+                      title="เลื่อนลง"
+                      onClick={() => moveQuestion(i, 1)}
+                    >
+                      <ChevronDown size={20} />
+                    </button>
+                    <div className="w-px h-6 bg-gray-300 mx-2" />
+                    <button
+                      className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors disabled:opacity-30"
+                      disabled={questions.length === 1}
+                      title="ลบคำถาม"
+                      onClick={() => removeQuestion(i)}
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {/* ── Floating Add Action Bar ── */}
+              <div
+                className={
+                  pageMode
+                    ? "flex justify-center pb-4 pt-2"
+                    : "sticky bottom-6 z-20 flex justify-center"
+                }
+              >
+                <div className="bg-white rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.1)] border border-gray-200 px-2 py-2 flex items-center gap-1">
+                  <button
+                    className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
+                    onClick={() => addQuestion("scale")}
+                  >
+                    <Plus className="text-[#6b857a]" size={16} />
+                    ระดับคะแนน
+                  </button>
+                  <div className="w-px h-6 bg-gray-200 mx-1" />
+                  <button
+                    className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
+                    onClick={() => addQuestion("checkbox")}
+                  >
+                    <Plus className="text-[#6b857a]" size={16} />
+                    เลือกได้หลายข้อ
+                  </button>
+                  <div className="w-px h-6 bg-gray-200 mx-1" />
+                  <button
+                    className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
+                    onClick={() => addQuestion("text")}
+                  >
+                    <Plus className="text-[#6b857a]" size={16} />
+                    ข้อความ
+                  </button>
+                  <div className="w-px h-6 bg-gray-200 mx-1" />
+                  <button
+                    className="px-4 py-2 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 flex items-center gap-2 transition-colors"
+                    onClick={() => addQuestion("header")}
+                  >
+                    <Plus className="text-[#6b857a]" size={16} />
+                    หัวข้อ
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Bottom Padding ── */}
+            <div className="pb-4" />
+          </Body>
+        </>
+      </CreateSurveyShell>
 
       {/* Template Selection Modal */}
       <Modal isOpen={showTemplates} onOpenChange={setShowTemplates}>

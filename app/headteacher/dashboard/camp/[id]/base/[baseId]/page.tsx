@@ -3,15 +3,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
-import {
-  ChevronLeft,
-  Plus,
-  Target,
-  Pencil,
-  Trash2,
-  Eye,
-  CheckCircle2,
-} from "lucide-react";
+import { Plus, Target, Pencil, Trash2, Eye, CheckCircle2 } from "lucide-react";
+
+import CampBreadcrumb from "../../../CampBreadcrumb";
 
 import CreateMissionModal from "./CreateMissionModal";
 import EditMissionModal from "./EditMissionModal";
@@ -117,18 +111,25 @@ export default function BaseDetailPage() {
   return (
     <div className="min-h-screen bg-[#f5f5f2]">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <button
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 disabled:opacity-50"
-          disabled={navigating}
-          onClick={() => {
-            setNavigating(true);
-            router.back();
-          }}
-        >
-          <ChevronLeft size={20} />
-          <span>กลับไปหน้ารายละเอียดค่าย</span>
-        </button>
+        {/* Breadcrumb Navigation */}
+        <CampBreadcrumb
+          className="mb-6"
+          items={[
+            {
+              label: base.camp?.name
+                ? `ค่าย: ${base.camp.name}`
+                : "รายละเอียดค่าย",
+              href: `/headteacher/dashboard/camp/${campId}`,
+            },
+            {
+              label: "ฐานกิจกรรม",
+              href: `/headteacher/dashboard/camp/${campId}/bases`,
+            },
+            {
+              label: base.name || "รายละเอียดฐาน",
+            },
+          ]}
+        />
 
         <div className="flex justify-between items-start mb-8">
           <div>

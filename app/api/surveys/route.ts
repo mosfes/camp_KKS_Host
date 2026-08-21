@@ -326,3 +326,58 @@ export async function DELETE(request) {
     );
   }
 }
+
+// PATCH /api/surveys?campId=<id> — ปรับแต่งสถานะ เช่น เปิด/ปิดรับคำตอบ
+export async function PATCH(request) {
+  try {
+    const { teacher, error: authError } = await requireTeacher();
+
+    if (authError) return authError;
+
+    const { searchParams } = new URL(request.url);
+    const campId = searchParams.get("campId");
+
+    if (!campId) {
+      return NextResponse.json(
+        { error: "campId is required" },
+        { status: 400 },
+      );
+    }
+
+    const cId = parseInt(campId);
+    const existing = await prisma.survey.findUnique({
+      where: { camp_camp_id: cId },
+      include: { camp: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Survey not found" }, { status: 404 });
+    }
+
+    if (
+      existing.camp.created_by_teacher_id !== teacher.teachers_id &&
+      teacher.role !== "ADMIN"
+    ) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const dataToUpdate = {};
+
+    if (typeof body.isAcceptingResponses === "boolean") {
+      dataToUpdate.is_accepting_responses = body.isAcceptingResponses;
+    }
+
+    const updated = await prisma.survey.update({
+      where: { camp_camp_id: cId },
+      data: dataToUpdate,
+    });
+
+    return NextResponse.json(updated, { status: 200 });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err.message || "Failed to update survey" },
+      { status: 500 },
+    );
+  }
+}

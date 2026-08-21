@@ -11,9 +11,9 @@ export default function ScoreComparisonPage() {
 
   return (
     <PrePostTestModal
-      campId={campId}
       isOpen
       pageMode
+      campId={campId}
       onClose={() => router.push("/headteacher/dashboard")}
     />
   );

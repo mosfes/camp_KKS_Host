@@ -9,7 +9,6 @@ import {
 } from "next/navigation";
 import Image from "next/image";
 import {
-  ChevronLeft,
   ChevronUp,
   ChevronDown,
   MapPin,
@@ -43,6 +42,7 @@ import SurveyResultsModal from "./SurveyResultsModal";
 import TrackingModal from "./TrackingModal";
 import ShirtTrackingModal from "./ShirtTrackingModal";
 import AttendanceModal from "./AttendanceModal";
+import CampBreadcrumb from "./CampBreadcrumb";
 import BusManagementModal from "./BusManagementModal";
 import PrePostTestModal from "./PrePostTestModal";
 
@@ -683,13 +683,10 @@ export default function CampDetailPage() {
     <div className="min-h-screen bg-[#f5f5f2]">
       {/* Header Banner */}
       <div className="max-w-[1240px] mx-auto px-3 pt-3 pb-1 z-10">
-        <button
-          className="flex items-center gap-0.5 text-[11px] text-gray-600 hover:text-gray-900 transition-colors mb-3"
-          onClick={() => router.push("/headteacher/dashboard")}
-        >
-          <ChevronLeft size={14} />
-          <span className="font-medium">กลับไปยังหน้าหลัก</span>
-        </button>
+        <CampBreadcrumb
+          className="mb-3"
+          currentPage={camp.name ? `ค่าย: ${camp.name}` : "รายละเอียดค่าย"}
+        />
 
         <div
           className="relative w-full rounded-[1.5rem] overflow-hidden min-h-[220px] flex flex-col justify-end p-5 md:p-6 shadow-sm border border-gray-100"
@@ -1047,15 +1044,15 @@ export default function CampDetailPage() {
             <button
               className="group flex min-h-[8rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-gray-100 bg-white p-2 shadow-sm transition-all hover:border-[#6b857a] hover:bg-[#f0f4f2] sm:gap-2 sm:p-4"
               onClick={() =>
-                router.push(`/headteacher/dashboard/camp/${campId}/attendance`)
+                router.push(`/headteacher/dashboard/camp/${campId}/students`)
               }
             >
-              <UserCheck
+              <BookOpen
                 className="h-6 w-6 text-[#6b857a] transition-transform group-hover:scale-110 sm:h-8 sm:w-8"
                 size={32}
               />
               <span className="text-center text-xs font-semibold leading-tight text-gray-700 sm:text-sm">
-                เช็คชื่อนักเรียน
+                ข้อมูลนักเรียน
               </span>
             </button>
 

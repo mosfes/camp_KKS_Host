@@ -17,6 +17,7 @@ const reorderSchema = z.object({
 
 export async function GET(request: Request) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
   const { searchParams } = new URL(request.url);
   const includeInactive =
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
   if (teacher.role !== "ADMIN") {
     return NextResponse.json(
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
   }
 
   const parsed = optionSchema.safeParse(await request.json());
+
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "ข้อมูลไม่ถูกต้อง" },
@@ -61,6 +64,7 @@ export async function POST(request: Request) {
           parsed.data.sort_order ?? (maxOrder._max.sort_order ?? 0) + 10,
       },
     });
+
     return NextResponse.json(option, { status: 201 });
   } catch {
     return NextResponse.json(
@@ -72,6 +76,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
   if (teacher.role !== "ADMIN") {
     return NextResponse.json(
@@ -81,6 +86,7 @@ export async function PUT(request: Request) {
   }
 
   const parsed = reorderSchema.safeParse(await request.json());
+
   if (!parsed.success) {
     return NextResponse.json(
       { error: "ลำดับข้อมูลไม่ถูกต้อง" },
@@ -89,6 +95,7 @@ export async function PUT(request: Request) {
   }
 
   const uniqueIds = Array.from(new Set(parsed.data.orderedIds));
+
   if (uniqueIds.length !== parsed.data.orderedIds.length) {
     return NextResponse.json({ error: "พบรายการซ้ำในลำดับ" }, { status: 400 });
   }
@@ -97,6 +104,7 @@ export async function PUT(request: Request) {
     where: { document_reference_option_id: { in: uniqueIds } },
     select: { category: true },
   });
+
   if (
     existingOptions.length !== uniqueIds.length ||
     new Set(existingOptions.map((option) => option.category)).size !== 1

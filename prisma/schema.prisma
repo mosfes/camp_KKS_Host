@@ -741,6 +741,7 @@ model survey {
   description          String?  @db.Text
   created_at           DateTime @default(now())
   is_required_for_cert Boolean  @default(true)
+  is_accepting_responses Boolean @default(true)
 
   camp_camp_id Int  @unique
   camp         camp @relation(fields: [camp_camp_id], references: [camp_id])

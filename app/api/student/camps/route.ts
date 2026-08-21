@@ -36,6 +36,7 @@ export async function GET() {
         where: { grade: "Level_4" },
         select: { classroom_id: true },
       });
+
       classroomIds = demoClassrooms.map((classroom) => classroom.classroom_id);
     }
 

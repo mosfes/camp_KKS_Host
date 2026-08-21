@@ -11,10 +11,10 @@ export default function LocationTrackingPage() {
 
   return (
     <TrackingModal
-      campId={campId}
-      campName=""
       isOpen
       pageMode
+      campId={campId}
+      campName=""
       view="location"
       onClose={() => router.push("/headteacher/dashboard")}
     />

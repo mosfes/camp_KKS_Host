@@ -87,6 +87,7 @@ async function getAuthorizedCamp(campId: number, teacher: any) {
       project_document: true,
     },
   });
+
   if (!camp) return { camp: null, status: 404 };
   if (
     teacher.role !== "ADMIN" &&
@@ -94,6 +95,7 @@ async function getAuthorizedCamp(campId: number, teacher: any) {
   ) {
     return { camp: null, status: 403 };
   }
+
   return { camp, status: 200 };
 }
 
@@ -102,13 +104,16 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
   const { id } = await context.params;
   const campId = Number(id);
+
   if (!Number.isInteger(campId))
     return NextResponse.json({ error: "รหัสค่ายไม่ถูกต้อง" }, { status: 400 });
 
   const result = await getAuthorizedCamp(campId, teacher);
+
   if (!result.camp) {
     return NextResponse.json(
       {
@@ -121,9 +126,14 @@ export async function GET(
     );
   }
   const camp = result.camp;
-  const ownerName = `${camp.created_by.prefix_name || ""}${camp.created_by.firstname} ${camp.created_by.lastname}`.trim();
+  const ownerName =
+    `${camp.created_by.prefix_name || ""}${camp.created_by.firstname} ${camp.created_by.lastname}`.trim();
+
   if (camp.project_document) {
-    return NextResponse.json({ ...camp.project_document, creator_name: ownerName });
+    return NextResponse.json({
+      ...camp.project_document,
+      creator_name: ownerName,
+    });
   }
 
   return NextResponse.json({
@@ -197,10 +207,12 @@ export async function PUT(
   context: { params: Promise<{ id: string }> },
 ) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
   const { id } = await context.params;
   const campId = Number(id);
   const result = await getAuthorizedCamp(campId, teacher);
+
   if (!result.camp) {
     return NextResponse.json(
       { error: "ไม่พบค่ายหรือคุณไม่มีสิทธิ์" },
@@ -209,6 +221,7 @@ export async function PUT(
   }
 
   const parsed = documentSchema.safeParse(await request.json());
+
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "ข้อมูลเอกสารไม่ถูกต้อง" },
@@ -222,6 +235,7 @@ export async function PUT(
   const people = await prisma.document_personnel.findMany({
     where: { document_personnel_id: { in: personnelIds } },
   });
+
   if (people.length !== personnelIds.length) {
     return NextResponse.json(
       { error: "มีรายชื่อผู้ลงนามที่ไม่ถูกต้อง" },
@@ -233,6 +247,7 @@ export async function PUT(
   );
   const signatories = parsed.data.signatories.map((item) => {
     const person = peopleMap.get(item.personnelId)!;
+
     return {
       role: item.role,
       personnelId: person.document_personnel_id,
@@ -243,13 +258,19 @@ export async function PUT(
     };
   });
 
-  const { signatories: _inputSignatories, creator_name: _creatorName, ...documentData } = parsed.data;
+  const {
+    signatories: _inputSignatories,
+    creator_name: _creatorName,
+    ...documentData
+  } = parsed.data;
   const document = await prisma.camp_project_document.upsert({
     where: { camp_camp_id: campId },
     create: { camp_camp_id: campId, ...documentData, signatories },
     update: { ...documentData, signatories },
   });
 
-  const ownerName = `${result.camp.created_by.prefix_name || ""}${result.camp.created_by.firstname} ${result.camp.created_by.lastname}`.trim();
+  const ownerName =
+    `${result.camp.created_by.prefix_name || ""}${result.camp.created_by.firstname} ${result.camp.created_by.lastname}`.trim();
+
   return NextResponse.json({ ...document, creator_name: ownerName });
 }

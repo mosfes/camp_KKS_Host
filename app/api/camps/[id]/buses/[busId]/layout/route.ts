@@ -157,13 +157,16 @@ export async function PUT(request: Request, context: any) {
             (assignment) => !seatedAssignmentIds.has(assignment.assignment_id),
           );
           const boardedAt = new Date();
-          const teacherId = Number(access.permission?.teacher?.teachers_id) || null;
+          const teacherId =
+            Number(access.permission?.teacher?.teachers_id) || null;
 
           if (newlyBoarded.length > 0) {
             await tx.camp_bus_student.updateMany({
               where: {
                 assignment_id: {
-                  in: newlyBoarded.map((assignment) => assignment.assignment_id),
+                  in: newlyBoarded.map(
+                    (assignment) => assignment.assignment_id,
+                  ),
                 },
               },
               data: { status: "ON_BUS", last_boarded_at: boardedAt },
@@ -184,7 +187,9 @@ export async function PUT(request: Request, context: any) {
             await tx.camp_bus_student.updateMany({
               where: {
                 assignment_id: {
-                  in: removedFromBus.map((assignment) => assignment.assignment_id),
+                  in: removedFromBus.map(
+                    (assignment) => assignment.assignment_id,
+                  ),
                 },
               },
               data: { status: "OFF_BUS" },

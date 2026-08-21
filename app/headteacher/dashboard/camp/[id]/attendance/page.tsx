@@ -11,9 +11,9 @@ export default function AttendancePage() {
 
   return (
     <AttendanceModal
-      campId={campId}
       isOpen
       pageMode
+      campId={campId}
       onClose={() => router.push("/headteacher/dashboard")}
     />
   );

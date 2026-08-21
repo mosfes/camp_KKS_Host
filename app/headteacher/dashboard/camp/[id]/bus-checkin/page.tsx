@@ -11,9 +11,9 @@ export default function BusCheckinPage() {
 
   return (
     <BusManagementModal
-      campId={campId}
       isOpen
       pageMode
+      campId={campId}
       onClose={() => router.push("/headteacher/dashboard")}
     />
   );

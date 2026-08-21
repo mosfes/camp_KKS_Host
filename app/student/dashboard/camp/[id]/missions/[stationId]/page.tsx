@@ -24,8 +24,11 @@ import {
   Video,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { isBangkokDateBefore } from "@/lib/bangkok-date";
 import dynamic from "next/dynamic";
+
+import StudentStationDetailSkeleton from "./components/StudentStationDetailSkeleton";
+
+import { isBangkokDateBefore } from "@/lib/bangkok-date";
 import VideoPlayer from "@/components/VideoPlayer";
 import { getVideoSource, supportedVideoUrlMessage } from "@/lib/video";
 import { toThumbnail } from "@/lib/cloudinary-url";
@@ -47,9 +50,9 @@ export default function StudentStationDetailPage() {
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [answers, setAnswers] = useState<any>({}); // { questionId: value }
-  const [answerPublicIds, setAnswerPublicIds] = useState<Record<number, string>>(
-    {},
-  );
+  const [answerPublicIds, setAnswerPublicIds] = useState<
+    Record<number, string>
+  >({});
   const [submitting, setSubmitting] = useState(false);
   const [uploadingQids, setUploadingQids] = useState<number[]>([]);
 
@@ -70,11 +73,11 @@ export default function StudentStationDetailPage() {
       const campRes = await fetch(
         `/api/student/camps/${id}/missions/${stationId}`,
         {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
-        },
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
         },
       );
 
@@ -117,6 +120,7 @@ export default function StudentStationDetailPage() {
         }
       } else if (campRes.status === 403) {
         const errorData = await campRes.json().catch(() => null);
+
         toast.error(errorData?.error || "ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
         router.replace(`/student/dashboard/camp/${id}`);
       }
@@ -420,6 +424,7 @@ export default function StudentStationDetailPage() {
     }
 
     const uploadForm = new FormData();
+
     uploadForm.append("file", file, file.name || "mission-image.jpg");
     uploadForm.append("api_key", signatureData.apiKey);
     uploadForm.append("timestamp", String(signatureData.timestamp));
@@ -441,9 +446,7 @@ export default function StudentStationDetailPage() {
     const uploadData = await uploadResponse.json().catch(() => null);
 
     if (!uploadResponse.ok || !uploadData?.secure_url) {
-      throw new Error(
-        uploadData?.error?.message || "อัปโหลดรูปภาพไม่สำเร็จ",
-      );
+      throw new Error(uploadData?.error?.message || "อัปโหลดรูปภาพไม่สำเร็จ");
     }
 
     const commitResponse = await fetch("/api/student/mission/upload-commit", {
@@ -691,12 +694,7 @@ export default function StudentStationDetailPage() {
     );
   };
 
-  if (loading)
-    return (
-      <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 font-medium">กำลังโหลด...</div>
-      </div>
-    );
+  if (loading) return <StudentStationDetailSkeleton />;
   if (!station)
     return (
       <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
@@ -707,26 +705,28 @@ export default function StudentStationDetailPage() {
   return (
     <div className="min-h-screen bg-[#f5f5f2] pb-12">
       {/* Station Header */}
-      <div className="bg-white px-4 py-6 flex items-center gap-4 border-b border-gray-100/50">
-        <Button
-          isIconOnly
-          className="bg-transparent text-gray-400 hover:bg-gray-50 min-w-0 w-8 h-8"
-          variant="light"
-          onPress={() => router.back()}
-        >
-          <ChevronLeft size={24} />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-medium text-[#2D3648] leading-tight">
-            {station.name}
-          </h1>
-          <p className="text-[13px] text-gray-400 font-medium leading-tight line-clamp-2 mt-1">
-            {camp.title}
-          </p>
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-center gap-4">
+          <Button
+            isIconOnly
+            className="bg-transparent text-gray-400 hover:bg-gray-50 min-w-0 w-8 h-8"
+            variant="light"
+            onPress={() => router.back()}
+          >
+            <ChevronLeft size={24} />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3648] leading-tight">
+              {station.name}
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-400 font-medium leading-tight truncate mt-0.5">
+              {camp.title}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         {station.description && (
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-4">
             <div className="flex items-center gap-2 mb-3">
@@ -790,7 +790,9 @@ export default function StudentStationDetailPage() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className={`text-lg font-medium text-[#2D3648] truncate`}>
+                    <h3
+                      className={`text-lg font-medium text-[#2D3648] truncate`}
+                    >
                       {mission.title?.replace(
                         /\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g,
                         "",
@@ -1238,7 +1240,9 @@ export default function StudentStationDetailPage() {
                                       <img
                                         alt="Uploaded"
                                         className="w-full h-48 object-cover rounded-xl border border-gray-200"
-                                        src={toThumbnail(answers[q.question_id])}
+                                        src={toThumbnail(
+                                          answers[q.question_id],
+                                        )}
                                       />
                                       {!isSubmitted && (
                                         <button
@@ -1250,7 +1254,9 @@ export default function StudentStationDetailPage() {
                                             );
                                             setAnswerPublicIds((current) => {
                                               const next = { ...current };
+
                                               delete next[q.question_id];
+
                                               return next;
                                             });
                                           }}

@@ -27,12 +27,16 @@ import {
   KeyRound,
   Nfc,
   Bus,
+  MapPin,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
-import LoadingSpinner from "@/components/LoadingSpinner";
 
 import TakeSurveyModal from "../TakeSurveyModal";
+
+import StudentCampDetailSkeleton from "./components/StudentCampDetailSkeleton";
+
+import LoadingSpinner from "@/components/LoadingSpinner";
 import {
   BANGKOK_TIME_ZONE,
   getBangkokDaysUntil,
@@ -48,15 +52,25 @@ const QrScanner = dynamic(() => import("@/components/QrScanner"), {
 
 const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
 
-function formatDate(dateString: string) {
+function formatDate(dateString: string, endDate?: string) {
   if (!dateString) return "";
 
-  return new Date(dateString).toLocaleDateString("th-TH", {
+  const s = new Date(dateString).toLocaleDateString("th-TH", {
     year: "numeric",
     month: "long",
     day: "numeric",
     timeZone: BANGKOK_TIME_ZONE,
   });
+
+  if (!endDate || dateString === endDate) return s;
+  const e = new Date(endDate).toLocaleDateString("th-TH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: BANGKOK_TIME_ZONE,
+  });
+
+  return `${s} - ${e}`;
 }
 
 function getDaysRemaining(endDate: string) {
@@ -193,6 +207,7 @@ export default function StudentCampDetailPage() {
     const campNotStarted = Boolean(
       startDate && isBangkokDateBefore(new Date(), startDate),
     );
+
     if (camp.isRegistered && campNotStarted) {
       setIsBottomMenuExpanded(false);
     }
@@ -456,7 +471,7 @@ export default function StudentCampDetailPage() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">กำลังโหลด...</div>;
+  if (loading) return <StudentCampDetailSkeleton />;
   if (!camp) return <div className="p-8 text-center">ไม่พบค่าย</div>;
 
   const totalMissions =
@@ -505,16 +520,14 @@ export default function StudentCampDetailPage() {
 
   return (
     <div
-      className={`student-camp-page min-h-screen bg-[#F5F5F3] transition-[padding] duration-300 ${
-        isBottomMenuExpanded ? "pb-72" : "pb-24"
-      }`}
+      className={`student-camp-page min-h-screen bg-[#F5F5F3] transition-[padding] duration-300 pb-28 lg:pb-16`}
     >
       {/* Hero Section */}
-      <div className="h-64 sm:h-72 bg-gray-200 relative overflow-hidden">
+      <div className="h-64 sm:h-80 lg:h-96 bg-gray-200 relative overflow-hidden">
         {camp.img_camp_url ? (
           <img
             alt={camp.title}
-            className="w-full h-full object-cover transition-transform duration-1000"
+            className="w-full h-full object-cover"
             src={camp.img_camp_url}
           />
         ) : (
@@ -522,11 +535,12 @@ export default function StudentCampDetailPage() {
             <Flag className="animate-pulse" size={80} />
           </div>
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
 
         <div className="absolute top-6 left-6 z-20">
           <Button
             isIconOnly
-            className="bg-gray-400/50 backdrop-blur-md text-gray-700 shadow-sm border border-white/20 rounded-xl"
+            className="bg-white/80 backdrop-blur-md text-gray-700 shadow-sm border border-white/40 rounded-xl hover:bg-white transition-all"
             variant="flat"
             onPress={() => router.back()}
           >
@@ -535,347 +549,591 @@ export default function StudentCampDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-xl mx-auto px-0 -mt-16 relative z-20">
-        {/* Main Info Card */}
-        <div className="bg-white rounded-t-[2rem] shadow-xl shadow-gray-200/30 p-8 pb-10 border-x border-t border-gray-100/50">
-          <div className="mb-6">
-            <h1 className="text-[22px] sm:text-[26px] font-semibold text-[#1A202C] mb-5 leading-[1.2] tracking-tight">
-              {camp.title}
-            </h1>
-
-            {/* Status Badges */}
-            <div className="flex flex-wrap gap-2 mb-8">
-              {camp.isRegistered && !camp.isEnded && (
-                <span className="inline-flex items-center gap-1.5 bg-[#E6F4EA] text-[#1E8E3E] text-[13px] font-bold px-4 py-2 rounded-full">
-                  <CheckCircle2 className="text-[#1E8E3E]" size={16} />{" "}
-                  ลงทะเบียนแล้ว
-                </span>
-              )}
-              {camp.isEnded && (
-                <span className="inline-flex items-center gap-1.5 bg-gray-900 text-white text-[13px] font-bold px-4 py-2 rounded-full">
-                  <Flag size={16} /> ค่ายจบแล้ว
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Description Section */}
-          <div className="mb-10">
-            <div className="flex items-center gap-3 mb-4">
-              <FileText className="text-gray-400" size={22} />
-              <h2 className="text-base font-semibold text-gray-900">
-                รายละเอียดค่าย
-              </h2>
-            </div>
-            <p className="text-gray-600 text-sm leading-relaxed font-semibold opacity-90 pl-1">
-              {camp.description}
-            </p>
-          </div>
-
-          {/* Detailed Info Cards */}
-          <div className="space-y-4">
-            {/* Camp Dates */}
-            <div className="flex items-center gap-4 bg-[#F8F9FA] p-5 rounded-2xl border border-gray-100/50">
-              <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center shrink-0 border border-gray-100">
-                <Calendar className="text-[#5d7c6f]" size={20} />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-bold text-gray-400 mb-0.5">
-                  วันจัดค่าย
-                </p>
-                <p className="text-[#1A202C] font-black text-base">
-                  {formatDate(camp.rawStartDate)} –{" "}
-                  {formatDate(camp.rawEndDate)}
-                </p>
-              </div>
-            </div>
-
-            {/* Registration Count & Progress */}
-            <div className="bg-[#F8F9FA] p-5 rounded-2xl border border-gray-100/50">
-              <div className="flex items-center gap-4 mb-3">
-                <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center shrink-0 border border-gray-100">
-                  <Users className="text-[#5d7c6f]" size={20} />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-14 sm:-mt-16 relative z-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Main Content Column (8 cols on desktop) */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* Main Info Card */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-200/80 p-6 sm:p-8">
+              <div className="mb-6">
+                {/* Status Badges */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {camp.isRegistered && !camp.isEnded && (
+                    <span className="inline-flex items-center gap-1.5 bg-[#E6F4EA] text-[#1E8E3E] text-xs sm:text-[13px] font-bold px-3.5 py-1.5 rounded-full">
+                      <CheckCircle2 className="text-[#1E8E3E]" size={15} />{" "}
+                      ลงทะเบียนแล้ว
+                    </span>
+                  )}
+                  {camp.isEnded && (
+                    <span className="inline-flex items-center gap-1.5 bg-gray-900 text-white text-xs sm:text-[13px] font-bold px-3.5 py-1.5 rounded-full">
+                      <Flag size={15} /> ค่ายจบแล้ว
+                    </span>
+                  )}
+                  {camp.academicYear && (
+                    <span className="inline-flex items-center bg-gray-100 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-full">
+                      ปีการศึกษา {(camp.academicYear + 543).toString()}
+                    </span>
+                  )}
                 </div>
-                <div className="flex-1 flex items-center justify-between">
-                  <p className="text-base font-black text-gray-900">
-                    จำนวนผู้ลงทะเบียน
-                  </p>
-                  <p className="text-base font-black text-[#5d7c6f]">
+
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 leading-tight tracking-tight">
+                  {camp.title}
+                </h1>
+              </div>
+
+              {/* Description Section */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <FileText className="text-[#5d7c6f]" size={20} />
+                  <h2 className="text-base font-bold text-gray-900">
+                    รายละเอียดค่าย
+                  </h2>
+                </div>
+                <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line pl-1 font-normal">
+                  {camp.description || "ไม่มีรายละเอียดเพิ่มเติม"}
+                </p>
+              </div>
+
+              {/* Detailed Info Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Camp Dates */}
+                <div className="flex items-center gap-3.5 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
+                  <div className="w-10 h-10 bg-white rounded-xl shadow-xs flex items-center justify-center shrink-0 border border-gray-100 text-[#5d7c6f]">
+                    <Calendar size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-gray-400">
+                      วันจัดค่าย
+                    </p>
+                    <p className="text-gray-900 font-bold text-sm truncate">
+                      {formatDate(camp.rawStartDate, camp.rawEndDate)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div className="flex items-center gap-3.5 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
+                  <div className="w-10 h-10 bg-white rounded-xl shadow-xs flex items-center justify-center shrink-0 border border-gray-100 text-[#5d7c6f]">
+                    <MapPin size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-gray-400">
+                      สถานที่จัดค่าย
+                    </p>
+                    <p className="text-gray-900 font-bold text-sm truncate">
+                      {camp.location || "ไม่ระบุสถานที่"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Registration Count & Progress */}
+              <div className="mt-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
+                <div className="flex items-center justify-between gap-4 mb-2.5">
+                  <div className="flex items-center gap-2 text-xs font-bold text-gray-600">
+                    <Users className="text-[#5d7c6f]" size={16} />
+                    <span>จำนวนผู้ลงทะเบียน</span>
+                  </div>
+                  <p className="text-sm font-bold text-[#5d7c6f]">
                     {camp.totalEnrolled} / {camp.totalCapacity} คน
                   </p>
                 </div>
+                <div className="w-full h-2.5 bg-gray-200/80 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#5d7c6f] rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(100, (camp.totalEnrolled / camp.totalCapacity) * 100)}%`,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#5d7c6f] rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(100, (camp.totalEnrolled / camp.totalCapacity) * 100)}%`,
-                  }}
-                />
+
+              {/* Mobile Quick Links (Schedule & Bus) */}
+              <div className="lg:hidden mt-6 space-y-3">
+                {camp.camp_daily_schedule &&
+                  camp.camp_daily_schedule.length > 0 && (
+                    <button
+                      className="w-full flex items-center justify-between px-5 py-3.5 rounded-2xl bg-[#5d7c6f]/5 hover:bg-[#5d7c6f]/10 transition-all border border-[#5d7c6f]/15"
+                      onClick={() => setIsScheduleModalOpen(true)}
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-9 h-9 bg-[#5d7c6f] rounded-xl flex items-center justify-center shrink-0 text-white shadow-sm">
+                          <CalendarDays size={18} />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-bold text-gray-900 text-sm">
+                            กำหนดการค่าย
+                          </p>
+                          <p className="text-xs text-gray-500 font-medium">
+                            {camp.camp_daily_schedule.length} วัน ·
+                            กดเพื่อดูตารางเวลา
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronLeft
+                        className="text-[#5d7c6f] rotate-180"
+                        size={18}
+                      />
+                    </button>
+                  )}
+
+                {camp.isRegistered && camp.hasTransport && (
+                  <button
+                    className="flex w-full items-center justify-between rounded-2xl border border-[#5d7c6f]/15 bg-[#5d7c6f]/5 px-5 py-3.5 text-left transition-all hover:bg-[#5d7c6f]/10"
+                    type="button"
+                    onClick={() =>
+                      router.push(`/student/dashboard/camp/${id}/bus`)
+                    }
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#5d7c6f] text-white shadow-sm">
+                        <Bus size={18} />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-gray-900">
+                          ผังรถและที่นั่งของฉัน
+                        </p>
+                        <p className="text-xs text-gray-500 font-medium">
+                          ตรวจสอบรถ ตำแหน่งที่นั่ง และยืนยันขึ้นรถ
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronLeft
+                      className="shrink-0 rotate-180 text-[#5d7c6f]"
+                      size={18}
+                    />
+                  </button>
+                )}
               </div>
             </div>
-          </div>
 
-          {/* Schedule Button Section */}
-          {camp.camp_daily_schedule && camp.camp_daily_schedule.length > 0 && (
-            <div className="mt-6">
-              <button
-                className="w-full flex items-center justify-between px-6 py-4 rounded-2xl bg-[#5d7c6f]/5 hover:bg-[#5d7c6f]/10 transition-all group border border-[#5d7c6f]/10"
-                onClick={() => setIsScheduleModalOpen(true)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-[#5d7c6f] rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#5d7c6f]/20">
-                    <CalendarDays className="text-white" size={20} />
+            {/* Mission Progress Section (Only if registered) */}
+            {camp.isRegistered && (
+              <div className="bg-white rounded-3xl shadow-sm p-6 sm:p-8 border border-gray-200/80">
+                <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <LayoutDashboard className="text-[#5d7c6f]" size={18} />
+                  ความคืบหน้าภารกิจ
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50/80 rounded-2xl border border-gray-100">
+                    <div className="flex items-center gap-2.5 text-sm font-bold text-gray-700">
+                      <CheckCircle2 className="text-[#5d7c6f]" size={18} />
+                      <span>ฐานที่ทำเสร็จ</span>
+                    </div>
+                    <span className="font-bold text-sm text-[#5d7c6f]">
+                      0/{camp.station?.length || 0}
+                    </span>
                   </div>
-                  <div className="text-left">
-                    <p className="font-black text-gray-800 text-sm">
-                      กำหนดการค่าย
-                    </p>
-                    {currentScheduleSlot ? (
-                      <p className="mt-0.5 flex items-center gap-1.5 text-xs font-bold text-emerald-700">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                        ตอนนี้: {currentScheduleSlot.slot.activity}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-gray-500 font-bold opacity-70">
-                        {camp.camp_daily_schedule.length} วัน ·
-                        กดเพื่อดูตารางเวลา
-                      </p>
+                  <div className="flex items-center justify-between p-4 bg-gray-50/80 rounded-2xl border border-gray-100">
+                    <div className="flex items-center gap-2.5 text-sm font-bold text-gray-700">
+                      <Flag className="text-[#5d7c6f]" size={18} />
+                      <span>ภารกิจทั้งหมด</span>
+                    </div>
+                    <span className="font-bold text-sm text-[#5d7c6f]">
+                      {completedMissions} สำเร็จ
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Shirt Reservation Section */}
+            {camp.isRegistered && camp.hasShirt && (
+              <div className="bg-white rounded-3xl shadow-sm p-6 sm:p-8 border border-gray-200/80">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2.5">
+                    <Shirt className="text-[#5d7c6f]" size={20} />
+                    <h2 className="text-base font-bold text-gray-900">
+                      จองเสื้อค่าย
+                    </h2>
+                  </div>
+                  <div className="flex gap-2">
+                    {isEditingShirt && (
+                      <Button
+                        className="text-gray-500 font-bold hover:bg-gray-100"
+                        size="sm"
+                        variant="light"
+                        onPress={() => {
+                          setSelectedSize(shirtSize);
+                          setIsEditingShirt(false);
+                        }}
+                      >
+                        ยกเลิก
+                      </Button>
+                    )}
+                    {shirtSize && shirtPeriodActive && !isEditingShirt && (
+                      <Button
+                        className="bg-[#e8f0ee] text-[#3d6357] font-bold"
+                        size="sm"
+                        variant="flat"
+                        onPress={() => setIsEditingShirt(true)}
+                      >
+                        แก้ไขไซส์เสื้อ
+                      </Button>
                     )}
                   </div>
                 </div>
-                <ChevronLeft
-                  className="text-[#5d7c6f] rotate-180 group-hover:translate-x-1 transition-transform"
-                  size={20}
-                />
-              </button>
-            </div>
-          )}
 
-          {camp.isRegistered && camp.hasTransport && (
-            <div className="mt-3">
-              <button
-                className="group flex w-full items-center justify-between rounded-2xl border border-[#5d7c6f]/15 bg-[#5d7c6f]/5 px-6 py-4 text-left transition-all hover:bg-[#5d7c6f]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40"
-                type="button"
-                onClick={() => router.push(`/student/dashboard/camp/${id}/bus`)}
-              >
-                <span className="flex min-w-0 items-center gap-4">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#5d7c6f] text-white shadow-lg shadow-[#5d7c6f]/20">
-                    <Bus size={20} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-black text-gray-800">
-                      ผังรถและที่นั่งของฉัน
-                    </span>
-                    <span className="block truncate text-xs font-bold text-gray-500 opacity-70">
-                      ตรวจสอบรถ ตำแหน่งที่นั่ง และยืนยันขึ้นรถ
-                    </span>
-                  </span>
-                </span>
-                <ChevronLeft
-                  className="shrink-0 rotate-180 text-[#5d7c6f] transition-transform group-hover:translate-x-1"
-                  size={20}
-                />
-              </button>
-            </div>
-          )}
-        </div>
+                {shirtSize && !isEditingShirt ? (
+                  <div className="bg-gray-50/80 rounded-2xl p-6 flex flex-col items-center justify-center border border-gray-100">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-xs flex items-center justify-center text-[#5d7c6f] font-black text-2xl mb-2 border border-gray-200/80">
+                      {shirtSize}
+                    </div>
+                    <p className="text-gray-900 text-base font-bold">
+                      ไซส์ที่เลือก: {shirtSize}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {shirtPeriodActive
+                        ? "สามารถแก้ไขไซส์ได้ภายในระยะเวลาการจอง"
+                        : "หมดเขตระยะเวลาการจอง/แก้ไขไซส์เสื้อแล้ว"}
+                    </p>
+                  </div>
+                ) : !shirtSize && !shirtPeriodActive ? (
+                  <div className="bg-amber-50/80 rounded-2xl p-6 flex flex-col items-center justify-center border border-amber-200/60">
+                    <p className="text-amber-800 text-sm font-bold">
+                      หมดเขตการจองเสื้อแล้ว
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      คุณไม่ได้ทำรายการในช่วงเวลาที่กำหนด
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-600 text-sm mb-4">
+                      กรุณาเลือกไซส์เสื้อค่ายของคุณก่อน{" "}
+                      {formatDate(camp.endShirtDate)}
+                    </p>
+                    {daysLeftToReserve !== null && (
+                      <div className="bg-blue-50/80 border border-blue-100 rounded-2xl p-3.5 text-blue-700 text-xs sm:text-sm flex items-center gap-2 mb-6 font-medium">
+                        <Clock size={16} />
+                        <span>
+                          {daysLeftToReserve === 0
+                            ? "วันนี้วันสุดท้ายของการจอง"
+                            : `เหลือเวลาอีก ${daysLeftToReserve} วัน`}
+                        </span>
+                        <span className="text-blue-500 ml-auto text-xs">
+                          หมดเขต: {formatDate(camp.endShirtDate)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="mb-6">
+                      {(() => {
+                        let shirtUrls: string[] = [];
 
-        {/* Mission Progress Section (Only if registered) */}
-        {camp.isRegistered && (
-          <div className="mt-3 bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-            <h2 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-              <LayoutDashboard className="text-[#5d7c6f]" size={20} />
-              ความคืบหน้าภารกิจ
-            </h2>
-            <div className="space-y-4">
-              <div className="flex justify-between text-sm font-bold text-gray-700">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="text-[#5d7c6f]" size={16} />
-                  <span>ฐานที่ทำเสร็จ</span>
-                </div>
-                <span>0/{camp.station?.length || 0}</span>
+                        if (camp.img_shirt_url) {
+                          try {
+                            const parsed = JSON.parse(camp.img_shirt_url);
+
+                            shirtUrls = Array.isArray(parsed)
+                              ? parsed.filter(Boolean)
+                              : [camp.img_shirt_url];
+                          } catch (e) {
+                            shirtUrls = [camp.img_shirt_url];
+                          }
+                        }
+                        if (shirtUrls.length > 0) {
+                          return (
+                            <div
+                              className={`grid gap-4 ${shirtUrls.length === 1 ? "grid-cols-1 max-w-xs mx-auto" : "grid-cols-2 md:grid-cols-3"}`}
+                            >
+                              {shirtUrls.map((url, idx) => (
+                                <div
+                                  key={idx}
+                                  className="bg-gray-100 rounded-2xl overflow-hidden aspect-square border border-gray-200 shadow-xs relative group cursor-pointer"
+                                  onClick={() => setSelectedImage(url)}
+                                >
+                                  <img
+                                    alt="Shirt"
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                    src={url}
+                                  />
+                                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="text-white text-xs font-bold bg-black/50 px-2.5 py-1 rounded-full backdrop-blur-xs">
+                                      ดูรูปขนาดเต็ม
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="h-40 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 font-medium text-xs">
+                            <ImageOff className="mb-2 opacity-40" size={28} />
+                            ไม่มีรูปตัวอย่างเสื้อ
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <div className="mb-6">
+                      <label className="block text-xs font-bold text-gray-700 mb-2.5 uppercase tracking-wider">
+                        เลือกไซส์เสื้อ:
+                      </label>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        {SHIRT_SIZES.map((size) => (
+                          <button
+                            key={size}
+                            className={`py-3 px-2 rounded-xl border text-sm font-bold transition-all ${
+                              selectedSize === size
+                                ? "bg-[#5d7c6f] text-white border-[#5d7c6f] shadow-md shadow-[#5d7c6f]/20"
+                                : "bg-white text-gray-700 border-gray-200 hover:border-[#5d7c6f]/50"
+                            } ${!shirtPeriodActive ? "opacity-60 cursor-not-allowed" : ""}`}
+                            disabled={savingShirt || !shirtPeriodActive}
+                            onClick={() => setSelectedSize(size)}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <Button
+                      fullWidth
+                      className="font-bold bg-[#5d7c6f] text-white h-12 rounded-xl shadow-md shadow-[#5d7c6f]/20 hover:bg-[#4d695e]"
+                      isDisabled={!shirtPeriodActive || !selectedSize}
+                      isLoading={savingShirt}
+                      onPress={() => {
+                        if (shirtSize === selectedSize)
+                          setIsEditingShirt(false);
+                        else handleShirtUpdate(selectedSize);
+                      }}
+                    >
+                      {!shirtPeriodActive
+                        ? "ไม่อยู่ในช่วงเวลาการจอง"
+                        : shirtSize
+                          ? shirtSize === selectedSize
+                            ? "ยกเลิกการแก้ไข"
+                            : "ยืนยันการแก้ไข"
+                          : "ยืนยันการจองเสื้อ"}
+                    </Button>
+                  </>
+                )}
               </div>
-              <div className="flex justify-between text-sm font-bold text-gray-700">
-                <div className="flex items-center gap-2">
-                  <Flag className="text-[#5d7c6f]" size={16} />
-                  <span>ภารกิจทั้งหมด</span>
-                </div>
-                <span>{completedMissions} สำเร็จ</span>
-              </div>
-            </div>
+            )}
           </div>
-        )}
 
-        {camp.isRegistered && camp.hasShirt && (
-          <div className="bg-white rounded-2xl shadow-sm p-6 mt-3 border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <Shirt className="text-[#5d7c6f]" size={22} />
-                <h2 className="text-lg font-black text-gray-900">
-                  จองเสื้อค่าย
-                </h2>
+          {/* Desktop Sidebar Column (4 cols on desktop) */}
+          <div className="hidden lg:block lg:col-span-4 sticky top-20 space-y-4">
+            {/* Main Action Box */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-200/80 p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  การเข้าร่วมค่าย
+                </span>
+                <span className="text-xs font-semibold text-[#5d7c6f]">
+                  {camp.isRegistered ? "ลงทะเบียนแล้ว" : "ยังไม่ได้ลงทะเบียน"}
+                </span>
               </div>
-              <div className="flex gap-2">
-                {isEditingShirt && (
+
+              {!camp.isRegistered ? (
+                camp.isEnded ? (
                   <Button
-                    className="text-gray-500 font-bold hover:bg-gray-100"
-                    size="sm"
-                    variant="light"
+                    fullWidth
+                    isDisabled
+                    className="bg-gray-100 text-gray-400 font-bold text-sm h-12 rounded-xl cursor-not-allowed border border-gray-200"
+                  >
+                    สิ้นสุดการรับสมัครแล้ว
+                  </Button>
+                ) : (
+                  <Button
+                    fullWidth
+                    className="bg-[#5d7c6f] text-white font-bold text-base h-12 rounded-xl shadow-lg shadow-[#5d7c6f]/25 hover:bg-[#4d695e] active:scale-[0.98] transition-all"
+                    isLoading={registering}
+                    onPress={handleRegister}
+                  >
+                    เข้าร่วมค่าย
+                  </Button>
+                )
+              ) : (
+                <div className="space-y-3">
+                  {/* Attendance Button (if active) */}
+                  {!camp.isEnded && (
+                    <Button
+                      fullWidth
+                      className={`h-11 rounded-xl font-bold text-sm border ${
+                        attendanceCheckedIn
+                          ? "bg-green-50 text-green-700 border-green-200"
+                          : "bg-[#5d7c6f]/10 text-[#5d7c6f] border-[#5d7c6f]/30 hover:bg-[#5d7c6f]/20"
+                      }`}
+                      isDisabled={!!campNotStarted}
+                      startContent={
+                        attendanceCheckedIn ? (
+                          <CheckCircle2 size={18} />
+                        ) : attendanceMethod === "NFC" ? (
+                          <Nfc size={18} />
+                        ) : (
+                          <QrCode size={18} />
+                        )
+                      }
+                      onPress={openAttendanceModal}
+                    >
+                      {attendanceCheckedIn
+                        ? "เช็คชื่อแล้ว"
+                        : attendanceMethod === "NFC"
+                          ? "แตะบัตรกับครู"
+                          : "เช็คชื่อเข้าค่าย"}
+                    </Button>
+                  )}
+
+                  {/* Mission Button */}
+                  <Button
+                    fullWidth
+                    className="h-11 rounded-xl bg-[#5d7c6f] text-sm font-bold text-white shadow-md shadow-[#5d7c6f]/20 hover:bg-[#4d695e]"
+                    isDisabled={navigating || !!campNotStarted}
+                    isLoading={navigating}
+                    startContent={<LayoutDashboard size={18} />}
                     onPress={() => {
-                      setSelectedSize(shirtSize);
-                      setIsEditingShirt(false);
+                      setNavigating(true);
+                      router.push(`/student/dashboard/camp/${id}/missions`);
                     }}
                   >
-                    ยกเลิก
+                    {camp.isEnded ? "สรุปผลการทำภารกิจ" : "เข้าสู่ภารกิจค่าย"}
                   </Button>
-                )}
-                {shirtSize && shirtPeriodActive && !isEditingShirt && (
-                  <Button
-                    className="bg-gray-100 text-[#5d7c6f] font-bold"
-                    size="sm"
-                    variant="flat"
-                    onPress={() => setIsEditingShirt(true)}
-                  >
-                    แก้ไขไซส์เสื้อ
-                  </Button>
-                )}
-              </div>
-            </div>
 
-            {shirtSize && !isEditingShirt ? (
-              <div className="bg-[#F8F9FA] rounded-xl p-5 flex flex-col items-center justify-center border border-gray-100">
-                <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-[#5d7c6f] font-black text-2xl mb-3 border border-gray-100">
-                  {shirtSize}
-                </div>
-                <p className="text-gray-900 text-base font-black">
-                  ไซส์ {shirtSize}
-                </p>
-                <p className="text-xs text-gray-400 font-bold mt-1">
-                  {shirtPeriodActive
-                    ? "แก้ไขได้ภายในกำหนดเวลา"
-                    : "หมดเขตการแก้ไขแล้ว"}
-                </p>
-              </div>
-            ) : !shirtSize && !shirtPeriodActive ? (
-              <div className="bg-orange-50 rounded-xl p-5 flex flex-col items-center justify-center border border-orange-100">
-                <p className="text-orange-600 text-sm font-black">
-                  หมดเขตการจองเสื้อแล้ว
-                </p>
-                <p className="text-xs text-orange-400 font-bold mt-1">
-                  คุณไม่ได้ทำรายการในช่วงเวลาที่กำหนด
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className="text-gray-500 text-sm mb-4 font-bold">
-                  กรุณาจองเสื้อค่ายของคุณก่อน {formatDate(camp.endShirtDate)}
-                </p>
-                {daysLeftToReserve !== null && (
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-blue-700 text-sm flex items-center gap-2 mb-6 font-bold">
-                    <Clock size={18} />
-                    {daysLeftToReserve === 0
-                      ? "วันนี้วันสุดท้ายของการจอง"
-                      : `เหลือเวลาอีก ${daysLeftToReserve} วัน`}
-                    <span className="text-blue-500 ml-auto text-xs">
-                      หมดเขต: {formatDate(camp.endShirtDate)}
-                    </span>
-                  </div>
-                )}
-                <div className="mb-6">
-                  {(() => {
-                    let shirtUrls: string[] = [];
-
-                    if (camp.img_shirt_url) {
-                      try {
-                        const parsed = JSON.parse(camp.img_shirt_url);
-
-                        shirtUrls = Array.isArray(parsed)
-                          ? parsed.filter(Boolean)
-                          : [camp.img_shirt_url];
-                      } catch (e) {
-                        shirtUrls = [camp.img_shirt_url];
+                  {/* Survey Button */}
+                  {surveyData && (
+                    <Button
+                      fullWidth
+                      className={`h-11 rounded-xl border text-sm font-bold ${
+                        surveyData && !surveyCompleted
+                          ? "border-yellow-300 bg-[#FFECC9] text-yellow-800 hover:bg-[#ffe4b0]"
+                          : surveyCompleted
+                            ? "border-green-200 bg-green-50 text-green-700"
+                            : "border-gray-200 bg-gray-50 text-gray-400"
+                      }`}
+                      isDisabled={
+                        campNotStarted || !surveyData || surveyCompleted
                       }
-                    }
-                    if (shirtUrls.length > 0) {
-                      return (
-                        <div
-                          className={`grid gap-3 ${shirtUrls.length === 1 ? "grid-cols-1 max-w-sm mx-auto" : "grid-cols-2 md:grid-cols-3"}`}
-                        >
-                          {shirtUrls.map((url, idx) => (
-                            <div
-                              key={idx}
-                              className="bg-gray-100 rounded-2xl overflow-hidden aspect-square border border-gray-200 shadow-sm relative group"
-                            >
-                              <img
-                                alt="Shirt"
-                                className="w-full h-full object-cover"
-                                src={url}
-                              />
-                              <div
-                                className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                onClick={() => setSelectedImage(url)}
-                              >
-                                <span className="text-white text-xs font-black">
-                                  ดูรูปขนาดเต็ม
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }
+                      startContent={
+                        surveyCompleted ? (
+                          <CheckCircle2 size={18} />
+                        ) : (
+                          <ClipboardList size={18} />
+                        )
+                      }
+                      onPress={openSurvey}
+                    >
+                      {surveyCompleted ? "ประเมินแล้ว" : "ทำแบบประเมิน"}
+                    </Button>
+                  )}
+
+                  {/* Certificate Section */}
+                  {(() => {
+                    const hasCertTemplate = !!camp?.img_certificate_url;
+                    const requirements = camp?.certificateRequirements;
+                    const hasIssuedCertificate =
+                      requirements?.hasIssuedCertificate ?? false;
+                    const missionRequirementMet =
+                      requirements?.missionRequirementMet ?? false;
+                    const surveyRequirementMet =
+                      !requirements?.requiresSurvey || surveyCompleted;
+                    const canDownloadCert =
+                      hasCertTemplate &&
+                      (hasIssuedCertificate ||
+                        (missionRequirementMet && surveyRequirementMet));
+
+                    const certLockReason = !hasCertTemplate
+                      ? "ยังไม่มีเทมเพลตเกียรติบัตร"
+                      : !missionRequirementMet && !hasIssuedCertificate
+                        ? `ต้องทำภารกิจอย่างน้อย ${requirements?.requiredMissions ?? 0} ใน ${requirements?.totalMissions ?? 0}`
+                        : !surveyRequirementMet && !hasIssuedCertificate
+                          ? "ต้องทำแบบประเมินก่อน"
+                          : null;
 
                     return (
-                      <div className="h-48 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 font-bold">
-                        <ImageOff className="mb-2 opacity-30" size={32} />
-                        ไม่มีรูปตัวอย่างเสื้อ
+                      <div className="pt-2 border-t border-gray-100">
+                        <p className="text-[11px] font-bold text-gray-400 mb-2 flex items-center gap-1.5">
+                          <Award size={14} /> เกียรติบัตร
+                        </p>
+                        {!canDownloadCert ? (
+                          <div>
+                            <Button
+                              fullWidth
+                              isDisabled
+                              className="font-bold text-xs h-10 rounded-xl bg-gray-50 text-gray-400 border border-dashed border-gray-200"
+                              startContent={
+                                <Award className="opacity-40" size={16} />
+                              }
+                            >
+                              ดาวน์โหลดเกียรติบัตร
+                            </Button>
+                            {certLockReason && (
+                              <p className="text-[11px] text-gray-400 text-center mt-1.5 flex items-center justify-center gap-1">
+                                <Lock size={11} /> {certLockReason}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <Button
+                            fullWidth
+                            className="font-bold text-xs h-10 rounded-xl bg-slate-800 text-white shadow-sm hover:bg-slate-900 transition-all"
+                            startContent={<Download size={16} />}
+                            onPress={() => {
+                              setCertImageLoading(true);
+                              setIsCertPreviewModalOpen(true);
+                            }}
+                          >
+                            ดาวน์โหลดเกียรติบัตร
+                          </Button>
+                        )}
                       </div>
                     );
                   })()}
                 </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-black text-gray-700 mb-3">
-                    เลือกไซส์เสื้อของคุณ:
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {SHIRT_SIZES.map((size) => (
-                      <button
-                        key={size}
-                        className={`py-3 px-4 rounded-xl border text-sm font-black transition-all ${selectedSize === size ? "bg-[#5d7c6f] text-white border-[#5d7c6f] shadow-lg shadow-[#5d7c6f]/20" : "bg-white text-gray-700 border-gray-200 hover:border-[#5d7c6f]/50"} ${!shirtPeriodActive ? "opacity-60 cursor-not-allowed" : ""}`}
-                        disabled={savingShirt || !shirtPeriodActive}
-                        onClick={() => setSelectedSize(size)}
-                      >
-                        {size}
-                      </button>
-                    ))}
+              )}
+            </div>
+
+            {/* Quick Navigation Cards on Desktop */}
+            {camp.camp_daily_schedule &&
+              camp.camp_daily_schedule.length > 0 && (
+                <button
+                  className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-200/80 shadow-xs hover:border-[#5d7c6f]/40 hover:shadow-sm transition-all text-left"
+                  onClick={() => setIsScheduleModalOpen(true)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#e8f0ee] text-[#3d6357] rounded-xl flex items-center justify-center shrink-0">
+                      <CalendarDays size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-gray-900">
+                        กำหนดการค่าย
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {camp.camp_daily_schedule.length} วัน · คลิกเพื่อดูตาราง
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronLeft className="text-gray-400 rotate-180" size={16} />
+                </button>
+              )}
+
+            {camp.isRegistered && camp.hasTransport && (
+              <button
+                className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-200/80 shadow-xs hover:border-[#5d7c6f]/40 hover:shadow-sm transition-all text-left"
+                onClick={() => router.push(`/student/dashboard/camp/${id}/bus`)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#e8f0ee] text-[#3d6357] rounded-xl flex items-center justify-center shrink-0">
+                    <Bus size={20} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-gray-900">
+                      ผังรถและที่นั่ง
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      ตรวจสอบรถ & ยืนยันขึ้นรถ
+                    </p>
                   </div>
                 </div>
-                <Button
-                  fullWidth
-                  className="mt-6 font-black bg-[#5d7c6f] text-white h-12 rounded-xl shadow-lg shadow-[#5d7c6f]/20"
-                  isDisabled={!shirtPeriodActive || !selectedSize}
-                  isLoading={savingShirt}
-                  onPress={() => {
-                    if (shirtSize === selectedSize) setIsEditingShirt(false);
-                    else handleShirtUpdate(selectedSize);
-                  }}
-                >
-                  {!shirtPeriodActive
-                    ? "ไม่อยู่ในช่วงเวลาการจอง"
-                    : shirtSize
-                      ? shirtSize === selectedSize
-                        ? "ยกเลิกการแก้ไข"
-                        : "ยืนยันการแก้ไข"
-                      : "ยืนยันการจองเสื้อ"}
-                </Button>
-              </>
+                <ChevronLeft className="text-gray-400 rotate-180" size={16} />
+              </button>
             )}
           </div>
-        )}
+        </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100/80 bg-white/90 px-3 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-2xl shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
+      {/* Mobile Fixed Bottom Menu (Hidden on Desktop) */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100/80 bg-white/90 px-3 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-2xl shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
         <div className="relative max-w-xl mx-auto rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
           <button
             aria-controls="camp-bottom-menu-content"
@@ -1035,8 +1293,8 @@ export default function StudentCampDetailPage() {
                                       className="font-bold text-sm h-10 rounded-xl bg-gray-50 text-gray-400 border border-gray-200 border-dashed"
                                       startContent={
                                         <Award
-                                          size={18}
                                           className="opacity-40"
+                                          size={18}
                                         />
                                       }
                                     >
@@ -1152,8 +1410,8 @@ export default function StudentCampDetailPage() {
                                       className="font-bold text-sm h-10 rounded-xl bg-gray-50 text-gray-400 border border-dashed border-gray-200"
                                       startContent={
                                         <Award
-                                          size={18}
                                           className="opacity-40"
+                                          size={18}
                                         />
                                       }
                                     >
@@ -1190,8 +1448,6 @@ export default function StudentCampDetailPage() {
               )}
             </div>
           </div>
-
-
         </div>
       </div>
 
@@ -1575,7 +1831,12 @@ export default function StudentCampDetailPage() {
                 <img
                   alt="Certificate Preview"
                   className={`w-full h-auto object-contain rounded-xl shadow-md transition-opacity duration-300 ${certImageLoading ? "opacity-0" : "opacity-100"}`}
-                  src={`/api/camps/${id}/certificate?format=png&t=${Buffer.from(camp?.img_certificate_url ?? "").toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10)}`}
+                  src={`/api/camps/${id}/certificate?format=png&t=${Buffer.from(
+                    camp?.img_certificate_url ?? "",
+                  )
+                    .toString("base64")
+                    .replace(/[^a-zA-Z0-9]/g, "")
+                    .slice(0, 10)}`}
                   onLoad={() => setCertImageLoading(false)}
                 />
                 {certImageLoading && (

@@ -105,7 +105,9 @@ export async function GET(request, context) {
       );
     }
 
-    const stationMissionIds = station.mission.map((mission) => mission.mission_id);
+    const stationMissionIds = station.mission.map(
+      (mission) => mission.mission_id,
+    );
     const [allStatuses, stationResults, preTestIds] = await Promise.all([
       prisma.mission_result.findMany({
         where: { student_enrollment_id: enrollment.student_enrollment_id },

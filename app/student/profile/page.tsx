@@ -1,23 +1,40 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, useId } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  AlertCircle,
-  CheckCircle2,
-  Phone,
-  Pencil,
-  Save,
-  X,
   User,
   Heart,
   CalendarDays,
   MessageSquare,
   ChevronLeft,
   Camera,
+  CheckCircle2,
+  AlertCircle,
+  Phone,
+  Mail,
+  GraduationCap,
+  Sparkles,
+  Save,
+  Pencil,
+  X,
+  Hash,
+  ExternalLink,
+  Info,
 } from "lucide-react";
+
 import { BANGKOK_TIME_ZONE, getBangkokDateKey } from "@/lib/bangkok-date";
-import { uploadStudentProfileImage } from "@/lib/student-profile-upload";
+import {
+  uploadStudentProfileImage,
+  getFriendlyUploadErrorMessage,
+} from "@/lib/student-profile-upload";
+import { SectionCard } from "@/components/profile/SectionCard";
+import { InfoItem } from "@/components/profile/InfoItem";
+import { PhoneInput, formatPhoneNumber } from "@/components/profile/PhoneInput";
+import { CopyableBadge } from "@/components/profile/CopyableBadge";
+import { StudentProfileSkeleton } from "@/components/profile/StudentProfileSkeleton";
+import { ConfirmModal } from "@/components/profile/ConfirmModal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface StudentProfile {
@@ -57,7 +74,7 @@ interface FormData {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const months = [
+const thaiMonths = [
   { value: "01", label: "มกราคม" },
   { value: "02", label: "กุมภาพันธ์" },
   { value: "03", label: "มีนาคม" },
@@ -74,115 +91,80 @@ const months = [
 
 const formatBirthdayThai = (iso: string | null) => {
   if (!iso) return "ไม่ระบุ";
-
-  return new Date(iso).toLocaleDateString("th-TH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: BANGKOK_TIME_ZONE,
-  });
+  try {
+    return new Date(iso).toLocaleDateString("th-TH", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: BANGKOK_TIME_ZONE,
+    });
+  } catch {
+    return iso;
+  }
 };
 
-const displayVal = (v: string | null | undefined) =>
-  v && v.trim() ? v : "ไม่ระบุ";
+const calculateAge = (iso: string | null): number | null => {
+  if (!iso) return null;
+  try {
+    const birthDate = new Date(iso);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
 
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
-  <div className="py-3 border-b border-gray-100 last:border-0">
-    <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-    <p className="text-sm font-medium text-gray-800">{value}</p>
-  </div>
-);
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
 
-// ─── Field Input ─────────────────────────────────────────────────────────────
-const FieldInput = ({
-  label,
-  value,
-  onChange,
-  placeholder,
-  error,
-  type = "text",
-  icon,
-  disabled,
-}: {
-  label: string;
-  value: string;
-  onChange?: (v: string) => void;
-  placeholder?: string;
-  error?: string;
-  type?: string;
-  icon?: React.ReactNode;
-  disabled?: boolean;
-}) => (
-  <div>
-    <label className="block text-xs font-semibold text-gray-600 mb-1">
-      {label}
-    </label>
-    <div className="relative">
-      {icon && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-          {icon}
-        </span>
-      )}
-      <input
-        className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-xl border text-sm text-gray-700 outline-none transition-all
-          ${
-            error
-              ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-              : disabled
-                ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
-          }`}
-        disabled={disabled}
-        maxLength={type === "tel" ? 10 : undefined}
-        placeholder={placeholder}
-        type={type}
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-      />
-    </div>
-    {error && (
-      <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
-        <AlertCircle size={10} /> {error}
-      </p>
-    )}
-  </div>
-);
+    return age > 0 && age < 120 ? age : null;
+  } catch {
+    return null;
+  }
+};
 
-// ─── Section Card ─────────────────────────────────────────────────────────────
-const SectionCard = ({
-  icon,
-  title,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) => (
-  <div className="bg-white rounded-2xl shadow-sm p-5">
-    <div className="flex items-center gap-2 mb-4">
-      <div className="w-8 h-8 rounded-full bg-[#5d7c6f]/10 flex items-center justify-center text-[#5d7c6f]">
-        {icon}
-      </div>
-      <h3 className="font-semibold text-gray-800">{title}</h3>
-    </div>
-    {children}
-  </div>
-);
+const COMMON_ALLERGIES = [
+  "ไม่มี",
+  "อาหารทะเล",
+  "กุ้ง",
+  "ถั่วลิสง",
+  "นมวัว",
+  "ไข่ไก่",
+  "แป้งสาลี",
+  "ยาพาราเซตามอล",
+  "ยากลุ่มเพนิซิลลิน",
+];
+
+const COMMON_DISEASES = [
+  "ไม่มี",
+  "โรคหอบหืด",
+  "โรคภูมิแพ้",
+  "โรคเบาหวาน",
+  "โรคหัวใจ",
+  "โรคความดันโลหิตสูง",
+  "โรคลมชัก",
+  "โรคโลหิตจาง (G6PD)",
+];
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function StudentProfilePage() {
   const router = useRouter();
+  const chronicId = useId();
+  const allergyId = useId();
+  const nicknameId = useId();
+  const daySelectId = useId();
+  const remarkId = useId();
+
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [apiError, setApiError] = useState("");
   const [fieldError, setFieldError] = useState<Record<string, string>>({});
 
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -197,7 +179,6 @@ export default function StudentProfilePage() {
     remark: "",
   });
 
-  // Birthday parts state
   const [bday, setBday] = useState({ day: "", month: "", year: "" });
 
   const currentYear = Number(getBangkokDateKey().slice(0, 4));
@@ -233,13 +214,14 @@ export default function StudentProfilePage() {
             remark: data.remark ?? "",
           });
 
-          // Since we use public URLs, we don't need to fetch a signed URL anymore
           if (data.profile_image_url) {
             setAvatarUrl(data.profile_image_url);
           }
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        setApiError("ไม่สามารถโหลดข้อมูลโปรไฟล์นักเรียนได้");
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -257,24 +239,45 @@ export default function StudentProfilePage() {
     }
   };
 
+  const isFormDirty = useMemo(() => {
+    if (!profile) return false;
+    const parentTel = profile.parents?.[0]?.tel ?? "";
+    const birthdayISO = profile.birthday ? profile.birthday.split("T")[0] : "";
+
+    return (
+      form.nickname !== (profile.nickname ?? "") ||
+      form.chronic_disease !== (profile.chronic_disease ?? "") ||
+      form.food_allergy !== (profile.food_allergy ?? "") ||
+      form.birthday !== birthdayISO ||
+      form.student_tel !== (profile.tel ?? "") ||
+      form.parent_tel !== parentTel ||
+      form.remark !== (profile.remark ?? "") ||
+      !!pendingImageUrl
+    );
+  }, [form, profile, pendingImageUrl]);
+
   const validate = () => {
     const errors: Record<string, string> = {};
 
     if (!form.chronic_disease.trim())
-      errors.chronic_disease = "กรุณากรอกข้อมูลโรคประจำตัว";
+      errors.chronic_disease =
+        "กรุณาระบุข้อมูลโรคประจำตัว (หากไม่มีพิมพ์ว่า 'ไม่มี')";
     if (!form.food_allergy.trim())
-      errors.food_allergy = "กรุณากรอกข้อมูลการแพ้อาหาร/ยา";
-    if (!form.birthday) errors.birthday = "กรุณาเลือกวันเกิดให้ครบถ้วน";
-    if (
-      form.student_tel.trim() &&
-      form.student_tel.replace(/\D/g, "").length !== 10
-    )
-      errors.student_tel = "เบอร์โทรต้องเป็น 10 หลัก";
-    if (
-      form.parent_tel.trim() &&
-      form.parent_tel.replace(/\D/g, "").length !== 10
-    )
-      errors.parent_tel = "เบอร์โทรต้องเป็น 10 หลัก";
+      errors.food_allergy =
+        "กรุณาระบุข้อมูลการแพ้อาหารหรือยา (หากไม่มีพิมพ์ว่า 'ไม่มี')";
+    if (!form.birthday) errors.birthday = "กรุณาระบุวัน/เดือน/ปีเกิดให้ครบถ้วน";
+
+    const sTel = form.student_tel.replace(/\D/g, "");
+
+    if (sTel && sTel.length !== 10) {
+      errors.student_tel = "เบอร์โทรศัพท์นักเรียนต้องเป็นตัวเลข 10 หลัก";
+    }
+
+    const pTel = form.parent_tel.replace(/\D/g, "");
+
+    if (pTel && pTel.length !== 10) {
+      errors.parent_tel = "เบอร์โทรศัพท์ผู้ปกครองต้องเป็นตัวเลข 10 หลัก";
+    }
 
     return errors;
   };
@@ -285,12 +288,12 @@ export default function StudentProfilePage() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setApiError("กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น");
+      setApiError("กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น (JPG, PNG, WEBP)");
 
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setApiError("ขนาดไฟล์ต้องไม่เกิน 5MB");
+      setApiError("ขนาดไฟล์รูปภาพต้องไม่เกิน 5MB");
 
       return;
     }
@@ -299,22 +302,18 @@ export default function StudentProfilePage() {
     const objectUrl = URL.createObjectURL(file);
 
     setPreviewImage(objectUrl);
-
     setUploadingImage(true);
+    setUploadProgress(0);
+
     try {
-      const imageCompression = (await import("browser-image-compression"))
-        .default;
-      const compressedFile = await imageCompression(file, {
-        maxSizeMB: 2,
-        maxWidthOrHeight: 800,
-        useWebWorker: true,
-        fileType: "image/jpeg",
+      const uploaded = await uploadStudentProfileImage(file, (p) => {
+        setUploadProgress(p);
       });
-      const uploaded = await uploadStudentProfileImage(compressedFile);
 
       setPendingImageUrl(uploaded.url);
+      setUploadProgress(100);
     } catch (err: any) {
-      setApiError(err.message || "อัปโหลดรูปล้มเหลว");
+      setApiError(getFriendlyUploadErrorMessage(err));
       setPreviewImage(null);
     } finally {
       setUploadingImage(false);
@@ -344,15 +343,13 @@ export default function StudentProfilePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setApiError(data.error ?? "เกิดข้อผิดพลาด");
+        setApiError(data.error ?? "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
 
         return;
       }
 
-      setSuccess(true);
       setShowToast(true);
 
-      // Refresh profile data
       const refreshed = await fetch("/api/student/profile").then((r) =>
         r.ok ? r.json() : null,
       );
@@ -366,24 +363,27 @@ export default function StudentProfilePage() {
       setPendingImageUrl(null);
       if (previewImage) URL.revokeObjectURL(previewImage);
       setPreviewImage(null);
+      setEditing(false);
 
       setTimeout(() => {
-        setSuccess(false);
-        setEditing(false);
-      }, 1500);
-      setTimeout(() => {
         setShowToast(false);
-        // Refresh page after a short delay to update Navbar
-        window.location.reload();
-      }, 3000);
+      }, 4000);
     } catch {
-      setApiError("เกิดข้อผิดพลาด กรุณาลองใหม่");
+      setApiError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelClick = () => {
+    if (isFormDirty) {
+      setShowCancelModal(true);
+    } else {
+      revertAndCloseEdit();
+    }
+  };
+
+  const revertAndCloseEdit = () => {
     if (!profile) return;
     const parentTel = profile.parents?.[0]?.tel ?? "";
     const birthdayISO = profile.birthday ? profile.birthday.split("T")[0] : "";
@@ -408,73 +408,156 @@ export default function StudentProfilePage() {
     setFieldError({});
     setApiError("");
     setEditing(false);
+    setShowCancelModal(false);
   };
 
-  if (loading)
-    return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
-        </div>
-      </div>
-    );
+  if (loading) {
+    return <StudentProfileSkeleton />;
+  }
 
-  if (!profile)
+  if (!profile) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <p className="text-gray-400">ไม่พบข้อมูลโปรไฟล์</p>
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-4">
+          <AlertCircle size={32} />
+        </div>
+        <h2 className="text-lg font-bold text-gray-800">ไม่พบข้อมูลโปรไฟล์</h2>
+        <p className="text-sm text-gray-500 max-w-sm mt-1 mb-6">
+          กรุณาเข้าสู่ระบบใหม่อีกครั้งเพื่อโหลดข้อมูล
+        </p>
+        <button
+          className="px-5 py-2.5 rounded-xl bg-[#5d7c6f] text-white font-medium text-sm hover:bg-[#4a6659] transition-all shadow-xs cursor-pointer"
+          onClick={() => window.location.reload()}
+        >
+          ลองใหม่อีกครั้ง
+        </button>
       </div>
     );
+  }
 
   const displayName = `${profile.prefix_name ?? ""}${profile.firstname} ${profile.lastname}`;
-  const initials = `${profile.firstname[0]}${profile.lastname[0]}`;
+  const initials =
+    `${profile.firstname[0] || ""}${profile.lastname[0] || ""}` || "นร";
+  const currentAvatarSrc = previewImage || pendingImageUrl || avatarUrl;
+  const age = calculateAge(profile.birthday);
+  const parentPhone = profile.parents?.[0]?.tel;
 
   return (
-    <>
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {/* ── Header ── */}
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      {/* ── Header / Breadcrumb ── */}
+      <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
-            className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
+            className="w-10 h-10 rounded-xl bg-white border border-gray-200/80 shadow-xs flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all cursor-pointer group"
+            title="กลับสู่แดชบอร์ดนักเรียน"
+            type="button"
             onClick={() => router.push("/student/dashboard")}
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft
+              className="group-hover:-translate-x-0.5 transition-transform"
+              size={20}
+            />
           </button>
           <div>
-            <h1 className="font-bold text-gray-800 text-lg">โปรไฟล์ของฉัน</h1>
-            <p className="text-xs text-gray-400">จัดการข้อมูลส่วนตัว</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+              โปรไฟล์ของฉัน
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-500">
+              ข้อมูลส่วนตัว สุขภาพ และข้อมูลติดต่อฉุกเฉิน
+            </p>
           </div>
         </div>
 
-        {/* ── Avatar Card ── */}
-        <div className="bg-[#5d7c6f] rounded-2xl p-6 text-white relative overflow-hidden">
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-3xl font-bold select-none overflow-hidden border-2 border-white/40">
-                {previewImage || avatarUrl ? (
+        {!editing && (
+          <button
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#5d7c6f] text-white text-xs sm:text-sm font-semibold hover:bg-[#4a6659] active:scale-98 transition-all shadow-sm cursor-pointer"
+            type="button"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil size={15} />
+            <span>แก้ไขข้อมูล</span>
+          </button>
+        )}
+      </div>
+
+      {/* ── API Error Banner ── */}
+      <AnimatePresence>
+        {apiError && (
+          <motion.div
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-800"
+            exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -10 }}
+          >
+            <AlertCircle className="text-rose-600 shrink-0 mt-0.5" size={20} />
+            <div className="text-xs sm:text-sm flex-1">
+              <p className="font-semibold">เกิดข้อผิดพลาด</p>
+              <p className="text-rose-700/90 mt-0.5">{apiError}</p>
+            </div>
+            <button
+              className="p-1 rounded-lg text-rose-500 hover:bg-rose-100/60"
+              onClick={() => setApiError("")}
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Hero Profile Identity Card ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#4d6c5f] via-[#5d7c6f] to-[#365f4f] p-6 sm:p-8 text-white shadow-md">
+        <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute right-10 -bottom-16 w-48 h-48 rounded-full bg-black/10 blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          {/* Avatar & Core Identity */}
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="relative group">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/20 backdrop-blur-md border-2 border-white/40 flex items-center justify-center text-2xl sm:text-3xl font-bold tracking-tight shadow-inner select-none overflow-hidden shrink-0 relative">
+                {currentAvatarSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    alt="Profile"
+                    alt="รูปโปรไฟล์"
                     className="w-full h-full object-cover"
-                    src={(previewImage || avatarUrl) as string}
+                    src={currentAvatarSrc}
                   />
                 ) : (
-                  initials
+                  <span>{initials}</span>
+                )}
+
+                {/* Upload percentage overlay */}
+                {uploadingImage && (
+                  <div className="absolute inset-0 bg-black/65 backdrop-blur-xs flex flex-col items-center justify-center text-white z-20">
+                    <span className="text-sm sm:text-base font-bold font-mono tracking-tight text-emerald-300">
+                      {uploadProgress}%
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] text-white/90 font-medium mt-0.5">
+                      กำลังอัปโหลด
+                    </span>
+                    <div className="w-12 h-1 bg-white/30 rounded-full mt-1.5 overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-400 rounded-full transition-all duration-150 ease-out"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
-              {editing && (
+
+              {/* Upload image trigger */}
+              {editing ? (
                 <>
                   <button
-                    className="absolute bottom-0 right-0 w-7 h-7 bg-white rounded-full flex items-center justify-center text-[#5d7c6f] shadow-md hover:bg-gray-100 disabled:opacity-50"
+                    className="absolute -bottom-1.5 -right-1.5 p-2 rounded-xl bg-white text-[#5d7c6f] shadow-md hover:bg-emerald-50 active:scale-95 transition-all cursor-pointer disabled:opacity-50 border border-gray-200"
                     disabled={uploadingImage}
                     title="เปลี่ยนรูปโปรไฟล์"
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     {uploadingImage ? (
-                      <div className="w-3 h-3 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-[#5d7c6f] border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <Camera size={14} />
+                      <Camera size={15} />
                     )}
                   </button>
                   <input
@@ -485,305 +568,648 @@ export default function StudentProfilePage() {
                     onChange={handleImageUpload}
                   />
                 </>
-              )}
-            </div>
-            <div>
-              <p className="font-bold text-xl">{displayName}</p>
-              {(form.nickname || profile.nickname) && !editing ? (
-                <p className="text-sm opacity-90 font-medium">
-                  น้อง{form.nickname || profile.nickname}
-                </p>
-              ) : null}
-              <p className="text-sm opacity-80 mt-1">{profile.email}</p>
-              <p className="text-xs opacity-70 mt-0.5">
-                รหัสนักเรียน: {profile.students_id}
-              </p>
-            </div>
-          </div>
-          <div className="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-white/5" />
-          <div className="absolute -right-2 -bottom-10 w-24 h-24 rounded-full bg-white/5" />
-        </div>
-
-        {/* ── Success Banner ── */}
-        {success && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-center gap-3 text-green-700">
-            <CheckCircle2 size={18} />
-            <span className="text-sm font-medium">บันทึกข้อมูลสำเร็จแล้ว!</span>
-          </div>
-        )}
-
-        {/* ── Error Banner ── */}
-        {apiError && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-3 text-red-600">
-            <AlertCircle size={18} />
-            <span className="text-sm">{apiError}</span>
-          </div>
-        )}
-
-        {/* ── Personal Info ── */}
-        <SectionCard icon={<User size={16} />} title="ข้อมูลส่วนตัว">
-          {profile.classroom && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {profile.classroom.grade_label && (
-                <span className="text-xs bg-[#5d7c6f]/10 text-[#3d6357] px-2.5 py-1 rounded-full font-medium">
-                  ชั้น {profile.classroom.grade_label}
-                </span>
-              )}
-              {profile.classroom.class_name && (
-                <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium">
-                  ห้อง {profile.classroom.class_name}
-                </span>
-              )}
-              {profile.classroom.homeroom_teacher && (
-                <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-medium">
-                  ครู{profile.classroom.homeroom_teacher}
+              ) : (
+                <span
+                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-400 border-2 border-[#5d7c6f] shadow-xs flex items-center justify-center"
+                  title="สถานะ: เข้าสู่ระบบอยู่"
+                >
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
                 </span>
               )}
             </div>
-          )}
-          {editing ? (
-            <div className="mt-3 space-y-3">
-              <FieldInput
-                disabled={true}
-                label="ชื่อ-นามสกุล"
-                value={displayName}
-              />
-              <FieldInput
-                error={fieldError.nickname}
-                label="ชื่อเล่น"
-                placeholder="เช่น กุ๊กไก่"
-                value={form.nickname}
-                onChange={(v) => setForm((f) => ({ ...f, nickname: v }))}
-              />
-              <FieldInput disabled={true} label="อีเมล" value={profile.email} />
-            </div>
-          ) : (
-            <>
-              <InfoRow label="ชื่อ-นามสกุล" value={displayName} />
-              <InfoRow label="ชื่อเล่น" value={displayVal(profile.nickname)} />
-              <InfoRow label="อีเมล" value={profile.email} />
-              <InfoRow
-                label="วันเกิด"
-                value={formatBirthdayThai(profile.birthday)}
-              />
-            </>
-          )}
-        </SectionCard>
 
-        {/* ── Medical Info ── */}
-        <SectionCard icon={<Heart size={16} />} title="ข้อมูลสุขภาพ">
-          {editing ? (
-            <div className="space-y-3">
-              <FieldInput
-                error={fieldError.chronic_disease}
-                label="โรคประจำตัว *"
-                placeholder="เช่น ไม่มี, หอบหืด"
-                value={form.chronic_disease}
-                onChange={(v) => setForm((f) => ({ ...f, chronic_disease: v }))}
-              />
-              <FieldInput
-                error={fieldError.food_allergy}
-                label="การแพ้อาหาร/ยา *"
-                placeholder="เช่น ไม่มี, อาหารทะเล"
-                value={form.food_allergy}
-                onChange={(v) => setForm((f) => ({ ...f, food_allergy: v }))}
-              />
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  วัน/เดือน/ปีเกิด *
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <select
-                    className="px-2 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-[#5d7c6f]"
-                    value={bday.day}
-                    onChange={(e) => updateBirthday("day", e.target.value)}
-                  >
-                    <option value="">วันที่</option>
-                    {days.map((d) => (
-                      <option key={d} value={d}>
-                        {parseInt(d)}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="px-2 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-[#5d7c6f]"
-                    value={bday.month}
-                    onChange={(e) => updateBirthday("month", e.target.value)}
-                  >
-                    <option value="">เดือน</option>
-                    {months.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="px-2 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none focus:border-[#5d7c6f]"
-                    value={bday.year}
-                    onChange={(e) => updateBirthday("year", e.target.value)}
-                  >
-                    <option value="">ปี (พ.ศ.)</option>
-                    {years.map((y) => (
-                      <option key={y} value={y}>
-                        {parseInt(y) + 543}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {fieldError.birthday && (
-                  <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1">
-                    <AlertCircle size={10} /> {fieldError.birthday}
-                  </p>
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+                  {displayName}
+                </h2>
+                {(profile.nickname || form.nickname) && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/40 text-emerald-100 border border-emerald-300/30 backdrop-blur-md">
+                    น้อง{form.nickname || profile.nickname}
+                  </span>
                 )}
               </div>
-            </div>
-          ) : (
-            <>
-              <InfoRow
-                label="โรคประจำตัว"
-                value={displayVal(profile.chronic_disease)}
-              />
-              <InfoRow
-                label="การแพ้อาหาร/ยา"
-                value={displayVal(profile.food_allergy)}
-              />
-            </>
-          )}
-        </SectionCard>
 
-        {/* ── Contact Info ── */}
-        <SectionCard icon={<Phone size={16} />} title="ข้อมูลติดต่อ">
-          {editing ? (
-            <div className="space-y-3">
-              <FieldInput
-                error={fieldError.student_tel}
-                icon={<Phone size={14} />}
-                label="เบอร์โทรศัพท์นักเรียน"
-                placeholder="0xxxxxxxxx"
-                type="tel"
-                value={form.student_tel}
-                onChange={(v) => setForm((f) => ({ ...f, student_tel: v }))}
-              />
-              <FieldInput
-                error={fieldError.parent_tel}
-                icon={<Phone size={14} />}
-                label="เบอร์โทรศัพท์ผู้ปกครอง"
-                placeholder="0xxxxxxxxx"
-                type="tel"
-                value={form.parent_tel}
-                onChange={(v) => setForm((f) => ({ ...f, parent_tel: v }))}
-              />
-            </div>
-          ) : (
-            <>
-              <InfoRow
-                label="เบอร์โทรนักเรียน"
-                value={displayVal(profile.tel)}
-              />
-              <InfoRow
-                label="เบอร์โทรผู้ปกครอง"
-                value={
-                  profile.parents?.[0]?.tel ? profile.parents[0].tel : "ไม่ระบุ"
-                }
-              />
-            </>
-          )}
-        </SectionCard>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-emerald-100/90">
+                <span className="flex items-center gap-1.5">
+                  <Mail className="opacity-80" size={13} />
+                  <span className="truncate max-w-[200px] sm:max-w-xs">
+                    {profile.email}
+                  </span>
+                </span>
 
-        {/* ── Remark ── */}
-        <SectionCard
-          icon={<MessageSquare size={16} />}
-          title="หมายเหตุเพิ่มเติม"
-        >
-          {editing ? (
-            <textarea
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 outline-none transition-all focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20 resize-none"
-              placeholder="ข้อมูลอื่นที่ต้องการแจ้งครู..."
-              rows={3}
-              value={form.remark}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, remark: e.target.value }))
-              }
-            />
-          ) : (
-            <p className="text-sm text-gray-700">
-              {displayVal(profile.remark)}
-            </p>
-          )}
-        </SectionCard>
-
-        {/* ── Birthday in view mode ── */}
-        {!editing && (
-          <SectionCard icon={<CalendarDays size={16} />} title="วันเกิด">
-            <InfoRow
-              label="วัน/เดือน/ปีเกิด"
-              value={formatBirthdayThai(profile.birthday)}
-            />
-          </SectionCard>
-        )}
-
-        {/* ── Action Buttons ── */}
-        <div className="pb-6">
-          {editing ? (
-            <div className="flex gap-3">
-              <button
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border border-gray-200 bg-white text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
-                disabled={saving || uploadingImage}
-                onClick={handleCancelEdit}
-              >
-                <X size={16} /> ยกเลิก
-              </button>
-              <button
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#5d7c6f] text-white font-semibold text-sm hover:bg-[#4a6659] transition-colors disabled:opacity-60 shadow-md"
-                disabled={saving || uploadingImage}
-                onClick={handleSave}
-              >
-                {saving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
-                    กำลังบันทึก...
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} /> บันทึกข้อมูล
-                  </>
+                {profile.classroom?.grade_label && (
+                  <span className="flex items-center gap-1.5">
+                    <GraduationCap className="opacity-80" size={13} />
+                    <span>
+                      ชั้น {profile.classroom.grade_label}
+                      {profile.classroom.class_name
+                        ? ` ห้อง ${profile.classroom.class_name}`
+                        : ""}
+                    </span>
+                  </span>
                 )}
-              </button>
+              </div>
+
+              {profile.tel && (
+                <p className="text-xs text-emerald-100/80 font-mono flex items-center gap-1.5">
+                  <Phone className="opacity-80" size={12} />
+                  <span>{formatPhoneNumber(profile.tel)}</span>
+                </p>
+              )}
             </div>
-          ) : (
-            <button
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[#5d7c6f] text-white font-semibold text-sm hover:bg-[#4a6659] transition-colors shadow-md"
-              onClick={() => setEditing(true)}
-            >
-              <Pencil size={16} /> แก้ไขข้อมูล
-            </button>
-          )}
+          </div>
+
+          {/* Quick Stats / Student ID */}
+          <div className="flex sm:flex-col items-end gap-2 w-full sm:w-auto pt-3 sm:pt-0 border-t border-white/10 sm:border-t-0">
+            <div className="flex items-center gap-2 bg-black/15 backdrop-blur-md rounded-xl px-3 py-1.5 text-xs text-white/90 border border-white/10">
+              <Hash className="text-emerald-300" size={13} />
+              <span>รหัสนักเรียน:</span>
+              <span className="font-mono font-bold text-white">
+                {profile.students_id}
+              </span>
+              <CopyableBadge
+                iconOnly
+                className="!bg-white/20 !text-white !border-white/20 hover:!bg-white/30"
+                copyValue={String(profile.students_id)}
+                label="รหัสนักเรียน"
+                text=""
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Toast Notification ── */}
-      {showToast && (
-        <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#2d6a4f] text-white px-5 py-3.5 rounded-2xl shadow-2xl"
-          style={{
-            animation:
-              "slideUpFadeIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards",
-          }}
-        >
-          <CheckCircle2 className="shrink-0" size={20} />
-          <div>
-            <p className="font-semibold text-sm">แก้ไขโปรไฟล์สำเร็จแล้ว!</p>
-            <p className="text-xs opacity-80">ข้อมูลของคุณถูกบันทึกเรียบร้อย</p>
-          </div>
-        </div>
-      )}
+      {/* ── Main Content Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Cols */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* ── Section: Medical & Health ── */}
+          <SectionCard
+            icon={<Heart size={18} />}
+            iconBgColor="bg-[#5d7c6f]/10"
+            iconColor="text-[#5d7c6f]"
+            subtitle="ข้อมูลโรคประจำตัวและการแพ้อาหารหรือยา"
+            title="ข้อมูลสุขภาพ"
+          >
+            {editing ? (
+              <div className="space-y-5 pt-1">
+                {/* Chronic Disease Field */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label
+                      className="block text-xs font-semibold text-gray-700"
+                      htmlFor={chronicId}
+                    >
+                      โรคประจำตัว <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[11px] text-gray-400">
+                      หากไม่มีให้เลือก &apos;ไม่มี&apos;
+                    </span>
+                  </div>
 
-      <style>{`
-        @keyframes slideUpFadeIn {
-          from { opacity: 0; transform: translate(-50%, 20px); }
-          to   { opacity: 1; transform: translate(-50%, 0); }
-        }
-      `}</style>
-    </>
+                  {/* Quick Select Pill Buttons */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {COMMON_DISEASES.map((dis) => (
+                      <button
+                        key={dis}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                          form.chronic_disease === dis
+                            ? "bg-[#5d7c6f] text-white shadow-xs"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200/60"
+                        }`}
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({ ...f, chronic_disease: dis }))
+                        }
+                      >
+                        {dis}
+                      </button>
+                    ))}
+                  </div>
+
+                  <input
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm text-gray-800 outline-none transition-all ${
+                      fieldError.chronic_disease
+                        ? "bg-rose-50/40 border-rose-300 focus:border-rose-500 focus:ring-3 focus:ring-rose-500/15"
+                        : "bg-white border-gray-200 focus:border-[#5d7c6f] focus:ring-3 focus:ring-[#5d7c6f]/15"
+                    }`}
+                    id={chronicId}
+                    placeholder="เช่น ไม่มี, หอบหืด, ภูมิแพ้อากาศ"
+                    type="text"
+                    value={form.chronic_disease}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        chronic_disease: e.target.value,
+                      }))
+                    }
+                  />
+                  {fieldError.chronic_disease && (
+                    <p className="text-rose-600 text-xs flex items-center gap-1">
+                      <AlertCircle size={12} /> {fieldError.chronic_disease}
+                    </p>
+                  )}
+                </div>
+
+                {/* Food & Drug Allergy Field */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label
+                      className="block text-xs font-semibold text-gray-700"
+                      htmlFor={allergyId}
+                    >
+                      การแพ้อาหาร / ยา <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[11px] text-gray-400">
+                      หากไม่มีให้เลือก &apos;ไม่มี&apos;
+                    </span>
+                  </div>
+
+                  {/* Quick Select Pill Buttons */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {COMMON_ALLERGIES.map((alg) => (
+                      <button
+                        key={alg}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                          form.food_allergy === alg
+                            ? "bg-[#5d7c6f] text-white shadow-xs"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200/60"
+                        }`}
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({ ...f, food_allergy: alg }))
+                        }
+                      >
+                        {alg}
+                      </button>
+                    ))}
+                  </div>
+
+                  <input
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm text-gray-800 outline-none transition-all ${
+                      fieldError.food_allergy
+                        ? "bg-rose-50/40 border-rose-300 focus:border-rose-500 focus:ring-3 focus:ring-rose-500/15"
+                        : "bg-white border-gray-200 focus:border-[#5d7c6f] focus:ring-3 focus:ring-[#5d7c6f]/15"
+                    }`}
+                    id={allergyId}
+                    placeholder="เช่น ไม่มี, กุ้ง, ถั่วลิสง, ยาพาราเซตามอล"
+                    type="text"
+                    value={form.food_allergy}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, food_allergy: e.target.value }))
+                    }
+                  />
+                  {fieldError.food_allergy && (
+                    <p className="text-rose-600 text-xs flex items-center gap-1">
+                      <AlertCircle size={12} /> {fieldError.food_allergy}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <InfoItem
+                  icon={<Heart size={15} />}
+                  label="โรคประจำตัว"
+                  value={profile.chronic_disease || "ไม่มี"}
+                />
+                <InfoItem
+                  icon={<AlertCircle size={15} />}
+                  label="การแพ้อาหาร / ยา"
+                  value={profile.food_allergy || "ไม่มี"}
+                />
+              </div>
+            )}
+          </SectionCard>
+
+          {/* ── Section: Personal Information & Nickname ── */}
+          <SectionCard
+            icon={<User size={18} />}
+            iconBgColor="bg-[#5d7c6f]/10"
+            iconColor="text-[#5d7c6f]"
+            subtitle="ชื่อ นามสกุล และชื่อเล่นสำหรับเรียกในค่าย"
+            title="ข้อมูลส่วนตัว"
+          >
+            {editing ? (
+              <div className="space-y-4 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <span className="block text-xs font-semibold text-gray-700">
+                      ชื่อ-นามสกุล
+                    </span>
+                    <input
+                      disabled
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 text-sm cursor-not-allowed"
+                      type="text"
+                      value={displayName}
+                    />
+                    <p className="text-[11px] text-gray-400">
+                      ชื่อ-นามสกุลทางการล็อกโดยระบบทะเบียน
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label
+                      className="block text-xs font-semibold text-gray-700"
+                      htmlFor={nicknameId}
+                    >
+                      ชื่อเล่น (สำหรับป้ายชื่อค่าย)
+                    </label>
+                    <input
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 outline-none focus:border-[#5d7c6f] focus:ring-3 focus:ring-[#5d7c6f]/15 transition-all"
+                      id={nicknameId}
+                      placeholder="เช่น กุ๊กไก่, มินท์, ก้อง"
+                      type="text"
+                      value={form.nickname}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, nickname: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                {/* Birthday selector */}
+                <div className="space-y-1.5">
+                  <label
+                    className="block text-xs font-semibold text-gray-700"
+                    htmlFor={daySelectId}
+                  >
+                    วัน/เดือน/ปีเกิด <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <select
+                      className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 outline-none focus:border-[#5d7c6f] focus:ring-3 focus:ring-[#5d7c6f]/15"
+                      id={daySelectId}
+                      value={bday.day}
+                      onChange={(e) => updateBirthday("day", e.target.value)}
+                    >
+                      <option value="">วันที่</option>
+                      {days.map((d) => (
+                        <option key={d} value={d}>
+                          {parseInt(d)}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      aria-label="เลือกเดือนเกิด"
+                      className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 outline-none focus:border-[#5d7c6f] focus:ring-3 focus:ring-[#5d7c6f]/15"
+                      value={bday.month}
+                      onChange={(e) => updateBirthday("month", e.target.value)}
+                    >
+                      <option value="">เดือน</option>
+                      {thaiMonths.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      aria-label="เลือกปีเกิด พ.ศ."
+                      className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 outline-none focus:border-[#5d7c6f] focus:ring-3 focus:ring-[#5d7c6f]/15"
+                      value={bday.year}
+                      onChange={(e) => updateBirthday("year", e.target.value)}
+                    >
+                      <option value="">ปี (พ.ศ.)</option>
+                      {years.map((y) => (
+                        <option key={y} value={y}>
+                          {parseInt(y) + 543}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {fieldError.birthday && (
+                    <p className="text-rose-600 text-xs flex items-center gap-1">
+                      <AlertCircle size={12} /> {fieldError.birthday}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <InfoItem
+                  icon={<User size={15} />}
+                  label="ชื่อ-นามสกุล"
+                  value={displayName}
+                />
+                <InfoItem
+                  icon={<Sparkles size={15} />}
+                  label="ชื่อเล่น"
+                  value={
+                    profile.nickname ? (
+                      <span className="font-semibold text-emerald-800">
+                        น้อง{profile.nickname}
+                      </span>
+                    ) : (
+                      "ไม่ระบุ"
+                    )
+                  }
+                />
+                <InfoItem
+                  icon={<CalendarDays size={15} />}
+                  label="วัน/เดือน/ปีเกิด"
+                  subValue={age ? `อายุ ${age} ปี` : undefined}
+                  value={formatBirthdayThai(profile.birthday)}
+                />
+              </div>
+            )}
+          </SectionCard>
+
+          {/* ── Section: Emergency & Contact Info ── */}
+          <SectionCard
+            icon={<Phone size={18} />}
+            iconBgColor="bg-blue-50"
+            iconColor="text-blue-600"
+            subtitle="สำหรับติดต่อสื่อสารและแจ้งเหตุฉุกเฉินระหว่างจัดค่าย"
+            title="ข้อมูลติดต่อและเบอร์โทรฉุกเฉิน"
+          >
+            {editing ? (
+              <div className="space-y-4 pt-1">
+                <PhoneInput
+                  error={fieldError.student_tel}
+                  helperText="เบอร์โทรส่วนตัวของนักเรียนสำหรับติดต่อในค่าย"
+                  label="เบอร์โทรศัพท์นักเรียน"
+                  placeholder="08X-XXX-XXXX"
+                  value={form.student_tel}
+                  onChange={(v) => setForm((f) => ({ ...f, student_tel: v }))}
+                />
+
+                <PhoneInput
+                  error={fieldError.parent_tel}
+                  helperText="เบอร์โทรผู้ปกครองสำหรับการประสานงานฉุกเฉิน"
+                  label="เบอร์โทรศัพท์ผู้ปกครอง (ติดต่อฉุกเฉิน)"
+                  placeholder="08X-XXX-XXXX"
+                  value={form.parent_tel}
+                  onChange={(v) => setForm((f) => ({ ...f, parent_tel: v }))}
+                />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <InfoItem
+                  copyValue={profile.tel || undefined}
+                  icon={<Phone size={15} />}
+                  label="เบอร์โทรนักเรียน"
+                  value={
+                    profile.tel ? (
+                      <div className="flex items-center gap-2 font-mono">
+                        <span>{formatPhoneNumber(profile.tel)}</span>
+                        <a
+                          className="text-xs text-[#5d7c6f] hover:underline inline-flex items-center gap-0.5 ml-1 font-sans"
+                          href={`tel:${profile.tel}`}
+                        >
+                          <ExternalLink size={12} /> โทร
+                        </a>
+                      </div>
+                    ) : (
+                      "ไม่ระบุ"
+                    )
+                  }
+                />
+
+                <InfoItem
+                  badge={
+                    parentPhone ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">
+                        ฉุกเฉิน
+                      </span>
+                    ) : null
+                  }
+                  copyValue={parentPhone || undefined}
+                  icon={<Phone size={15} />}
+                  label="เบอร์โทรผู้ปกครอง (ฉุกเฉิน)"
+                  value={
+                    parentPhone ? (
+                      <div className="flex items-center gap-2 font-mono">
+                        <span>{formatPhoneNumber(parentPhone)}</span>
+                        <a
+                          className="text-xs text-blue-600 hover:underline inline-flex items-center gap-0.5 ml-1 font-sans font-semibold"
+                          href={`tel:${parentPhone}`}
+                        >
+                          <ExternalLink size={12} /> โทรฉุกเฉิน
+                        </a>
+                      </div>
+                    ) : (
+                      "ไม่ระบุ"
+                    )
+                  }
+                />
+              </div>
+            )}
+          </SectionCard>
+
+          {/* ── Section: Remarks ── */}
+          <SectionCard
+            icon={<MessageSquare size={18} />}
+            iconBgColor="bg-amber-50"
+            iconColor="text-amber-600"
+            subtitle="ข้อมูลอื่น ๆ ที่ต้องการแจ้งคุณครูหรือทีมงานค่าย"
+            title="หมายเหตุและข้อมูลเพิ่มเติม"
+          >
+            {editing ? (
+              <div className="pt-1 space-y-1.5">
+                <label
+                  className="block text-xs font-semibold text-gray-700"
+                  htmlFor={remarkId}
+                >
+                  หมายเหตุเพิ่มเติม
+                </label>
+                <textarea
+                  className="w-full px-3.5 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 outline-none transition-all focus:border-[#5d7c6f] focus:ring-3 focus:ring-[#5d7c6f]/15 resize-none leading-relaxed"
+                  id={remarkId}
+                  placeholder="เช่น ต้องการการดูแลพิเศษเรื่องการเดินทาง, ข้อจำกัดในการทำกิจกรรมกลางแจ้ง..."
+                  rows={3}
+                  value={form.remark}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, remark: e.target.value }))
+                  }
+                />
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-gray-50/80 border border-gray-100 text-sm text-gray-700 leading-relaxed">
+                {profile.remark || (
+                  <span className="text-gray-400">ไม่มีข้อมูลเพิ่มเติม</span>
+                )}
+              </div>
+            )}
+          </SectionCard>
+        </div>
+
+        {/* Right 1 Col */}
+        <div className="space-y-6">
+          {/* ── Section: Academic / Classroom Info ── */}
+          <SectionCard
+            icon={<GraduationCap size={18} />}
+            iconBgColor="bg-teal-50"
+            iconColor="text-teal-600"
+            subtitle="ห้องเรียนและครูประจำชั้น"
+            title="ข้อมูลการเรียนและชั้นเรียน"
+          >
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500 font-medium">
+                    ห้องเรียน
+                  </span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-[#5d7c6f]/15 text-[#365f4f]">
+                    ชั้น {profile.classroom?.grade_label || "ไม่ระบุ"}
+                    {profile.classroom?.class_name
+                      ? ` / ${profile.classroom.class_name}`
+                      : ""}
+                  </span>
+                </div>
+                {profile.classroom?.homeroom_teacher && (
+                  <p className="text-xs text-gray-600 flex items-center gap-1.5 pt-1">
+                    <User className="text-gray-400" size={13} />
+                    <span>ครูประจำชั้น:</span>
+                    <span className="font-semibold text-gray-800">
+                      ครู{profile.classroom.homeroom_teacher}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Hash className="text-gray-400" size={14} />
+                  <span className="text-xs text-gray-500">รหัสนักเรียน</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-mono font-bold text-gray-800">
+                    #{profile.students_id}
+                  </span>
+                  <CopyableBadge
+                    iconOnly
+                    copyValue={String(profile.students_id)}
+                    label="รหัสนักเรียน"
+                    text=""
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Mail className="text-gray-400" size={14} />
+                  <span className="text-xs text-gray-500">อีเมลนักเรียน</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-gray-800 truncate max-w-[120px]">
+                    {profile.email}
+                  </span>
+                  <CopyableBadge
+                    iconOnly
+                    copyValue={profile.email}
+                    label="อีเมล"
+                    text=""
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100 flex items-start gap-2 text-blue-800">
+                <Info className="text-blue-600 shrink-0 mt-0.5" size={14} />
+                <p className="text-[11px] leading-relaxed text-blue-700">
+                  ข้อมูลห้องเรียนจะถูกอัปเดตตามปีการศึกษาปัจจุบันของโรงเรียน
+                </p>
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+
+      {/* ── Floating / Sticky Action Bar in Edit Mode ── */}
+      <AnimatePresence>
+        {editing && (
+          <motion.div
+            animate={{ opacity: 1, y: 0 }}
+            className="sticky bottom-6 z-40 max-w-2xl mx-auto w-full px-4"
+            exit={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 20 }}
+          >
+            <div className="p-3 bg-white/95 backdrop-blur-lg rounded-2xl border border-gray-200/90 shadow-xl flex items-center justify-between gap-3">
+              <div className="hidden sm:flex items-center gap-2 pl-2">
+                <span className="w-2 h-2 rounded-full bg-[#5d7c6f] animate-ping" />
+                <span className="text-xs text-gray-600 font-medium">
+                  {isFormDirty
+                    ? "มีการแก้ไขข้อมูลที่ยังไม่บันทึก"
+                    : "กำลังอยู่ในโหมดแก้ไข"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2.5 w-full sm:w-auto ml-auto">
+                <button
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 text-xs sm:text-sm font-semibold hover:bg-gray-50 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                  disabled={saving || uploadingImage}
+                  type="button"
+                  onClick={handleCancelClick}
+                >
+                  <X size={16} />
+                  <span>ยกเลิก</span>
+                </button>
+
+                <button
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#5d7c6f] text-white text-xs sm:text-sm font-semibold hover:bg-[#4a6659] active:scale-95 transition-all shadow-md cursor-pointer disabled:opacity-60"
+                  disabled={saving || uploadingImage}
+                  type="button"
+                  onClick={handleSave}
+                >
+                  {saving || uploadingImage ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>
+                        {uploadingImage
+                          ? `กำลังอัปโหลดรูป... ${uploadProgress}%`
+                          : "กำลังบันทึก..."}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      <span>บันทึกข้อมูล</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Success Toast ── */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#2d5d4b] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-emerald-400/30"
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          >
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">
+                บันทึกข้อมูลโปรไฟล์สำเร็จ!
+              </p>
+              <p className="text-xs text-emerald-100/90">
+                ข้อมูลของคุณได้รับการอัปเดตเรียบร้อยแล้ว
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Confirm Cancel Modal ── */}
+      <ConfirmModal
+        cancelText="แก้ไขต่อ"
+        confirmText="ละทิ้งการแก้ไข"
+        confirmVariant="danger"
+        description="คุณมีข้อมูลที่แก้ไขแล้วและยังไม่ได้บันทึก หากยกเลิก ข้อมูลที่แก้ไขจะกลับไปเป็นค่าเดิม"
+        isOpen={showCancelModal}
+        title="ต้องการยกเลิกการแก้ไข?"
+        onCancel={() => setShowCancelModal(false)}
+        onConfirm={revertAndCloseEdit}
+      />
+    </div>
   );
 }

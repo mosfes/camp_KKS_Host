@@ -266,13 +266,13 @@ export default function TakeSurveyModal({
                                     <input
                                       checked={selected}
                                       className="h-4 w-4 rounded accent-[#5d7c6f]"
+                                      type="checkbox"
                                       onChange={() =>
                                         toggleCheckboxAnswer(
                                           q.question_id,
                                           option,
                                         )
                                       }
-                                      type="checkbox"
                                     />
                                     {option}
                                   </label>

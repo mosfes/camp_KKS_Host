@@ -627,7 +627,9 @@ export default function MonitorMissionModal({
                                                 <img
                                                   alt="Student submission"
                                                   className="w-full max-w-md rounded-lg shadow-sm border border-gray-200 cursor-zoom-in hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
-                                                  src={toThumbnail(ans.answerText)}
+                                                  src={toThumbnail(
+                                                    ans.answerText,
+                                                  )}
                                                   onClick={(e) => {
                                                     e.stopPropagation();
                                                     e.nativeEvent.stopImmediatePropagation();

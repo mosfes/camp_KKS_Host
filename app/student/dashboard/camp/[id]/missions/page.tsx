@@ -5,6 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-hot-toast";
+
+import StudentMissionsSkeleton from "./components/StudentMissionsSkeleton";
+
 import { isBangkokDateBefore } from "@/lib/bangkok-date";
 
 // Helper to calculate progress
@@ -73,6 +76,7 @@ export default function StudentMissionsPage() {
         }
       } else if (campRes.status === 403) {
         const errorData = await campRes.json().catch(() => null);
+
         toast.error(errorData?.error || "ค่ายยังไม่เริ่ม ไม่สามารถทำภารกิจได้");
         router.replace(`/student/dashboard/camp/${id}`);
       }
@@ -88,12 +92,7 @@ export default function StudentMissionsPage() {
     fetchCamp();
   }, [id]);
 
-  if (loading)
-    return (
-      <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 font-medium">กำลังโหลด...</div>
-      </div>
-    );
+  if (loading) return <StudentMissionsSkeleton />;
   if (!camp)
     return (
       <div className="p-8 text-center bg-[#f5f5f2] min-h-screen flex items-center justify-center">
@@ -129,42 +128,46 @@ export default function StudentMissionsPage() {
   return (
     <div className="min-h-screen bg-[#f5f5f2] pb-12">
       {/* Header */}
-      <div className="bg-white px-4 py-6 flex items-center gap-4 border-b border-gray-100/50">
-        <Button
-          isIconOnly
-          className="bg-transparent text-gray-400 hover:bg-gray-50 min-w-0 w-8 h-8"
-          variant="light"
-          onPress={() => router.back()}
-        >
-          <ChevronLeft size={24} />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-medium text-[#2D3648] leading-tight">
-            ภารกิจค่าย
-          </h1>
-          <p className="text-[13px] text-gray-400 font-medium leading-tight line-clamp-2 mt-1">
-            {camp.title}
-          </p>
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-center gap-4">
+          <Button
+            isIconOnly
+            className="bg-transparent text-gray-400 hover:bg-gray-50 min-w-0 w-8 h-8"
+            variant="light"
+            onPress={() => router.back()}
+          >
+            <ChevronLeft size={24} />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3648] leading-tight">
+              ภารกิจค่าย
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-400 font-medium leading-tight truncate mt-0.5">
+              {camp.title}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         {/* Overall Progress Card */}
-        <div className="bg-[#EEEADF] rounded-2xl p-8">
-          <h3 className="text-[#2D3648] font-medium text-lg mb-8">
-            ความคืบหน้าโดยรวม
-          </h3>
-
-          <div className="flex justify-between items-end mb-2">
-            <div className="text-[44px] font-normal text-[#2D3648] leading-none">
-              {overallProgress}%
-            </div>
-            <div className="text-[15px] font-medium text-gray-500 mb-1">
-              {completedOverall}/{totalMissions} ภารกิจ
+        <div className="bg-[#EEEADF] rounded-3xl p-6 sm:p-8 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <h3 className="text-[#2D3648] font-bold text-lg sm:text-xl">
+              ความคืบหน้าโดยรวม
+            </h3>
+            <div className="text-sm font-semibold text-gray-600 bg-white/60 px-3 py-1 rounded-full w-fit">
+              {completedOverall}/{totalMissions} ภารกิจสำเร็จ
             </div>
           </div>
 
-          <div className="w-full h-4 bg-gray-300/50 rounded-full overflow-hidden">
+          <div className="flex justify-between items-end mb-2.5">
+            <div className="text-4xl sm:text-5xl font-black text-[#2D3648] leading-none">
+              {overallProgress}%
+            </div>
+          </div>
+
+          <div className="w-full h-3.5 bg-gray-300/50 rounded-full overflow-hidden">
             <div
               className="h-full bg-[#5D7C6F] rounded-full transition-all duration-1000 ease-out"
               style={{ width: `${overallProgress}%` }}
@@ -173,12 +176,12 @@ export default function StudentMissionsPage() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-[#2D3648] font-medium text-lg px-1">
+          <h3 className="text-[#2D3648] font-bold text-lg px-1">
             เลือกฐานกิจกรรม
           </h3>
 
-          {/* Stations List */}
-          <div className="space-y-4">
+          {/* Stations Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {camp.station?.map((station: any) => {
               const stationMissions = station.mission || [];
               const completedInStation = stationMissions.filter((m: any) =>
@@ -198,27 +201,26 @@ export default function StudentMissionsPage() {
               return (
                 <div
                   key={station.station_id}
-                  className={`bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-gray-200 transition-all duration-300 cursor-pointer flex items-center gap-4 group ${navigatingTo === station.station_id ? "opacity-60 pointer-events-none" : ""}`}
+                  className={`bg-white p-5 sm:p-6 rounded-2xl shadow-xs border border-gray-200/80 hover:border-[#5D7C6F]/50 hover:shadow-md transition-all duration-300 cursor-pointer flex items-center gap-4 group ${
+                    navigatingTo === station.station_id
+                      ? "opacity-60 pointer-events-none"
+                      : ""
+                  }`}
                   onClick={() => goToStation(station.station_id)}
                 >
                   {/* Icon */}
-                  <div className="w-16 h-16 rounded-full bg-[#F0FAF5] flex items-center justify-center shrink-0">
-                    <div className="w-10 h-10 rounded-full border-2 border-[#5D7C6F]/20 flex items-center justify-center">
-                      <div className="w-6 h-6 rounded-full border-2 border-[#5D7C6F]/40 flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-[#5D7C6F]" />
-                      </div>
+                  <div className="w-14 h-14 rounded-2xl bg-[#F0FAF5] flex items-center justify-center shrink-0 border border-[#5D7C6F]/15 group-hover:scale-105 transition-transform">
+                    <div className="w-8 h-8 rounded-full border-2 border-[#5D7C6F]/30 flex items-center justify-center">
+                      <div className="w-3 h-3 rounded-full bg-[#5D7C6F]" />
                     </div>
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-1 gap-4">
-                      <h4 className="font-medium text-[#2D3648] text-lg flex items-center gap-2 min-w-0">
-                        <span className="truncate">{station.name}</span>
+                    <div className="flex justify-between items-center mb-1 gap-2">
+                      <h4 className="font-bold text-[#2D3648] text-base truncate group-hover:text-[#5D7C6F] transition-colors">
+                        {station.name}
                       </h4>
-                      <div className="bg-[#EEEADF] text-[#8C8471] text-[13px] font-medium px-3 py-1 rounded-full shrink-0">
-                        {completedInStation}/{stationMissions.length}
-                      </div>
                     </div>
 
                     <p className="text-[14px] text-gray-400 mb-4 line-clamp-2 break-words">

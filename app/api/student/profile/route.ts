@@ -24,8 +24,10 @@ export async function GET() {
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const { payload: studentSession } = await jwtVerify(session.value, secret);
 
+    const studentId = Number(studentSession.students_id);
+
     const student = await prisma.students.findUnique({
-      where: { students_id: Number(studentSession.students_id) },
+      where: { students_id: studentId },
       select: {
         students_id: true,
         prefix_name: true,
@@ -55,7 +57,67 @@ export async function GET() {
     if (!student)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    return NextResponse.json(student);
+    // ดึงข้อมูลห้องเรียนของนักเรียน
+    const classroomInfo = await prisma.classroom_students.findFirst({
+      where: { student_students_id: studentId },
+      include: {
+        classroom: {
+          include: {
+            classroom_types: true,
+            academic_years: true,
+            teacher: true,
+            classroom_teacher: {
+              include: { teacher: true },
+            },
+          },
+        },
+      },
+      orderBy: {
+        classroom_classroom_id: "desc",
+      },
+    });
+
+    const classroom = classroomInfo?.classroom ?? null;
+    let homeroomTeachers = null;
+
+    if (classroom) {
+      const teacherMap = new Map();
+
+      if (classroom.teacher) {
+        const t = classroom.teacher;
+
+        teacherMap.set(
+          t.teachers_id,
+          `${t.prefix_name || ""}${t.firstname} ${t.lastname}`.trim(),
+        );
+      }
+      for (const ct of classroom.classroom_teacher ?? []) {
+        if (ct.teacher) {
+          const t = ct.teacher;
+
+          teacherMap.set(
+            t.teachers_id,
+            `${t.prefix_name || ""}${t.firstname} ${t.lastname}`.trim(),
+          );
+        }
+      }
+      homeroomTeachers =
+        teacherMap.size > 0 ? Array.from(teacherMap.values()).join(", ") : null;
+    }
+
+    return NextResponse.json({
+      ...student,
+      classroom: classroom
+        ? {
+            classroom_id: classroom.classroom_id,
+            grade: classroom.grade,
+            grade_label: classroom.grade?.replace("Level_", "ม.") ?? null,
+            class_name: classroom.classroom_types?.name ?? null,
+            academic_year: classroom.academic_years?.year ?? null,
+            homeroom_teacher: homeroomTeachers,
+          }
+        : null,
+    });
   } catch {
     return NextResponse.json(
       { _error: "Internal Server Error" },

@@ -107,9 +107,9 @@ export default function CreateBaseModal({
                 </div>
                 <input
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors"
+                  maxLength={255}
                   placeholder="เช่น ฐานสำรวจธรรมชาติ"
                   value={name}
-                  maxLength={255}
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
@@ -125,10 +125,10 @@ export default function CreateBaseModal({
                 </div>
                 <textarea
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] focus:border-[#6b857a] outline-none transition-colors resize-none"
+                  maxLength={255}
                   placeholder="อธิบายกิจกรรมและเป้าหมายของฐานนี้"
                   rows={3}
                   value={description}
-                  maxLength={255}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>

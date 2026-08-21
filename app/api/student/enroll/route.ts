@@ -35,7 +35,11 @@ export async function POST(req) {
         start_date: true,
         end_date: true,
         camp_classroom: {
-          select: { classroom: { select: { _count: { select: { classroom_students: true } } } } },
+          select: {
+            classroom: {
+              select: { _count: { select: { classroom_students: true } } },
+            },
+          },
         },
       },
     });
@@ -55,10 +59,7 @@ export async function POST(req) {
       camp.start_regis_date,
       camp.end_regis_date,
     );
-    const isCampPeriod = isBangkokDateInRange(
-      camp.start_date,
-      camp.end_date,
-    );
+    const isCampPeriod = isBangkokDateInRange(camp.start_date, camp.end_date);
 
     if (!isRegistrationPeriod && !isCampPeriod) {
       return NextResponse.json(

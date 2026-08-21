@@ -89,6 +89,7 @@ export async function GET(request) {
           id: q.question_id,
           text: q.question_text,
           type: "scale",
+          scaleMax: q.scale_max || 5,
           average: parseFloat(average),
           total,
           distribution,
@@ -142,6 +143,7 @@ export async function GET(request) {
           id: q.question_id,
           text: q.question_text,
           type: "checkbox",
+          allOptions: options,
           total,
           options: Array.from(counts, ([label, count]) => ({ label, count })),
         };
@@ -158,6 +160,7 @@ export async function GET(request) {
 
     const responses = await prisma.survey_response.findMany({
       where: { survey_survey_id: survey.survey_id },
+      orderBy: { submitted_at: "asc" },
       include: {
         student_enrollment: {
           include: {
@@ -172,7 +175,41 @@ export async function GET(request) {
             },
           },
         },
+        survey_answer: true,
       },
+    });
+
+    const individualResponses = responses.map((r, index) => {
+      const student = r.student_enrollment?.student;
+      const cls = student?.classroom_students?.[0]?.classroom;
+      const gradeStr = cls?.grade
+        ? String(cls.grade).replace("Level_", "ม.")
+        : "ไม่ระบุ";
+      const roomStr = cls?.room_number ? `/${cls.room_number}` : "";
+
+      const answersMap: Record<
+        number,
+        { text_answer: string | null; scale_value: number | null }
+      > = {};
+
+      r.survey_answer.forEach((a) => {
+        answersMap[a.question_id] = {
+          text_answer: a.text_answer,
+          scale_value: a.scale_value,
+        };
+      });
+
+      return {
+        responseId: r.response_id,
+        index: index + 1,
+        submittedAt: r.submitted_at,
+        studentId: student?.students_id ?? null,
+        studentName: student
+          ? `${student.prefix_name || ""}${student.firstname} ${student.lastname}`.trim()
+          : "ไม่ระบุชื่อ",
+        classroom: `${gradeStr}${roomStr}`,
+        answers: answersMap,
+      };
     });
 
     const demographics = {
@@ -212,8 +249,10 @@ export async function GET(request) {
     const summaryData = {
       surveyId: survey.survey_id,
       title: survey.title,
+      isAcceptingResponses: survey.is_accepting_responses ?? true,
       totalResponses,
       questions: summaryQuestions,
+      individualResponses,
       demographics,
     };
 

@@ -83,8 +83,8 @@ export default function StatusModal({
         wrapper: "!items-center !justify-center p-4",
       }}
       isOpen={isOpen}
-      onOpenChange={onClose}
       placement="center"
+      onOpenChange={onClose}
     >
       <ModalContent>
         {(onClose) => (

@@ -1,6 +1,7 @@
 // @ts-nocheck
 
 import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/db";
 
 export async function GET(request, { params }) {
@@ -11,6 +12,8 @@ export async function GET(request, { params }) {
       include: {
         camp: {
           select: {
+            camp_id: true,
+            name: true,
             camp_classroom: {
               select: {
                 classroom: {

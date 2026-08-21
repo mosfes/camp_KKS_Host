@@ -10,7 +10,9 @@ import {
   Button,
   Pagination,
 } from "@heroui/react";
-import { ArrowLeft, Search, Shirt } from "lucide-react";
+import { Search, Shirt } from "lucide-react";
+
+import CampBreadcrumb from "./CampBreadcrumb";
 
 interface StudentShirt {
   enrollmentId: number;
@@ -178,14 +180,12 @@ export default function ShirtTrackingModal({
               }`}
             >
               {pageMode && (
-                <button
-                  className="mb-6 inline-flex w-fit items-center gap-1 text-[11px] font-medium text-gray-600 transition-colors hover:text-gray-900"
-                  type="button"
-                  onClick={onClose}
-                >
-                  <ArrowLeft size={14} />
-                  กลับไปยังหน้าหลัก
-                </button>
+                <CampBreadcrumb
+                  campId={campId}
+                  campName={campName}
+                  className="mb-6"
+                  currentPage="รายการจองเสื้อ"
+                />
               )}
 
               <div className="flex items-center gap-3">

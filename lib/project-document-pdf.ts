@@ -27,6 +27,7 @@ function clean(value: unknown) {
 
 function money(value: unknown) {
   const amount = Number(value || 0);
+
   return amount
     ? amount.toLocaleString("th-TH", { maximumFractionDigits: 2 })
     : "-";
@@ -34,12 +35,14 @@ function money(value: unknown) {
 
 export async function createProjectDocumentPdf(document: any) {
   const pdf = await PDFDocument.create();
+
   pdf.registerFontkit(fontkit);
   const fontBytes = await readFile(
     path.join(process.cwd(), "public/fonts/THSarabunNew.ttf"),
   );
   const font = await pdf.embedFont(fontBytes, { subset: true });
   let logo: any = null;
+
   try {
     logo = await pdf.embedPng(
       await readFile(path.join(process.cwd(), "public/images/logoKKS.png")),
@@ -70,10 +73,12 @@ export async function createProjectDocumentPdf(document: any) {
 
   const segments = (text: string): string[] => {
     const normalized = clean(text);
+
     if (!normalized) return [""];
     const segmenter = new (Intl as any).Segmenter("th", {
       granularity: "word",
     });
+
     return Array.from(
       segmenter.segment(normalized) as Iterable<{ segment: string }>,
       (item) => item.segment,
@@ -82,14 +87,17 @@ export async function createProjectDocumentPdf(document: any) {
 
   const wrap = (text: string, maxWidth: number, size = BODY_SIZE) => {
     const output: string[] = [];
+
     for (const paragraph of clean(text).split("\n")) {
       if (!paragraph) {
         output.push("");
         continue;
       }
       let line = "";
+
       for (const segment of segments(paragraph)) {
         const candidate = line + segment;
+
         if (!line || font.widthOfTextAtSize(candidate, size) <= maxWidth) {
           line = candidate;
           continue;
@@ -99,6 +107,7 @@ export async function createProjectDocumentPdf(document: any) {
           line = segment.trimStart();
         } else {
           let part = "";
+
           for (const character of Array.from(segment)) {
             if (
               part &&
@@ -113,6 +122,7 @@ export async function createProjectDocumentPdf(document: any) {
       }
       output.push(line.trimEnd());
     }
+
     return output.length ? output : [""];
   };
 
@@ -123,6 +133,7 @@ export async function createProjectDocumentPdf(document: any) {
   const centered = (text: string, size: number, gapAfter = 5) => {
     ensure(size + gapAfter);
     const width = font.widthOfTextAtSize(text, size);
+
     drawAt(text, (PAGE_WIDTH - width) / 2, y, size);
     y += size + gapAfter;
   };
@@ -139,6 +150,7 @@ export async function createProjectDocumentPdf(document: any) {
     const size = options.size ?? BODY_SIZE;
     const indent = options.indent ?? 0;
     const lines = wrap(text, CONTENT_WIDTH - indent, size);
+
     for (const item of lines) {
       ensure(LINE_HEIGHT);
       drawAt(item, MARGIN_X + indent, y, size);
@@ -180,6 +192,7 @@ export async function createProjectDocumentPdf(document: any) {
         const marker = `${prefix}.${index + 1}`;
         const markerWidth = 35;
         const itemLines = wrap(clean(item), CONTENT_WIDTH - 35, BODY_SIZE);
+
         ensure(itemLines.length * LINE_HEIGHT);
         drawAt(marker, MARGIN_X + 18, y, BODY_SIZE);
         itemLines.forEach((itemLine, lineIndex) =>
@@ -200,6 +213,7 @@ export async function createProjectDocumentPdf(document: any) {
     const drawHeader = () => {
       ensure(headerHeight);
       let x = MARGIN_X;
+
       headers.forEach((header) => {
         page.drawRectangle({
           x,
@@ -213,8 +227,10 @@ export async function createProjectDocumentPdf(document: any) {
           0,
           2,
         );
+
         lines.forEach((headerLine, index) => {
           const textWidth = font.widthOfTextAtSize(headerLine, size);
+
           drawAt(
             headerLine,
             x + Math.max(padding, (header.width - textWidth) / 2),
@@ -226,6 +242,7 @@ export async function createProjectDocumentPdf(document: any) {
       });
       y += headerHeight;
     };
+
     drawHeader();
 
     rows.forEach((row) => {
@@ -233,11 +250,13 @@ export async function createProjectDocumentPdf(document: any) {
         wrap(clean(value) || "-", headers[index].width - padding * 2, size),
       );
       let offset = 0;
+
       while (offset < Math.max(...allLines.map((items) => items.length))) {
         const availableLines = Math.max(
           1,
           Math.floor((PAGE_HEIGHT - BOTTOM - y - padding * 2) / 15),
         );
+
         if (availableLines < 1 || y > PAGE_HEIGHT - BOTTOM - 24) {
           addPage();
           drawHeader();
@@ -248,12 +267,14 @@ export async function createProjectDocumentPdf(document: any) {
         );
         const lineCount = Math.min(remaining, availableLines);
         const rowHeight = Math.max(24, lineCount * 15 + padding * 2);
+
         if (y + rowHeight > PAGE_HEIGHT - BOTTOM) {
           addPage();
           drawHeader();
           continue;
         }
         let x = MARGIN_X;
+
         headers.forEach((header, columnIndex) => {
           page.drawRectangle({
             x,
@@ -267,6 +288,7 @@ export async function createProjectDocumentPdf(document: any) {
             offset,
             offset + lineCount,
           );
+
           cellLines.forEach((cellLine, lineIndex) => {
             const textWidth = font.widthOfTextAtSize(cellLine, size);
             const alignedX =
@@ -275,6 +297,7 @@ export async function createProjectDocumentPdf(document: any) {
                 : header.align === "center"
                   ? x + (header.width - textWidth) / 2
                   : x + padding;
+
             drawAt(cellLine, alignedX, y + padding + lineIndex * 15, size);
           });
           x += header.width;
@@ -293,6 +316,7 @@ export async function createProjectDocumentPdf(document: any) {
   addPage();
   if (logo) {
     const dimensions = logo.scale(0.115);
+
     page.drawImage(logo, {
       x: (PAGE_WIDTH - dimensions.width) / 2,
       y: PAGE_HEIGHT - y - dimensions.height,
@@ -411,12 +435,14 @@ export async function createProjectDocumentPdf(document: any) {
   const signatories = Array.isArray(document.signatories)
     ? document.signatories
     : [];
+
   if (signatories.length) {
     ensure(35);
     y += 14;
     for (let index = 0; index < signatories.length; index += 2) {
       ensure(92);
       const pair = signatories.slice(index, index + 2);
+
       pair.forEach((person: any, columnIndex: number) => {
         const blockWidth = CONTENT_WIDTH / 2;
         const x =
@@ -435,6 +461,7 @@ export async function createProjectDocumentPdf(document: any) {
           signatureLine = `ลงชื่อ ${".".repeat(dotCount)} ${clean(person.role)}`;
         }
         const signatureWidth = font.widthOfTextAtSize(signatureLine, BODY_SIZE);
+
         drawAt(
           signatureLine,
           Math.max(x, center - signatureWidth / 2),
@@ -442,6 +469,7 @@ export async function createProjectDocumentPdf(document: any) {
           BODY_SIZE,
         );
         const name = `(${clean(person.prefixName)}${clean(person.firstname)} ${clean(person.lastname)})`;
+
         drawAt(
           name,
           center - font.widthOfTextAtSize(name, BODY_SIZE) / 2,
@@ -453,6 +481,7 @@ export async function createProjectDocumentPdf(document: any) {
           blockWidth - 12,
           BODY_SIZE,
         );
+
         positionLines
           .slice(0, 2)
           .forEach((positionLine, lineIndex) =>
@@ -470,6 +499,7 @@ export async function createProjectDocumentPdf(document: any) {
 
   pages.forEach((pdfPage, index) => {
     const footer = `หน้า ${index + 1} / ${pages.length}`;
+
     pdfPage.drawText(footer, {
       x: PAGE_WIDTH - MARGIN_X - font.widthOfTextAtSize(footer, 10),
       y: 23,
@@ -481,5 +511,6 @@ export async function createProjectDocumentPdf(document: any) {
 
   pdf.setTitle(`เอกสารโครงการ ${clean(document.project_name)}`);
   pdf.setAuthor("โรงเรียนขุขันธ์");
+
   return pdf.save();
 }

@@ -16,10 +16,7 @@ import { DateRangePicker } from "@heroui/react";
 import { parseDate, today } from "@internationalized/date";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
-import {
-  BANGKOK_TIME_ZONE,
-  getBangkokDateKey,
-} from "@/lib/bangkok-date";
+import { BANGKOK_TIME_ZONE, getBangkokDateKey } from "@/lib/bangkok-date";
 import CampDestinationField, {
   type CampDestination,
 } from "@/components/camp-location/CampDestinationField";
@@ -226,6 +223,7 @@ export default function EditCampModal({
       // แปลง date จาก ISO string เป็น YYYY-MM-DD
       const formatDateForInput = (dateString: string) => {
         if (!dateString) return "";
+
         return getBangkokDateKey(dateString);
       };
 
@@ -653,9 +651,7 @@ export default function EditCampModal({
               <ChevronRight className="rotate-180" size={18} />
               <span className="text-sm font-medium">กลับ</span>
             </button>
-            <h2 className="text-xl font-bold text-gray-900">
-              แก้ไขข้อมูลค่าย
-            </h2>
+            <h2 className="text-xl font-bold text-gray-900">แก้ไขข้อมูลค่าย</h2>
             <p className="text-sm text-gray-500">อัปเดตรายละเอียดของค่าย</p>
           </div>
           <button

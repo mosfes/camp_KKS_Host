@@ -11,10 +11,10 @@ export default function ShirtsPage() {
 
   return (
     <ShirtTrackingModal
-      campId={campId}
-      campName=""
       isOpen
       pageMode
+      campId={campId}
+      campName=""
       onClose={() => router.push("/headteacher/dashboard")}
     />
   );

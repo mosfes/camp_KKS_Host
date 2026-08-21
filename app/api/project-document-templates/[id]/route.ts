@@ -8,6 +8,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> },
 ) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
   const { id } = await context.params;
   const templateId = Number(id);
@@ -19,6 +20,7 @@ export async function DELETE(
       created_by_teacher_id: teacherId,
     },
   });
+
   if (!deleted.count) {
     return NextResponse.json({ error: "ไม่พบเทมเพลต" }, { status: 404 });
   }

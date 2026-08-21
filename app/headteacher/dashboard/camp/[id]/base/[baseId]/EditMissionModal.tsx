@@ -333,18 +333,17 @@ export default function EditMissionModal({
                 </div>
                 <input
                   className={inputCls}
+                  maxLength={255}
                   placeholder="เช่น ถ่ายรูปสัตว์ป่า"
                   value={title}
-                  maxLength={255}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
 
               {/* ประเภทภารกิจ */}
               <Select
-                aria-label="ประเภทภารกิจ"
-                maxListboxHeight={178}
                 showScrollIndicators
+                aria-label="ประเภทภารกิจ"
                 classNames={{
                   base: "w-full",
                   description: "text-xs text-gray-500",
@@ -360,10 +359,12 @@ export default function EditMissionModal({
                 }}
                 description={selectedType?.description}
                 label="ประเภทภารกิจ"
+                maxListboxHeight={178}
                 scrollShadowProps={{ hideScrollBar: false, size: 24 }}
                 selectedKeys={[type]}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0];
+
                   if (typeof selected === "string") setType(selected);
                 }}
               >
@@ -371,8 +372,7 @@ export default function EditMissionModal({
                   <SelectItem
                     key={item.key}
                     classNames={{
-                      base:
-                        "min-h-10 rounded-lg px-3 py-2 data-[hover=true]:bg-[#6b857a]/10",
+                      base: "min-h-10 rounded-lg px-3 py-2 data-[hover=true]:bg-[#6b857a]/10",
                       title: "text-sm font-medium text-gray-800",
                     }}
                     textValue={item.label}
@@ -394,9 +394,9 @@ export default function EditMissionModal({
                 </div>
                 <textarea
                   className={`${inputCls} resize-none`}
+                  maxLength={1000}
                   placeholder="อธิบายภารกิจนี้โดยย่อ"
                   rows={2}
-                  maxLength={1000}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -426,9 +426,9 @@ export default function EditMissionModal({
                         </span>
                         <input
                           className={`${inputCls} pl-8 pr-16`}
+                          maxLength={255}
                           placeholder="กรอกคำถาม..."
                           value={q.text}
-                          maxLength={255}
                           onChange={(e) => updateTextQ(i, e.target.value)}
                         />
                         <span className="absolute right-3 top-2.5 text-xs text-gray-400">
@@ -488,9 +488,9 @@ export default function EditMissionModal({
                       </div>
                       <input
                         className={`${inputCls} mb-3 bg-white`}
+                        maxLength={255}
                         placeholder="กรอกข้อความคำถาม"
                         value={q.text}
-                        maxLength={255}
                         onChange={(e) => updateQText(qi, e.target.value)}
                       />
 
@@ -511,9 +511,9 @@ export default function EditMissionModal({
                             <div className="flex-1 relative">
                               <input
                                 className={`w-full px-3 py-1.5 border rounded-lg text-sm outline-none transition-colors pr-14 ${c.isCorrect ? "border-[#6b857a] ring-1 ring-[#6b857a] bg-[#6b857a]/5" : "border-gray-300 focus:border-[#6b857a] focus:ring-1 focus:ring-[#6b857a]"}`}
+                                maxLength={255}
                                 placeholder={`ตัวเลือกที่ ${ci + 1}`}
                                 value={c.text}
-                                maxLength={255}
                                 onChange={(e) =>
                                   updateChoiceText(qi, ci, e.target.value)
                                 }

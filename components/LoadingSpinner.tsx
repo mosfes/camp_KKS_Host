@@ -28,8 +28,8 @@ export default function LoadingSpinner({
   return (
     <div
       aria-label={ariaLabel}
-      role="status"
       className={`loading-spinner shrink-0 rounded-full animate-spin ${sizes[size]} ${colors} ${className}`}
+      role="status"
       {...props}
     />
   );

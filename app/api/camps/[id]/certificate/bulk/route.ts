@@ -10,16 +10,20 @@ import { requireTeacher } from "@/lib/auth";
 import { getCertificateEligibility } from "@/lib/certificate-eligibility";
 
 let cachedFontBytes: Buffer | null = null;
+
 function getFontBytes(): Buffer {
   if (!cachedFontBytes) {
     const fontPath = path.join(process.cwd(), "public/fonts/THSarabunNew.ttf");
+
     cachedFontBytes = fs.readFileSync(fontPath);
   }
+
   return cachedFontBytes;
 }
 
 function toThaiNumerals(str: string): string {
   const thaiDigits = ["๐", "๑", "๒", "๓", "๔", "๕", "๖", "๗", "๘", "๙"];
+
   return str.replace(/[0-9]/g, (d) => thaiDigits[parseInt(d)]);
 }
 
@@ -41,6 +45,7 @@ function buildCertNumberText(
 
 export async function GET(request: Request, context: any) {
   const { teacher, error } = await requireTeacher();
+
   if (error) return error;
 
   const params = await context.params;
@@ -265,6 +270,7 @@ export async function GET(request: Request, context: any) {
             "Bulk certificate assignment failed after retries:",
             lastError,
           );
+
           return NextResponse.json(
             {
               error:
@@ -277,6 +283,7 @@ export async function GET(request: Request, context: any) {
     }
 
     const imageRes = await fetch(camp.img_certificate_url);
+
     if (!imageRes.ok) {
       return NextResponse.json(
         { error: "Failed to load certificate template image." },
@@ -287,9 +294,11 @@ export async function GET(request: Request, context: any) {
     const contentType = imageRes.headers.get("content-type") || "";
 
     const pdfDoc = await PDFDocument.create();
+
     pdfDoc.registerFontkit(fontkit);
 
     let embeddedImage;
+
     if (
       contentType.includes("png") ||
       camp.img_certificate_url.toLowerCase().endsWith(".png")
@@ -302,6 +311,7 @@ export async function GET(request: Request, context: any) {
     const { width, height } = embeddedImage.scale(1);
 
     let fontBytes;
+
     try {
       fontBytes = getFontBytes();
     } catch (e) {
@@ -314,6 +324,7 @@ export async function GET(request: Request, context: any) {
 
     const hexToRgb = (hex: string) => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+
       return result
         ? {
             r: parseInt(result[1], 16) / 255,
@@ -336,6 +347,7 @@ export async function GET(request: Request, context: any) {
 
     for (const enrollment of enrollments) {
       const page = pdfDoc.addPage([width, height]);
+
       page.drawImage(embeddedImage, {
         x: 0,
         y: 0,
@@ -360,6 +372,7 @@ export async function GET(request: Request, context: any) {
 
       if (showNumber && enrollment.certificate.length > 0) {
         const assignedCertNo = enrollment.certificate[0].certificate_no;
+
         if (assignedCertNo != null) {
           const numberText = buildCertNumberText(
             camp.cert_number_prefix || "",
@@ -415,6 +428,7 @@ export async function GET(request: Request, context: any) {
     });
   } catch (error) {
     console.error("Error generating bulk certificates:", error);
+
     return NextResponse.json(
       { error: "Failed to generate certificates." },
       { status: 500 },

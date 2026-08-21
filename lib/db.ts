@@ -13,10 +13,7 @@ function databaseUrlWithPoolLimits(rawUrl: string | undefined) {
     // Preview deployments can multiply quickly while sharing the same DB.
     // Keep explicit URL settings unchanged so infrastructure can override this.
     if (!url.searchParams.has("connection_limit")) {
-      url.searchParams.set(
-        "connection_limit",
-        process.env.VERCEL_ENV === "preview" ? "1" : "2",
-      );
+      url.searchParams.set("connection_limit", "1");
     }
 
     if (!url.searchParams.has("pool_timeout")) {

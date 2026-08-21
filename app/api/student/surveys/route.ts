@@ -126,13 +126,20 @@ export async function POST(request) {
 
     const survey = await prisma.survey.findUnique({
       where: { survey_id: sId },
-      select: { camp_camp_id: true },
+      select: { camp_camp_id: true, is_accepting_responses: true },
     });
 
     if (!survey || survey.camp_camp_id !== cId) {
       return NextResponse.json(
         { error: "Survey not found for this camp" },
         { status: 404 },
+      );
+    }
+
+    if (survey.is_accepting_responses === false) {
+      return NextResponse.json(
+        { error: "แบบสอบถามนี้ปิดรับคำตอบแล้ว ไม่สามารถส่งคำตอบได้" },
+        { status: 403 },
       );
     }
 
