@@ -25,6 +25,7 @@ import {
   ChevronDown,
   Copy,
   Check,
+  X,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 
@@ -176,7 +177,7 @@ export default function MonitorMissionModal({
     lightboxSrc && typeof document !== "undefined"
       ? createPortal(
           <div
-            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4"
             onClick={(e) => {
               e.stopPropagation();
               e.nativeEvent.stopImmediatePropagation();
@@ -186,36 +187,40 @@ export default function MonitorMissionModal({
               e.stopPropagation();
             }}
           >
-            <button
-              className="absolute top-4 right-4 text-white bg-black/40 hover:bg-black/70 rounded-full p-2 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.nativeEvent.stopImmediatePropagation();
-                setLightboxSrc(null);
-              }}
+            <div
+              className="relative max-w-5xl w-full max-h-[92vh] flex flex-col items-center"
+              onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
             >
-              <svg
-                fill="none"
-                height="24"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2.5"
-                viewBox="0 0 24 24"
-                width="24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <line x1="18" x2="6" y1="6" y2="18" />
-                <line x1="6" x2="18" y1="6" y2="18" />
-              </svg>
-            </button>
-            <img
-              alt="ภาพขนาดใหญ่"
-              className="max-w-[90vw] max-h-[90vh] object-contain rounded-2xl shadow-2xl"
-              src={lightboxSrc}
-              onClick={(e) => e.stopPropagation()}
-            />
+              {/* Lightbox Top bar */}
+              <div className="w-full flex items-center justify-between pb-3 text-white px-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Eye className="text-emerald-400" size={18} />
+                  <span>ดูรูปภาพคำตอบขนาดเต็ม</span>
+                </div>
+                <button
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                  title="ปิด"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
+                    setLightboxSrc(null);
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Lightbox Image */}
+              <div className="w-full flex items-center justify-center overflow-hidden rounded-2xl bg-black/40 border border-white/10 shadow-2xl p-2 sm:p-4">
+                <img
+                  alt="ภาพขนาดใหญ่"
+                  className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-lg"
+                  src={lightboxSrc}
+                />
+              </div>
+            </div>
           </div>,
           document.body,
         )
@@ -630,93 +635,86 @@ export default function MonitorMissionModal({
                             {result.isSubmitted ? (
                               <>
                                 <div className="divider h-px bg-gray-100 w-full mb-5" />
-                                <div className="space-y-5">
+                                <div className="space-y-4">
                                   {result.answers.map(
                                     (ans: any, idx: number) => (
                                       <div
                                         key={ans.questionId}
                                         className="space-y-2"
                                       >
-                                        <div className="flex gap-2">
-                                          <span className="text-gray-300 font-medium text-lg leading-none">
+                                        <div className="flex gap-2.5 items-center">
+                                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#6b857a]/10 text-[#5d7c6f]">
                                             {String(idx + 1).padStart(2, "0")}
                                           </span>
-                                          <p className="text-sm font-medium text-gray-700 pt-0.5">
+                                          <p className="text-sm font-medium text-gray-800">
                                             {ans.questionText || "คำถาม"}
                                           </p>
                                         </div>
 
-                                        <div className="bg-[#6b857a]/5 p-3 sm:p-4 rounded-xl text-sm text-gray-800 border border-[#6b857a]/10 ml-6 sm:ml-7">
-                                          {ans.type === "TEXT" && (
-                                            <span className="whitespace-pre-wrap leading-relaxed">
+                                        {ans.type === "TEXT" && (
+                                          <div className="ml-6 sm:ml-7 bg-gray-50 p-3.5 sm:p-4 rounded-xl text-sm text-gray-800 border border-gray-100 whitespace-pre-wrap leading-relaxed">
+                                            {ans.answerText}
+                                          </div>
+                                        )}
+
+                                        {ans.type === "MCQ" && (
+                                          <div className="ml-6 sm:ml-7 bg-gray-50 p-3 sm:p-4 rounded-xl text-sm text-gray-800 border border-gray-100 flex items-center justify-between">
+                                            <span className="font-medium text-[#6b857a]">
                                               {ans.answerText}
                                             </span>
-                                          )}
+                                            {ans.isCorrect === true && (
+                                              <div className="flex items-center gap-1.5 text-green-600 bg-green-50 px-2.5 py-1 rounded-full text-xs font-medium border border-green-100">
+                                                <CheckCircle2 size={14} />
+                                                ถูกต้อง
+                                              </div>
+                                            )}
+                                            {ans.isCorrect === false && (
+                                              <div className="flex items-center gap-1.5 text-red-600 bg-red-50 px-2.5 py-1 rounded-full text-xs font-medium border border-red-100">
+                                                <XCircle size={14} />
+                                                ไม่ถูกต้อง
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
 
-                                          {ans.type === "MCQ" && (
-                                            <div className="flex items-center justify-between">
-                                              <span className="font-medium text-[#6b857a]">
-                                                {ans.answerText}
-                                              </span>
-                                              {ans.isCorrect === true && (
-                                                <div className="flex items-center gap-1.5 text-green-600 bg-green-50 px-2.5 py-1 rounded-full text-xs font-medium border border-green-100">
-                                                  <CheckCircle2 size={14} />
-                                                  ถูกต้อง
-                                                </div>
-                                              )}
-                                              {ans.isCorrect === false && (
-                                                <div className="flex items-center gap-1.5 text-red-600 bg-red-50 px-2.5 py-1 rounded-full text-xs font-medium border border-red-100">
-                                                  <XCircle size={14} />
-                                                  ไม่ถูกต้อง
-                                                </div>
-                                              )}
-                                            </div>
-                                          )}
-
-                                          {ans.type === "PHOTO" && (
-                                            <div className="space-y-2">
-                                              <div className="relative group">
-                                                <img
-                                                  alt="Student submission"
-                                                  className="w-full max-w-md rounded-lg shadow-sm border border-gray-200 cursor-zoom-in hover:opacity-90 hover:scale-[1.01] transition-all duration-200"
-                                                  src={toThumbnail(
-                                                    ans.answerText,
-                                                  )}
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    e.nativeEvent.stopImmediatePropagation();
-                                                    setLightboxSrc(
-                                                      ans.answerText,
-                                                    );
-                                                  }}
-                                                  onPointerDown={(e) =>
-                                                    e.stopPropagation()
-                                                  }
-                                                />
-                                                <p className="text-[10px] text-gray-400 mt-1">
-                                                  คลิกที่รูปเพื่อดูขนาดใหญ่
-                                                </p>
+                                        {ans.type === "PHOTO" && (
+                                          <div className="ml-6 sm:ml-7">
+                                            <div
+                                              className="relative group inline-block rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shadow-xs cursor-pointer transition-all hover:shadow-md hover:border-[#6b857a]/50"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                e.nativeEvent.stopImmediatePropagation();
+                                                setLightboxSrc(ans.answerText);
+                                              }}
+                                              onPointerDown={(e) =>
+                                                e.stopPropagation()
+                                              }
+                                            >
+                                              <img
+                                                alt={`รูปภาพคำตอบของ ${result.studentName}`}
+                                                className="max-h-[280px] sm:max-h-[320px] w-auto object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+                                                src={toThumbnail(
+                                                  ans.answerText,
+                                                )}
+                                              />
+                                              <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-medium backdrop-blur-[1px]">
+                                                <Eye size={15} />
+                                                <span>
+                                                  คลิกดูรูปภาพขนาดเต็ม
+                                                </span>
                                               </div>
                                             </div>
-                                          )}
+                                          </div>
+                                        )}
 
-                                          {ans.type === "VIDEO" && (
-                                            <div className="space-y-3">
-                                              <VideoPlayer
-                                                title={`วิดีโอของ ${result.studentName}`}
-                                                url={ans.answerText}
-                                              />
-                                              <a
-                                                className="inline-flex text-xs font-medium text-[#5d7c6f] underline underline-offset-2"
-                                                href={ans.answerText}
-                                                rel="noreferrer"
-                                                target="_blank"
-                                              >
-                                                เปิดวิดีโอต้นฉบับ
-                                              </a>
-                                            </div>
-                                          )}
-                                        </div>
+                                        {ans.type === "VIDEO" && (
+                                          <div className="ml-6 sm:ml-7 space-y-3">
+                                            <VideoPlayer
+                                              title={`วิดีโอของ ${result.studentName}`}
+                                              url={ans.answerText}
+                                            />
+                                          </div>
+                                        )}
                                       </div>
                                     ),
                                   )}

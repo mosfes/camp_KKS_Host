@@ -22,6 +22,9 @@ import {
   ScanLine,
   KeyRound,
   Video,
+  Eye,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
@@ -56,6 +59,8 @@ export default function StudentStationDetailPage() {
   >({});
   const [submitting, setSubmitting] = useState(false);
   const [uploadingQids, setUploadingQids] = useState<number[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
+  const [previewFullImageUrl, setPreviewFullImageUrl] = useState<string | null>(null);
 
   // QR Scan State
   const [qrScanActive, setQrScanActive] = useState(false);
@@ -140,6 +145,7 @@ export default function StudentStationDetailPage() {
   const openMission = (mission: any) => {
     setSelectedMission(mission);
     setAnswerPublicIds({});
+    setPreviewFullImageUrl(null);
 
     // Reset QR state
     setQrScanActive(false);
@@ -365,7 +371,10 @@ export default function StudentStationDetailPage() {
     });
   };
 
-  const compressImage = async (file: File) => {
+  const compressImage = async (
+    file: File,
+    onProgress?: (percentage: number) => void,
+  ) => {
     if (!file || !file.type.startsWith("image/")) {
       return { file, compressionFailed: false };
     }
@@ -380,6 +389,9 @@ export default function StudentStationDetailPage() {
           maxWidthOrHeight: 1920,
           useWebWorker: true,
           fileType: "image/jpeg", // Always convert to JPEG for compatibility
+          onProgress: (p) => {
+            onProgress?.(Math.round(p * 0.2));
+          },
         }),
         compressionFailed: false,
       };
@@ -396,13 +408,17 @@ export default function StudentStationDetailPage() {
     missionId,
     questionId,
     useFallback,
+    onProgress,
   }: {
     file: File;
     campId: number;
     missionId: number;
     questionId: number;
     useFallback: boolean;
+    onProgress?: (percentage: number) => void;
   }) => {
+    onProgress?.(20);
+
     const signatureResponse = await fetch(
       "/api/student/mission/upload-signature",
       {
@@ -428,6 +444,8 @@ export default function StudentStationDetailPage() {
       throw error;
     }
 
+    onProgress?.(25);
+
     const uploadForm = new FormData();
 
     uploadForm.append("file", file, file.name || "mission-image.jpg");
@@ -444,22 +462,63 @@ export default function StudentStationDetailPage() {
       uploadForm.append("transformation", signatureData.transformation);
     }
 
-    const uploadResponse = await fetch(
-      `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
-      { method: "POST", body: uploadForm },
-    );
-    const uploadData = await uploadResponse.json().catch(() => null);
+    const uploadData: any = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
 
-    if (!uploadResponse.ok || !uploadData?.secure_url) {
+      xhr.open(
+        "POST",
+        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
+      );
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = 25 + Math.round((event.loaded / event.total) * 65);
+
+          onProgress?.(Math.min(percent, 90));
+        }
+      };
+
+      xhr.onload = () => {
+        try {
+          const response = JSON.parse(xhr.responseText);
+
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(response);
+          } else {
+            const error: any = new Error(
+              response?.error?.message || "อัปโหลดรูปภาพไม่สำเร็จ",
+            );
+
+            error.status = xhr.status;
+            error.retryable = xhr.status === 429 || xhr.status >= 500;
+            reject(error);
+          }
+        } catch {
+          reject(new Error("เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง"));
+        }
+      };
+
+      xhr.onerror = () => {
+        const error: any = new Error("การเชื่อมต่อเพื่ออัปโหลดรูปล้มเหลว");
+
+        error.retryable = true;
+        reject(error);
+      };
+
+      xhr.send(uploadForm);
+    });
+
+    if (!uploadData?.secure_url) {
       const error: any = new Error(
         uploadData?.error?.message || "อัปโหลดรูปภาพไม่สำเร็จ",
       );
 
-      error.status = uploadResponse.status;
-      error.retryable =
-        uploadResponse.status === 429 || uploadResponse.status >= 500;
+      error.status = 500;
+      error.retryable = true;
       throw error;
     }
+
+    onProgress?.(90);
 
     const commitResponse = await fetch("/api/student/mission/upload-commit", {
       method: "POST",
@@ -490,6 +549,8 @@ export default function StudentStationDetailPage() {
       throw error;
     }
 
+    onProgress?.(100);
+
     return {
       url: commitData.url,
       public_id: commitData.publicId,
@@ -509,11 +570,22 @@ export default function StudentStationDetailPage() {
     }
 
     const MAX_RETRIES = 3;
+
     setUploadingQids((current) =>
       current.includes(questionId) ? current : [...current, questionId],
     );
+    setUploadProgress((current) => ({
+      ...current,
+      [questionId]: 0,
+    }));
+
     try {
-      const compressionResult = await compressImage(file);
+      const compressionResult = await compressImage(file, (p) => {
+        setUploadProgress((current) => ({
+          ...current,
+          [questionId]: p,
+        }));
+      });
       const uploadFile = compressionResult.file;
       // Files up to 5MB go directly to Cloudinary without an incoming
       // transformation. Only larger files use the fallback transformation.
@@ -529,6 +601,12 @@ export default function StudentStationDetailPage() {
             missionId: selectedMission?.mission_id,
             questionId,
             useFallback,
+            onProgress: (p) => {
+              setUploadProgress((current) => ({
+                ...current,
+                [questionId]: p,
+              }));
+            },
           });
 
           handleAnswerChange(questionId, data.url);
@@ -581,6 +659,13 @@ export default function StudentStationDetailPage() {
       setUploadingQids((current) =>
         current.filter((qid) => qid !== questionId),
       );
+      setUploadProgress((current) => {
+        const next = { ...current };
+
+        delete next[questionId];
+
+        return next;
+      });
     }
   };
 
@@ -857,28 +942,26 @@ export default function StudentStationDetailPage() {
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">
-                <span className="text-sm font-normal text-gray-600">
-                  ทำภารกิจ
-                </span>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-medium text-gray-900 truncate">
-                    {selectedMission?.title?.replace(
-                      /\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g,
-                      "",
-                    )}
-                  </h2>
+              <ModalHeader className="flex flex-col gap-1 pb-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[#5d7c6f] uppercase tracking-wider">
+                  <span>ทำภารกิจ</span>
                   {selectedMission?.type === "PRE_TEST" && (
-                    <span className="shrink-0 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                    <span className="shrink-0 bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-medium">
                       ก่อนเรียน
                     </span>
                   )}
                   {selectedMission?.type === "POST_TEST" && (
-                    <span className="shrink-0 bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                    <span className="shrink-0 bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-medium">
                       หลังเรียน
                     </span>
                   )}
                 </div>
+                <h2 className="text-xl font-bold text-gray-900 leading-tight">
+                  {selectedMission?.title?.replace(
+                    /\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g,
+                    "",
+                  )}
+                </h2>
               </ModalHeader>
 
               <ModalBody className="py-6 space-y-6">
@@ -1106,7 +1189,7 @@ export default function StudentStationDetailPage() {
 
                 {/* Questions (for non-QR missions) */}
                 {selectedMission?.type !== "QR_CODE_SCANNING" && (
-                  <div className="space-y-6">
+                  <div className="space-y-5">
                     {(() => {
                       const currentResult = camp?.missionResults?.find(
                         (r: any) =>
@@ -1123,10 +1206,18 @@ export default function StudentStationDetailPage() {
                             : null;
 
                           return (
-                            <div key={q.question_id} className="space-y-3">
-                              <label className="block font-medium text-gray-700 break-words leading-relaxed">
-                                {idx + 1}. {q.question_text}
-                              </label>
+                            <div
+                              key={q.question_id}
+                              className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-200/80 shadow-xs space-y-4"
+                            >
+                              <div className="flex items-start gap-3">
+                                <span className="shrink-0 w-7 h-7 rounded-xl bg-[#5d7c6f]/10 text-[#5d7c6f] text-xs font-bold flex items-center justify-center mt-0.5">
+                                  {idx + 1}
+                                </span>
+                                <label className="font-semibold text-gray-800 text-sm sm:text-base leading-snug break-words pt-0.5">
+                                  {q.question_text}
+                                </label>
+                              </div>
 
                               {isVideoSubmission ? (
                                 <div className="space-y-3">
@@ -1241,94 +1332,192 @@ export default function StudentStationDetailPage() {
 
                               {q.question_type === "PHOTO" && (
                                 <div className="space-y-3">
+                                  <input
+                                    accept="image/*"
+                                    className="hidden"
+                                    id={`file-${q.question_id}`}
+                                    type="file"
+                                    onChange={(e) => {
+                                      const file = e.currentTarget.files?.[0];
+
+                                      // Allow retrying the same file after a failed upload.
+                                      e.currentTarget.value = "";
+
+                                      if (file)
+                                        handleImageUpload(
+                                          q.question_id,
+                                          file,
+                                        );
+                                    }}
+                                  />
+
                                   {answers[q.question_id] ? (
-                                    <div className="relative group w-full max-w-sm">
-                                      <img
-                                        alt="Uploaded"
-                                        className="w-full h-48 object-cover rounded-xl border border-gray-200"
-                                        src={toThumbnail(
-                                          answers[q.question_id],
-                                        )}
-                                      />
-                                      {!isSubmitted && (
-                                        <button
-                                          className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors"
-                                          onClick={() => {
-                                            handleAnswerChange(
-                                              q.question_id,
-                                              "",
-                                            );
-                                            setAnswerPublicIds((current) => {
-                                              const next = { ...current };
+                                    <div className="w-full rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-xs transition-all">
+                                      {/* Top status bar */}
+                                      <div className="flex items-center justify-between px-3.5 py-2.5 bg-gray-50/90 border-b border-gray-200">
+                                        <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold">
+                                          <CheckCircle2
+                                            size={16}
+                                            className="text-emerald-600 shrink-0"
+                                          />
+                                          <span>อัปโหลดรูปภาพสำเร็จแล้ว</span>
+                                        </div>
 
-                                              delete next[q.question_id];
+                                        <div className="flex items-center gap-1">
+                                          <button
+                                            type="button"
+                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-700 hover:bg-white hover:shadow-xs border border-transparent hover:border-gray-200 transition-all cursor-pointer"
+                                            title="ดูรูปภาพขนาดเต็ม"
+                                            onClick={() =>
+                                              setPreviewFullImageUrl(
+                                                answers[q.question_id],
+                                              )
+                                            }
+                                          >
+                                            <Eye
+                                              size={14}
+                                              className="text-gray-500"
+                                            />
+                                            <span className="hidden sm:inline">
+                                              ดูรูปขยาย
+                                            </span>
+                                          </button>
 
-                                              return next;
-                                            });
+                                          {!isSubmitted && (
+                                            <>
+                                              <button
+                                                type="button"
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-700 hover:bg-white hover:shadow-xs border border-transparent hover:border-gray-200 transition-all cursor-pointer"
+                                                title="เปลี่ยนรูปภาพใหม่"
+                                                onClick={() =>
+                                                  document
+                                                    .getElementById(
+                                                      `file-${q.question_id}`,
+                                                    )
+                                                    ?.click()
+                                                }
+                                              >
+                                                <RefreshCw
+                                                  size={14}
+                                                  className="text-gray-500"
+                                                />
+                                                <span className="hidden sm:inline">
+                                                  เปลี่ยนรูป
+                                                </span>
+                                              </button>
+
+                                              <button
+                                                type="button"
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-all cursor-pointer"
+                                                title="ลบรูปภาพนี้"
+                                                onClick={() => {
+                                                  handleAnswerChange(
+                                                    q.question_id,
+                                                    "",
+                                                  );
+                                                  setAnswerPublicIds(
+                                                    (current) => {
+                                                      const next = {
+                                                        ...current,
+                                                      };
+
+                                                      delete next[
+                                                        q.question_id
+                                                      ];
+
+                                                      return next;
+                                                    },
+                                                  );
+                                                }}
+                                              >
+                                                <Trash2 size={14} />
+                                                <span className="hidden sm:inline">
+                                                  ลบ
+                                                </span>
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Image preview canvas with object-contain to preserve full aspect ratio */}
+                                      <div
+                                        className="relative group p-3 sm:p-4 bg-slate-900/5 flex items-center justify-center min-h-[220px] max-h-[360px] cursor-pointer overflow-hidden"
+                                        onClick={() =>
+                                          setPreviewFullImageUrl(
+                                            answers[q.question_id],
+                                          )
+                                        }
+                                      >
+                                        <img
+                                          alt="Uploaded preview"
+                                          className="max-h-[320px] w-auto max-w-full rounded-xl object-contain shadow-xs transition-transform duration-200 group-hover:scale-[1.01]"
+                                          src={toThumbnail(
+                                            answers[q.question_id],
+                                          )}
+                                        />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs backdrop-blur-[2px]">
+                                          <Eye size={16} />
+                                          <span>คลิกเพื่อดูรูปภาพขนาดเต็ม</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : uploadingQids.includes(q.question_id) ? (
+                                    <div className="w-full bg-[#5d7c6f]/5 border-2 border-dashed border-[#5d7c6f]/40 py-8 px-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all">
+                                      <div className="w-16 h-16 rounded-full bg-white shadow-sm border border-[#5d7c6f]/20 flex items-center justify-center relative">
+                                        <div className="w-12 h-12 border-3 border-[#5d7c6f]/20 border-t-[#5d7c6f] rounded-full animate-spin absolute" />
+                                        <span className="text-sm font-bold font-mono text-[#5d7c6f]">
+                                          {uploadProgress[q.question_id] ?? 0}%
+                                        </span>
+                                      </div>
+
+                                      <div className="space-y-1 text-center">
+                                        <p className="text-sm font-semibold text-gray-800">
+                                          กำลังอัปโหลดรูปภาพ...{" "}
+                                          {uploadProgress[q.question_id] ?? 0}%
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                          ระบบกำลังประมวลผลและบีบอัดภาพเพื่อคุณภาพที่ดีที่สุด
+                                        </p>
+                                      </div>
+
+                                      <div className="w-full max-w-xs h-2 bg-gray-200/80 rounded-full overflow-hidden">
+                                        <div
+                                          className="h-full bg-gradient-to-r from-[#5d7c6f] to-[#3d5a4e] rounded-full transition-all duration-150 ease-out"
+                                          style={{
+                                            width: `${uploadProgress[q.question_id] ?? 0}%`,
                                           }}
-                                        >
-                                          <X size={16} />
-                                        </button>
-                                      )}
+                                        />
+                                      </div>
                                     </div>
                                   ) : (
-                                    <div className="flex flex-col gap-3">
-                                      <input
-                                        accept="image/*"
-                                        className="hidden"
-                                        id={`file-${q.question_id}`}
-                                        type="file"
-                                        onChange={(e) => {
-                                          const file =
-                                            e.currentTarget.files?.[0];
-
-                                          // Allow retrying the same file after a failed upload.
-                                          e.currentTarget.value = "";
-
-                                          if (file)
-                                            handleImageUpload(
-                                              q.question_id,
-                                              file,
-                                            );
-                                        }}
-                                      />
-                                      <div className="flex gap-3">
-                                        <Button
-                                          className="flex-1 bg-white border-2 border-dashed border-gray-300 hover:border-[#5d7c6f] hover:text-[#5d7c6f] py-4 h-auto rounded-xl transition-all flex flex-col gap-1"
-                                          isDisabled={
-                                            isSubmitted ||
-                                            uploadingQids.length > 0
-                                          }
-                                          isLoading={uploadingQids.includes(
-                                            q.question_id,
-                                          )}
-                                          onPress={() =>
-                                            document
-                                              .getElementById(
-                                                `file-${q.question_id}`,
-                                              )
-                                              ?.click()
-                                          }
-                                        >
-                                          {uploadingQids.includes(
-                                            q.question_id,
-                                          ) ? (
-                                            <span className="text-sm font-medium ml-2">
-                                              กำลังอัปโหลด...
-                                            </span>
-                                          ) : (
-                                            <div className="flex flex-col items-center gap-1">
-                                              <Camera size={24} />
-                                              <span className="text-sm font-medium">
-                                                ถ่ายรูป / เลือกรูป
-                                              </span>
-                                              <span className="text-[10px] text-gray-600 font-normal">
-                                                ขนาดไฟล์รูปภาพสูงสุด 20MB
-                                              </span>
-                                            </div>
-                                          )}
-                                        </Button>
+                                    <div
+                                      className="w-full bg-white border-2 border-dashed border-gray-300 hover:border-[#5d7c6f] hover:bg-[#5d7c6f]/5 p-6 sm:p-8 rounded-2xl transition-all flex flex-col items-center justify-center gap-3 text-center cursor-pointer group"
+                                      onClick={() => {
+                                        if (!isSubmitted) {
+                                          document
+                                            .getElementById(
+                                              `file-${q.question_id}`,
+                                            )
+                                            ?.click();
+                                        }
+                                      }}
+                                    >
+                                      <div className="w-14 h-14 rounded-2xl bg-[#5d7c6f]/10 text-[#5d7c6f] flex items-center justify-center group-hover:scale-105 group-hover:bg-[#5d7c6f] group-hover:text-white transition-all shadow-xs">
+                                        <Camera size={26} />
                                       </div>
+                                      <div className="space-y-1">
+                                        <p className="text-sm font-semibold text-gray-800 group-hover:text-[#5d7c6f] transition-colors">
+                                          ถ่ายรูป หรือ เลือกไฟล์รูปภาพ
+                                        </p>
+                                        <p className="text-xs text-gray-500 font-normal">
+                                          รองรับไฟล์ JPG, PNG, WEBP ขนาดไม่เกิน 20MB
+                                        </p>
+                                      </div>
+                                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gray-100 group-hover:bg-[#5d7c6f]/15 text-xs font-semibold text-gray-700 group-hover:text-[#5d7c6f] transition-colors">
+                                        <Camera size={14} />
+                                        เลือกรูปภาพ
+                                      </span>
                                     </div>
                                   )}
                                 </div>
@@ -1342,7 +1531,7 @@ export default function StudentStationDetailPage() {
                 )}
               </ModalBody>
 
-              <ModalFooter>
+              <ModalFooter className="flex items-center justify-between sm:justify-end gap-3 px-6 py-4">
                 {(() => {
                   const currentResult = camp?.missionResults?.find(
                     (r: any) =>
@@ -1355,7 +1544,8 @@ export default function StudentStationDetailPage() {
                   if (isQr) {
                     return (
                       <Button
-                        className="bg-gray-100 text-gray-700"
+                        className="bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+                        variant="flat"
                         onPress={onClose}
                       >
                         ปิดหน้าต่าง
@@ -1380,12 +1570,20 @@ export default function StudentStationDetailPage() {
 
                   return (
                     <>
-                      <Button color="danger" variant="light" onPress={onClose}>
+                      <Button
+                        className="bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+                        variant="flat"
+                        onPress={onClose}
+                      >
                         ปิดหน้าต่าง
                       </Button>
                       {!isSubmitted && (
                         <Button
-                          className={`text-white font-medium ${canSubmit ? "bg-[#5d7c6f]" : "bg-gray-500 hover:bg-gray-600"}`}
+                          className={`font-semibold text-white transition-all shadow-xs ${
+                            canSubmit
+                              ? "bg-[#5d7c6f] hover:bg-[#4a6659]"
+                              : "bg-gray-400 hover:bg-gray-500"
+                          }`}
                           isDisabled={
                             submitting ||
                             isUploading ||
@@ -1395,7 +1593,12 @@ export default function StudentStationDetailPage() {
                           onPress={submitMission}
                         >
                           {isUploading
-                            ? "กำลังอัปโหลด..."
+                            ? `กำลังอัปโหลด... ${
+                                uploadingQids.length === 1 &&
+                                uploadProgress[uploadingQids[0]] !== undefined
+                                  ? `${uploadProgress[uploadingQids[0]]}%`
+                                  : ""
+                              }`.trim()
                             : allAnswered || isSinglePhotoSubmission
                               ? "ส่งคำตอบ"
                               : "บันทึกร่าง"}
@@ -1404,6 +1607,53 @@ export default function StudentStationDetailPage() {
                     </>
                   );
                 })()}
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Full Image Preview Lightbox Modal */}
+      <Modal
+        classNames={{
+          base: "bg-black/95 text-white max-h-[90vh]",
+          header: "border-b border-white/10 text-white",
+          body: "p-2 sm:p-4 flex items-center justify-center",
+          footer: "border-t border-white/10",
+        }}
+        isOpen={!!previewFullImageUrl}
+        scrollBehavior="inside"
+        size="4xl"
+        onClose={() => setPreviewFullImageUrl(null)}
+      >
+        <ModalContent>
+          {(onClosePreview) => (
+            <>
+              <ModalHeader className="flex items-center justify-between text-white">
+                <div className="flex items-center gap-2">
+                  <Eye className="text-emerald-400" size={18} />
+                  <span className="text-sm sm:text-base font-medium">
+                    ดูรูปภาพขนาดเต็ม
+                  </span>
+                </div>
+              </ModalHeader>
+              <ModalBody>
+                {previewFullImageUrl && (
+                  <img
+                    alt="รูปภาพขนาดเต็ม"
+                    className="max-h-[75vh] w-auto max-w-full object-contain rounded-lg shadow-2xl mx-auto"
+                    src={previewFullImageUrl}
+                  />
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  className="bg-white/15 text-white hover:bg-white/25"
+                  variant="flat"
+                  onPress={onClosePreview}
+                >
+                  ปิด
+                </Button>
               </ModalFooter>
             </>
           )}
