@@ -9,6 +9,7 @@ import {
   ModalFooter,
   Button,
   Pagination,
+  Avatar,
 } from "@heroui/react";
 import {
   Search,
@@ -29,6 +30,9 @@ import CampLocationTracker from "@/components/camp-location/CampLocationTracker"
 interface StudentProgress {
   studentId: number;
   name: string;
+  nickname: string | null;
+  profileImageUrl: string | null;
+  initials: string;
   completedMissions: number;
   totalMissions: number;
   progressPercentage: number;
@@ -230,9 +234,10 @@ export default function TrackingModal({
     if (!query) return true;
 
     const matchName = student.name.toLowerCase().includes(query);
+    const matchNickname = student.nickname?.toLowerCase().includes(query);
     const matchId = String(student.studentId).includes(query);
 
-    return matchName || matchId;
+    return matchName || matchNickname || matchId;
   });
 
   const pages = Math.ceil((filteredStudents?.length || 0) / ITEMS_PER_PAGE);
@@ -327,7 +332,7 @@ export default function TrackingModal({
                 </div>
                 <input
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/20 focus:border-[#5d7c6f] transition-all bg-white"
-                  placeholder="ค้นหาชื่อหรือรหัสนักเรียน..."
+                  placeholder="ค้นหาชื่อ ชื่อเล่น หรือรหัสนักเรียน..."
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -492,16 +497,24 @@ export default function TrackingModal({
                     key={student.studentId}
                     className="grid gap-3 px-4 py-2.5 sm:grid-cols-[minmax(0,1.2fr)_minmax(240px,1fr)_auto] sm:items-center"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-600">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="w-5 shrink-0 text-center text-xs font-semibold text-gray-400">
                         {(page - 1) * ITEMS_PER_PAGE + i + 1}
-                      </div>
+                      </span>
+                      <Avatar
+                        className="h-10 w-10 shrink-0 bg-[#e8f0ee] text-[#3d6357]"
+                        imgProps={{ alt: `รูปโปรไฟล์ของ ${student.name}` }}
+                        name={student.initials}
+                        src={student.profileImageUrl || undefined}
+                      />
                       <div className="min-w-0">
-                        <h3 className="break-words text-sm font-semibold leading-6 text-gray-900">
+                        <h3 className="break-words text-sm font-medium leading-6 text-gray-900">
                           {student.name}
                         </h3>
-                        <p className="text-xs text-gray-400">
-                          รหัสนักเรียน {student.studentId}
+                        <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-gray-400 font-light">
+                          <span>ชื่อเล่น: {student.nickname || "-"}</span>
+                          <span aria-hidden="true">·</span>
+                          <span>รหัสนักเรียน {student.studentId}</span>
                         </p>
                       </div>
                     </div>

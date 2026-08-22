@@ -1,17 +1,23 @@
 // @ts-nocheck
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { createShirtPdf } from "@/lib/shirt-export-pdf";
 
-export async function GET(request, { params }) {
+export const runtime = "nodejs";
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   const { teacher, error } = await requireTeacher();
 
   if (error) return error;
 
   try {
-    const p = await params;
-    const campId = parseInt(p.id);
+    const { id } = await context.params;
+    const campId = parseInt(id);
 
     if (isNaN(campId)) {
       return NextResponse.json({ error: "Invalid camp ID" }, { status: 400 });
@@ -61,7 +67,6 @@ export async function GET(request, { params }) {
       );
     }
 
-    // If Admin but not found in the above query, just fetch the basic camp
     const adminCamp =
       camp ||
       (await prisma.camp.findUnique({
@@ -73,7 +78,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Camp not found" }, { status: 404 });
     }
 
-    // Fetch enrollments that belong to the classrooms assigned to this camp, and ONLY if they actually enrolled
+    // Fetch enrollments
     const enrollments = await prisma.student_enrollment.findMany({
       where: {
         camp_camp_id: campId,
@@ -99,9 +104,8 @@ export async function GET(request, { params }) {
       },
     });
 
-    // Process data
     let totalShirts = 0;
-    const sizeSummary = {};
+    const sizeSummary: Record<string, number> = {};
     const students = [];
 
     const campClassroomIds = adminCamp.camp_classroom.map(
@@ -118,7 +122,6 @@ export async function GET(request, { params }) {
         sizeSummary["รอระบุไซส์"] = (sizeSummary["รอระบุไซส์"] || 0) + 1;
       }
 
-      // Find which of the student's classrooms is the one participating in this camp
       let classroomStr = "-";
       const matchedCs =
         enr.student.classroom_students.find((cs) =>
@@ -140,28 +143,36 @@ export async function GET(request, { params }) {
         studentId: enr.student.students_id,
         name: `${enr.student.prefix_name || ""}${enr.student.firstname} ${enr.student.lastname}`,
         nickname: enr.student.nickname,
-        profileImageUrl: enr.student.profile_image_url,
-        initials: `${enr.student.firstname.charAt(0)}${enr.student.lastname.charAt(0)}`,
         classroom: classroomStr,
         shirtSize: enr.shirt_size || null,
-        enrolledAt: enr.enrolled_at,
+        enrolledAt: enr.enrolled_at ? enr.enrolled_at.toISOString() : undefined,
       });
     }
 
-    return NextResponse.json({
-      campId: adminCamp.camp_id,
+    const pdfBytes = await createShirtPdf({
       campName: adminCamp.name,
-      hasShirt: adminCamp.has_shirt,
       summary: sizeSummary,
       totalShirts,
       totalStudents: students.length,
       students,
     });
-  } catch {
-    //     console.error("Error fetching shirt tracking data:", error);
+
+    const sanitizedCampName = encodeURIComponent(
+      adminCamp.name.replace(/[/\\?%*:|"<>]/g, "-"),
+    );
+
+    return new NextResponse(Buffer.from(pdfBytes), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="shirts-${sanitizedCampName}-${campId}.pdf"; filename*=UTF-8''shirts-${sanitizedCampName}-${campId}.pdf`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } catch (err) {
+    console.error("Failed to generate shirt PDF:", err);
 
     return NextResponse.json(
-      { _error: "Failed to fetch shirt tracking data" },
+      { error: "Failed to generate shirt PDF" },
       { status: 500 },
     );
   }

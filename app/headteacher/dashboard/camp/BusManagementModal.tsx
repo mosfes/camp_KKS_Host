@@ -6,6 +6,7 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Avatar,
   Select,
   SelectItem,
 } from "@heroui/react";
@@ -17,6 +18,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Mars,
   MapPin,
   Pencil,
   Plus,
@@ -24,7 +26,9 @@ import {
   Save,
   Trash2,
   UserCheck,
+  UserRound,
   Users,
+  Venus,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -58,6 +62,10 @@ type Assignment = {
   studentEnrollmentId: number;
   studentId: number;
   studentName: string;
+  firstName: string;
+  prefixName: string | null;
+  nickname: string | null;
+  profileImageUrl: string | null;
   positionId: number | null;
   positionLabel: string | null;
   floorNumber: number | null;
@@ -79,6 +87,45 @@ type Position = {
 type RowCountValue = number | "";
 type StudentStatusFilter = "all" | "registered" | "unregistered";
 type BusStudentStatusFilter = "all" | "on" | "off";
+
+function StudentAvatarFallback({
+  prefixName,
+  size,
+}: {
+  prefixName: string | null;
+  size: "xs" | "sm" | "md";
+}) {
+  const isFemale = prefixName === "เด็กหญิง" || prefixName === "นางสาว";
+  const isMale = prefixName === "เด็กชาย" || prefixName === "นาย";
+  const personSize = size === "xs" ? 10 : size === "sm" ? 13 : 18;
+  const genderSize = size === "xs" ? 6 : size === "sm" ? 8 : 10;
+
+  if (isFemale || isMale) {
+    const GenderIcon = isFemale ? Venus : Mars;
+
+    return (
+      <span
+        aria-label={isFemale ? "นักเรียนหญิง" : "นักเรียนชาย"}
+        className="relative inline-flex h-full w-full items-center justify-center"
+      >
+        <UserRound aria-hidden="true" size={personSize} />
+        <GenderIcon
+          aria-hidden="true"
+          className={`absolute bottom-0 right-0 rounded-full bg-white ${isFemale ? "text-rose-500" : "text-blue-500"}`}
+          size={genderSize}
+          strokeWidth={2.75}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <UserRound
+      aria-label="นักเรียน"
+      size={size === "xs" ? 10 : size === "sm" ? 12 : 17}
+    />
+  );
+}
 
 type SavingAction = "create" | "save" | "update" | "delete" | "status";
 
@@ -364,9 +411,10 @@ export default function BusManagementModal({
     useState<BusStudentStatusFilter>("all");
   const [loading, setLoading] = useState(false);
   const [savingAction, setSavingAction] = useState<SavingAction | null>(null);
-  const [changingAssignmentId, setChangingAssignmentId] = useState<
-    number | null
-  >(null);
+  const [changingAssignmentAction, setChangingAssignmentAction] = useState<{
+    assignmentId: number;
+    action: "status" | "not_traveling" | "active";
+  } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showEditBus, setShowEditBus] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -931,12 +979,15 @@ export default function BusManagementModal({
   };
 
   const changeStudentBusStatus = async (assignment: Assignment) => {
-    if (!selectedBus || changingAssignmentId !== null) return;
+    if (!selectedBus || changingAssignmentAction !== null) return;
 
     const action = assignment.status === "ON_BUS" ? "alight" : "board";
 
     try {
-      setChangingAssignmentId(assignment.assignmentId);
+      setChangingAssignmentAction({
+        assignmentId: assignment.assignmentId,
+        action: "status",
+      });
       const response = await fetch(
         `/api/camps/${campId}/buses/${selectedBus.busId}/${action}`,
         {
@@ -965,7 +1016,7 @@ export default function BusManagementModal({
         error.message || "กรุณาลองใหม่อีกครั้ง",
       );
     } finally {
-      setChangingAssignmentId(null);
+      setChangingAssignmentAction(null);
     }
   };
 
@@ -973,10 +1024,14 @@ export default function BusManagementModal({
     assignment: Assignment,
     participationStatus: Assignment["participationStatus"],
   ) => {
-    if (!selectedBus || changingAssignmentId !== null) return;
+    if (!selectedBus || changingAssignmentAction !== null) return;
 
     try {
-      setChangingAssignmentId(assignment.assignmentId);
+      setChangingAssignmentAction({
+        assignmentId: assignment.assignmentId,
+        action:
+          participationStatus === "NOT_TRAVELING" ? "not_traveling" : "active",
+      });
       const response = await fetch(
         `/api/camps/${campId}/buses/${selectedBus.busId}/participation`,
         {
@@ -1007,7 +1062,7 @@ export default function BusManagementModal({
         error.message || "กรุณาลองใหม่อีกครั้ง",
       );
     } finally {
-      setChangingAssignmentId(null);
+      setChangingAssignmentAction(null);
     }
   };
 
@@ -1089,6 +1144,7 @@ export default function BusManagementModal({
       const matchesSearch =
         !query ||
         assignment.studentName.toLocaleLowerCase().includes(query) ||
+        assignment.nickname?.toLocaleLowerCase().includes(query) ||
         String(assignment.studentId).includes(query);
       const isAlreadySeated = seatedAssignmentIds.has(assignment.assignmentId);
 
@@ -1160,6 +1216,7 @@ export default function BusManagementModal({
       const matchesSearch =
         !query ||
         assignment.studentName.toLocaleLowerCase().includes(query) ||
+        assignment.nickname?.toLocaleLowerCase().includes(query) ||
         String(assignment.studentId).includes(query);
 
       return matchesStatus && matchesSearch;
@@ -1709,11 +1766,11 @@ export default function BusManagementModal({
                                       return (
                                         <button
                                           key={position.positionId}
-                                          className={`min-h-16 min-w-0 overflow-hidden rounded-xl border p-1.5 text-center transition ${seatStateClass} ${selectedPositionId === position.positionId ? "border-[#365f4f] ring-2 ring-[#6b857a]/30" : ""} ${seatGridColumnClass(position.seatIndex)}`}
+                                          className={`flex h-[76px] min-w-0 flex-col overflow-hidden rounded-xl border p-1.5 text-left transition ${seatStateClass} ${selectedPositionId === position.positionId ? "border-[#365f4f] ring-2 ring-[#6b857a]/30" : ""} ${seatGridColumnClass(position.seatIndex)}`}
                                           disabled={savingAction !== null}
                                           title={
                                             assignment
-                                              ? `${assignment.studentId} · ${assignment.studentName}`
+                                              ? `${assignment.studentId} · ${assignment.studentName}${assignment.nickname ? ` · ชื่อเล่น ${assignment.nickname}` : ""}`
                                               : `${position.label} ว่าง`
                                           }
                                           onClick={() =>
@@ -1722,24 +1779,52 @@ export default function BusManagementModal({
                                             )
                                           }
                                         >
-                                          <span className="block text-[10px] font-semibold text-gray-700">
-                                            {position.label}
+                                          <span className="flex h-4 shrink-0 items-center justify-between gap-1">
+                                            <span className="truncate text-[9px] font-semibold text-gray-700">
+                                              {position.label}
+                                            </span>
+                                            {assignment && (
+                                              <span
+                                                className={`shrink-0 rounded-full px-1 py-0.5 text-[7px] font-semibold leading-none ${isOnBus ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}
+                                              >
+                                                {isOnBus ? "บนรถ" : "ลงรถ"}
+                                              </span>
+                                            )}
                                           </span>
                                           {assignment ? (
-                                            <>
-                                              <span className="mt-1 block min-w-0 truncate text-[10px] font-medium">
-                                                {assignment.studentName}
+                                            <span className="mt-1 flex min-h-0 flex-1 items-center gap-1.5">
+                                              <Avatar
+                                                className="h-5 w-5 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-[#3d6357]"
+                                                fallback={
+                                                  <StudentAvatarFallback
+                                                    prefixName={
+                                                      assignment.prefixName
+                                                    }
+                                                    size="sm"
+                                                  />
+                                                }
+                                                src={
+                                                  assignment.profileImageUrl ||
+                                                  undefined
+                                                }
+                                              />
+                                              <span className="min-w-0 flex-1">
+                                                <span className="block h-3 truncate text-[10px] font-bold leading-3 text-gray-800">
+                                                  {assignment.firstName}
+                                                </span>
+                                                <span
+                                                  aria-hidden={
+                                                    !assignment.nickname
+                                                  }
+                                                  className={`block h-3 truncate text-[9px] font-semibold leading-3 ${assignment.nickname ? "text-[#46695c]" : "invisible"}`}
+                                                >
+                                                  {assignment.nickname ||
+                                                    "ชื่อเล่น"}
+                                                </span>
                                               </span>
-                                              <span
-                                                className={`mt-0.5 block text-[9px] font-semibold ${isOnBus ? "text-green-700" : "text-gray-500"}`}
-                                              >
-                                                {isOnBus
-                                                  ? "อยู่บนรถ"
-                                                  : "ไม่อยู่บนรถ"}
-                                              </span>
-                                            </>
+                                            </span>
                                           ) : (
-                                            <span className="mt-2 block text-[11px] font-medium text-gray-600">
+                                            <span className="flex min-h-0 flex-1 items-center justify-center text-[10px] font-medium text-gray-600">
                                               ว่าง
                                             </span>
                                           )}
@@ -1808,7 +1893,7 @@ export default function BusManagementModal({
                         <input
                           aria-label="ค้นหารายชื่อนักเรียนบนรถ"
                           className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[#6b857a] focus:ring-2 focus:ring-[#6b857a]/15"
-                          placeholder="ค้นหาชื่อนักเรียน"
+                          placeholder="ค้นหาชื่อ ชื่อเล่น หรือรหัส"
                           value={busStudentSearch}
                           onChange={(event) =>
                             setBusStudentSearch(event.target.value)
@@ -1850,14 +1935,26 @@ export default function BusManagementModal({
                           key={assignment.assignmentId}
                           className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2.5"
                         >
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-gray-800">
-                              {assignment.studentName}
-                            </p>
-                            <p className="text-[11px] text-gray-400">
-                              {assignment.studentId} ·{" "}
-                              {assignment.positionLabel || "ยังไม่จัดที่นั่ง"}
-                            </p>
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <Avatar
+                              className="h-9 w-9 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-sm font-medium text-[#3d6357]"
+                              name={assignment.firstName.charAt(0) || "?"}
+                              src={assignment.profileImageUrl || undefined}
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-gray-800">
+                                {assignment.studentName}
+                              </p>
+                              {assignment.nickname && (
+                                <p className="truncate text-[11px] text-gray-500">
+                                  ชื่อเล่น: {assignment.nickname}
+                                </p>
+                              )}
+                              <p className="truncate text-[10px] text-gray-400">
+                                รหัส {assignment.studentId} ·{" "}
+                                {assignment.positionLabel || "ยังไม่จัดที่นั่ง"}
+                              </p>
+                            </div>
                           </div>
                           <div className="flex min-w-0 flex-col items-end gap-1 text-right">
                             <Button
@@ -1877,14 +1974,16 @@ export default function BusManagementModal({
                               }
                               isDisabled={
                                 selectedBus.status === "TRAVELING" ||
-                                changingAssignmentId !== null ||
+                                changingAssignmentAction !== null ||
                                 assignment.participationStatus ===
                                   "NOT_TRAVELING" ||
                                 (assignment.status === "OFF_BUS" &&
                                   assignment.positionId === null)
                               }
                               isLoading={
-                                changingAssignmentId === assignment.assignmentId
+                                changingAssignmentAction?.assignmentId ===
+                                  assignment.assignmentId &&
+                                changingAssignmentAction.action === "status"
                               }
                               size="sm"
                               variant="flat"
@@ -2041,14 +2140,26 @@ export default function BusManagementModal({
               {activeAssignment && (
                 <div className="rounded-xl border border-[#dce8e0] bg-white px-3 py-2.5 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-gray-500">
-                        นักเรียนประจำที่นั่งนี้
-                      </p>
-                      <p className="mt-0.5 break-words text-xs font-semibold text-gray-900">
-                        {activeAssignment.studentId} ·{" "}
-                        {activeAssignment.studentName}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Avatar
+                        className="h-9 w-9 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-sm font-medium text-[#3d6357]"
+                        name={activeAssignment.firstName.charAt(0) || "?"}
+                        src={activeAssignment.profileImageUrl || undefined}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-gray-500">
+                          นักเรียนประจำที่นั่งนี้
+                        </p>
+                        <p className="mt-0.5 break-words text-xs font-semibold text-gray-900">
+                          {activeAssignment.studentId} ·{" "}
+                          {activeAssignment.studentName}
+                        </p>
+                        {activeAssignment.nickname && (
+                          <p className="mt-0.5 truncate text-[10px] text-gray-500">
+                            ชื่อเล่น: {activeAssignment.nickname}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <span
                       className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${activeAssignment.status === "ON_BUS" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}
@@ -2070,10 +2181,12 @@ export default function BusManagementModal({
                     }
                     isDisabled={
                       selectedBus?.status === "TRAVELING" ||
-                      changingAssignmentId !== null
+                      changingAssignmentAction !== null
                     }
                     isLoading={
-                      changingAssignmentId === activeAssignment.assignmentId
+                      changingAssignmentAction?.assignmentId ===
+                        activeAssignment.assignmentId &&
+                      changingAssignmentAction.action === "status"
                     }
                     size="sm"
                     onPress={() =>
@@ -2150,8 +2263,10 @@ export default function BusManagementModal({
                                   : null;
                                 const isCurrent =
                                   selectedPositionId === position.positionId;
+                                const isOnBus =
+                                  assignment?.status === "ON_BUS";
                                 const seatStateClass = assignment
-                                  ? assignment.status === "ON_BUS"
+                                  ? isOnBus
                                     ? "border-green-200 bg-green-50 text-green-800"
                                     : "border-gray-300 bg-gray-100 text-gray-600"
                                   : "border-gray-200 bg-white text-gray-600";
@@ -2160,7 +2275,7 @@ export default function BusManagementModal({
                                   <button
                                     key={position.positionId}
                                     className={[
-                                      "min-h-11 min-w-0 overflow-hidden rounded-lg border px-1 py-1 text-center transition",
+                                      "flex h-14 min-w-0 flex-col overflow-hidden rounded-lg border p-1 text-left transition",
                                       seatStateClass,
                                       isCurrent
                                         ? "border-[#365f4f] ring-2 ring-[#6b857a]/30 shadow-sm"
@@ -2172,17 +2287,48 @@ export default function BusManagementModal({
                                       setSelectedPositionId(position.positionId)
                                     }
                                   >
-                                    <span className="block text-[10px] font-semibold">
-                                      {position.label}
+                                    <span className="flex h-3 shrink-0 items-center justify-between gap-0.5">
+                                      <span className="truncate text-[8px] font-semibold text-gray-700">
+                                        {position.label}
+                                      </span>
+                                      {assignment && (
+                                        <span
+                                          className={`shrink-0 rounded-full px-0.5 py-px text-[6px] font-semibold leading-none ${isOnBus ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}
+                                        >
+                                          {isOnBus ? "บน" : "ลง"}
+                                        </span>
+                                      )}
                                     </span>
-                                    <span className="mt-0.5 block min-w-0 truncate text-[9px] font-normal">
-                                      {assignment?.studentName || "ว่าง"}
-                                    </span>
-                                    {assignment && (
-                                      <span className="mt-0.5 block text-[8px] font-semibold">
-                                        {assignment.status === "ON_BUS"
-                                          ? "อยู่บนรถ"
-                                          : "ไม่อยู่บนรถ"}
+                                    {assignment ? (
+                                      <span className="mt-0.5 flex min-h-0 flex-1 items-center gap-1">
+                                        <Avatar
+                                          className="h-4 w-4 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-[#3d6357]"
+                                          fallback={
+                                            <StudentAvatarFallback
+                                              prefixName={assignment.prefixName}
+                                              size="xs"
+                                            />
+                                          }
+                                          src={
+                                            assignment.profileImageUrl ||
+                                            undefined
+                                          }
+                                        />
+                                        <span className="min-w-0 flex-1">
+                                          <span className="block h-2.5 truncate text-[8px] font-bold leading-[10px] text-gray-800">
+                                            {assignment.firstName}
+                                          </span>
+                                          <span
+                                            aria-hidden={!assignment.nickname}
+                                            className={`block h-2.5 truncate text-[7px] font-semibold leading-[10px] ${assignment.nickname ? "text-[#46695c]" : "invisible"}`}
+                                          >
+                                            {assignment.nickname || "ชื่อเล่น"}
+                                          </span>
+                                        </span>
+                                      </span>
+                                    ) : (
+                                      <span className="flex min-h-0 flex-1 items-center justify-center text-[8px] font-medium text-gray-500">
+                                        ว่าง
                                       </span>
                                     )}
                                   </button>
@@ -2318,8 +2464,8 @@ export default function BusManagementModal({
                         key={assignment.assignmentId}
                         className={
                           isAlreadySeated
-                            ? "flex h-10 min-h-10 w-full cursor-not-allowed items-center gap-2 rounded-lg bg-gray-100 px-3 py-0 text-left text-gray-400"
-                            : "flex h-10 min-h-10 w-full items-center gap-2 rounded-lg px-3 py-0 text-left text-gray-700 transition hover:bg-white"
+                            ? "flex min-h-12 w-full cursor-not-allowed items-center gap-2 rounded-lg bg-gray-100 px-3 py-1.5 text-left text-gray-400"
+                            : "flex min-h-12 w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-gray-700 transition hover:bg-white"
                         }
                         disabled={isAlreadySeated}
                         type="button"
@@ -2332,8 +2478,21 @@ export default function BusManagementModal({
                           }
                         }}
                       >
-                        <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                          {assignment.studentId} · {assignment.studentName}
+                        <Avatar
+                          className="h-7 w-7 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-xs font-medium text-[#3d6357]"
+                          name={assignment.firstName.charAt(0) || "?"}
+                          src={assignment.profileImageUrl || undefined}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-medium">
+                            {assignment.studentName}
+                          </span>
+                          <span className="block truncate text-[10px] text-gray-500">
+                            รหัส {assignment.studentId}
+                            {assignment.nickname
+                              ? ` · ชื่อเล่น: ${assignment.nickname}`
+                              : ""}
+                          </span>
                         </span>
                         {isAlreadySeated && (
                           <span className="shrink-0 text-[10px] font-semibold text-gray-500">
@@ -2475,10 +2634,11 @@ export default function BusManagementModal({
                             <div className="mt-2 grid grid-cols-2 gap-2">
                               <Button
                                 className="h-8 bg-[#e2eee7] px-2 text-[10px] font-semibold text-[#365f4f]"
-                                isDisabled={changingAssignmentId !== null}
+                                isDisabled={changingAssignmentAction !== null}
                                 isLoading={
-                                  changingAssignmentId ===
-                                  assignment.assignmentId
+                                  changingAssignmentAction?.assignmentId ===
+                                    assignment.assignmentId &&
+                                  changingAssignmentAction.action === "status"
                                 }
                                 size="sm"
                                 startContent={<Bus size={13} />}
@@ -2490,10 +2650,12 @@ export default function BusManagementModal({
                               </Button>
                               <Button
                                 className="h-8 bg-gray-100 px-2 text-[10px] font-semibold text-gray-700"
-                                isDisabled={changingAssignmentId !== null}
+                                isDisabled={changingAssignmentAction !== null}
                                 isLoading={
-                                  changingAssignmentId ===
-                                  assignment.assignmentId
+                                  changingAssignmentAction?.assignmentId ===
+                                    assignment.assignmentId &&
+                                  changingAssignmentAction.action ===
+                                    "not_traveling"
                                 }
                                 size="sm"
                                 startContent={<UserCheck size={13} />}
@@ -2551,10 +2713,11 @@ export default function BusManagementModal({
                               </p>
                               <Button
                                 className="h-7 shrink-0 bg-white px-2 text-[10px] font-semibold text-slate-700"
-                                isDisabled={changingAssignmentId !== null}
+                                isDisabled={changingAssignmentAction !== null}
                                 isLoading={
-                                  changingAssignmentId ===
-                                  assignment.assignmentId
+                                  changingAssignmentAction?.assignmentId ===
+                                    assignment.assignmentId &&
+                                  changingAssignmentAction.action === "active"
                                 }
                                 size="sm"
                                 variant="flat"
@@ -2695,7 +2858,9 @@ export default function BusManagementModal({
               {pendingBusStatus === "TRAVELING" ? (
                 <Button
                   className="min-w-0 flex-1 bg-[#365f4f] font-medium text-white sm:flex-none"
-                  isDisabled={changingAssignmentId !== null}
+                  isDisabled={
+                    changingAssignmentAction !== null || savingAction !== null
+                  }
                   isLoading={savingAction === "status"}
                   onPress={() => void changeBusStatus()}
                 >

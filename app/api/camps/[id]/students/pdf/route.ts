@@ -1,23 +1,28 @@
 // @ts-nocheck
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { createCampStudentsPdf } from "@/lib/camp-students-export-pdf";
 
-export async function GET(request, { params }) {
+export const runtime = "nodejs";
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   const { teacher, error } = await requireTeacher();
 
   if (error) return error;
 
   try {
-    const p = await params;
-    const campId = parseInt(p.id);
+    const { id } = await context.params;
+    const campId = parseInt(id);
 
     if (isNaN(campId)) {
       return NextResponse.json({ error: "Invalid camp ID" }, { status: 400 });
     }
 
-    // Verify access
     const camp = await prisma.camp.findFirst({
       where: {
         camp_id: campId,
@@ -61,7 +66,6 @@ export async function GET(request, { params }) {
       );
     }
 
-    // If Admin but not found in the above query, just fetch the basic camp
     const adminCamp =
       camp ||
       (await prisma.camp.findUnique({
@@ -73,11 +77,9 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Camp not found" }, { status: 404 });
     }
 
-    // Fetch enrollments that belong to the classrooms assigned to this camp, and ONLY if they actually enrolled
     const enrollments = await prisma.student_enrollment.findMany({
       where: {
         camp_camp_id: campId,
-        enrolled_at: { not: null },
       },
       include: {
         student: {
@@ -93,37 +95,43 @@ export async function GET(request, { params }) {
             },
           },
         },
+        certificate: {
+          select: { certificate_no: true },
+          take: 1,
+        },
       },
       orderBy: {
-        enrolled_at: "asc",
+        student: { firstname: "asc" },
       },
     });
-
-    // Process data
-    let totalShirts = 0;
-    const sizeSummary = {};
-    const students = [];
 
     const campClassroomIds = adminCamp.camp_classroom.map(
       (cc) => cc.classroom_classroom_id,
     );
 
-    for (const enr of enrollments) {
-      const size = enr.shirt_size || "รอระบุไซส์";
+    let allergiesCount = 0;
+    let chronicDiseasesCount = 0;
+    let remarksCount = 0;
 
-      if (enr.shirt_size) {
-        totalShirts++;
-        sizeSummary[size] = (sizeSummary[size] || 0) + 1;
-      } else {
-        sizeSummary["รอระบุไซส์"] = (sizeSummary["รอระบุไซส์"] || 0) + 1;
-      }
+    const notSignificant = (v: string | null) => {
+      if (!v) return false;
+      const t = v.trim();
 
-      // Find which of the student's classrooms is the one participating in this camp
+      return t !== "" && t !== "-" && t !== "ไม่มี";
+    };
+
+    const students = enrollments.map((enr) => {
+      const stu = enr.student;
+
+      if (notSignificant(stu.food_allergy)) allergiesCount++;
+      if (notSignificant(stu.chronic_disease)) chronicDiseasesCount++;
+      if (notSignificant(stu.remark)) remarksCount++;
+
       let classroomStr = "-";
       const matchedCs =
-        enr.student.classroom_students.find((cs) =>
+        stu.classroom_students?.find((cs) =>
           campClassroomIds.includes(cs.classroom_classroom_id),
-        ) || enr.student.classroom_students[0];
+        ) || stu.classroom_students?.[0];
 
       if (matchedCs && matchedCs.classroom) {
         const gradeStr = String(matchedCs.classroom.grade).replace(
@@ -135,33 +143,46 @@ export async function GET(request, { params }) {
         classroomStr = `ม.${gradeStr} ห้อง ${typeStr}`.trim();
       }
 
-      students.push({
-        enrollmentId: enr.student_enrollment_id,
-        studentId: enr.student.students_id,
-        name: `${enr.student.prefix_name || ""}${enr.student.firstname} ${enr.student.lastname}`,
-        nickname: enr.student.nickname,
-        profileImageUrl: enr.student.profile_image_url,
-        initials: `${enr.student.firstname.charAt(0)}${enr.student.lastname.charAt(0)}`,
+      return {
+        studentId: stu.students_id,
+        name: `${stu.prefix_name || ""}${stu.firstname} ${stu.lastname}`.trim(),
+        nickname: stu.nickname,
         classroom: classroomStr,
-        shirtSize: enr.shirt_size || null,
-        enrolledAt: enr.enrolled_at,
-      });
-    }
+        tel: stu.tel,
+        foodAllergy: stu.food_allergy,
+        chronicDisease: stu.chronic_disease,
+        remark: stu.remark,
+        certificateNo: enr.certificate?.[0]?.certificate_no || null,
+      };
+    });
 
-    return NextResponse.json({
-      campId: adminCamp.camp_id,
+    const pdfBytes = await createCampStudentsPdf({
       campName: adminCamp.name,
-      hasShirt: adminCamp.has_shirt,
-      summary: sizeSummary,
-      totalShirts,
-      totalStudents: students.length,
+      summary: {
+        totalStudents: students.length,
+        allergiesCount,
+        chronicDiseasesCount,
+        remarksCount,
+      },
       students,
     });
-  } catch {
-    //     console.error("Error fetching shirt tracking data:", error);
+
+    const sanitizedCampName = encodeURIComponent(
+      adminCamp.name.replace(/[/\\?%*:|"<>]/g, "-"),
+    );
+
+    return new NextResponse(Buffer.from(pdfBytes), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="students-${sanitizedCampName}-${campId}.pdf"; filename*=UTF-8''students-${sanitizedCampName}-${campId}.pdf`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } catch (err) {
+    console.error("Failed to generate student PDF:", err);
 
     return NextResponse.json(
-      { _error: "Failed to fetch shirt tracking data" },
+      { error: "Failed to generate student PDF" },
       { status: 500 },
     );
   }

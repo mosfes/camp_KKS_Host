@@ -9,21 +9,31 @@ import {
   ModalFooter,
   Button,
   Pagination,
+  Avatar,
+  Tooltip,
 } from "@heroui/react";
-import { Search, Shirt } from "lucide-react";
+import { Search, Shirt, FileSpreadsheet, FileText } from "lucide-react";
 
 import CampBreadcrumb from "./CampBreadcrumb";
+
+import { exportShirtsToExcel } from "@/lib/export-shirts-excel";
+import { useStatusModal } from "@/components/StatusModalProvider";
 
 interface StudentShirt {
   enrollmentId: number;
   studentId: number;
   name: string;
+  nickname: string | null;
+  profileImageUrl: string | null;
+  initials: string;
   classroom: string;
   shirtSize: string | null;
   enrolledAt: string;
 }
 
 interface ShirtTrackingData {
+  campId?: number;
+  campName?: string;
   hasShirt: boolean;
   summary: Record<string, number>;
   totalShirts: number;
@@ -79,9 +89,12 @@ function ShirtTrackingSkeleton() {
               key={index}
               className="flex items-center justify-between gap-4 p-4"
             >
-              <div className="min-w-0 flex-1 space-y-2">
-                <ShirtSkeletonBlock className="h-3.5 w-2/5" />
-                <ShirtSkeletonBlock className="h-2.5 w-1/4" />
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <ShirtSkeletonBlock className="h-10 w-10 shrink-0 rounded-full" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <ShirtSkeletonBlock className="h-3.5 w-2/5" />
+                  <ShirtSkeletonBlock className="h-2.5 w-1/3" />
+                </div>
               </div>
               <ShirtSkeletonBlock className="h-7 w-24 rounded-lg" />
             </div>
@@ -99,7 +112,10 @@ export default function ShirtTrackingModal({
   campName,
   pageMode = false,
 }: ShirtTrackingModalProps) {
+  const { showSuccess, showError } = useStatusModal();
   const [loading, setLoading] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [data, setData] = useState<ShirtTrackingData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -133,9 +149,73 @@ export default function ShirtTrackingModal({
     }
   };
 
-  const filteredStudents = data?.students.filter((student) =>
-    student.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const effectiveCampName = campName || data?.campName || "";
+
+  const handleExportExcel = () => {
+    if (!data || !data.hasShirt || data.students.length === 0) return;
+    try {
+      setIsExportingExcel(true);
+      exportShirtsToExcel({
+        campName: effectiveCampName,
+        summary: data.summary,
+        totalShirts: data.totalShirts,
+        totalStudents: data.totalStudents,
+        students: data.students,
+      });
+      showSuccess("ส่งออกสำเร็จ", "ดาวน์โหลดไฟล์ Excel (.xlsx) เรียบร้อยแล้ว");
+    } catch (err) {
+      console.error("Failed to export Excel:", err);
+      showError("เกิดข้อผิดพลาด", "ไม่สามารถส่งออกไฟล์ Excel ได้");
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!data || !data.hasShirt || data.students.length === 0) return;
+    try {
+      setIsExportingPdf(true);
+      const res = await fetch(`/api/camps/${campId}/shirts/pdf`);
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+
+        throw new Error(errJson?.error || "ดาวน์โหลดไฟล์ PDF ไม่สำเร็จ");
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+
+      a.href = url;
+      const cleanCampName = (effectiveCampName || "camp").replace(
+        /[/\\?%*:|"<>]/g,
+        "-",
+      );
+
+      a.download = `รายการจองเสื้อ_${cleanCampName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      showSuccess("สำเร็จ", "ดาวน์โหลดไฟล์ PDF (.pdf) เรียบร้อยแล้ว");
+    } catch (err: any) {
+      console.error("Failed to export PDF:", err);
+      showError("เกิดข้อผิดพลาด", err.message || "ไม่สามารถสร้างไฟล์ PDF ได้");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const filteredStudents = data?.students.filter((student) => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return (
+      student.name.toLowerCase().includes(query) ||
+      student.nickname?.toLowerCase().includes(query) ||
+      String(student.studentId).includes(query)
+    );
+  });
 
   const pages = Math.ceil((filteredStudents?.length || 0) / ITEMS_PER_PAGE);
 
@@ -175,14 +255,14 @@ export default function ShirtTrackingModal({
             <ModalHeader
               className={`relative flex flex-col gap-1 px-6 ${
                 pageMode
-                  ? "mx-auto w-full max-w-7xl border-0 pb-8 pt-8 sm:px-8"
+                  ? "mx-auto w-full max-w-7xl border-0 pb-6 pt-8 sm:px-8"
                   : "p-6 pb-2"
               }`}
             >
               {pageMode && (
                 <CampBreadcrumb
                   campId={campId}
-                  campName={campName}
+                  campName={effectiveCampName}
                   className="mb-6"
                   currentPage="รายการจองเสื้อ"
                 />
@@ -190,19 +270,21 @@ export default function ShirtTrackingModal({
 
               <div className="flex items-center gap-3">
                 {pageMode ? (
-                  <Shirt className="shrink-0 text-[#6b857a]" size={20} />
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eaf1ee] text-[#5d7c6f] shadow-xs">
+                    <Shirt size={22} />
+                  </div>
                 ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0f4f2] text-[#6b857a]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f0f4f2] text-[#6b857a]">
                     <Shirt size={20} />
                   </div>
                 )}
-                <div>
-                  <h2 className="text-lg font-bold leading-tight text-gray-900">
+                <div className="min-w-0">
+                  <h2 className="text-xl font-bold leading-tight text-gray-900">
                     รายการจองเสื้อ
                   </h2>
-                  {campName && (
-                    <p className="mt-0.5 max-w-[300px] truncate text-sm font-normal text-gray-500">
-                      {campName}
+                  {effectiveCampName && (
+                    <p className="mt-0.5 max-w-[280px] sm:max-w-md md:max-w-lg truncate text-sm font-normal text-gray-500">
+                      {effectiveCampName}
                     </p>
                   )}
                 </div>
@@ -229,7 +311,7 @@ export default function ShirtTrackingModal({
                   </p>
                 </div>
               ) : data ? (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   {/* Summary Section */}
                   <div className="bg-[#f0f4f2]/50 rounded-2xl p-5 border border-[#d1e0d9]">
                     <h3 className="text-sm font-semibold text-[#5d7c6f] mb-3 flex items-center gap-2">
@@ -253,7 +335,7 @@ export default function ShirtTrackingModal({
                         {Object.entries(data.summary).map(([size, count]) => (
                           <div
                             key={size}
-                            className={`bg-white border px-4 py-2 rounded-xl flex items-center justify-between min-w-[100px] ${
+                            className={`bg-white border px-4 py-2 rounded-xl flex items-center justify-between min-w-[100px] shadow-xs ${
                               size === "รอระบุไซส์"
                                 ? "border-gray-200"
                                 : "border-[#d1e0d9]"
@@ -275,38 +357,105 @@ export default function ShirtTrackingModal({
                     )}
                   </div>
 
-                  {/* Search Section */}
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search className="h-5 w-5 text-gray-400" />
+                  {/* Toolbar Section: Search & Export Actions */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                    {/* Search Input */}
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                        <Search size={18} />
+                      </div>
+                      <input
+                        className="block w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/30 focus:border-[#5d7c6f] shadow-xs transition-all"
+                        placeholder="ค้นหาชื่อ ชื่อเล่น หรือรหัสนักเรียน..."
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
                     </div>
-                    <input
-                      className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5d7c6f] focus:border-[#5d7c6f] sm:text-sm transition-all"
-                      placeholder="ค้นหาชื่อนักเรียน..."
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+
+                    {/* Export Action Buttons */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Tooltip
+                        closeDelay={0}
+                        content="ดาวน์โหลดตารางสรุปและรายชื่อในรูปแบบ Excel (.xlsx)"
+                        placement="top"
+                      >
+                        <Button
+                          aria-label="ส่งออกไฟล์ Excel"
+                          className="flex-1 sm:flex-initial h-10 flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white hover:bg-emerald-50/70 hover:border-emerald-300 text-gray-700 hover:text-emerald-800 px-3.5 text-xs sm:text-sm font-medium shadow-xs transition-all active:scale-[0.98] disabled:opacity-40"
+                          isDisabled={
+                            loading || !data || data.students.length === 0
+                          }
+                          isLoading={isExportingExcel}
+                          onPress={handleExportExcel}
+                        >
+                          {!isExportingExcel && (
+                            <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
+                          )}
+                          <span>ส่งออก Excel</span>
+                        </Button>
+                      </Tooltip>
+
+                      <Tooltip
+                        closeDelay={0}
+                        content="ดาวน์โหลดรายงานสรุปและรายชื่อพร้อมพิมพ์ (.pdf)"
+                        placement="top"
+                      >
+                        <Button
+                          aria-label="ส่งออกไฟล์ PDF"
+                          className="flex-1 sm:flex-initial h-10 flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white hover:bg-rose-50/70 hover:border-rose-300 text-gray-700 hover:text-rose-800 px-3.5 text-xs sm:text-sm font-medium shadow-xs transition-all active:scale-[0.98] disabled:opacity-40"
+                          isDisabled={
+                            loading || !data || data.students.length === 0
+                          }
+                          isLoading={isExportingPdf}
+                          onPress={handleExportPdf}
+                        >
+                          {!isExportingPdf && (
+                            <FileText className="h-4 w-4 text-rose-600 shrink-0" />
+                          )}
+                          <span>ส่งออก PDF</span>
+                        </Button>
+                      </Tooltip>
+                    </div>
                   </div>
 
                   {/* Student List Section */}
                   <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
                     {paginatedStudents && paginatedStudents.length > 0 ? (
                       <div className="divide-y divide-gray-100">
-                        {paginatedStudents.map((student) => (
+                        {paginatedStudents.map((student, index) => (
                           <div
                             key={student.studentId}
-                            className="p-4 flex items-center justify-between hover:bg-gray-50/80 transition-colors"
+                            className="flex items-center justify-between gap-3 p-4 transition-colors hover:bg-gray-50/80"
                           >
-                            <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">
-                                {student.name}
-                              </h4>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {student.classroom}
-                              </p>
+                            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                              <span className="w-5 shrink-0 text-center text-xs font-semibold text-gray-400">
+                                {(page - 1) * ITEMS_PER_PAGE + index + 1}
+                              </span>
+                              <Avatar
+                                className="h-10 w-10 shrink-0 bg-[#e8f0ee] text-[#3d6357]"
+                                imgProps={{
+                                  alt: `รูปโปรไฟล์ของ ${student.name}`,
+                                }}
+                                name={student.initials}
+                                src={student.profileImageUrl || undefined}
+                              />
+                              <div className="min-w-0">
+                                <h4 className="font-medium text-gray-900">
+                                  {student.name}
+                                </h4>
+                                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-gray-500 font-light">
+                                  <span>
+                                    ชื่อเล่น: {student.nickname || "-"}
+                                  </span>
+                                  <span aria-hidden="true">·</span>
+                                  <span>รหัสนักเรียน {student.studentId}</span>
+                                  <span aria-hidden="true">·</span>
+                                  <span>{student.classroom}</span>
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
+                            <div className="flex shrink-0 flex-col items-end gap-1">
                               {student.shirtSize ? (
                                 <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm font-bold border border-green-200">
                                   ไซส์ {student.shirtSize}

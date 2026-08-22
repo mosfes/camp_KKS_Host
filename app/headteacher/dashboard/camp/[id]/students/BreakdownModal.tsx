@@ -192,7 +192,7 @@ export default function BreakdownModal({
                           className="flex items-center gap-3 text-sm"
                         >
                           <span className="text-gray-400 font-mono text-xs w-12 flex-shrink-0">
-                            #{s.id}
+                            {s.id}
                           </span>
                           <span className="text-gray-700">{s.name}</span>
                         </div>

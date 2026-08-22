@@ -55,6 +55,7 @@ export async function GET(req) {
       const searchConditions = [
         { firstname: { contains: search } },
         { lastname: { contains: search } },
+        { nickname: { contains: search } },
       ];
 
       if (/^\d+$/.test(search)) {

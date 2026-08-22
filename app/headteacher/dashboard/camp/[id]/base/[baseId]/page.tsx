@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Plus, Target, Pencil, Trash2, Eye, CheckCircle2 } from "lucide-react";
 
@@ -10,12 +10,12 @@ import CampBreadcrumb from "../../../CampBreadcrumb";
 import CreateMissionModal from "./CreateMissionModal";
 import EditMissionModal from "./EditMissionModal";
 import MonitorMissionModal from "./MonitorMissionModal";
+import BaseDetailSkeleton from "./BaseDetailSkeleton";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
 
 export default function BaseDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const { id: campId, baseId } = params;
 
   const [base, setBase] = useState<any>(null);
@@ -29,7 +29,6 @@ export default function BaseDetailPage() {
 
   const [isMonitorModalOpen, setIsMonitorModalOpen] = useState(false);
   const [monitorMissionData, setMonitorMissionData] = useState<any>(null);
-  const [navigating, setNavigating] = useState(false);
 
   useEffect(() => {
     if (baseId) {
@@ -97,11 +96,7 @@ export default function BaseDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f5f5f2] flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <BaseDetailSkeleton />;
   }
 
   if (!base) return null;
@@ -171,7 +166,7 @@ export default function BaseDetailPage() {
                     {/* Header row: title + badge + action buttons */}
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <div className="flex flex-wrap items-center gap-2 min-w-0">
-                        <span className="font-semibold text-gray-900 break-words">
+                        <span className="font-medium text-gray-900 break-words">
                           {mission.title?.replace(
                             /\s*\((ก่อนเรียน|หลังเรียน)\)\s*/g,
                             "",
@@ -259,7 +254,7 @@ export default function BaseDetailPage() {
                                 className="bg-[#6b857a]/5 p-2 rounded-lg border border-[#6b857a]/10 w-full"
                               >
                                 <p className="text-sm text-[#6b857a] font-medium break-words">
-                                  <span className="mr-2 font-bold">
+                                  <span className="mr-2 font-medium">
                                     {idx + 1}.
                                   </span>
                                   {q.question_text}

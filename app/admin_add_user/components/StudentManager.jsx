@@ -25,7 +25,8 @@ import {
     Checkbox,
     Tooltip,
     Textarea,
-    Pagination
+    Pagination,
+    Avatar
 } from "@heroui/react";
 import { useState, useEffect, useRef } from "react";
 import * as XLSX from 'xlsx';
@@ -37,6 +38,7 @@ import TrashManager from "./TrashManager";
 
 function StudentLoadingTable() {
     const columns = [
+        "โปรไฟล์",
         "รหัสนักเรียน",
         "ชื่อ-นามสกุล",
         "อีเมล",
@@ -48,10 +50,10 @@ function StudentLoadingTable() {
     return (
         <div
             aria-label="กำลังโหลดข้อมูลนักเรียน"
-            className="min-w-[900px] overflow-hidden rounded-xl border border-gray-100 bg-white"
+            className="min-w-[960px] overflow-hidden rounded-xl border border-gray-100 bg-white"
             role="status"
         >
-            <div className="grid grid-cols-[0.9fr_1.4fr_1.8fr_1.2fr_1fr_0.7fr] gap-4 border-b border-gray-100 bg-gray-50/50 px-4 py-4">
+            <div className="grid grid-cols-[0.5fr_0.9fr_1.4fr_1.8fr_1.2fr_1fr_0.7fr] gap-4 border-b border-gray-100 bg-gray-50/50 px-4 py-4">
                 {columns.map((column) => (
                     <span className="text-sm font-semibold text-gray-800" key={column}>
                         {column}
@@ -61,11 +63,15 @@ function StudentLoadingTable() {
 
             {Array.from({ length: 7 }, (_, index) => (
                 <div
-                    className="grid grid-cols-[0.9fr_1.4fr_1.8fr_1.2fr_1fr_0.7fr] items-center gap-4 border-b border-gray-100 px-4 py-5 last:border-b-0"
+                    className="grid grid-cols-[0.5fr_0.9fr_1.4fr_1.8fr_1.2fr_1fr_0.7fr] items-center gap-4 border-b border-gray-100 px-4 py-5 last:border-b-0"
                     key={index}
                 >
+                    <div className="h-9 w-9 animate-pulse rounded-full bg-gray-200" />
                     <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
-                    <div className="h-4 w-36 animate-pulse rounded bg-gray-200" />
+                    <div className="space-y-2">
+                        <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+                        <div className="h-3 w-20 animate-pulse rounded bg-gray-100" />
+                    </div>
                     <div className="h-4 w-48 animate-pulse rounded bg-gray-200" />
                     <div className="h-6 w-24 animate-pulse rounded-full bg-gray-200" />
                     <div className="h-4 w-28 animate-pulse rounded bg-gray-200" />
@@ -690,7 +696,7 @@ const StudentManager = () => {
                             <div className="flex-1 min-w-[200px]">
                                 <Input
                                     aria-label="Search students"
-                                    placeholder="ค้นหา..."
+                                    placeholder="ค้นหารหัส ชื่อ หรือนามสกุล ชื่อเล่น..."
                                     size="sm"
                                     isClearable
                                     startContent={<Search size={14} className="text-gray-400" />}
@@ -761,11 +767,12 @@ const StudentManager = () => {
                                 shadow="none"
                                 isHeaderSticky
                                 classNames={{
-                                    wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[900px] lg:min-w-full",
+                                    wrapper: "border border-gray-100 rounded-xl p-0 overflow-hidden min-w-[960px] lg:min-w-full",
                                     th: "bg-gray-50/50 border-b border-gray-100 text-gray-800 font-semibold py-4",
                                     td: "py-4 border-b border-gray-50/50",
                                 }}>
                                 <TableHeader>
+                                    <TableColumn>โปรไฟล์</TableColumn>
                                     <TableColumn>รหัสนักเรียน</TableColumn>
                                     <TableColumn>ชื่อ-นามสกุล</TableColumn>
                                     <TableColumn>อีเมล</TableColumn>
@@ -779,10 +786,22 @@ const StudentManager = () => {
 
                                     {filteredStudents.map((stu) => (
                                         <TableRow key={stu.students_id} className="border-b border-gray-300 last:border-b-0 hover:bg-gray-50">
+                                            <TableCell>
+                                                <Avatar
+                                                    className="h-9 w-9 bg-[#e8f0ee] text-sm font-medium text-[#3d6357]"
+                                                    name={(stu.firstname || "?").charAt(0)}
+                                                    src={stu.profile_image_url || undefined}
+                                                />
+                                            </TableCell>
                                             <TableCell>{stu.students_id}</TableCell>
                                             <TableCell>
-                                                <div className="whitespace-nowrap">
-                                                    {stu.prefix_name ? `${stu.prefix_name}${stu.firstname}` : stu.firstname} {stu.lastname}
+                                                <div className="min-w-[180px]">
+                                                    <p className="truncate whitespace-nowrap font-medium text-gray-800">
+                                                        {stu.prefix_name ? `${stu.prefix_name}${stu.firstname}` : stu.firstname} {stu.lastname}
+                                                    </p>
+                                                    <p className="truncate text-xs text-gray-500">
+                                                        ชื่อเล่น: {stu.nickname || "-"}
+                                                    </p>
                                                 </div>
                                             </TableCell>
                                             <TableCell>{stu.email}</TableCell>

@@ -58,6 +58,8 @@ export async function GET(request, { params }) {
             prefix_name: true,
             firstname: true,
             lastname: true,
+            nickname: true,
+            profile_image_url: true,
           },
         },
       },
@@ -156,6 +158,9 @@ export async function GET(request, { params }) {
           return {
             studentId: enroll.student.students_id,
             studentName: `${enroll.student.prefix_name || ""}${enroll.student.firstname} ${enroll.student.lastname}`,
+            studentNickname: enroll.student.nickname,
+            profileImageUrl: enroll.student.profile_image_url,
+            initials: `${enroll.student.firstname.charAt(0)}${enroll.student.lastname.charAt(0)}`,
             preScore,
             postScore,
             diff:

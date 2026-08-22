@@ -5,6 +5,7 @@ import { requireStudent } from "@/lib/auth";
 import { isBangkokDateBefore } from "@/lib/bangkok-date";
 import { isCloudinaryPublicId, positiveIntSchema } from "@/lib/api-validation";
 import { prisma } from "@/lib/db";
+import { isPrismaConnectionBusy } from "@/lib/prisma-transient-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -188,6 +189,17 @@ export async function POST(request: Request) {
       format,
     });
   } catch (error: any) {
+    if (isPrismaConnectionBusy(error)) {
+      return NextResponse.json(
+        {
+          error: "ระบบกำลังมีผู้ใช้งานพร้อมกัน กรุณารอสักครู่",
+          code: "MISSION_UPLOAD_BUSY",
+          retryable: true,
+        },
+        { status: 503, headers: { "Retry-After": "1" } },
+      );
+    }
+
     console.error("[student mission upload commit] error:", error);
 
     return NextResponse.json(

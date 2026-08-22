@@ -59,6 +59,9 @@ export async function GET(request, { params }) {
     enrollmentId: e.student_enrollment_id,
     studentId: e.student.students_id,
     studentName: `${e.student.prefix_name || ""}${e.student.firstname} ${e.student.lastname}`,
+    studentNickname: e.student.nickname,
+    profileImageUrl: e.student.profile_image_url,
+    initials: `${e.student.firstname.charAt(0)}${e.student.lastname.charAt(0)}`,
     isCheckedIn: checkedMap.has(e.student.students_id),
     checkedAt: checkedMap.get(e.student.students_id) ?? null,
   }));

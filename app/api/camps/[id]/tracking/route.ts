@@ -87,6 +87,8 @@ export async function GET(request, context) {
                     prefix_name: true,
                     firstname: true,
                     lastname: true,
+                    nickname: true,
+                    profile_image_url: true,
                   },
                 },
               },
@@ -107,6 +109,9 @@ export async function GET(request, context) {
           studentMap.set(s.students_id, {
             studentId: s.students_id,
             name: `${s.prefix_name ?? ""}${s.firstname} ${s.lastname}`,
+            nickname: s.nickname,
+            profileImageUrl: s.profile_image_url,
+            initials: `${s.firstname.charAt(0)}${s.lastname.charAt(0)}`,
           });
         }
       }
@@ -125,6 +130,8 @@ export async function GET(request, context) {
             prefix_name: true,
             firstname: true,
             lastname: true,
+            nickname: true,
+            profile_image_url: true,
           },
         },
         mission_result: {
@@ -163,6 +170,9 @@ export async function GET(request, context) {
         studentMap.set(student.students_id, {
           studentId: student.students_id,
           name: `${student.prefix_name ?? ""}${student.firstname} ${student.lastname}`,
+          nickname: student.nickname,
+          profileImageUrl: student.profile_image_url,
+          initials: `${student.firstname.charAt(0)}${student.lastname.charAt(0)}`,
         });
       }
     }

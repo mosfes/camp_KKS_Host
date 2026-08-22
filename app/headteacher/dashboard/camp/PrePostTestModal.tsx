@@ -7,6 +7,7 @@ import {
   ModalFooter,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
+import { Avatar } from "@heroui/avatar";
 import { BarChart2, Search } from "lucide-react";
 
 import CampBreadcrumb from "./CampBreadcrumb";
@@ -44,7 +45,6 @@ function PrePostTestSkeleton() {
           {/* Table Header */}
           <div className="border-b border-gray-100 bg-gray-50/30 px-6 py-3.5">
             <div className="flex items-center justify-between">
-              <SkeletonBlock className="h-3.5 w-20" />
               <SkeletonBlock className="h-3.5 w-36" />
               <SkeletonBlock className="h-3.5 w-16" />
               <SkeletonBlock className="h-3.5 w-16" />
@@ -59,8 +59,7 @@ function PrePostTestSkeleton() {
                 key={rowIdx}
                 className="flex items-center justify-between py-4"
               >
-                <SkeletonBlock className="h-4 w-16" />
-                <SkeletonBlock className="h-4 w-44" />
+                <SkeletonBlock className="h-10 w-52" />
                 <SkeletonBlock className="h-7 w-12 rounded-lg" />
                 <SkeletonBlock className="h-7 w-12 rounded-lg" />
                 <SkeletonBlock className="h-7 w-16 rounded-lg" />
@@ -205,7 +204,7 @@ export default function PrePostTestModal({
                   </div>
                   <input
                     className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#6b857a] focus:border-[#6b857a] sm:text-sm transition-colors"
-                    placeholder="ค้นหาชื่อ หรือรหัสนักเรียน..."
+                    placeholder="ค้นหาชื่อ ชื่อเล่น หรือรหัสนักเรียน..."
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -232,6 +231,7 @@ export default function PrePostTestModal({
 
                     if (
                       !s.studentName.toLowerCase().includes(q) &&
+                      !s.studentNickname?.toLowerCase().includes(q) &&
                       !String(s.studentId).includes(q)
                     )
                       return false;
@@ -273,10 +273,7 @@ export default function PrePostTestModal({
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm">
                             <th className="px-6 py-3 font-semibold whitespace-nowrap">
-                              รหัสนักเรียน
-                            </th>
-                            <th className="px-6 py-3 font-semibold whitespace-nowrap">
-                              ชื่อ-นามสกุล
+                              นักเรียน
                             </th>
                             <th className="px-6 py-3 font-semibold text-center w-32 whitespace-nowrap">
                               ก่อนเรียน
@@ -294,7 +291,7 @@ export default function PrePostTestModal({
                             <tr>
                               <td
                                 className="py-8 text-center text-gray-500"
-                                colSpan={5}
+                                colSpan={4}
                               >
                                 ไม่พบนักเรียนที่ค้นหา
                               </td>
@@ -305,11 +302,29 @@ export default function PrePostTestModal({
                                 key={s.studentId}
                                 className="hover:bg-gray-50/50 transition-colors"
                               >
-                                <td className="px-6 py-3 text-sm text-gray-600">
-                                  {s.studentId}
-                                </td>
-                                <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                                  {s.studentName}
+                                <td className="px-6 py-3 text-sm text-gray-900">
+                                  <div className="flex min-w-[280px] items-center gap-3">
+                                    <Avatar
+                                      className="h-10 w-10 shrink-0 bg-[#e8f0ee] text-[#3d6357]"
+                                      imgProps={{
+                                        alt: `รูปโปรไฟล์ของ ${s.studentName}`,
+                                      }}
+                                      name={s.initials}
+                                      src={s.profileImageUrl || undefined}
+                                    />
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-gray-900">
+                                        {s.studentName}
+                                      </p>
+                                      <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-gray-500">
+                                        <span>
+                                          ชื่อเล่น: {s.studentNickname || "-"}
+                                        </span>
+                                        <span aria-hidden="true">·</span>
+                                        <span>รหัสนักเรียน {s.studentId}</span>
+                                      </p>
+                                    </div>
+                                  </div>
                                 </td>
                                 <td className="px-6 py-3 text-sm text-center">
                                   {s.preScore !== null ? (

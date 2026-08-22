@@ -32,6 +32,7 @@ export async function GET(
           OR: [
             { firstname: { contains: search } },
             { lastname: { contains: search } },
+            { nickname: { contains: search } },
             !isNaN(Number(search))
               ? { students_id: Number(search) }
               : undefined,
@@ -77,7 +78,7 @@ export async function GET(
     };
 
     // Run paginated data + count in parallel (not sequential!)
-    const [totalRows, students] = await Promise.all([
+    const [totalRows, students, campInfo] = await Promise.all([
       prisma.student_enrollment.count({ where: whereClause }),
       prisma.student_enrollment.findMany({
         where: whereClause,
@@ -90,10 +91,21 @@ export async function GET(
               prefix_name: true,
               firstname: true,
               lastname: true,
+              nickname: true,
+              profile_image_url: true,
               food_allergy: true,
               chronic_disease: true,
               remark: true,
               tel: true,
+              classroom_students: {
+                include: {
+                  classroom: {
+                    include: {
+                      classroom_types: true,
+                    },
+                  },
+                },
+              },
             },
           },
           certificate: {
@@ -104,6 +116,10 @@ export async function GET(
         orderBy: {
           student: { firstname: "asc" },
         },
+      }),
+      prisma.camp.findUnique({
+        where: { camp_id: campId },
+        select: { name: true },
       }),
     ]);
 
@@ -177,6 +193,7 @@ export async function GET(
 
     return NextResponse.json(
       {
+        campName: campInfo?.name || "",
         data: students,
         pagination: {
           totalRows,
@@ -189,8 +206,8 @@ export async function GET(
       {
         status: 200,
         headers: {
-          // Cache summary for 30s in browser, 60s in CDN
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30",
+          // Student contact and health data must never be stored by browsers or shared CDNs.
+          "Cache-Control": "private, no-store, max-age=0",
         },
       },
     );

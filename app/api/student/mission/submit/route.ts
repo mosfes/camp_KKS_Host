@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 import { isBangkokDateBefore } from "@/lib/bangkok-date";
+import { isPrismaConnectionBusy } from "@/lib/prisma-transient-error";
 import { getVideoSource, supportedVideoUrlMessage } from "@/lib/video";
 import {
   cloudinaryUrlContainsPublicId,
@@ -12,6 +13,30 @@ import {
   missionSubmitSchema,
   validationErrorMessage,
 } from "@/lib/api-validation";
+
+function isSameCompletedSubmission(result, answers) {
+  if (result.mission_answer.length !== answers.length) return false;
+
+  return answers.every((answer) => {
+    const stored = result.mission_answer.find(
+      (item) => item.mission_question_question_id === Number(answer.questionId),
+    );
+
+    if (!stored) return false;
+
+    if (answer.type === "TEXT") {
+      return stored.answer_text[0]?.answer_text === answer.value;
+    }
+    if (answer.type === "MCQ") {
+      return stored.answer_mcq[0]?.question_text === answer.value;
+    }
+    if (answer.type === "PHOTO") {
+      return stored.answer_photo[0]?.img_url === answer.value;
+    }
+
+    return false;
+  });
+}
 
 export async function POST(req) {
   const { student, error: authError } = await requireStudent();
@@ -208,114 +233,142 @@ export async function POST(req) {
     // Lock the enrollment row before reading or writing the result. This
     // serializes submissions for the same student across tabs/processes
     // without requiring a schema change or an in-memory lock.
-    const savedResult = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`
+    const savedResult = await prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`
         SELECT student_enrollment_id
         FROM student_enrollment
         WHERE student_enrollment_id = ${enrollment.student_enrollment_id}
         FOR UPDATE
       `;
 
-      let result = await tx.mission_result.findFirst({
-        where: {
-          student_enrollment_id: enrollment.student_enrollment_id,
-          mission_mission_id: missionId,
-        },
-        orderBy: { mission_result_id: "desc" },
-      });
-
-      if (result?.status === "completed") {
-        const error = new Error("MISSION_ALREADY_COMPLETED");
-
-        error.code = "MISSION_ALREADY_COMPLETED";
-        throw error;
-      }
-
-      if (!result) {
-        result = await tx.mission_result.create({
-          data: {
-            method: "Code",
-            status: newStatus,
-            submitted_at: new Date(),
+        let result = await tx.mission_result.findFirst({
+          where: {
             student_enrollment_id: enrollment.student_enrollment_id,
             mission_mission_id: missionId,
           },
-        });
-      } else {
-        // Clear existing answers first to avoid duplicates. All related
-        // changes stay in the same transaction as the result update.
-        const oldAnswers = await tx.mission_answer.findMany({
-          where: {
-            mission_result_mission_result_id: result.mission_result_id,
+          orderBy: { mission_result_id: "desc" },
+          include: {
+            mission_answer: {
+              include: {
+                answer_text: true,
+                answer_mcq: true,
+                answer_photo: true,
+              },
+            },
           },
         });
-        const oldAnswerIds = oldAnswers.map((a) => a.answer_id);
 
-        if (oldAnswerIds.length > 0) {
-          await tx.mission_answer_text.deleteMany({
-            where: { mission_answer_id: { in: oldAnswerIds } },
+        if (result?.status === "completed") {
+          if (isSameCompletedSubmission(result, answers)) {
+            return { result, alreadyCompleted: true };
+          }
+
+          const error = new Error("MISSION_ALREADY_COMPLETED");
+
+          error.code = "MISSION_ALREADY_COMPLETED";
+          throw error;
+        }
+
+        if (!result) {
+          result = await tx.mission_result.create({
+            data: {
+              method: "Code",
+              status: newStatus,
+              submitted_at: new Date(),
+              student_enrollment_id: enrollment.student_enrollment_id,
+              mission_mission_id: missionId,
+            },
           });
-          await tx.mission_answer_mcq.deleteMany({
-            where: { mission_answer_id: { in: oldAnswerIds } },
-          });
-          await tx.mission_answer_photo.deleteMany({
-            where: { mission_answer_id: { in: oldAnswerIds } },
-          });
-          await tx.mission_answer.deleteMany({
+        } else {
+          // Clear existing answers first to avoid duplicates. All related
+          // changes stay in the same transaction as the result update.
+          const oldAnswers = await tx.mission_answer.findMany({
             where: {
               mission_result_mission_result_id: result.mission_result_id,
             },
           });
+          const oldAnswerIds = oldAnswers.map((a) => a.answer_id);
+
+          if (oldAnswerIds.length > 0) {
+            await tx.mission_answer_text.deleteMany({
+              where: { mission_answer_id: { in: oldAnswerIds } },
+            });
+            await tx.mission_answer_mcq.deleteMany({
+              where: { mission_answer_id: { in: oldAnswerIds } },
+            });
+            await tx.mission_answer_photo.deleteMany({
+              where: { mission_answer_id: { in: oldAnswerIds } },
+            });
+            await tx.mission_answer.deleteMany({
+              where: {
+                mission_result_mission_result_id: result.mission_result_id,
+              },
+            });
+          }
+
+          result = await tx.mission_result.update({
+            where: { mission_result_id: result.mission_result_id },
+            data: {
+              status: newStatus,
+              submitted_at: new Date(),
+            },
+          });
         }
 
-        result = await tx.mission_result.update({
-          where: { mission_result_id: result.mission_result_id },
-          data: {
-            status: newStatus,
-            submitted_at: new Date(),
-          },
+        const createAnswers = answers.map((ans) => {
+          const answerData = {
+            mission_result_mission_result_id: result.mission_result_id,
+            mission_question_question_id: ans.questionId,
+          };
+
+          if (ans.type === "TEXT") {
+            answerData.answer_text = { create: { answer_text: ans.value } };
+          } else if (ans.type === "MCQ") {
+            answerData.answer_mcq = { create: { question_text: ans.value } };
+          } else if (ans.type === "PHOTO") {
+            answerData.answer_photo = { create: { img_url: ans.value } };
+          }
+
+          return tx.mission_answer.create({ data: answerData });
         });
-      }
 
-      const createAnswers = answers.map((ans) => {
-        const answerData = {
-          mission_result_mission_result_id: result.mission_result_id,
-          mission_question_question_id: ans.questionId,
-        };
-
-        if (ans.type === "TEXT") {
-          answerData.answer_text = { create: { answer_text: ans.value } };
-        } else if (ans.type === "MCQ") {
-          answerData.answer_mcq = { create: { question_text: ans.value } };
-        } else if (ans.type === "PHOTO") {
-          answerData.answer_photo = { create: { img_url: ans.value } };
+        if (createAnswers.length > 0) {
+          await Promise.all(createAnswers);
         }
 
-        return tx.mission_answer.create({ data: answerData });
-      });
-
-      if (createAnswers.length > 0) {
-        await Promise.all(createAnswers);
-      }
-
-      return result;
-    });
+        return { result, alreadyCompleted: false };
+      },
+      { maxWait: 5_000, timeout: 10_000 },
+    );
 
     return NextResponse.json({
       success: true,
       missionId,
-      status: newStatus,
-      resultId: savedResult.mission_result_id,
+      status: savedResult.alreadyCompleted ? "completed" : newStatus,
+      resultId: savedResult.result.mission_result_id,
+      alreadyCompleted: savedResult.alreadyCompleted,
     });
   } catch (error) {
-    //     console.error("Submit error:", error);
-
     if (error?.code === "MISSION_ALREADY_COMPLETED") {
       return NextResponse.json(
         { error: "คุณทำภารกิจนี้แล้ว", code: "MISSION_ALREADY_COMPLETED" },
         { status: 409 },
       );
     }
+
+    if (isPrismaConnectionBusy(error)) {
+      return NextResponse.json(
+        {
+          error: "ระบบกำลังมีผู้ใช้งานพร้อมกัน กรุณารอสักครู่",
+          code: "MISSION_SUBMIT_BUSY",
+          retryable: true,
+        },
+        { status: 503, headers: { "Retry-After": "1" } },
+      );
+    }
+
+    console.error("[student mission submit] error:", error);
 
     return NextResponse.json({ _error: "Submit failed" }, { status: 500 });
   }

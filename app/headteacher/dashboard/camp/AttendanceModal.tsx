@@ -10,6 +10,7 @@ import {
   Select,
   SelectItem,
   Pagination,
+  Avatar,
 } from "@heroui/react";
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import {
@@ -23,7 +24,6 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  User,
   Trash2,
   Plus,
   CheckSquare,
@@ -381,6 +381,7 @@ export default function AttendanceModal({
 
           if (
             !r.studentName?.toLowerCase().includes(q) &&
+            !r.studentNickname?.toLowerCase().includes(q) &&
             !String(r.studentId).includes(q)
           )
             return false;
@@ -543,7 +544,7 @@ export default function AttendanceModal({
                     />
                     <input
                       className="h-11 w-full rounded-xl border border-[#e1e9e4] bg-[#fbfcfb] pl-10 pr-4 text-sm text-[#25352d] outline-none transition-colors placeholder:text-[#a0ada6] focus:border-[#6ea58b] focus:bg-white focus:ring-4 focus:ring-[#70ad8e]/10"
-                      placeholder="ค้นหาชื่อหรือรหัสนักเรียน"
+                      placeholder="ค้นหาชื่อ ชื่อเล่น หรือรหัสนักเรียน"
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -642,17 +643,28 @@ export default function AttendanceModal({
                               )
                             }
                           >
-                            <div
-                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${result.isCheckedIn ? "bg-[#e1f3e8] text-[#3b966c]" : "bg-[#f0f4f1] text-[#92a39a] group-hover:bg-[#e4f2e9] group-hover:text-[#3c876a]"}`}
-                            >
-                              <User size={19} />
-                            </div>
+                            <Avatar
+                              className={`h-10 w-10 shrink-0 transition-colors ${
+                                result.isCheckedIn
+                                  ? "bg-[#e1f3e8] text-[#3b966c] ring-2 ring-[#cce9d8]"
+                                  : "bg-[#e8f0ee] text-[#3d6357]"
+                              }`}
+                              imgProps={{
+                                alt: `รูปโปรไฟล์ของ ${result.studentName}`,
+                              }}
+                              name={result.initials}
+                              src={result.profileImageUrl || undefined}
+                            />
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-bold text-[#26382e] transition-colors group-hover:text-[#2d765e]">
+                              <p className="truncate text-sm font-medium text-[#26382e] transition-colors group-hover:text-[#2d765e]">
                                 {result.studentName}
                               </p>
-                              <p className="mt-1 text-[11px] text-[#91a099]">
-                                รหัสนักเรียน {result.studentId}
+                              <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] text-[#91a099] font-light">
+                                <span>
+                                  ชื่อเล่น: {result.studentNickname || "-"}
+                                </span>
+                                <span aria-hidden="true">·</span>
+                                <span>รหัสนักเรียน {result.studentId}</span>
                               </p>
                             </div>
                             <div className="shrink-0 text-right">

@@ -11,13 +11,13 @@ import {
   AccordionItem,
   Select,
   SelectItem,
+  Avatar,
 } from "@heroui/react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   Eye,
   Clock,
-  User,
   CheckCircle2,
   XCircle,
   Users,
@@ -154,9 +154,10 @@ export default function MonitorMissionModal({
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchName = r.studentName?.toLowerCase().includes(query);
+        const matchNickname = r.studentNickname?.toLowerCase().includes(query);
         const matchId = String(r.studentId).includes(query);
 
-        if (!matchName && !matchId) return false;
+        if (!matchName && !matchNickname && !matchId) return false;
       }
 
       return true;
@@ -246,7 +247,7 @@ export default function MonitorMissionModal({
               <ModalHeader className="flex flex-col gap-1 p-6 pb-4 border-b border-gray-100">
                 <div className="flex items-center gap-2 text-[#6b857a]">
                   <Eye size={24} />
-                  <h2 className="text-xl font-bold text-gray-900">
+                  <h2 className="text-xl font-semibold text-gray-900">
                     ดูคำตอบนักเรียน
                   </h2>
                 </div>
@@ -257,8 +258,40 @@ export default function MonitorMissionModal({
 
               <ModalBody className="py-6 px-6 bg-[#f5f5f2]/30">
                 {loading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="w-10 h-10 border-4 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+                  <div className="space-y-4 py-1">
+                    {/* Stats & Search Skeleton */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-gray-200 animate-pulse" />
+                        <div className="w-32 h-4 bg-gray-200 rounded animate-pulse" />
+                      </div>
+                      <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
+                        <div className="w-full sm:w-48 h-8 bg-gray-200 rounded-lg animate-pulse" />
+                        <div className="w-full sm:w-40 h-8 bg-gray-200 rounded-lg animate-pulse" />
+                      </div>
+                    </div>
+
+                    {/* Student Submissions Skeleton List */}
+                    <div className="space-y-3">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
+                            <div className="space-y-1.5">
+                              <div className="w-36 h-4 bg-gray-200 rounded animate-pulse" />
+                              <div className="w-24 h-3 bg-gray-200 rounded animate-pulse" />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-20 h-6 rounded-full bg-gray-200 animate-pulse" />
+                            <div className="w-5 h-5 rounded bg-gray-200 animate-pulse" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -266,7 +299,7 @@ export default function MonitorMissionModal({
                     {isQrMission && (
                       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                         <div className="flex items-center gap-2 mb-4">
-                          <h3 className="font-bold text-gray-900">
+                          <h3 className="font-semibold text-gray-900">
                             QR Code สำหรับภารกิจนี้
                           </h3>
                         </div>
@@ -305,7 +338,7 @@ export default function MonitorMissionModal({
                                 <div className="w-full mt-1">
                                   <div className="flex items-center gap-2 mb-2">
                                     <span className="w-1 h-4 bg-[#6b857a] rounded-full" />
-                                    <p className="text-xs font-semibold text-gray-600">
+                                    <p className="text-xs font-medium text-gray-600">
                                       รหัส PIN สำรอง
                                     </p>
                                     <span className="text-[10px] text-gray-400">
@@ -317,7 +350,7 @@ export default function MonitorMissionModal({
                                       {qrPin.split("").map((digit, i) => (
                                         <span
                                           key={i}
-                                          className="w-10 h-12 bg-white border-2 border-[#6b857a]/30 rounded-xl flex items-center justify-center text-2xl font-black text-[#3d5c52] font-mono shadow-sm"
+                                          className="w-10 h-12 bg-white border-2 border-[#6b857a]/30 rounded-xl flex items-center justify-center text-2xl font-bold text-[#3d5c52] font-mono shadow-sm"
                                         >
                                           {digit}
                                         </span>
@@ -366,9 +399,9 @@ export default function MonitorMissionModal({
                           </div>
                           <span>
                             ส่งแล้ว{" "}
-                            <strong className="text-gray-900 text-lg">
+                            <span className="font-semibold text-gray-900">
                               {results.filter((r) => r.isSubmitted).length}
-                            </strong>{" "}
+                            </span>{" "}
                             / {results.length} คน
                           </span>
                         </div>
@@ -381,7 +414,7 @@ export default function MonitorMissionModal({
                             />
                             <input
                               className="pl-9 pr-4 py-1.5 text-sm h-[32px] border border-gray-200 rounded-lg focus:outline-none focus:border-[#6b857a] w-full bg-gray-50 hover:bg-gray-100 transition-colors"
-                              placeholder="ค้นหานักเรียน..."
+                              placeholder="ค้นหาชื่อ ชื่อเล่น หรือรหัส..."
                               type="text"
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
@@ -445,22 +478,31 @@ export default function MonitorMissionModal({
                             className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4"
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className="w-10 h-10 bg-[#6b857a]/10 rounded-full flex items-center justify-center text-[#6b857a] shrink-0">
-                                <User size={20} />
-                              </div>
+                              <Avatar
+                                className="h-10 w-10 shrink-0 bg-[#e8f0ee] text-[#3d6357]"
+                                imgProps={{
+                                  alt: `รูปโปรไฟล์ของ ${result.studentName}`,
+                                }}
+                                name={result.initials}
+                                src={result.profileImageUrl || undefined}
+                              />
                               <div className="min-w-0">
-                                <p className="font-bold text-gray-900 truncate">
+                                <p className="font-medium text-gray-900 truncate">
                                   {result.studentName}
                                 </p>
-                                <p className="text-xs text-gray-500">
-                                  รหัส: {result.studentId}
+                                <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-gray-500 font-light">
+                                  <span>
+                                    ชื่อเล่น: {result.studentNickname || "-"}
+                                  </span>
+                                  <span aria-hidden="true">·</span>
+                                  <span>รหัส: {result.studentId}</span>
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 ml-[52px] sm:ml-0">
                               {result.isSubmitted ? (
                                 <>
-                                  <div className="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-100 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold">
+                                  <div className="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-100 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-medium">
                                     <CheckCircle2 size={14} />
                                     แสกนแล้ว
                                   </div>
@@ -516,15 +558,25 @@ export default function MonitorMissionModal({
                             title={
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full pr-2 gap-2 sm:gap-4">
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-10 h-10 bg-[#6b857a]/10 rounded-full flex items-center justify-center text-[#6b857a] shrink-0">
-                                    <User size={20} />
-                                  </div>
+                                  <Avatar
+                                    className="h-10 w-10 shrink-0 bg-[#e8f0ee] text-[#3d6357]"
+                                    imgProps={{
+                                      alt: `รูปโปรไฟล์ของ ${result.studentName}`,
+                                    }}
+                                    name={result.initials}
+                                    src={result.profileImageUrl || undefined}
+                                  />
                                   <div className="text-left min-w-0">
-                                    <p className="font-bold text-gray-900 leading-tight truncate">
+                                    <p className="font-medium text-gray-900 leading-tight truncate">
                                       {result.studentName}
                                     </p>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                      รหัส: {result.studentId}
+                                    <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-gray-500 font-light">
+                                      <span>
+                                        ชื่อเล่น:{" "}
+                                        {result.studentNickname || "-"}
+                                      </span>
+                                      <span aria-hidden="true">·</span>
+                                      <span>รหัส: {result.studentId}</span>
                                     </p>
                                   </div>
                                 </div>
@@ -535,7 +587,7 @@ export default function MonitorMissionModal({
                                       <span className="text-[10px] sm:text-xs font-medium opacity-70">
                                         คะแนน
                                       </span>
-                                      <span className="text-xs sm:text-sm font-bold">
+                                      <span className="text-xs sm:text-sm font-medium">
                                         {result.answers?.filter(
                                           (ans: any) => ans.isCorrect === true,
                                         ).length || 0}{" "}
@@ -550,7 +602,7 @@ export default function MonitorMissionModal({
                                           className="text-green-600 shrink-0"
                                           size={14}
                                         />
-                                        <div className="flex flex-col text-[10px] sm:text-[11px] font-bold text-green-700 leading-tight">
+                                        <div className="flex flex-col text-[10px] sm:text-[11px] font-medium text-green-700 leading-tight">
                                           <span>
                                             {
                                               formatDate(result.submittedAt)
@@ -586,10 +638,10 @@ export default function MonitorMissionModal({
                                         className="space-y-2"
                                       >
                                         <div className="flex gap-2">
-                                          <span className="text-gray-300 font-bold text-lg leading-none">
+                                          <span className="text-gray-300 font-medium text-lg leading-none">
                                             {String(idx + 1).padStart(2, "0")}
                                           </span>
-                                          <p className="text-sm font-semibold text-gray-700 pt-0.5">
+                                          <p className="text-sm font-medium text-gray-700 pt-0.5">
                                             {ans.questionText || "คำถาม"}
                                           </p>
                                         </div>
@@ -607,13 +659,13 @@ export default function MonitorMissionModal({
                                                 {ans.answerText}
                                               </span>
                                               {ans.isCorrect === true && (
-                                                <div className="flex items-center gap-1.5 text-green-600 bg-green-50 px-2.5 py-1 rounded-full text-xs font-bold border border-green-100">
+                                                <div className="flex items-center gap-1.5 text-green-600 bg-green-50 px-2.5 py-1 rounded-full text-xs font-medium border border-green-100">
                                                   <CheckCircle2 size={14} />
                                                   ถูกต้อง
                                                 </div>
                                               )}
                                               {ans.isCorrect === false && (
-                                                <div className="flex items-center gap-1.5 text-red-600 bg-red-50 px-2.5 py-1 rounded-full text-xs font-bold border border-red-100">
+                                                <div className="flex items-center gap-1.5 text-red-600 bg-red-50 px-2.5 py-1 rounded-full text-xs font-medium border border-red-100">
                                                   <XCircle size={14} />
                                                   ไม่ถูกต้อง
                                                 </div>
@@ -655,7 +707,7 @@ export default function MonitorMissionModal({
                                                 url={ans.answerText}
                                               />
                                               <a
-                                                className="inline-flex text-xs font-semibold text-[#5d7c6f] underline underline-offset-2"
+                                                className="inline-flex text-xs font-medium text-[#5d7c6f] underline underline-offset-2"
                                                 href={ans.answerText}
                                                 rel="noreferrer"
                                                 target="_blank"

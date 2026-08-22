@@ -11,6 +11,8 @@ import {
   useState,
 } from "react";
 import dynamic from "next/dynamic";
+import { Avatar } from "@heroui/avatar";
+import { Pagination } from "@heroui/pagination";
 import {
   AlertCircle,
   CheckCircle2,
@@ -22,6 +24,7 @@ import {
   Search,
   ShieldCheck,
   Users,
+  X,
 } from "lucide-react";
 
 import { BANGKOK_TIME_ZONE } from "@/lib/bangkok-date";
@@ -53,6 +56,9 @@ interface LocationUpdate extends MapPoint {
 interface StudentLocation {
   studentId: number;
   name: string;
+  nickname: string | null;
+  profileImageUrl: string | null;
+  initials: string;
   sharingEnabled: boolean;
   latest: LocationUpdate | null;
 }
@@ -445,6 +451,13 @@ export default function CampLocationTracker({
     studentAdministrativeAreaResolved,
     setStudentAdministrativeAreaResolved,
   ] = useState(false);
+  const [teacherSearchQuery, setTeacherSearchQuery] = useState("");
+  const [teacherStatusFilter, setTeacherStatusFilter] = useState<
+    "all" | "has_location" | "no_location"
+  >("all");
+  const [teacherPage, setTeacherPage] = useState(1);
+  const TEACHER_PAGE_SIZE = 10;
+
   const autoStartedRef = useRef(false);
   const publishingRef = useRef(false);
   const lastRouteRequestAtRef = useRef(0);
@@ -453,6 +466,10 @@ export default function CampLocationTracker({
     promise: Promise<string | null>;
   } | null>(null);
   const searchCacheRef = useRef(new Map<string, PlaceResult[]>());
+
+  useEffect(() => {
+    setTeacherPage(1);
+  }, [teacherSearchQuery, teacherStatusFilter]);
 
   useEffect(() => {
     if (searchCooldownSeconds <= 0) return;
@@ -778,6 +795,37 @@ export default function CampLocationTracker({
     () => (viewer === "teacher" ? [] : (data?.viewerPath ?? [])),
     [data?.viewerPath, viewer],
   );
+
+  const filteredTeacherStudents = useMemo(() => {
+    if (!data?.students) return [];
+
+    const query = teacherSearchQuery.trim().toLowerCase();
+
+    return data.students.filter((student) => {
+      const hasLocation = Boolean(student.latest);
+
+      if (teacherStatusFilter === "has_location" && !hasLocation) return false;
+      if (teacherStatusFilter === "no_location" && hasLocation) return false;
+
+      if (!query) return true;
+
+      const matchName = student.name.toLowerCase().includes(query);
+      const matchNickname = student.nickname?.toLowerCase().includes(query);
+      const matchId = String(student.studentId).includes(query);
+
+      return matchName || matchNickname || matchId;
+    });
+  }, [data?.students, teacherSearchQuery, teacherStatusFilter]);
+
+  const teacherTotalPages = Math.ceil(
+    (filteredTeacherStudents.length || 0) / TEACHER_PAGE_SIZE,
+  );
+
+  const paginatedTeacherStudents = useMemo(() => {
+    const start = (teacherPage - 1) * TEACHER_PAGE_SIZE;
+
+    return filteredTeacherStudents.slice(start, start + TEACHER_PAGE_SIZE);
+  }, [filteredTeacherStudents, teacherPage]);
   const resolveStudentAdministrativeArea = useCallback(
     async (origin: MapPoint) => {
       const cached = readCachedAdministrativeArea(campId);
@@ -1463,27 +1511,97 @@ export default function CampLocationTracker({
 
         {viewer === "teacher" ? (
           <div className="overflow-hidden rounded-xl border border-slate-200">
-            <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                  <Users size={17} /> สถานะตำแหน่งนักเรียน
-                </span>
-                <p className="mt-1 text-xs text-slate-500">
-                  ตำแหน่งจะอัปเดตเมื่อหน้าเว็บของนักเรียนเปิดอยู่
-                </p>
+            <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/70 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <Users size={17} /> สถานะตำแหน่งนักเรียน
+                  </span>
+                  <p className="mt-1 text-xs text-slate-500">
+                    ตำแหน่งจะอัปเดตเมื่อหน้าเว็บของนักเรียนเปิดอยู่
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                  <button
+                    className={`rounded-full px-2.5 py-1 transition ${
+                      teacherStatusFilter === "has_location"
+                        ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/20"
+                        : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                    }`}
+                    type="button"
+                    onClick={() =>
+                      setTeacherStatusFilter((current) =>
+                        current === "has_location" ? "all" : "has_location",
+                      )
+                    }
+                  >
+                    มีพิกัดล่าสุด {studentsOnMap.length} คน
+                  </button>
+                  <button
+                    className={`rounded-full px-2.5 py-1 transition ${
+                      teacherStatusFilter === "no_location"
+                        ? "bg-slate-700 text-white shadow-sm ring-2 ring-slate-700/20"
+                        : "bg-slate-200 text-slate-600 hover:bg-slate-300"
+                    }`}
+                    type="button"
+                    onClick={() =>
+                      setTeacherStatusFilter((current) =>
+                        current === "no_location" ? "all" : "no_location",
+                      )
+                    }
+                  >
+                    ยังไม่มีพิกัด {data.students.length - studentsOnMap.length}{" "}
+                    คน
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2 text-xs font-semibold">
-                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700">
-                  มีพิกัดล่าสุด {studentsOnMap.length} คน
-                </span>
-                <span className="rounded-full bg-slate-200 px-2.5 py-1 text-slate-600">
-                  ยังไม่มีพิกัด {data.students.length - studentsOnMap.length} คน
-                </span>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={16}
+                />
+                <input
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/15"
+                  placeholder="ค้นหาชื่อ ชื่อเล่น หรือรหัสนักเรียน..."
+                  type="text"
+                  value={teacherSearchQuery}
+                  onChange={(e) => setTeacherSearchQuery(e.target.value)}
+                />
+                {teacherSearchQuery && (
+                  <button
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    type="button"
+                    onClick={() => setTeacherSearchQuery("")}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
+
+              {(teacherSearchQuery || teacherStatusFilter !== "all") && (
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>
+                    พบนักเรียน {filteredTeacherStudents.length} จากทั้งหมด{" "}
+                    {data.students.length} คน
+                  </span>
+                  <button
+                    className="font-medium text-[#5d7c6f] underline underline-offset-2 hover:text-[#4a6358]"
+                    type="button"
+                    onClick={() => {
+                      setTeacherSearchQuery("");
+                      setTeacherStatusFilter("all");
+                    }}
+                  >
+                    ล้างการค้นหาและตัวกรอง
+                  </button>
+                </div>
+              )}
             </div>
             <div className="divide-y divide-slate-100">
-              {data.students.length ? (
-                data.students.map((student) => {
+              {filteredTeacherStudents.length ? (
+                paginatedTeacherStudents.map((student) => {
                   const age = student.latest
                     ? minutesSince(student.latest.recorded_at)
                     : null;
@@ -1495,30 +1613,45 @@ export default function CampLocationTracker({
                       key={student.studentId}
                       className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(260px,1.25fr)] sm:items-center"
                     >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-slate-800">
-                            {student.name}
-                          </p>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                              !student.sharingEnabled
-                                ? "bg-amber-50 text-amber-700"
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar
+                          className="h-10 w-10 shrink-0 bg-[#e8f0ee] text-[#3d6357]"
+                          imgProps={{
+                            alt: `รูปโปรไฟล์ของ ${student.name}`,
+                          }}
+                          name={student.initials}
+                          src={student.profileImageUrl || undefined}
+                        />
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p
+                              className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800"
+                              title={student.name}
+                            >
+                              {student.name}
+                            </p>
+                            <span
+                              className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                !student.sharingEnabled
+                                  ? "bg-amber-50 text-amber-700"
+                                  : student.latest
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-slate-100 text-slate-500"
+                              }`}
+                            >
+                              {!student.sharingEnabled
+                                ? "นักเรียนปิดแชร์"
                                 : student.latest
-                                  ? "bg-emerald-50 text-emerald-700"
-                                  : "bg-slate-100 text-slate-500"
-                            }`}
-                          >
-                            {!student.sharingEnabled
-                              ? "นักเรียนปิดแชร์"
-                              : student.latest
-                                ? "แชร์ตำแหน่งแล้ว"
-                                : "ยังไม่แชร์ตำแหน่ง"}
-                          </span>
+                                  ? "แชร์ตำแหน่งแล้ว"
+                                  : "ยังไม่แชร์ตำแหน่ง"}
+                            </span>
+                          </div>
+                          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-400">
+                            <span>ชื่อเล่น: {student.nickname || "-"}</span>
+                            <span aria-hidden="true">·</span>
+                            <span>รหัสนักเรียน {student.studentId}</span>
+                          </p>
                         </div>
-                        <p className="mt-1 text-xs text-slate-400">
-                          รหัสนักเรียน {student.studentId}
-                        </p>
                       </div>
                       <div>
                         {student.latest ? (
@@ -1611,11 +1744,33 @@ export default function CampLocationTracker({
                   );
                 })
               ) : (
-                <p className="p-4 text-center text-sm text-slate-400">
-                  ยังไม่มีนักเรียนลงทะเบียนค่าย
-                </p>
+                <div className="py-8 text-center text-slate-400">
+                  <p className="text-sm">
+                    {teacherSearchQuery || teacherStatusFilter !== "all"
+                      ? "ไม่พบข้อมูลนักเรียนที่ตรงกับเงื่อนไขการค้นหา"
+                      : "ยังไม่มีนักเรียนลงทะเบียนค่าย"}
+                  </p>
+                </div>
               )}
             </div>
+
+            {teacherTotalPages > 1 && (
+              <div className="flex justify-center border-t border-slate-100 bg-slate-50/50 p-3">
+                <Pagination
+                  isCompact
+                  showControls
+                  showShadow
+                  className="bg-transparent"
+                  classNames={{
+                    cursor: "bg-[#5d7c6f] text-white font-medium",
+                  }}
+                  color="default"
+                  page={teacherPage}
+                  total={teacherTotalPages}
+                  onChange={setTeacherPage}
+                />
+              </div>
+            )}
           </div>
         ) : ownLocation?.latest && data.sharingEnabled ? (
           <div className="flex items-start gap-3 rounded-xl bg-blue-50 p-3">

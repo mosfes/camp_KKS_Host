@@ -41,6 +41,7 @@ import {
   getFriendlyUploadErrorMessage,
 } from "@/lib/student-profile-upload";
 import { toThumbnail } from "@/lib/cloudinary-url";
+import { boardStudentBusWithRetry } from "@/lib/student-bus-board";
 
 // Utility to format date (with optional range)
 const formatDate = (start: string, end?: string) => {
@@ -210,17 +211,7 @@ export default function StudentDashboard() {
     setBoardingCampId(assignment.campId);
 
     try {
-      const response = await fetch(
-        `/api/student/camps/${assignment.campId}/bus/board`,
-        { method: "POST" },
-      );
-      const result = await response.json();
-
-      if (!response.ok) {
-        toast.error(result.error || "เช็คชื่อขึ้นรถไม่สำเร็จ");
-
-        return;
-      }
+      const result = await boardStudentBusWithRetry(assignment.campId);
 
       setBusAssignments((current) =>
         current.map((item) =>
@@ -239,8 +230,8 @@ export default function StudentDashboard() {
       );
       setPendingBoardingAssignment(null);
       toast.success(result.message || "เช็คชื่อขึ้นรถสำเร็จ");
-    } catch {
-      toast.error("เชื่อมต่อระบบไม่สำเร็จ กรุณาลองใหม่");
+    } catch (error: any) {
+      toast.error(error.message || "เชื่อมต่อระบบไม่สำเร็จ กรุณาลองใหม่");
     } finally {
       setBoardingCampId(null);
     }

@@ -7,18 +7,23 @@ import {
   Users,
   Activity,
   FileText,
+  FileSpreadsheet,
   ChevronRight,
   BookOpen,
 } from "lucide-react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Input } from "@heroui/input";
 import { Chip } from "@heroui/chip";
+import { Avatar } from "@heroui/avatar";
 import { Pagination } from "@heroui/pagination";
-import { Select, SelectItem } from "@heroui/react";
+import { Select, SelectItem, Button, Tooltip } from "@heroui/react";
 
 import CampBreadcrumb from "../../CampBreadcrumb";
 
 import BreakdownModal from "./BreakdownModal";
+
+import { exportCampStudentsToExcel } from "@/lib/export-camp-students-excel";
+import { useStatusModal } from "@/components/StatusModalProvider";
 
 interface Student {
   student: {
@@ -26,10 +31,20 @@ interface Student {
     prefix_name: string | null;
     firstname: string;
     lastname: string;
+    nickname: string | null;
+    profile_image_url: string | null;
     food_allergy: string | null;
     chronic_disease: string | null;
     remark: string | null;
     tel: string | null;
+    classroom_students?: {
+      classroom?: {
+        grade: string;
+        classroom_types?: {
+          name: string;
+        };
+      };
+    }[];
   };
   certificate?: { certificate_no: number | null }[];
 }
@@ -96,20 +111,20 @@ function StudentPageSkeleton() {
 
         <div className="overflow-x-auto">
           <div className="min-w-[700px]">
-            <div className="grid grid-cols-7 gap-4 bg-gray-50 border-y border-gray-100 p-4">
-              {Array.from({ length: 7 }, (_, index) => (
+            <div className="grid grid-cols-6 gap-4 bg-gray-50 border-y border-gray-100 p-4">
+              {Array.from({ length: 6 }, (_, index) => (
                 <SkeletonBlock key={index} className="h-3 w-full" />
               ))}
             </div>
             {Array.from({ length: 6 }, (_, rowIndex) => (
               <div
                 key={rowIndex}
-                className="grid grid-cols-7 items-center gap-4 border-b border-gray-50 p-4"
+                className="grid grid-cols-6 items-center gap-4 border-b border-gray-50 p-4"
               >
-                {Array.from({ length: 7 }, (_, cellIndex) => (
+                {Array.from({ length: 6 }, (_, cellIndex) => (
                   <SkeletonBlock
                     key={cellIndex}
-                    className={cellIndex === 1 ? "h-3 w-32" : "h-3 w-full"}
+                    className={cellIndex === 0 ? "h-10 w-48" : "h-3 w-full"}
                   />
                 ))}
               </div>
@@ -122,13 +137,16 @@ function StudentPageSkeleton() {
 }
 
 export default function CampStudentsPage() {
-  const router = useRouter();
+  const { showSuccess, showError } = useStatusModal();
   const params = useParams();
   const campId = params?.id;
 
   const [students, setStudents] = useState<Student[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [campName, setCampName] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [modal, setModal] = useState<{
     open: boolean;
     type: "allergy" | "disease" | "remark";
@@ -179,11 +197,100 @@ export default function CampStudentsPage() {
         if (!summary) {
           setSummary(data.summary);
         }
+        if (data.campName && !campName) {
+          setCampName(data.campName);
+        }
       }
     } catch (error) {
       console.error("Error fetching students:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!summary || summary.totalStudents === 0) return;
+    try {
+      setIsExportingExcel(true);
+      const res = await fetch(
+        `/api/camps/${campId}/students?page=1&limit=10000&search=&filter=all&summary=false`,
+      );
+
+      if (!res.ok) throw new Error("ไม่สามารถดึงข้อมูลนักเรียนได้");
+      const json = await res.json();
+      const allStudents = (json.data || []).map((row: any) => {
+        const stu = row.student;
+        let classroomStr = "-";
+
+        if (stu.classroom_students?.[0]?.classroom) {
+          const cls = stu.classroom_students[0].classroom;
+          const gradeStr = String(cls.grade).replace("Level_", "");
+          const typeStr = cls.classroom_types?.name || "";
+
+          classroomStr = `ม.${gradeStr} ห้อง ${typeStr}`.trim();
+        }
+
+        return {
+          studentId: stu.students_id,
+          name: `${stu.prefix_name || ""}${stu.firstname} ${stu.lastname}`.trim(),
+          nickname: stu.nickname,
+          classroom: classroomStr,
+          tel: stu.tel,
+          foodAllergy: stu.food_allergy,
+          chronicDisease: stu.chronic_disease,
+          remark: stu.remark,
+          certificateNo: row.certificate?.[0]?.certificate_no || null,
+        };
+      });
+
+      exportCampStudentsToExcel({
+        campName: campName || json.campName || "",
+        summary: {
+          totalStudents: summary.totalStudents,
+          allergiesCount: summary.allergiesCount,
+          chronicDiseasesCount: summary.chronicDiseasesCount,
+          remarksCount: summary.remarksCount,
+        },
+        students: allStudents,
+      });
+      showSuccess("ส่งออกสำเร็จ", "ดาวน์โหลดไฟล์ Excel (.xlsx) เรียบร้อยแล้ว");
+    } catch (err) {
+      console.error("Export Excel error:", err);
+      showError("เกิดข้อผิดพลาด", "ไม่สามารถส่งออกไฟล์ Excel ได้");
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!summary || summary.totalStudents === 0) return;
+    try {
+      setIsExportingPdf(true);
+      const res = await fetch(`/api/camps/${campId}/students/pdf`);
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+
+        throw new Error(errJson?.error || "ดาวน์โหลดไฟล์ PDF ไม่สำเร็จ");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+
+      a.href = url;
+      const cleanCampName = (campName || "camp").replace(/[/\\?%*:|"<>]/g, "-");
+
+      a.download = `ข้อมูลนักเรียน_${cleanCampName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      showSuccess("สำเร็จ", "ดาวน์โหลดไฟล์ PDF (.pdf) เรียบร้อยแล้ว");
+    } catch (err: any) {
+      console.error("Export PDF error:", err);
+      showError("เกิดข้อผิดพลาด", err.message || "ไม่สามารถสร้างไฟล์ PDF ได้");
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -341,18 +448,18 @@ export default function CampStudentsPage() {
 
         {/* Search & Table Section */}
         <div className="bg-white rounded-2xl p-6 shadow-sm overflow-hidden">
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <h3 className="text-sm font-semibold text-gray-900 w-full sm:w-auto">
+          <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-3">
+            <h3 className="text-sm font-semibold text-gray-900 shrink-0">
               รายชื่อนักเรียน
             </h3>
-            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <div className="w-full sm:w-[200px]">
+            <div className="flex flex-col sm:flex-row flex-wrap lg:flex-nowrap items-stretch sm:items-center gap-2.5">
+              <div className="w-full sm:w-[150px]">
                 <Select
                   aria-label="ตัวกรอง"
                   className="w-full"
                   classNames={{
                     trigger:
-                      "bg-white border border-gray-100 text-gray-700 font-medium h-10",
+                      "bg-white border border-gray-200 text-gray-700 font-medium h-10 rounded-xl",
                   }}
                   placeholder="ตัวกรองทั้งหมด"
                   selectedKeys={[filter]}
@@ -376,18 +483,64 @@ export default function CampStudentsPage() {
                   </SelectItem>
                 </Select>
               </div>
-              <div className="w-full sm:w-72">
+              <div className="w-full sm:w-60">
                 <Input
                   className="w-full"
                   classNames={{
-                    inputWrapper: "h-10 border border-gray-100 bg-white",
+                    inputWrapper:
+                      "h-10 border border-gray-200 bg-white rounded-xl",
                   }}
-                  placeholder="ค้นหาชื่อ, นามสกุล หรือรหัส..."
+                  placeholder="ค้นหาชื่อ, ชื่อเล่น หรือรหัส..."
                   size="sm"
                   startContent={<Search className="text-gray-400" size={18} />}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
+              </div>
+
+              {/* Export Action Buttons */}
+              <div className="flex items-center gap-2 shrink-0">
+                <Tooltip
+                  closeDelay={0}
+                  content="ดาวน์โหลดข้อมูลนักเรียนเป็นไฟล์ Excel (.xlsx)"
+                  placement="top"
+                >
+                  <Button
+                    aria-label="ส่งออกไฟล์ Excel"
+                    className="flex-1 sm:flex-initial h-10 flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white hover:bg-emerald-50/70 hover:border-emerald-300 text-gray-700 hover:text-emerald-800 px-3.5 text-xs sm:text-sm font-medium shadow-xs transition-all active:scale-[0.98] disabled:opacity-40"
+                    isDisabled={
+                      loading || !summary || summary.totalStudents === 0
+                    }
+                    isLoading={isExportingExcel}
+                    onPress={handleExportExcel}
+                  >
+                    {!isExportingExcel && (
+                      <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
+                    )}
+                    <span>ส่งออก Excel</span>
+                  </Button>
+                </Tooltip>
+
+                <Tooltip
+                  closeDelay={0}
+                  content="ดาวน์โหลดรายงานข้อมูลนักเรียนพร้อมพิมพ์ (.pdf)"
+                  placement="top"
+                >
+                  <Button
+                    aria-label="ส่งออกไฟล์ PDF"
+                    className="flex-1 sm:flex-initial h-10 flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white hover:bg-rose-50/70 hover:border-rose-300 text-gray-700 hover:text-rose-800 px-3.5 text-xs sm:text-sm font-medium shadow-xs transition-all active:scale-[0.98] disabled:opacity-40"
+                    isDisabled={
+                      loading || !summary || summary.totalStudents === 0
+                    }
+                    isLoading={isExportingPdf}
+                    onPress={handleExportPdf}
+                  >
+                    {!isExportingPdf && (
+                      <FileText className="h-4 w-4 text-rose-600 shrink-0" />
+                    )}
+                    <span>ส่งออก PDF</span>
+                  </Button>
+                </Tooltip>
               </div>
             </div>
           </div>
@@ -397,10 +550,7 @@ export default function CampStudentsPage() {
               <thead>
                 <tr className="bg-gray-50 text-gray-600 text-sm border-y border-gray-100">
                   <th className="p-4 font-semibold rounded-tl-lg whitespace-nowrap">
-                    รหัส
-                  </th>
-                  <th className="p-4 font-semibold whitespace-nowrap">
-                    ชื่อ - นามสกุล
+                    นักเรียน
                   </th>
                   <th className="p-4 font-semibold whitespace-nowrap">
                     เบอร์โทร
@@ -422,7 +572,7 @@ export default function CampStudentsPage() {
               <tbody>
                 {!loading && students.length === 0 ? (
                   <tr>
-                    <td className="p-8 text-center text-gray-500" colSpan={7}>
+                    <td className="p-8 text-center text-gray-500" colSpan={6}>
                       ไม่พบข้อมูลนักเรียน
                     </td>
                   </tr>
@@ -432,12 +582,35 @@ export default function CampStudentsPage() {
                       key={idx}
                       className="border-b border-gray-50 hover:bg-gray-50 transition-colors text-sm"
                     >
-                      <td className="p-4 text-gray-900 font-medium">
-                        {row.student.students_id}
-                      </td>
                       <td className="p-4 text-gray-900">
-                        {row.student.prefix_name || ""} {row.student.firstname}{" "}
-                        {row.student.lastname}
+                        <div className="flex min-w-[280px] items-center gap-2.5">
+                          <span className="w-5 shrink-0 text-center text-xs font-semibold text-gray-400">
+                            {(page - 1) * limit + idx + 1}
+                          </span>
+                          <Avatar
+                            className="h-10 w-10 flex-shrink-0 bg-[#e8f0ee] text-[#3d6357]"
+                            imgProps={{
+                              alt: `รูปโปรไฟล์ของ ${row.student.firstname} ${row.student.lastname}`,
+                            }}
+                            name={`${row.student.firstname.charAt(0)}${row.student.lastname.charAt(0)}`}
+                            src={row.student.profile_image_url || undefined}
+                          />
+                          <div className="min-w-0">
+                            <p className="whitespace-nowrap font-medium">
+                              {row.student.prefix_name || ""}{" "}
+                              {row.student.firstname} {row.student.lastname}
+                            </p>
+                            <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-gray-500">
+                              <span>
+                                ชื่อเล่น: {row.student.nickname || "-"}
+                              </span>
+                              <span aria-hidden="true">·</span>
+                              <span>
+                                รหัสนักเรียน {row.student.students_id}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
                       </td>
                       <td className="p-4 text-gray-600">
                         {row.student.tel || "-"}

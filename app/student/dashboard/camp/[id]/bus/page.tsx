@@ -18,6 +18,8 @@ import { toast } from "react-hot-toast";
 
 import StudentBusCheckinSkeleton from "./components/StudentBusCheckinSkeleton";
 
+import { boardStudentBusWithRetry } from "@/lib/student-bus-board";
+
 function formatCheckedAt(value: string | null) {
   if (!value) return "";
 
@@ -211,16 +213,7 @@ export default function StudentBusCheckinPage() {
     setBoarding(true);
 
     try {
-      const response = await fetch(`/api/student/camps/${id}/bus/board`, {
-        method: "POST",
-      });
-      const result = await response.json();
-
-      if (!response.ok) {
-        toast.error(result.error || "เช็คชื่อขึ้นรถไม่สำเร็จ");
-
-        return;
-      }
+      const result = await boardStudentBusWithRetry(id);
 
       setData((current: any) => ({
         ...current,
@@ -233,8 +226,8 @@ export default function StudentBusCheckinPage() {
       }));
       setPendingBoarding(false);
       toast.success(result.message || "เช็คชื่อขึ้นรถสำเร็จ");
-    } catch {
-      toast.error("เกิดข้อผิดพลาด กรุณาลองใหม่");
+    } catch (error: any) {
+      toast.error(error.message || "เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
       setBoarding(false);
     }

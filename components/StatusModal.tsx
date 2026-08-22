@@ -44,17 +44,17 @@ export default function StatusModal({
 
   const getIcon = () => {
     if (isDeleteAction) {
-      return <Trash2 className="text-[#E84A5F]" size={48} />;
+      return <Trash2 className="text-[#E84A5F]" size={48} strokeWidth={1.75} />;
     }
     switch (type) {
       case "success":
-        return <CheckCircle className="text-green-500" size={48} />;
+        return <CheckCircle className="text-green-500" size={48} strokeWidth={1.75} />;
       case "error":
-        return <AlertOctagon className="text-red-500" size={48} />;
+        return <AlertOctagon className="text-red-500" size={48} strokeWidth={1.75} />;
       case "warning":
-        return <AlertCircle className="text-yellow-500" size={48} />;
+        return <AlertCircle className="text-yellow-500" size={48} strokeWidth={1.75} />;
       case "info":
-        return <Info className="text-blue-500" size={48} />;
+        return <Info className="text-blue-500" size={48} strokeWidth={1.75} />;
     }
   };
 
@@ -93,18 +93,18 @@ export default function StatusModal({
               <div className="w-20 h-20 bg-[#e6e2d8] rounded-full flex items-center justify-center mb-4">
                 {getIcon()}
               </div>
-              <h3 className="text-xl font-bold text-center text-[#5c7267]">
+              <h3 className="text-xl font-medium text-center text-[#5c7267]">
                 {title}
               </h3>
             </ModalHeader>
             <ModalBody className="text-center pb-6">
-              <p className="text-[#6b857a]/80 font-medium text-lg">{message}</p>
+              <p className="text-[#6b857a]/80 font-normal text-lg">{message}</p>
             </ModalBody>
             <ModalFooter className="justify-center gap-4 pb-8">
               {onConfirm ? (
                 <>
                   <Button
-                    className={`text-white rounded-full font-bold w-36 shadow-sm ${
+                    className={`text-white rounded-full font-medium w-36 shadow-sm ${
                       isDeleteAction
                         ? "bg-[#E84A5F] hover:bg-[#FF847C]"
                         : "bg-[#6b857a] hover:bg-[#5a7268]"
@@ -119,7 +119,7 @@ export default function StatusModal({
                       : confirmText}
                   </Button>
                   <Button
-                    className="bg-white border-2 border-[#6b857a] text-[#6b857a] rounded-full font-bold w-36 shadow-sm hover:bg-gray-50"
+                    className="bg-white border-2 border-[#6b857a] text-[#6b857a] rounded-full font-medium w-36 shadow-sm hover:bg-gray-50"
                     variant="bordered"
                     onPress={onClose}
                   >
@@ -128,7 +128,7 @@ export default function StatusModal({
                 </>
               ) : (
                 <Button
-                  className="bg-[#6b857a] text-white rounded-full font-bold px-12 shadow-sm hover:bg-[#5a7268]"
+                  className="bg-[#6b857a] text-white rounded-full font-medium px-12 shadow-sm hover:bg-[#5a7268]"
                   onPress={onClose}
                 >
                   ปิด

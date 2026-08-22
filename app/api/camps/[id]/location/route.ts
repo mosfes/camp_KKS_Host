@@ -125,6 +125,9 @@ export async function GET(
   let students: Array<{
     studentId: number;
     name: string;
+    nickname: string | null;
+    profileImageUrl: string | null;
+    initials: string;
     sharingEnabled: boolean;
     latest: {
       latitude: number;
@@ -157,6 +160,8 @@ export async function GET(
             prefix_name: true,
             firstname: true,
             lastname: true,
+            nickname: true,
+            profile_image_url: true,
             student_location_update: {
               where: { camp_camp_id: campId },
               orderBy: { recorded_at: "desc" },
@@ -189,6 +194,9 @@ export async function GET(
         return {
           studentId: student.students_id,
           name: studentName(student),
+          nickname: student.nickname,
+          profileImageUrl: student.profile_image_url,
+          initials: `${student.firstname.charAt(0)}${student.lastname.charAt(0)}`,
           sharingEnabled: hasValidConsent,
           latest:
             camp.location_sharing_enabled &&
@@ -230,6 +238,8 @@ export async function GET(
         prefix_name: true,
         firstname: true,
         lastname: true,
+        nickname: true,
+        profile_image_url: true,
         birthday: true,
       },
     });
@@ -259,6 +269,9 @@ export async function GET(
         {
           studentId: student.students_id,
           name: studentName(student),
+          nickname: student.nickname,
+          profileImageUrl: student.profile_image_url,
+          initials: `${student.firstname.charAt(0)}${student.lastname.charAt(0)}`,
           sharingEnabled: studentSharingEnabled,
           latest: viewerPath.at(-1) ?? null,
         },

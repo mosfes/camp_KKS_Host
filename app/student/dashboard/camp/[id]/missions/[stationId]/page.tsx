@@ -32,6 +32,7 @@ import { isBangkokDateBefore } from "@/lib/bangkok-date";
 import VideoPlayer from "@/components/VideoPlayer";
 import { getVideoSource, supportedVideoUrlMessage } from "@/lib/video";
 import { toThumbnail } from "@/lib/cloudinary-url";
+import { submitStudentMissionWithRetry } from "@/lib/student-mission-submit";
 
 const QrScanner = dynamic(() => import("@/components/QrScanner"), {
   ssr: false,
@@ -418,9 +419,13 @@ export default function StudentStationDetailPage() {
     const signatureData = await signatureResponse.json().catch(() => null);
 
     if (!signatureResponse.ok) {
-      throw new Error(
+      const error: any = new Error(
         signatureData?.error || "ไม่สามารถเตรียมการอัปโหลดรูปได้",
       );
+
+      error.status = signatureResponse.status;
+      error.retryable = signatureData?.retryable === true;
+      throw error;
     }
 
     const uploadForm = new FormData();
@@ -446,7 +451,14 @@ export default function StudentStationDetailPage() {
     const uploadData = await uploadResponse.json().catch(() => null);
 
     if (!uploadResponse.ok || !uploadData?.secure_url) {
-      throw new Error(uploadData?.error?.message || "อัปโหลดรูปภาพไม่สำเร็จ");
+      const error: any = new Error(
+        uploadData?.error?.message || "อัปโหลดรูปภาพไม่สำเร็จ",
+      );
+
+      error.status = uploadResponse.status;
+      error.retryable =
+        uploadResponse.status === 429 || uploadResponse.status >= 500;
+      throw error;
     }
 
     const commitResponse = await fetch("/api/student/mission/upload-commit", {
@@ -469,9 +481,13 @@ export default function StudentStationDetailPage() {
     const commitData = await commitResponse.json().catch(() => null);
 
     if (!commitResponse.ok || !commitData?.url || !commitData?.publicId) {
-      throw new Error(
+      const error: any = new Error(
         commitData?.error || "รูปภาพไม่ผ่านการตรวจสอบจากเซิร์ฟเวอร์",
       );
+
+      error.status = commitResponse.status;
+      error.retryable = commitData?.retryable === true;
+      throw error;
     }
 
     return {
@@ -493,8 +509,6 @@ export default function StudentStationDetailPage() {
     }
 
     const MAX_RETRIES = 3;
-    const RETRY_DELAY_MS = 2000; // 2 วินาที (exponential: 2s, 4s, 6s)
-
     setUploadingQids((current) =>
       current.includes(questionId) ? current : [...current, questionId],
     );
@@ -526,12 +540,14 @@ export default function StudentStationDetailPage() {
 
           return; // สำเร็จ ออกจาก loop
         } catch (error: any) {
-          // Signature validation and other 4xx errors are not fixed by retry.
           const message = error?.message || "อัปโหลดล้มเหลว";
+          const retryable =
+            error?.retryable === true ||
+            error?.status === 429 ||
+            error?.status >= 500 ||
+            error instanceof TypeError;
 
-          if (
-            /ไม่พบ|ไม่มีสิทธิ์|ยังไม่ได้ลงทะเบียน|ไม่สามารถเตรียม/.test(message)
-          ) {
+          if (!retryable) {
             toast.error(message);
 
             return;
@@ -541,10 +557,12 @@ export default function StudentStationDetailPage() {
         }
 
         if (attempt < MAX_RETRIES) {
-          // รอก่อน retry (2s, 4s, 6s)
-          await new Promise((resolve) =>
-            setTimeout(resolve, RETRY_DELAY_MS * attempt),
-          );
+          const delayMs =
+            attempt === 1
+              ? 800 + Math.random() * 1700
+              : 2000 + Math.random() * 3000;
+
+          await new Promise((resolve) => window.setTimeout(resolve, delayMs));
         }
       }
 
@@ -588,8 +606,8 @@ export default function StudentStationDetailPage() {
 
       return {
         questionId: Number(qid),
-        type: q?.question_type,
-        value: val,
+        type: q?.question_type as "TEXT" | "MCQ" | "PHOTO",
+        value: String(val),
         ...(q?.question_type === "PHOTO" && answerPublicIds[Number(qid)]
           ? { publicId: answerPublicIds[Number(qid)] }
           : {}),
@@ -602,68 +620,56 @@ export default function StudentStationDetailPage() {
     );
 
     try {
-      const res = await fetch("/api/student/mission/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campId: Number(id),
-          missionId: selectedMission.mission_id,
-          answers: payloadAnswers,
-          isDraft: isDraft,
-        }),
+      const resultData = await submitStudentMissionWithRetry({
+        campId: Number(id),
+        missionId: selectedMission.mission_id,
+        answers: payloadAnswers,
+        isDraft,
+      });
+      const savedStatus =
+        resultData?.status || (isDraft ? "pending" : "completed");
+      const savedAnswers = payloadAnswers.map((answer: any) => ({
+        mission_question_question_id: answer.questionId,
+        answer_text:
+          answer.type === "TEXT" ? [{ answer_text: answer.value }] : [],
+        answer_mcq:
+          answer.type === "MCQ" ? [{ question_text: answer.value }] : [],
+        answer_photo:
+          answer.type === "PHOTO" ? [{ img_url: answer.value }] : [],
+      }));
+
+      setCamp((previous: any) => {
+        if (!previous) return previous;
+
+        const missionResults = previous.missionResults || [];
+        const nextResult = {
+          mission_result_id: resultData?.resultId,
+          mission_mission_id: selectedMission.mission_id,
+          status: savedStatus,
+          mission_answer: savedAnswers,
+        };
+        const hasExistingResult = missionResults.some(
+          (result: any) =>
+            result.mission_mission_id === selectedMission.mission_id,
+        );
+
+        return {
+          ...previous,
+          missionResults: hasExistingResult
+            ? missionResults.map((result: any) =>
+                result.mission_mission_id === selectedMission.mission_id
+                  ? { ...result, ...nextResult }
+                  : result,
+              )
+            : [...missionResults, nextResult],
+        };
       });
 
-      if (res.ok) {
-        const resultData = await res.json().catch(() => null);
-        const savedStatus =
-          resultData?.status || (isDraft ? "pending" : "completed");
-        const savedAnswers = payloadAnswers.map((answer: any) => ({
-          mission_question_question_id: answer.questionId,
-          answer_text:
-            answer.type === "TEXT" ? [{ answer_text: answer.value }] : [],
-          answer_mcq:
-            answer.type === "MCQ" ? [{ question_text: answer.value }] : [],
-          answer_photo:
-            answer.type === "PHOTO" ? [{ img_url: answer.value }] : [],
-        }));
-
-        setCamp((previous: any) => {
-          if (!previous) return previous;
-
-          const missionResults = previous.missionResults || [];
-          const nextResult = {
-            mission_result_id: resultData?.resultId,
-            mission_mission_id: selectedMission.mission_id,
-            status: savedStatus,
-            mission_answer: savedAnswers,
-          };
-          const hasExistingResult = missionResults.some(
-            (result: any) =>
-              result.mission_mission_id === selectedMission.mission_id,
-          );
-
-          return {
-            ...previous,
-            missionResults: hasExistingResult
-              ? missionResults.map((result: any) =>
-                  result.mission_mission_id === selectedMission.mission_id
-                    ? { ...result, ...nextResult }
-                    : result,
-                )
-              : [...missionResults, nextResult],
-          };
-        });
-
-        toast.success(isDraft ? "บันทึกร่างสำเร็จ!" : "ส่งภารกิจสำเร็จ!");
-        onClose();
-      } else {
-        const errorData = await res.json().catch(() => null);
-
-        toast.error(errorData?.error || "ส่งภารกิจล้มเหลว");
-      }
-    } catch (error) {
+      toast.success(isDraft ? "บันทึกร่างสำเร็จ!" : "ส่งภารกิจสำเร็จ!");
+      onClose();
+    } catch (error: any) {
       console.error(error);
-      toast.error("เกิดข้อผิดพลาดในการส่ง");
+      toast.error(error?.message || "เกิดข้อผิดพลาดในการส่ง");
     } finally {
       setSubmitting(false);
     }
