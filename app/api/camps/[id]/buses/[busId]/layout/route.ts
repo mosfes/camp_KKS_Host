@@ -116,6 +116,7 @@ export async function PUT(request: Request, context: any) {
           select: {
             assignment_id: true,
             status: true,
+            participation_status: true,
           },
         });
         const firstDeparture = await tx.camp_bus_event.findFirst({
@@ -150,6 +151,7 @@ export async function PUT(request: Request, context: any) {
           );
           const newlyBoarded = existingAssignments.filter(
             (assignment) =>
+              assignment.participation_status === "ACTIVE" &&
               seatedAssignmentIds.has(assignment.assignment_id) &&
               assignment.status !== "ON_BUS",
           );

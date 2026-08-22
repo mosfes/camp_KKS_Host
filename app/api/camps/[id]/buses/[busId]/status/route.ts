@@ -47,7 +47,7 @@ export async function POST(request: Request, context: any) {
 
     if (body.status === "TRAVELING") {
       const assignments = await tx.camp_bus_student.findMany({
-        where: { bus_bus_id: busId },
+        where: { bus_bus_id: busId, participation_status: "ACTIVE" },
         select: { position_position_id: true },
       });
 

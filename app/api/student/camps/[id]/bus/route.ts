@@ -61,6 +61,7 @@ export async function GET(request: Request, context: any) {
       },
       select: {
         status: true,
+        participation_status: true,
         last_boarded_at: true,
         bus: {
           select: {
@@ -80,6 +81,7 @@ export async function GET(request: Request, context: any) {
         configured: true,
         busStatus: assignment.bus.status,
         studentStatus: assignment.status,
+        participationStatus: assignment.participation_status,
         isOnBus: assignment.status === "ON_BUS",
         lastBoardedAt: assignment.last_boarded_at,
       },
@@ -100,6 +102,7 @@ export async function GET(request: Request, context: any) {
         select: {
           assignment_id: true,
           status: true,
+          participation_status: true,
           last_boarded_at: true,
           position: {
             select: {
@@ -200,6 +203,7 @@ export async function GET(request: Request, context: any) {
       },
       student: {
         status: assignment.status,
+        participationStatus: assignment.participation_status,
         isOnBus: assignment.status === "ON_BUS",
         lastBoardedAt: assignment.last_boarded_at,
         position: ownPosition

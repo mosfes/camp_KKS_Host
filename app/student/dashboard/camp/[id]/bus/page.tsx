@@ -124,6 +124,9 @@ export default function StudentBusCheckinPage() {
               student: {
                 ...current.student,
                 status: result.studentStatus || current.student.status,
+                participationStatus:
+                  result.participationStatus ||
+                  current.student.participationStatus,
                 isOnBus:
                   result.isOnBus !== undefined
                     ? result.isOnBus
@@ -199,6 +202,7 @@ export default function StudentBusCheckinPage() {
     if (
       boarding ||
       data?.student?.isOnBus ||
+      data?.student?.participationStatus === "NOT_TRAVELING" ||
       data?.bus?.status === "TRAVELING"
     ) {
       return;
@@ -332,6 +336,7 @@ export default function StudentBusCheckinPage() {
   }
 
   const isOnBus = Boolean(data.student?.isOnBus);
+  const isParticipating = data.student?.participationStatus !== "NOT_TRAVELING";
   const isTraveling = data.bus?.status === "TRAVELING";
   const hasSeat = Boolean(data.student?.position);
   const floors = data.bus?.floors || [];
@@ -430,19 +435,21 @@ export default function StudentBusCheckinPage() {
                   {isOnBus ? "การลงรถ" : "การขึ้นรถ"}
                 </p>
                 <p className="truncate text-[11px] text-gray-500">
-                  {isOnBus
-                    ? isTraveling
-                      ? "รถกำลังเดินทาง"
-                      : "รถจอดแล้ว"
-                    : isTraveling
-                      ? "รถกำลังเดินทาง"
-                      : hasSeat
-                        ? "พร้อมขึ้นรถ"
-                        : "รอจัดที่นั่ง"}
+                  {!isParticipating
+                    ? "ครูระบุว่าไม่ร่วมเดินทางต่อในค่ายนี้"
+                    : isOnBus
+                      ? isTraveling
+                        ? "รถกำลังเดินทาง"
+                        : "รถจอดแล้ว"
+                      : isTraveling
+                        ? "รถกำลังเดินทาง"
+                        : hasSeat
+                          ? "พร้อมขึ้นรถ"
+                          : "รอจัดที่นั่ง"}
                 </p>
               </div>
             </div>
-            {!isTraveling && (
+            {!isTraveling && isParticipating && (
               <Button
                 className={
                   isOnBus

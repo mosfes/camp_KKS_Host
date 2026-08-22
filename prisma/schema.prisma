@@ -387,6 +387,11 @@ enum camp_bus_student_status {
   ON_BUS
 }
 
+enum camp_bus_participation_status {
+  ACTIVE
+  NOT_TRAVELING
+}
+
 enum camp_bus_event_type {
   BOARD
   ALIGHT
@@ -443,13 +448,14 @@ model camp_bus_position {
 }
 
 model camp_bus_student {
-  assignment_id         Int                     @id @default(autoincrement())
+  assignment_id         Int                           @id @default(autoincrement())
   bus_bus_id            Int
-  student_enrollment_id Int                     @unique
-  position_position_id  Int?                    @unique
-  status                camp_bus_student_status @default(OFF_BUS)
+  student_enrollment_id Int                           @unique
+  position_position_id  Int?                          @unique
+  status                camp_bus_student_status       @default(OFF_BUS)
+  participation_status  camp_bus_participation_status @default(ACTIVE)
   last_boarded_at       DateTime?
-  updated_at            DateTime                @updatedAt
+  updated_at            DateTime                      @updatedAt
 
   bus                camp_bus           @relation(fields: [bus_bus_id], references: [bus_id], onDelete: Cascade)
   student_enrollment student_enrollment @relation(fields: [student_enrollment_id], references: [student_enrollment_id], onDelete: Cascade)
@@ -458,6 +464,7 @@ model camp_bus_student {
 
   @@unique([bus_bus_id, student_enrollment_id])
   @@index([bus_bus_id, status])
+  @@index([bus_bus_id, participation_status])
 }
 
 model camp_bus_event {
@@ -741,7 +748,7 @@ model survey {
   description          String?  @db.Text
   created_at           DateTime @default(now())
   is_required_for_cert Boolean  @default(true)
-  is_accepting_responses Boolean @default(true)
+  is_accepting_responses Boolean  @default(true)
 
   camp_camp_id Int  @unique
   camp         camp @relation(fields: [camp_camp_id], references: [camp_id])

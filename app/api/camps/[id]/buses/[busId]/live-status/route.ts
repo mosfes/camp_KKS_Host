@@ -37,6 +37,7 @@ export async function GET(_request: Request, context: any) {
         select: {
           assignment_id: true,
           status: true,
+          participation_status: true,
           last_boarded_at: true,
           student_enrollment: {
             select: {
@@ -89,6 +90,7 @@ export async function GET(_request: Request, context: any) {
     return {
       assignmentId: assignment.assignment_id,
       status: assignment.status,
+      participationStatus: assignment.participation_status,
       lastBoardedAt: assignment.last_boarded_at,
       lastStatusEvent: latestEvent
         ? {
@@ -114,7 +116,9 @@ export async function GET(_request: Request, context: any) {
       busId: bus.bus_id,
       status: bus.status,
       checkedInCount: assignmentStatuses.filter(
-        (assignment) => assignment.status === "ON_BUS",
+        (assignment) =>
+          assignment.participationStatus === "ACTIVE" &&
+          assignment.status === "ON_BUS",
       ).length,
       assignmentStatuses,
     },

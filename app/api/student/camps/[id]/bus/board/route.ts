@@ -30,6 +30,7 @@ export async function POST(request: Request, context: any) {
       select: {
         assignment_id: true,
         status: true,
+        participation_status: true,
         position: { select: { label: true } },
         bus: { select: { bus_id: true, status: true, name: true } },
       },
@@ -45,6 +46,14 @@ export async function POST(request: Request, context: any) {
     if (assignment.bus.status === "TRAVELING") {
       return {
         error: "รถกำลังเดินทาง ไม่สามารถกดยืนยันขึ้นรถในตอนนี้",
+        status: 409,
+      };
+    }
+
+    if (assignment.participation_status === "NOT_TRAVELING") {
+      return {
+        error:
+          "ครูระบุว่าคุณไม่ร่วมเดินทางต่อในค่ายนี้ กรุณาติดต่อครูผู้ดูแลหากข้อมูลไม่ถูกต้อง",
         status: 409,
       };
     }
@@ -70,6 +79,7 @@ export async function POST(request: Request, context: any) {
       where: {
         assignment_id: assignment.assignment_id,
         status: "OFF_BUS",
+        participation_status: "ACTIVE",
       },
       data: { status: "ON_BUS", last_boarded_at: checkedAt },
     });

@@ -77,6 +77,7 @@ function formatBus(bus: any) {
       positionLabel: assignment.position?.label || null,
       floorNumber: assignment.position?.floor?.floor_number || null,
       status: assignment.status,
+      participationStatus: assignment.participation_status,
       isRegistered: Boolean(assignment.student_enrollment.enrolled_at),
       lastBoardedAt: assignment.last_boarded_at,
       lastStatusEvent: latestEvent
@@ -122,13 +123,17 @@ function formatBus(bus: any) {
       })),
     })),
     assignments,
-    checkedInCount: assignments.filter((item: any) => item.status === "ON_BUS")
-      .length,
+    checkedInCount: assignments.filter(
+      (item: any) =>
+        item.participationStatus === "ACTIVE" && item.status === "ON_BUS",
+    ).length,
     // Only students with a seat are participating in the current trip.
     // Students without a seat remain in the roster so the teacher can confirm
     // that they are not travelling this trip.
     assignedCount: assignments.filter(
-      (assignment: any) => assignment.position_position_id !== null,
+      (assignment: any) =>
+        assignment.participationStatus === "ACTIVE" &&
+        assignment.positionId !== null,
     ).length,
     unassignedSeatCount: bus.floors.reduce(
       (sum: number, floor: any) =>

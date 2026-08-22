@@ -62,6 +62,7 @@ type Assignment = {
   positionLabel: string | null;
   floorNumber: number | null;
   status: "OFF_BUS" | "ON_BUS";
+  participationStatus: "ACTIVE" | "NOT_TRAVELING";
   lastBoardedAt: string | null;
   lastStatusEvent: BusStatusEvent | null;
   isRegistered: boolean;
@@ -116,6 +117,7 @@ type LiveBusStatus = {
   assignmentStatuses: {
     assignmentId: number;
     status: "OFF_BUS" | "ON_BUS";
+    participationStatus: "ACTIVE" | "NOT_TRAVELING";
     lastBoardedAt: string | null;
     lastStatusEvent: BusStatusEvent | null;
   }[];
@@ -543,11 +545,14 @@ export default function BusManagementModal({
               if (!liveAssignment) return assignment;
 
               const status: Assignment["status"] = liveAssignment.status;
+              const participationStatus: Assignment["participationStatus"] =
+                liveAssignment.participationStatus;
               const lastBoardedAt = liveAssignment.lastBoardedAt;
               const lastStatusEvent = liveAssignment.lastStatusEvent;
 
               if (
                 assignment.status === status &&
+                assignment.participationStatus === participationStatus &&
                 assignment.lastBoardedAt === lastBoardedAt &&
                 JSON.stringify(assignment.lastStatusEvent) ===
                   JSON.stringify(lastStatusEvent)
@@ -560,6 +565,7 @@ export default function BusManagementModal({
               return {
                 ...assignment,
                 status,
+                participationStatus,
                 lastBoardedAt,
                 lastStatusEvent,
               };
@@ -963,6 +969,48 @@ export default function BusManagementModal({
     }
   };
 
+  const changeStudentParticipation = async (
+    assignment: Assignment,
+    participationStatus: Assignment["participationStatus"],
+  ) => {
+    if (!selectedBus || changingAssignmentId !== null) return;
+
+    try {
+      setChangingAssignmentId(assignment.assignmentId);
+      const response = await fetch(
+        `/api/camps/${campId}/buses/${selectedBus.busId}/participation`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assignmentId: assignment.assignmentId,
+            participationStatus,
+          }),
+        },
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "เปลี่ยนสถานะการร่วมเดินทางไม่สำเร็จ");
+      }
+
+      showSuccess(
+        participationStatus === "NOT_TRAVELING"
+          ? "จำสถานะไว้ในค่ายนี้แล้ว"
+          : "นำนักเรียนกลับเข้าร่วมแล้ว",
+        `${assignment.studentName} · ${data.message}`,
+      );
+      await fetchBuses(selectedBus.busId);
+    } catch (error: any) {
+      showError(
+        "เปลี่ยนสถานะการร่วมเดินทางไม่สำเร็จ",
+        error.message || "กรุณาลองใหม่อีกครั้ง",
+      );
+    } finally {
+      setChangingAssignmentId(null);
+    }
+  };
+
   const availableClassrooms = classrooms.filter(
     (classroom) => !classroom.busId,
   );
@@ -1055,10 +1103,19 @@ export default function BusManagementModal({
 
     return {
       all: assignments.length,
-      on: assignments.filter((assignment) => assignment.status === "ON_BUS")
-        .length,
-      off: assignments.filter((assignment) => assignment.status === "OFF_BUS")
-        .length,
+      on: assignments.filter(
+        (assignment) =>
+          assignment.participationStatus === "ACTIVE" &&
+          assignment.status === "ON_BUS",
+      ).length,
+      off: assignments.filter(
+        (assignment) =>
+          assignment.participationStatus === "ACTIVE" &&
+          assignment.status === "OFF_BUS",
+      ).length,
+      notTraveling: assignments.filter(
+        (assignment) => assignment.participationStatus === "NOT_TRAVELING",
+      ).length,
     };
   }, [selectedBus]);
 
@@ -1066,14 +1123,25 @@ export default function BusManagementModal({
     () =>
       (selectedBus?.assignments || []).filter(
         (assignment) =>
-          assignment.positionId !== null && assignment.status !== "ON_BUS",
+          assignment.participationStatus === "ACTIVE" &&
+          assignment.positionId !== null &&
+          assignment.status !== "ON_BUS",
       ),
     [selectedBus],
   );
   const unseatedAssignments = useMemo(
     () =>
       (selectedBus?.assignments || []).filter(
-        (assignment) => assignment.positionId === null,
+        (assignment) =>
+          assignment.participationStatus === "ACTIVE" &&
+          assignment.positionId === null,
+      ),
+    [selectedBus],
+  );
+  const notTravelingAssignments = useMemo(
+    () =>
+      (selectedBus?.assignments || []).filter(
+        (assignment) => assignment.participationStatus === "NOT_TRAVELING",
       ),
     [selectedBus],
   );
@@ -1085,8 +1153,10 @@ export default function BusManagementModal({
       const matchesStatus =
         busStudentStatusFilter === "all" ||
         (busStudentStatusFilter === "on"
-          ? assignment.status === "ON_BUS"
-          : assignment.status === "OFF_BUS");
+          ? assignment.participationStatus === "ACTIVE" &&
+            assignment.status === "ON_BUS"
+          : assignment.participationStatus === "ACTIVE" &&
+            assignment.status === "OFF_BUS");
       const matchesSearch =
         !query ||
         assignment.studentName.toLocaleLowerCase().includes(query) ||
@@ -1721,6 +1791,9 @@ export default function BusManagementModal({
                         <p className="mt-1 text-xs text-gray-500">
                           อยู่บนรถ {busStudentCounts.on} · ไม่อยู่บนรถ{" "}
                           {busStudentCounts.off}
+                          {busStudentCounts.notTraveling > 0
+                            ? ` · ไม่ร่วมเดินทางต่อ ${busStudentCounts.notTraveling}`
+                            : ""}
                           <span className="block">
                             กดปุ่มสถานะเพื่อยืนยันขึ้นหรือลงรถแทนนักเรียน
                           </span>
@@ -1788,15 +1861,25 @@ export default function BusManagementModal({
                           </div>
                           <div className="flex min-w-0 flex-col items-end gap-1 text-right">
                             <Button
-                              aria-label={`${assignment.studentName}: กดเปลี่ยนเป็น${assignment.status === "ON_BUS" ? "ไม่อยู่บนรถ" : "อยู่บนรถ"}`}
+                              aria-label={
+                                assignment.participationStatus ===
+                                "NOT_TRAVELING"
+                                  ? `${assignment.studentName}: ไม่ร่วมเดินทางต่อในค่ายนี้`
+                                  : `${assignment.studentName}: กดเปลี่ยนเป็น${assignment.status === "ON_BUS" ? "ไม่อยู่บนรถ" : "อยู่บนรถ"}`
+                              }
                               className={
-                                assignment.status === "ON_BUS"
-                                  ? "h-8 min-w-24 bg-green-100 px-3 text-[11px] font-semibold text-green-700"
-                                  : "h-8 min-w-24 bg-gray-100 px-3 text-[11px] font-semibold text-gray-700"
+                                assignment.participationStatus ===
+                                "NOT_TRAVELING"
+                                  ? "h-8 min-w-24 bg-slate-100 px-3 text-[11px] font-semibold text-slate-600"
+                                  : assignment.status === "ON_BUS"
+                                    ? "h-8 min-w-24 bg-green-100 px-3 text-[11px] font-semibold text-green-700"
+                                    : "h-8 min-w-24 bg-gray-100 px-3 text-[11px] font-semibold text-gray-700"
                               }
                               isDisabled={
                                 selectedBus.status === "TRAVELING" ||
                                 changingAssignmentId !== null ||
+                                assignment.participationStatus ===
+                                  "NOT_TRAVELING" ||
                                 (assignment.status === "OFF_BUS" &&
                                   assignment.positionId === null)
                               }
@@ -1809,9 +1892,12 @@ export default function BusManagementModal({
                                 void changeStudentBusStatus(assignment)
                               }
                             >
-                              {assignment.status === "ON_BUS"
-                                ? "อยู่บนรถ"
-                                : "ไม่อยู่บนรถ"}
+                              {assignment.participationStatus ===
+                              "NOT_TRAVELING"
+                                ? "ไม่ร่วมเดินทางต่อ"
+                                : assignment.status === "ON_BUS"
+                                  ? "อยู่บนรถ"
+                                  : "ไม่อยู่บนรถ"}
                             </Button>
                             <p className="max-w-56 text-[9px] leading-snug text-gray-400">
                               {statusEventLabel(assignment.lastStatusEvent)}
@@ -1831,7 +1917,7 @@ export default function BusManagementModal({
                     <div className="flex items-start gap-2">
                       <Users className="mt-0.5 shrink-0" size={16} />
                       <span>
-                        การบันทึกผังครั้งแรกจะถือว่านักเรียนที่มีเบาะอยู่บนรถแล้ว
+                        การบันทึกผังครั้งแรกจะถือว่านักเรียนที่มีที่นั่งอยู่บนรถแล้ว
                         ในแต่ละรอบ ครูหรือนักเรียนกดยืนยันขึ้น–ลงรถได้
                         ระบบจะแสดงผู้กดและเวลาล่าสุดให้ตรวจสอบ
                       </span>
@@ -1877,7 +1963,7 @@ export default function BusManagementModal({
             </ModalHeader>
             <ModalBody>
               <p className="text-sm leading-relaxed text-gray-700">
-                นักเรียนต่อไปนี้ยังไม่ได้จัดเบาะ
+                นักเรียนต่อไปนี้ยังไม่ได้จัดที่นั่ง
                 ระบบจะถือว่าไม่ร่วมเดินทางในเที่ยวนี้
               </p>
               <div className="mt-3 max-h-56 overflow-y-auto rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
@@ -1887,7 +1973,7 @@ export default function BusManagementModal({
               </div>
               <p className="mt-3 text-xs leading-relaxed text-gray-500">
                 {selectedBus?.lastDepartedAt === null
-                  ? "ผู้ที่จัดเบาะแล้วจะถูกเช็คชื่อว่าอยู่บนรถ ส่วนรายชื่อข้างต้นจะไม่ถูกนับรวมในเที่ยวนี้"
+                  ? "ผู้ที่จัดที่นั่งแล้วจะถูกเช็คชื่อว่าอยู่บนรถ ส่วนรายชื่อข้างต้นจะไม่ถูกนับรวมในเที่ยวนี้"
                   : "รายชื่อข้างต้นจะไม่ถูกนับรวมในเที่ยวนี้ ครูหรือนักเรียนสามารถกดยืนยันขึ้นรถในรอบนี้ได้"}
               </p>
             </ModalBody>
@@ -1898,7 +1984,7 @@ export default function BusManagementModal({
                 variant="light"
                 onPress={() => setShowUnassignedConfirm(false)}
               >
-                กลับไปจัดเบาะ
+                กลับไปจัดที่นั่ง
               </Button>
               <Button
                 className="bg-[#365f4f] font-medium text-white"
@@ -1957,7 +2043,7 @@ export default function BusManagementModal({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[10px] text-gray-500">
-                        นักเรียนประจำเบาะนี้
+                        นักเรียนประจำที่นั่งนี้
                       </p>
                       <p className="mt-0.5 break-words text-xs font-semibold text-gray-900">
                         {activeAssignment.studentId} ·{" "}
@@ -2125,7 +2211,7 @@ export default function BusManagementModal({
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <span className="h-2.5 w-2.5 rounded border-2 border-[#365f4f]" />
-                    เบาะที่เลือก
+                    ที่นั่งที่เลือก
                   </span>
                 </div>
               </div>
@@ -2134,7 +2220,7 @@ export default function BusManagementModal({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-bold text-gray-800">
-                      เลือกนักเรียนสำหรับเบาะนี้
+                      เลือกนักเรียนสำหรับที่นั่งนี้
                     </p>
                     <p className="mt-1 text-[11px] font-normal text-gray-500">
                       ค้นหาและเลือกชื่อเพื่อจัดหรือเปลี่ยนที่นั่ง
@@ -2280,7 +2366,7 @@ export default function BusManagementModal({
                   variant="flat"
                   onPress={() => moveToSeat(-1)}
                 >
-                  เบาะก่อนหน้า
+                  ที่นั่งก่อนหน้า
                 </Button>
                 <Button
                   className="flex-1 bg-[#e2eee7] font-medium text-[#365f4f]"
@@ -2291,7 +2377,7 @@ export default function BusManagementModal({
                   }
                   onPress={() => moveToSeat(1)}
                 >
-                  เบาะถัดไป
+                  ที่นั่งถัดไป
                 </Button>
               </div>
               <Button
@@ -2355,7 +2441,7 @@ export default function BusManagementModal({
                       ตรวจสอบรายชื่อก่อนออกรถ
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
-                      ระบบแยกนักเรียนที่มีเบาะแต่ยังไม่เช็คชื่อออกจากผู้ที่ยังไม่มีเบาะ
+                      แก้สถานะนักเรียนที่ไม่ได้ขึ้นรถได้จากหน้าต่างนี้เลย
                     </p>
                   </div>
 
@@ -2363,30 +2449,128 @@ export default function BusManagementModal({
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-semibold">
-                          ต้องตรวจสอบก่อนออกรถ · มีเบาะแต่ยังไม่เช็คชื่อ
+                          ต้องตรวจสอบก่อนออกรถ · มีที่นั่งแต่ยังไม่เช็คชื่อ
                         </p>
                         <span className="shrink-0 rounded-full bg-amber-200 px-2 py-0.5 font-bold text-amber-900">
                           {seatedNotBoardedAssignments.length} คน
                         </span>
                       </div>
-                      <div className="mt-2 max-h-32 space-y-0.5 overflow-y-auto border-t border-amber-200/70 pt-2">
+                      <div className="mt-2 max-h-64 space-y-2 overflow-y-auto border-t border-amber-200/70 pt-2">
                         {seatedNotBoardedAssignments.map((assignment) => (
-                          <p key={assignment.assignmentId}>
-                            <span className="font-semibold">
-                              เบาะ {assignment.positionLabel || "ไม่ทราบ"}
-                              {floorSuffix(
-                                assignment.floorNumber,
-                                selectedBus?.floorCount || 1,
-                              )}
-                            </span>{" "}
-                            — {assignment.studentId} · {assignment.studentName}
-                          </p>
+                          <div
+                            key={assignment.assignmentId}
+                            className="rounded-xl border border-amber-200 bg-white/80 p-2.5"
+                          >
+                            <p>
+                              <span className="font-semibold">
+                                ที่นั่ง {assignment.positionLabel || "ไม่ทราบ"}
+                                {floorSuffix(
+                                  assignment.floorNumber,
+                                  selectedBus?.floorCount || 1,
+                                )}
+                              </span>{" "}
+                              — {assignment.studentId} ·{" "}
+                              {assignment.studentName}
+                            </p>
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                              <Button
+                                className="h-8 bg-[#e2eee7] px-2 text-[10px] font-semibold text-[#365f4f]"
+                                isDisabled={changingAssignmentId !== null}
+                                isLoading={
+                                  changingAssignmentId ===
+                                  assignment.assignmentId
+                                }
+                                size="sm"
+                                startContent={<Bus size={13} />}
+                                onPress={() =>
+                                  void changeStudentBusStatus(assignment)
+                                }
+                              >
+                                ยังอยู่บนรถ
+                              </Button>
+                              <Button
+                                className="h-8 bg-gray-100 px-2 text-[10px] font-semibold text-gray-700"
+                                isDisabled={changingAssignmentId !== null}
+                                isLoading={
+                                  changingAssignmentId ===
+                                  assignment.assignmentId
+                                }
+                                size="sm"
+                                startContent={<UserCheck size={13} />}
+                                onPress={() =>
+                                  void changeStudentParticipation(
+                                    assignment,
+                                    "NOT_TRAVELING",
+                                  )
+                                }
+                              >
+                                ไม่ร่วมเดินทางต่อ
+                              </Button>
+                            </div>
+                          </div>
                         ))}
                       </div>
+                      <p className="mt-2 leading-relaxed text-amber-800">
+                        “ยังอยู่บนรถ”
+                        ใช้กรณีกดลงรถทุกคนแล้วมีนักเรียนไม่ได้ลงจริง ส่วน
+                        “ไม่ร่วมเดินทางต่อ” ระบบจะจำไว้ตลอดค่ายนี้
+                      </p>
                     </div>
                   ) : (
                     <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2.5 text-xs text-green-800">
-                      ไม่พบผู้ที่มีเบาะแล้วแต่ยังไม่เช็คชื่อขึ้นรถ
+                      ไม่พบผู้ที่มีที่นั่งแล้วแต่ยังไม่เช็คชื่อขึ้นรถ
+                    </div>
+                  )}
+
+                  {notTravelingAssignments.length > 0 && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold text-slate-700">
+                          ไม่ร่วมเดินทางต่อในค่ายนี้
+                        </p>
+                        <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 font-bold text-slate-700">
+                          {notTravelingAssignments.length} คน
+                        </span>
+                      </div>
+                      <p className="mt-1 leading-relaxed">
+                        ระบบจำกลุ่มนี้ไว้และจะไม่เตือนซ้ำในเที่ยวถัดไป
+                      </p>
+                      <details className="mt-2">
+                        <summary className="cursor-pointer font-semibold text-slate-700">
+                          ดูรายชื่อ / นำกลับเข้าร่วม
+                        </summary>
+                        <div className="mt-2 max-h-36 space-y-2 overflow-y-auto border-t border-slate-200 pt-2">
+                          {notTravelingAssignments.map((assignment) => (
+                            <div
+                              key={assignment.assignmentId}
+                              className="flex items-center justify-between gap-2"
+                            >
+                              <p className="min-w-0 truncate">
+                                {assignment.studentId} ·{" "}
+                                {assignment.studentName}
+                              </p>
+                              <Button
+                                className="h-7 shrink-0 bg-white px-2 text-[10px] font-semibold text-slate-700"
+                                isDisabled={changingAssignmentId !== null}
+                                isLoading={
+                                  changingAssignmentId ===
+                                  assignment.assignmentId
+                                }
+                                size="sm"
+                                variant="flat"
+                                onPress={() =>
+                                  void changeStudentParticipation(
+                                    assignment,
+                                    "ACTIVE",
+                                  )
+                                }
+                              >
+                                นำกลับเข้าร่วม
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
                     </div>
                   )}
 
@@ -2394,7 +2578,7 @@ export default function BusManagementModal({
                     <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-600">
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-semibold text-gray-700">
-                          ยังไม่มีเบาะ · อาจลา/ไม่ร่วมเดินทาง
+                          ยังไม่มีที่นั่ง · อาจลา/ไม่ร่วมเดินทาง
                         </p>
                         <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 font-bold text-gray-600">
                           {unseatedAssignments.length} คน
@@ -2420,7 +2604,7 @@ export default function BusManagementModal({
                   )}
 
                   <p className="text-xs text-gray-500">
-                    ตรวจสอบกลุ่มสีเหลืองแล้ว หากพร้อมเดินทางให้ยืนยันต่อได้
+                    ปรับกลุ่มสีเหลืองให้ตรงกับสถานการณ์จริงแล้วจึงยืนยันเริ่มเดินทาง
                   </p>
                 </div>
               ) : (
@@ -2511,6 +2695,7 @@ export default function BusManagementModal({
               {pendingBusStatus === "TRAVELING" ? (
                 <Button
                   className="min-w-0 flex-1 bg-[#365f4f] font-medium text-white sm:flex-none"
+                  isDisabled={changingAssignmentId !== null}
                   isLoading={savingAction === "status"}
                   onPress={() => void changeBusStatus()}
                 >

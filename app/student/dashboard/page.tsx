@@ -562,6 +562,8 @@ export default function StudentDashboard() {
             >
               {busAssignments.map((assignment: any) => {
                 const isOnBus = Boolean(assignment.student?.isOnBus);
+                const isParticipating =
+                  assignment.student?.participationStatus !== "NOT_TRAVELING";
                 const isTraveling = assignment.bus?.status === "TRAVELING";
                 const position = assignment.student?.position;
                 const busStatusLabel = !assignment.configured
@@ -571,11 +573,13 @@ export default function StudentDashboard() {
                     : "รถจอด";
                 const studentStatusLabel = !assignment.configured
                   ? "ยังไม่ได้จัดรถ"
-                  : isOnBus
-                    ? `อยู่บนรถแล้ว${assignment.student.lastBoardedAt ? ` · ${formatBusCheckedAt(assignment.student.lastBoardedAt)} น.` : ""}`
-                    : position
-                      ? "พร้อมเช็กชื่อ"
-                      : "รอจัดที่นั่ง";
+                  : !isParticipating
+                    ? "ไม่ร่วมเดินทางต่อในค่ายนี้"
+                    : isOnBus
+                      ? `อยู่บนรถแล้ว${assignment.student.lastBoardedAt ? ` · ${formatBusCheckedAt(assignment.student.lastBoardedAt)} น.` : ""}`
+                      : position
+                        ? "พร้อมเช็กชื่อ"
+                        : "รอจัดที่นั่ง";
 
                 return (
                   <div
@@ -664,6 +668,7 @@ export default function StudentDashboard() {
 
                       {/* Right: Board / Alight Button */}
                       {!isOnBus &&
+                      isParticipating &&
                       assignment.configured &&
                       !isTraveling &&
                       position ? (
