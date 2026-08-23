@@ -307,9 +307,8 @@ function BusManagementSkeleton() {
                 {Array.from({ length: 4 }, (_, seatIndex) => (
                   <div
                     key={seatIndex}
-                    className={`h-16 rounded-xl bg-white ${
-                      seatIndex === 2 ? "col-start-4" : ""
-                    }`}
+                    className={`h-16 rounded-xl bg-white ${seatIndex === 2 ? "col-start-4" : ""
+                      }`}
                   />
                 ))}
               </div>
@@ -351,13 +350,12 @@ function FloorCountRadioGroup({
         return (
           <label
             key={option.value}
-            className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
-              disabled
+            className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${disabled
                 ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                 : isSelected
                   ? "border-[#6b857a] bg-[#edf5f0] text-[#365f4f] shadow-sm"
                   : "border-gray-200 bg-white text-gray-700 hover:border-[#9ab4a7] hover:bg-[#f8fbf9]"
-            }`}
+              }`}
           >
             <input
               checked={isSelected}
@@ -369,9 +367,8 @@ function FloorCountRadioGroup({
               onChange={() => onChange(option.value)}
             />
             <span
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                isSelected ? "border-[#6b857a]" : "border-gray-300 bg-white"
-              }`}
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${isSelected ? "border-[#6b857a]" : "border-gray-300 bg-white"
+                }`}
             >
               {isSelected && (
                 <span className="h-2.5 w-2.5 rounded-full bg-[#6b857a]" />
@@ -450,23 +447,23 @@ export default function BusManagementModal({
     () =>
       selectedBus
         ? JSON.stringify({
-            busId: selectedBus.busId,
-            name: selectedBus.name,
-            floorCount: selectedBus.floorCount,
-            layoutTemplateId: selectedBus.layoutTemplateId,
-            floors: selectedBus.floors.map((floor) => ({
-              floorId: floor.floorId,
-              floorNumber: floor.floorNumber,
-              rowCount: floor.rowCount,
-              positionIds: floor.positions.map(
-                (position) => position.positionId,
-              ),
-            })),
-            assignments: selectedBus.assignments.map((assignment) => ({
-              assignmentId: assignment.assignmentId,
-              positionId: assignment.positionId,
-            })),
-          })
+          busId: selectedBus.busId,
+          name: selectedBus.name,
+          floorCount: selectedBus.floorCount,
+          layoutTemplateId: selectedBus.layoutTemplateId,
+          floors: selectedBus.floors.map((floor) => ({
+            floorId: floor.floorId,
+            floorNumber: floor.floorNumber,
+            rowCount: floor.rowCount,
+            positionIds: floor.positions.map(
+              (position) => position.positionId,
+            ),
+          })),
+          assignments: selectedBus.assignments.map((assignment) => ({
+            assignmentId: assignment.assignmentId,
+            positionId: assignment.positionId,
+          })),
+        })
         : "",
     [selectedBus],
   );
@@ -612,7 +609,7 @@ export default function BusManagementModal({
                 assignment.participationStatus === participationStatus &&
                 assignment.lastBoardedAt === lastBoardedAt &&
                 JSON.stringify(assignment.lastStatusEvent) ===
-                  JSON.stringify(lastStatusEvent)
+                JSON.stringify(lastStatusEvent)
               ) {
                 return assignment;
               }
@@ -1080,39 +1077,39 @@ export default function BusManagementModal({
   );
   const activePositionAssignmentId = selectedPositionId
     ? Object.entries(draftAssignments).find(
-        ([, positionId]) => positionId === selectedPositionId,
-      )?.[0]
+      ([, positionId]) => positionId === selectedPositionId,
+    )?.[0]
     : undefined;
   const selectedPosition = selectedPositionId
     ? currentFloor?.positions.find(
-        (position) => position.positionId === selectedPositionId,
-      )
+      (position) => position.positionId === selectedPositionId,
+    )
     : null;
   const orderedPositions = useMemo(
     () =>
       selectedBus
         ? selectedBus.floors
-            .slice()
-            .sort((a, b) => a.floorNumber - b.floorNumber)
-            .flatMap((floor) =>
-              floor.positions
-                .slice()
-                .sort(
-                  (a, b) =>
-                    a.rowNumber - b.rowNumber || a.seatIndex - b.seatIndex,
-                )
-                .map((position) => ({
-                  ...position,
-                  floorNumber: floor.floorNumber,
-                })),
-            )
+          .slice()
+          .sort((a, b) => a.floorNumber - b.floorNumber)
+          .flatMap((floor) =>
+            floor.positions
+              .slice()
+              .sort(
+                (a, b) =>
+                  a.rowNumber - b.rowNumber || a.seatIndex - b.seatIndex,
+              )
+              .map((position) => ({
+                ...position,
+                floorNumber: floor.floorNumber,
+              })),
+          )
         : [],
     [selectedBus],
   );
   const selectedPositionIndex = selectedPositionId
     ? orderedPositions.findIndex(
-        (position) => position.positionId === selectedPositionId,
-      )
+      (position) => position.positionId === selectedPositionId,
+    )
     : -1;
 
   const activeAssignment = activePositionAssignmentId
@@ -1219,9 +1216,9 @@ export default function BusManagementModal({
         busStudentStatusFilter === "all" ||
         (busStudentStatusFilter === "on"
           ? assignment.participationStatus === "ACTIVE" &&
-            assignment.status === "ON_BUS"
+          assignment.status === "ON_BUS"
           : assignment.participationStatus === "ACTIVE" &&
-            assignment.status === "OFF_BUS");
+          assignment.status === "OFF_BUS");
       const matchesSearch =
         !query ||
         assignment.studentName.toLocaleLowerCase().includes(query) ||
@@ -1260,11 +1257,10 @@ export default function BusManagementModal({
     <BusManagementShell isOpen={isOpen} pageMode={pageMode} onClose={onClose}>
       <>
         <Header
-          className={`relative flex flex-col gap-1 px-6 ${
-            pageMode
+          className={`relative flex flex-col gap-1 px-6 ${pageMode
               ? "mx-auto w-full max-w-7xl border-0 pb-8 pt-8 sm:px-8"
               : "border-b border-gray-100 p-6 pb-4"
-          }`}
+            }`}
         >
           {pageMode && (
             <CampBreadcrumb
@@ -1278,9 +1274,8 @@ export default function BusManagementModal({
             <div className="flex min-w-0 items-center gap-2 text-[#6b857a]">
               <Bus size={pageMode ? 20 : 24} />
               <h2
-                className={`${
-                  pageMode ? "text-lg leading-tight" : "text-xl"
-                } truncate font-bold text-gray-900`}
+                className={`${pageMode ? "text-lg leading-tight" : "text-xl"
+                  } truncate font-bold text-gray-900`}
               >
                 เช็คชื่อขึ้นรถ
               </h2>
@@ -1329,11 +1324,10 @@ export default function BusManagementModal({
                     return (
                       <button
                         key={bus.busId}
-                        className={`whitespace-nowrap rounded-xl border px-3.5 py-2 text-left text-sm transition ${
-                          isSelected
+                        className={`whitespace-nowrap rounded-xl border px-3.5 py-2 text-left text-sm transition ${isSelected
                             ? "border-[#6b857a] bg-[#6b857a] font-semibold text-white shadow-sm"
                             : "border-gray-200 bg-gray-50 font-medium text-gray-700 hover:border-[#6b857a] hover:bg-gray-100"
-                        }`}
+                          }`}
                         type="button"
                         onClick={() => {
                           setSelectedBusId(bus.busId);
@@ -1424,11 +1418,10 @@ export default function BusManagementModal({
                         </p>
                         <div className="mt-2 grid gap-3 sm:grid-cols-2">
                           <button
-                            className={`rounded-2xl border p-4 text-left transition ${
-                              createForm.layoutTemplateId === "custom"
+                            className={`rounded-2xl border p-4 text-left transition ${createForm.layoutTemplateId === "custom"
                                 ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
                                 : "border-gray-200 bg-white hover:border-[#9ab4a7]"
-                            }`}
+                              }`}
                             type="button"
                             onClick={() =>
                               setCreateForm((form) => ({
@@ -1447,11 +1440,10 @@ export default function BusManagementModal({
                           {BUS_LAYOUT_TEMPLATES.map((template) => (
                             <button
                               key={template.id}
-                              className={`rounded-2xl border p-4 text-left transition ${
-                                createForm.layoutTemplateId === template.id
+                              className={`rounded-2xl border p-4 text-left transition ${createForm.layoutTemplateId === template.id
                                   ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
                                   : "border-gray-200 bg-white hover:border-[#9ab4a7]"
-                              }`}
+                                }`}
                               type="button"
                               onClick={() =>
                                 setCreateForm((form) => ({
@@ -1491,9 +1483,9 @@ export default function BusManagementModal({
                                   rowCounts:
                                     floorCount === 2
                                       ? [
-                                          form.rowCounts[0] || 10,
-                                          form.rowCounts[1] || 10,
-                                        ]
+                                        form.rowCounts[0] || 10,
+                                        form.rowCounts[1] || 10,
+                                      ]
                                       : [form.rowCounts[0] || 10],
                                 }));
                               }}
@@ -1644,11 +1636,10 @@ export default function BusManagementModal({
                       <div className="min-w-0 rounded-xl bg-gray-50 p-3.5">
                         <p className="truncate text-xs text-gray-500">สถานะรถ</p>
                         <p
-                          className={`mt-1 truncate whitespace-nowrap text-lg font-medium sm:text-2xl ${
-                            selectedBus.status === "TRAVELING"
+                          className={`mt-1 truncate whitespace-nowrap text-lg font-medium sm:text-2xl ${selectedBus.status === "TRAVELING"
                               ? "text-blue-600"
                               : "text-green-600"
-                          }`}
+                            }`}
                         >
                           {selectedBus.status === "TRAVELING"
                             ? "กำลังเดินทาง"
@@ -1668,11 +1659,10 @@ export default function BusManagementModal({
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2.5">
                         <div
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                            selectedBus.status === "TRAVELING"
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${selectedBus.status === "TRAVELING"
                               ? "bg-blue-100 text-blue-600"
                               : "bg-green-100 text-green-600"
-                          }`}
+                            }`}
                         >
                           <Bus size={18} />
                         </div>
@@ -1793,13 +1783,13 @@ export default function BusManagementModal({
                                       )?.[0];
                                       const assignment = assignmentId
                                         ? assignmentById.get(
-                                            Number(assignmentId),
-                                          )
+                                          Number(assignmentId),
+                                        )
                                         : null;
                                       const seatStateClass = assignment
                                         ? assignment.status === "ON_BUS"
                                           ? "border-green-300 bg-green-50 text-green-800"
-                                          : "border-gray-300 bg-gray-100 text-gray-600"
+                                          : "border-yellow-300 bg-yellow-50 text-yellow-800"
                                         : "border-gray-200 bg-white text-gray-600 hover:border-[#6b857a]";
                                       const isOnBus =
                                         assignment?.status === "ON_BUS";
@@ -1826,7 +1816,7 @@ export default function BusManagementModal({
                                             </span>
                                             {assignment && (
                                               <span
-                                                className={`shrink-0 rounded-full px-1 py-0.5 text-[7px] font-semibold leading-none ${isOnBus ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}
+                                                className={`shrink-0 rounded-full px-1 py-0.5 text-[7px] font-semibold leading-none ${isOnBus ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"}`}
                                               >
                                                 {isOnBus ? "บนรถ" : "ลงรถ"}
                                               </span>
@@ -2001,29 +1991,29 @@ export default function BusManagementModal({
                             <Button
                               aria-label={
                                 assignment.participationStatus ===
-                                "NOT_TRAVELING"
+                                  "NOT_TRAVELING"
                                   ? `${assignment.studentName}: ไม่ร่วมเดินทางต่อในค่ายนี้`
                                   : `${assignment.studentName}: กดเปลี่ยนเป็น${assignment.status === "ON_BUS" ? "ไม่อยู่บนรถ" : "อยู่บนรถ"}`
                               }
                               className={
                                 assignment.participationStatus ===
-                                "NOT_TRAVELING"
+                                  "NOT_TRAVELING"
                                   ? "h-8 min-w-24 bg-slate-100 px-3 text-[11px] font-semibold text-slate-600"
                                   : assignment.status === "ON_BUS"
                                     ? "h-8 min-w-24 bg-green-100 px-3 text-[11px] font-semibold text-green-700"
-                                    : "h-8 min-w-24 bg-gray-100 px-3 text-[11px] font-semibold text-gray-700"
+                                    : "h-8 min-w-24 bg-yellow-100 px-3 text-[11px] font-semibold text-yellow-700"
                               }
                               isDisabled={
                                 selectedBus.status === "TRAVELING" ||
                                 changingAssignmentAction !== null ||
                                 assignment.participationStatus ===
-                                  "NOT_TRAVELING" ||
+                                "NOT_TRAVELING" ||
                                 (assignment.status === "OFF_BUS" &&
                                   assignment.positionId === null)
                               }
                               isLoading={
                                 changingAssignmentAction?.assignmentId ===
-                                  assignment.assignmentId &&
+                                assignment.assignmentId &&
                                 changingAssignmentAction.action === "status"
                               }
                               size="sm"
@@ -2033,7 +2023,7 @@ export default function BusManagementModal({
                               }
                             >
                               {assignment.participationStatus ===
-                              "NOT_TRAVELING"
+                                "NOT_TRAVELING"
                                 ? "ไม่ร่วมเดินทางต่อ"
                                 : assignment.status === "ON_BUS"
                                   ? "อยู่บนรถ"
@@ -2171,7 +2161,7 @@ export default function BusManagementModal({
                     {selectedPosition?.label || "ที่เลือก"}
                     {hasMultipleFloors
                       ? " · " +
-                        floorLabel(selectedFloor, selectedBus?.floorCount || 1)
+                      floorLabel(selectedFloor, selectedBus?.floorCount || 1)
                       : ""}
                   </p>
                 </div>
@@ -2203,7 +2193,7 @@ export default function BusManagementModal({
                       </div>
                     </div>
                     <span
-                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${activeAssignment.status === "ON_BUS" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}
+                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${activeAssignment.status === "ON_BUS" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
                     >
                       {activeAssignment.status === "ON_BUS"
                         ? "อยู่บนรถ"
@@ -2226,7 +2216,7 @@ export default function BusManagementModal({
                     }
                     isLoading={
                       changingAssignmentAction?.assignmentId ===
-                        activeAssignment.assignmentId &&
+                      activeAssignment.assignmentId &&
                       changingAssignmentAction.action === "status"
                     }
                     size="sm"
@@ -2259,11 +2249,10 @@ export default function BusManagementModal({
                           <button
                             key={floor.floorId}
                             aria-pressed={selectedFloor === floor.floorNumber}
-                            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
-                              selectedFloor === floor.floorNumber
+                            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${selectedFloor === floor.floorNumber
                                 ? "bg-[#365f4f] text-white"
                                 : "bg-[#e2eee7] text-[#365f4f] hover:bg-[#cfe0d6]"
-                            }`}
+                              }`}
                             type="button"
                             onClick={() => setSelectedFloor(floor.floorNumber)}
                           >
@@ -2308,7 +2297,7 @@ export default function BusManagementModal({
                                 const seatStateClass = assignment
                                   ? isOnBus
                                     ? "border-green-200 bg-green-50 text-green-800"
-                                    : "border-gray-300 bg-gray-100 text-gray-600"
+                                    : "border-yellow-300 bg-yellow-50 text-yellow-800"
                                   : "border-gray-200 bg-white text-gray-600";
 
                                 return (
@@ -2333,7 +2322,7 @@ export default function BusManagementModal({
                                       </span>
                                       {assignment && (
                                         <span
-                                          className={`shrink-0 rounded-full px-0.5 py-px text-[6px] font-semibold leading-none ${isOnBus ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}
+                                          className={`shrink-0 rounded-full px-0.5 py-px text-[6px] font-semibold leading-none ${isOnBus ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"}`}
                                         >
                                           {isOnBus ? "บน" : "ลง"}
                                         </span>
@@ -2613,11 +2602,10 @@ export default function BusManagementModal({
             <ModalHeader>
               <div className="flex items-center gap-3">
                 <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
-                    pendingBusStatus === "TRAVELING"
+                  className={`flex h-10 w-10 items-center justify-center rounded-2xl ${pendingBusStatus === "TRAVELING"
                       ? "bg-[#e2eee7] text-[#365f4f]"
                       : "bg-[#e8f2ed] text-[#3d6357]"
-                  }`}
+                    }`}
                 >
                   {pendingBusStatus === "TRAVELING" ? (
                     <Bus size={20} />
@@ -2677,7 +2665,7 @@ export default function BusManagementModal({
                                 isDisabled={changingAssignmentAction !== null}
                                 isLoading={
                                   changingAssignmentAction?.assignmentId ===
-                                    assignment.assignmentId &&
+                                  assignment.assignmentId &&
                                   changingAssignmentAction.action === "status"
                                 }
                                 size="sm"
@@ -2693,9 +2681,9 @@ export default function BusManagementModal({
                                 isDisabled={changingAssignmentAction !== null}
                                 isLoading={
                                   changingAssignmentAction?.assignmentId ===
-                                    assignment.assignmentId &&
+                                  assignment.assignmentId &&
                                   changingAssignmentAction.action ===
-                                    "not_traveling"
+                                  "not_traveling"
                                 }
                                 size="sm"
                                 startContent={<UserCheck size={13} />}
@@ -2756,7 +2744,7 @@ export default function BusManagementModal({
                                 isDisabled={changingAssignmentAction !== null}
                                 isLoading={
                                   changingAssignmentAction?.assignmentId ===
-                                    assignment.assignmentId &&
+                                  assignment.assignmentId &&
                                   changingAssignmentAction.action === "active"
                                 }
                                 size="sm"
@@ -2824,11 +2812,10 @@ export default function BusManagementModal({
                   <div className="grid gap-3">
                     <button
                       aria-pressed={parkClearPassengers === false}
-                      className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/30 ${
-                        parkClearPassengers === false
+                      className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/30 ${parkClearPassengers === false
                           ? "border-[#5d7c6f] bg-[#f1f7f4] ring-2 ring-[#5d7c6f]/15"
                           : "border-gray-200 bg-white hover:border-gray-300"
-                      }`}
+                        }`}
                       type="button"
                       onClick={() => setParkClearPassengers(false)}
                     >
@@ -2853,11 +2840,10 @@ export default function BusManagementModal({
 
                     <button
                       aria-pressed={parkClearPassengers === true}
-                      className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-400/30 ${
-                        parkClearPassengers === true
+                      className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-400/30 ${parkClearPassengers === true
                           ? "border-amber-400 bg-amber-50 ring-2 ring-amber-200/60"
                           : "border-gray-200 bg-white hover:border-gray-300"
-                      }`}
+                        }`}
                       type="button"
                       onClick={() => setParkClearPassengers(true)}
                     >
@@ -2995,9 +2981,9 @@ export default function BusManagementModal({
                             rowCounts:
                               floorCount === 2
                                 ? [
-                                    form.rowCounts[0] || 10,
-                                    form.rowCounts[1] || 10,
-                                  ]
+                                  form.rowCounts[0] || 10,
+                                  form.rowCounts[1] || 10,
+                                ]
                                 : [form.rowCounts[0] || 10],
                           }));
                         }}

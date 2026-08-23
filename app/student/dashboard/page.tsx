@@ -90,13 +90,12 @@ const formatBusSeat = (assignment: any) => {
 
   const floorLabel =
     assignment.bus?.floorCount > 1 && position.floorNumber
-      ? `${
-          position.floorNumber === 1
-            ? "ชั้นล่าง"
-            : position.floorNumber === 2
-              ? "ชั้นบน"
-              : `ชั้น ${position.floorNumber}`
-        } · `
+      ? `${position.floorNumber === 1
+        ? "ชั้นล่าง"
+        : position.floorNumber === 2
+          ? "ชั้นบน"
+          : `ชั้น ${position.floorNumber}`
+      } · `
       : "";
 
   return `${floorLabel}${position.label} · ${getBusSeatSideLabel(position.label, position.seatIndex)}`;
@@ -217,14 +216,14 @@ export default function StudentDashboard() {
         current.map((item) =>
           item.campId === assignment.campId
             ? {
-                ...item,
-                student: {
-                  ...item.student,
-                  status: "ON_BUS",
-                  isOnBus: true,
-                  lastBoardedAt: result.checkedAt || new Date().toISOString(),
-                },
-              }
+              ...item,
+              student: {
+                ...item.student,
+                status: "ON_BUS",
+                isOnBus: true,
+                lastBoardedAt: result.checkedAt || new Date().toISOString(),
+              },
+            }
             : item,
         ),
       );
@@ -275,13 +274,13 @@ export default function StudentDashboard() {
         current.map((item) =>
           item.campId === assignment.campId
             ? {
-                ...item,
-                student: {
-                  ...item.student,
-                  status: "OFF_BUS",
-                  isOnBus: false,
-                },
-              }
+              ...item,
+              student: {
+                ...item.student,
+                status: "OFF_BUS",
+                isOnBus: false,
+              },
+            }
             : item,
         ),
       );
@@ -520,9 +519,8 @@ export default function StudentDashboard() {
                     ? `กรุณารอ ${busRefreshCooldown} วินาที`
                     : "รีเฟรชสถานะรถ"
                 }
-                className={`flex h-9 items-center justify-center rounded-xl text-[#3d6357] transition hover:bg-[#e8f0ee] disabled:cursor-not-allowed disabled:opacity-60 ${
-                  busRefreshCooldown > 0 ? "px-2.5 gap-1.5" : "w-9 shrink-0"
-                }`}
+                className={`flex h-9 items-center justify-center rounded-xl text-[#3d6357] transition hover:bg-[#e8f0ee] disabled:cursor-not-allowed disabled:opacity-60 ${busRefreshCooldown > 0 ? "px-2.5 gap-1.5" : "w-9 shrink-0"
+                  }`}
                 disabled={refreshingBus || busRefreshCooldown > 0}
                 title={
                   busRefreshCooldown > 0
@@ -545,11 +543,10 @@ export default function StudentDashboard() {
             </div>
 
             <div
-              className={`grid gap-4 ${
-                busAssignments.length === 1
+              className={`grid gap-4 ${busAssignments.length === 1
                   ? "grid-cols-1"
                   : "grid-cols-1 md:grid-cols-2"
-              }`}
+                }`}
             >
               {busAssignments.map((assignment: any) => {
                 const isOnBus = Boolean(assignment.student?.isOnBus);
@@ -614,22 +611,20 @@ export default function StudentDashboard() {
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                         <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            isTraveling
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${isTraveling
                               ? "bg-amber-100 text-amber-800"
                               : assignment.configured
                                 ? "bg-gray-100 text-gray-700"
                                 : "bg-gray-100 text-gray-600"
-                          }`}
+                            }`}
                         >
                           {busStatusLabel}
                         </span>
                         <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            isOnBus
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${isOnBus
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
                               : "bg-gray-100 text-gray-600"
-                          }`}
+                            }`}
                         >
                           {studentStatusLabel}
                         </span>
@@ -659,10 +654,10 @@ export default function StudentDashboard() {
 
                       {/* Right: Board / Alight Button */}
                       {!isOnBus &&
-                      isParticipating &&
-                      assignment.configured &&
-                      !isTraveling &&
-                      position ? (
+                        isParticipating &&
+                        assignment.configured &&
+                        !isTraveling &&
+                        position ? (
                         <button
                           aria-label={`ยืนยันขึ้นรถ ${assignment.bus.name}`}
                           className="inline-flex items-center justify-center gap-1.5 h-10 px-5 rounded-xl bg-[#5d7c6f] text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-[#4f6d61] active:scale-95 transition-all disabled:cursor-wait disabled:opacity-60 shrink-0"
@@ -890,11 +885,10 @@ export default function StudentDashboard() {
                 {uniqueYears.length > 0 && (
                   <div className="flex flex-wrap gap-2 pb-1">
                     <button
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
-                        selectedYear === "all"
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${selectedYear === "all"
                           ? "bg-[#5d7c6f] text-white border-[#5d7c6f] shadow-sm"
                           : "bg-white text-gray-600 border-gray-200 hover:border-[#5d7c6f]/50 hover:text-[#5d7c6f]"
-                      }`}
+                        }`}
                       onClick={() => setSelectedYear("all")}
                     >
                       ทั้งหมด
@@ -902,11 +896,10 @@ export default function StudentDashboard() {
                     {uniqueYears.map((year: any) => (
                       <button
                         key={year}
-                        className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
-                          selectedYear === year.toString()
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${selectedYear === year.toString()
                             ? "bg-[#5d7c6f] text-white border-[#5d7c6f] shadow-sm"
                             : "bg-white text-gray-600 border-gray-200 hover:border-[#5d7c6f]/50 hover:text-[#5d7c6f]"
-                        }`}
+                          }`}
                         onClick={() => setSelectedYear(year.toString())}
                       >
                         ปี {(year + 543).toString()}
@@ -977,13 +970,11 @@ function CampCard({ camp, navigatingTo, onPress, isEnded = false }: any) {
 
   return (
     <Card
-      className={`border border-gray-200/70 shadow-sm hover:shadow-xl transition-all duration-300 bg-white rounded-2xl overflow-hidden group flex flex-col h-full ${
-        navigatingTo === camp.id
+      className={`border border-gray-200/70 shadow-sm hover:shadow-xl transition-all duration-300 bg-white rounded-2xl overflow-hidden group flex flex-col h-full ${navigatingTo === camp.id
           ? "scale-[0.98] opacity-60"
           : "hover:-translate-y-1"
-      } ${
-        isEnded ? "grayscale-[0.35] opacity-90" : ""
-      } ${isUpcomingRegis ? "cursor-not-allowed" : ""}`}
+        } ${isEnded ? "grayscale-[0.35] opacity-90" : ""
+        } ${isUpcomingRegis ? "cursor-not-allowed" : ""}`}
       isPressable={navigatingTo === null && !isUpcomingRegis}
       onPress={isUpcomingRegis ? undefined : onPress}
     >
@@ -1268,10 +1259,9 @@ function StudentProfileSetupModal({
                 </label>
                 <input
                   className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all
-                    ${
-                      fieldError.food_allergy
-                        ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-                        : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
+                    ${fieldError.food_allergy
+                      ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+                      : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
                     }`}
                   id="student-food-allergy"
                   placeholder="เช่น ไม่มี, อาหารทะเล, ไข่ไก่"
@@ -1300,10 +1290,9 @@ function StudentProfileSetupModal({
                 </label>
                 <input
                   className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all
-                    ${
-                      fieldError.nickname
-                        ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-                        : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
+                    ${fieldError.nickname
+                      ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
+                      : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
                     }`}
                   id="student-nickname"
                   maxLength={50}
