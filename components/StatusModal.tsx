@@ -48,11 +48,25 @@ export default function StatusModal({
     }
     switch (type) {
       case "success":
-        return <CheckCircle className="text-green-500" size={48} strokeWidth={1.75} />;
+        return (
+          <CheckCircle
+            className="text-green-500"
+            size={48}
+            strokeWidth={1.75}
+          />
+        );
       case "error":
-        return <AlertOctagon className="text-red-500" size={48} strokeWidth={1.75} />;
+        return (
+          <AlertOctagon className="text-red-500" size={48} strokeWidth={1.75} />
+        );
       case "warning":
-        return <AlertCircle className="text-yellow-500" size={48} strokeWidth={1.75} />;
+        return (
+          <AlertCircle
+            className="text-yellow-500"
+            size={48}
+            strokeWidth={1.75}
+          />
+        );
       case "info":
         return <Info className="text-blue-500" size={48} strokeWidth={1.75} />;
     }

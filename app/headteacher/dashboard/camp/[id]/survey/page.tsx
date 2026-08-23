@@ -2246,7 +2246,8 @@ export default function SurveyPage() {
                                       {Array.from({
                                         length: q.scaleMax || 5,
                                       }).map((_, sIdx) => {
-                                        const scoreVal = sIdx + 1;
+                                        const maxScale = q.scaleMax || 5;
+                                        const scoreVal = maxScale - sIdx;
                                         const isSelected =
                                           ans?.scale_value === scoreVal;
 

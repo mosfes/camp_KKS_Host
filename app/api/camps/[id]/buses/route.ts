@@ -76,8 +76,7 @@ function formatBus(bus: any) {
       firstName: assignment.student_enrollment.student.firstname,
       prefixName: assignment.student_enrollment.student.prefix_name,
       nickname: assignment.student_enrollment.student.nickname,
-      profileImageUrl:
-        assignment.student_enrollment.student.profile_image_url,
+      profileImageUrl: assignment.student_enrollment.student.profile_image_url,
       positionId: assignment.position_position_id,
       positionLabel: assignment.position?.label || null,
       floorNumber: assignment.position?.floor?.floor_number || null,

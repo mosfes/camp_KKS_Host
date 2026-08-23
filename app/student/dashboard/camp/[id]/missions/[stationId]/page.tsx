@@ -59,8 +59,12 @@ export default function StudentStationDetailPage() {
   >({});
   const [submitting, setSubmitting] = useState(false);
   const [uploadingQids, setUploadingQids] = useState<number[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
-  const [previewFullImageUrl, setPreviewFullImageUrl] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>(
+    {},
+  );
+  const [previewFullImageUrl, setPreviewFullImageUrl] = useState<string | null>(
+    null,
+  );
 
   // QR Scan State
   const [qrScanActive, setQrScanActive] = useState(false);
@@ -1344,10 +1348,7 @@ export default function StudentStationDetailPage() {
                                       e.currentTarget.value = "";
 
                                       if (file)
-                                        handleImageUpload(
-                                          q.question_id,
-                                          file,
-                                        );
+                                        handleImageUpload(q.question_id, file);
                                     }}
                                   />
 
@@ -1357,17 +1358,17 @@ export default function StudentStationDetailPage() {
                                       <div className="flex items-center justify-between px-3.5 py-2.5 bg-gray-50/90 border-b border-gray-200">
                                         <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold">
                                           <CheckCircle2
-                                            size={16}
                                             className="text-emerald-600 shrink-0"
+                                            size={16}
                                           />
                                           <span>อัปโหลดรูปภาพสำเร็จแล้ว</span>
                                         </div>
 
                                         <div className="flex items-center gap-1">
                                           <button
-                                            type="button"
                                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-700 hover:bg-white hover:shadow-xs border border-transparent hover:border-gray-200 transition-all cursor-pointer"
                                             title="ดูรูปภาพขนาดเต็ม"
+                                            type="button"
                                             onClick={() =>
                                               setPreviewFullImageUrl(
                                                 answers[q.question_id],
@@ -1375,8 +1376,8 @@ export default function StudentStationDetailPage() {
                                             }
                                           >
                                             <Eye
-                                              size={14}
                                               className="text-gray-500"
+                                              size={14}
                                             />
                                             <span className="hidden sm:inline">
                                               ดูรูปขยาย
@@ -1386,9 +1387,9 @@ export default function StudentStationDetailPage() {
                                           {!isSubmitted && (
                                             <>
                                               <button
-                                                type="button"
                                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-700 hover:bg-white hover:shadow-xs border border-transparent hover:border-gray-200 transition-all cursor-pointer"
                                                 title="เปลี่ยนรูปภาพใหม่"
+                                                type="button"
                                                 onClick={() =>
                                                   document
                                                     .getElementById(
@@ -1398,8 +1399,8 @@ export default function StudentStationDetailPage() {
                                                 }
                                               >
                                                 <RefreshCw
-                                                  size={14}
                                                   className="text-gray-500"
+                                                  size={14}
                                                 />
                                                 <span className="hidden sm:inline">
                                                   เปลี่ยนรูป
@@ -1407,9 +1408,9 @@ export default function StudentStationDetailPage() {
                                               </button>
 
                                               <button
-                                                type="button"
                                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-all cursor-pointer"
                                                 title="ลบรูปภาพนี้"
+                                                type="button"
                                                 onClick={() => {
                                                   handleAnswerChange(
                                                     q.question_id,
@@ -1511,7 +1512,8 @@ export default function StudentStationDetailPage() {
                                           ถ่ายรูป หรือ เลือกไฟล์รูปภาพ
                                         </p>
                                         <p className="text-xs text-gray-500 font-normal">
-                                          รองรับไฟล์ JPG, PNG, WEBP ขนาดไม่เกิน 20MB
+                                          รองรับไฟล์ JPG, PNG, WEBP ขนาดไม่เกิน
+                                          20MB
                                         </p>
                                       </div>
                                       <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gray-100 group-hover:bg-[#5d7c6f]/15 text-xs font-semibold text-gray-700 group-hover:text-[#5d7c6f] transition-colors">

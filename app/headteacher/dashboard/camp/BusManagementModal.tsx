@@ -2263,8 +2263,7 @@ export default function BusManagementModal({
                                   : null;
                                 const isCurrent =
                                   selectedPositionId === position.positionId;
-                                const isOnBus =
-                                  assignment?.status === "ON_BUS";
+                                const isOnBus = assignment?.status === "ON_BUS";
                                 const seatStateClass = assignment
                                   ? isOnBus
                                     ? "border-green-200 bg-green-50 text-green-800"
