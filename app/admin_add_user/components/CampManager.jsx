@@ -209,8 +209,8 @@ const CampManager = () => {
         if (!dateStr) return "-";
         try {
             return new Date(dateStr).toLocaleDateString("th-TH", {
-                day: "2-digit",
-                month: "2-digit",
+                day: "numeric",
+                month: "short",
                 year: "numeric",
                 timeZone: BANGKOK_TIME_ZONE,
             });

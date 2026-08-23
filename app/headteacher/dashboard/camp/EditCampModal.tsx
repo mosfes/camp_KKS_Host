@@ -68,8 +68,8 @@ function formatDateWithOffset(startDateStr: string, dayOffset: number) {
   date.setUTCDate(date.getUTCDate() + dayOffset);
 
   return date.toLocaleDateString("th-TH", {
-    day: "2-digit",
-    month: "2-digit",
+    day: "numeric",
+    month: "short",
     year: "numeric",
     timeZone: BANGKOK_TIME_ZONE,
   });

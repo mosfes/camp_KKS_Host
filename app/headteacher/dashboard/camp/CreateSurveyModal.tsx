@@ -30,6 +30,7 @@ import CampBreadcrumb from "./CampBreadcrumb";
 import { useStatusModal } from "@/components/StatusModalProvider";
 
 interface Question {
+  id?: number;
   text: string;
   type: "text" | "scale" | "header" | "grid" | "checkbox";
   scaleMax: number;
@@ -134,6 +135,7 @@ export default function CreateSurveyModal({
         ) {
           setQuestions(
             initialData.survey_question.map((q: any) => ({
+              id: q.question_id,
               text: q.question_text,
               type: q.question_type,
               scaleMax: q.scale_max || 5,
@@ -356,8 +358,11 @@ export default function CreateSurveyModal({
 
     // Apply globalScaleMax to all scale questions before sending
     const finalQuestions = questions.map((q) => ({
-      ...q,
+      id: q.id,
+      text: q.text,
+      type: q.type,
       scaleMax: q.type === "scale" ? globalScaleMax : 5,
+      options: q.options,
     }));
 
     try {

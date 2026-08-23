@@ -14,6 +14,7 @@ const surveySchema = z.object({
   questions: z
     .array(
       z.object({
+        id: z.number().optional(),
         text: z.string(),
         type: z.enum(["text", "scale", "header", "grid", "checkbox"]),
         scaleMax: z.number().optional(),
@@ -204,43 +205,86 @@ export async function PUT(request) {
       );
     }
 
-    // อัปเดตข้อมูล survey และ questions (ลบของเก่าทิ้ง สร้างใหม่)
+    // อัปเดตข้อมูล survey และ questions แบบรายข้อ (Google Forms style - รักษาคำตอบเดิมไว้)
     const updatedSurvey = await prisma.$transaction(async (tx) => {
-      // ลบข้อมูลที่ผูกอยู่ก่อน (responses, answers, suggestions) เพื่อไม่ให้ติด Foreign Key
-      await tx.suggestion_analysis_summary.deleteMany({
-        where: { survey_response: { survey_survey_id: existing.survey_id } },
-      });
-      await tx.survey_answer.deleteMany({
-        where: { survey_response: { survey_survey_id: existing.survey_id } },
-      });
-      await tx.survey_response.deleteMany({
+      const existingQuestions = await tx.survey_question.findMany({
         where: { survey_survey_id: existing.survey_id },
       });
 
-      // 1. ลบคำถามเก่า
-      await tx.survey_question.deleteMany({
-        where: { survey_survey_id: existing.survey_id },
-      });
+      const incomingQuestions = questions || [];
+      const incomingQuestionIds = incomingQuestions
+        .map((q) => q.id)
+        .filter((id) => typeof id === "number" && !isNaN(id));
 
-      // 2. อัปเดตข้อมูลหลัก และสร้างคำถามใหม่
+      // 1. ระบุคำถามที่ถูกลบออก (มีใน DB เดิม แต่ไม่มีใน payload ที่ส่งมา)
+      const questionsToDelete = existingQuestions.filter(
+        (eq) => !incomingQuestionIds.includes(eq.question_id),
+      );
+
+      if (questionsToDelete.length > 0) {
+        const deleteIds = questionsToDelete.map((q) => q.question_id);
+
+        // ลบข้อมูลที่ผูกกับคำถามที่ถูกลบเท่านั้น
+        await tx.suggestion_analysis_summary.deleteMany({
+          where: {
+            survey_answer: {
+              question_id: { in: deleteIds },
+            },
+          },
+        });
+        await tx.survey_answer.deleteMany({
+          where: { question_id: { in: deleteIds } },
+        });
+        await tx.survey_question.deleteMany({
+          where: { question_id: { in: deleteIds } },
+        });
+      }
+
+      // 2. อัปเดตคำถามเดิม หรือ สร้างคำถามใหม่
+      for (const q of incomingQuestions) {
+        const isExisting =
+          q.id && existingQuestions.some((eq) => eq.question_id === q.id);
+        const scaleMaxVal = q.type === "scale" ? q.scaleMax || 5 : null;
+        const optionsVal = ["grid", "checkbox"].includes(q.type)
+          ? JSON.stringify(q.options || [])
+          : null;
+
+        if (isExisting) {
+          // อัปเดตคำถามเดิม (คำตอบเดิมของนักเรียนใน survey_answer ยังอยู่ครบ)
+          await tx.survey_question.update({
+            where: { question_id: q.id },
+            data: {
+              question_text: q.text,
+              question_type: q.type,
+              scale_max: scaleMaxVal,
+              options: optionsVal,
+            },
+          });
+        } else {
+          // สร้างคำถามใหม่
+          await tx.survey_question.create({
+            data: {
+              survey_survey_id: existing.survey_id,
+              question_text: q.text,
+              question_type: q.type,
+              scale_max: scaleMaxVal,
+              options: optionsVal,
+            },
+          });
+        }
+      }
+
+      // 3. อัปเดตข้อมูลหลักของแบบสอบถาม
       return tx.survey.update({
         where: { camp_camp_id: campIdNum },
         data: {
           title,
           description,
-          survey_question: {
-            create: (questions || []).map((q) => ({
-              question_text: q.text,
-              question_type: q.type,
-              scale_max: q.type === "scale" ? q.scaleMax || 5 : null,
-              options: ["grid", "checkbox"].includes(q.type)
-                ? JSON.stringify(q.options || [])
-                : null,
-            })),
-          },
         },
         include: {
-          survey_question: true,
+          survey_question: {
+            orderBy: { question_id: "asc" },
+          },
         },
       });
     });

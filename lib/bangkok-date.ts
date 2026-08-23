@@ -97,6 +97,26 @@ export function getCampScheduleDateKey(
   return date.toISOString().slice(0, 10);
 }
 
+export function formatCampScheduleDate(
+  campStartDate?: DateInput | null,
+  day?: number,
+  options?: Intl.DateTimeFormatOptions,
+): string {
+  if (!campStartDate || !day) return "";
+  const startDateKey = getBangkokDateKey(campStartDate);
+  const date = new Date(`${startDateKey}T00:00:00.000Z`);
+
+  date.setUTCDate(date.getUTCDate() + Math.max(0, day - 1));
+
+  return date.toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: BANGKOK_TIME_ZONE,
+    ...options,
+  });
+}
+
 export function isCampScheduleDayToday(
   campStartDate: DateInput,
   day: number,

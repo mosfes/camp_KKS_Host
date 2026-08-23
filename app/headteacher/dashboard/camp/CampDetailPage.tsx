@@ -49,6 +49,7 @@ import PrePostTestModal from "./PrePostTestModal";
 import { useStatusModal } from "@/components/StatusModalProvider";
 import {
   BANGKOK_TIME_ZONE,
+  formatCampScheduleDate,
   getCampScheduleSlotState,
   isCampScheduleDayToday,
 } from "@/lib/bangkok-date";
@@ -627,8 +628,8 @@ export default function CampDetailPage() {
     const date = new Date(dateString);
 
     return date.toLocaleDateString("th-TH", {
-      day: "2-digit",
-      month: "2-digit",
+      day: "numeric",
+      month: "short",
       year: "numeric",
       timeZone: BANGKOK_TIME_ZONE,
     });
@@ -1410,13 +1411,18 @@ export default function CampDetailPage() {
                         : ""
                     }
                   >
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
                       <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm font-semibold text-gray-700">
                         {day.day}
                       </div>
                       <h4 className="font-semibold text-gray-900">
                         วันที่ {day.day}
                       </h4>
+                      {camp.start_date && (
+                        <span className="text-xs text-gray-500 font-normal">
+                          ({formatCampScheduleDate(camp.start_date, day.day)})
+                        </span>
+                      )}
                       {isToday && (
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
                           วันนี้

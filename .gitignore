@@ -49,3 +49,6 @@ bun.lockb
 # config files
 new-config.yaml
 certificates
+
+# temporary files
+/tmp/

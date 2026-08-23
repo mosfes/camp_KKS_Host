@@ -442,6 +442,7 @@ export default function BusManagementModal({
     () => buses.find((bus) => bus.busId === selectedBusId) || null,
     [buses, selectedBusId],
   );
+
   const hasLiveBoardingStarted = Boolean(selectedBus?.checkedInCount);
   const needsFastLiveRefresh =
     hasLiveBoardingStarted && selectedBus?.status === "PARKED";
@@ -508,13 +509,21 @@ export default function BusManagementModal({
 
       if (!response.ok) throw new Error(data.error || "โหลดข้อมูลรถไม่สำเร็จ");
 
+      const busList: Bus[] = data.buses || [];
+
       setClassrooms(data.classrooms || []);
-      setBuses(data.buses || []);
+      setBuses(busList);
+
+      const isCurrentSelectedValid = busList.some(
+        (b: Bus) => b.busId === selectedBusId,
+      );
 
       const nextBusId =
         preferredBusId !== undefined
-          ? (preferredBusId ?? data.buses?.[0]?.busId)
-          : (selectedBusId ?? data.buses?.[0]?.busId);
+          ? preferredBusId
+          : isCurrentSelectedValid
+            ? selectedBusId
+            : busList[0]?.busId;
 
       setSelectedBusId(nextBusId || null);
       setShowCreate(!nextBusId);
@@ -1308,27 +1317,33 @@ export default function BusManagementModal({
             <BusManagementSkeleton />
           ) : (
             <div className="space-y-4">
+              {/* Clean Bus Selector Tabs */}
               <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  เลือกรถที่ต้องการจัดการ
+                <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  เลือกรถที่ต้องการจัดการ ({buses.length} คัน)
                 </p>
                 <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
-                  {buses.map((bus) => (
-                    <button
-                      key={bus.busId}
-                      className={`whitespace-nowrap rounded-xl border px-3 py-2 text-left text-sm transition ${
-                        selectedBusId === bus.busId
-                          ? "border-[#6b857a] bg-[#6b857a] text-white"
-                          : "border-gray-200 bg-gray-50 text-gray-700 hover:border-[#6b857a]"
-                      }`}
-                      onClick={() => {
-                        setSelectedBusId(bus.busId);
-                        setShowCreate(false);
-                      }}
-                    >
-                      <span className="block font-medium">{bus.name}</span>
-                    </button>
-                  ))}
+                  {buses.map((bus) => {
+                    const isSelected = selectedBusId === bus.busId;
+
+                    return (
+                      <button
+                        key={bus.busId}
+                        className={`whitespace-nowrap rounded-xl border px-3.5 py-2 text-left text-sm transition ${
+                          isSelected
+                            ? "border-[#6b857a] bg-[#6b857a] font-semibold text-white shadow-sm"
+                            : "border-gray-200 bg-gray-50 font-medium text-gray-700 hover:border-[#6b857a] hover:bg-gray-100"
+                        }`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedBusId(bus.busId);
+                          setShowCreate(false);
+                        }}
+                      >
+                        <span>{bus.name}</span>
+                      </button>
+                    );
+                  })}
                   {buses.length === 0 && (
                     <p className="text-sm text-gray-500">ยังไม่มีรถในค่ายนี้</p>
                   )}
@@ -1566,88 +1581,114 @@ export default function BusManagementModal({
                 </div>
               ) : selectedBus ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div className="col-span-2 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:col-span-2">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 text-[#6b857a]">
-                            <Bus size={20} />
-                            <div className="min-w-0">
-                              <p className="truncate font-bold text-gray-900">
-                                {selectedBus.name}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {gradeLabel(selectedBus.classroom.grade)} ห้อง{" "}
-                                {selectedBus.classroom.roomName}
-                              </p>
-                            </div>
+                  {/* Selected Bus Overview Card */}
+                  <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2.5 text-[#6b857a]">
+                          <Bus className="shrink-0" size={22} />
+                          <div className="min-w-0">
+                            <h3 className="truncate font-bold text-gray-900 text-base">
+                              {selectedBus.name}
+                            </h3>
+                            <p className="text-xs text-gray-500 truncate">
+                              {gradeLabel(selectedBus.classroom.grade)} ห้อง{" "}
+                              {selectedBus.classroom.roomName}
+                            </p>
                           </div>
-                          <p className="mt-2 text-xs text-gray-500">
-                            ครูประจำชั้น:{" "}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-600">
+                          ครูประจำชั้น:{" "}
+                          <span className="font-semibold text-gray-800">
                             {selectedBus.classroom.teacherName ||
                               "ไม่พบข้อมูลครู"}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2 self-end sm:self-start">
-                          <Button
-                            className="bg-[#e2eee7] font-medium text-[#365f4f]"
-                            isDisabled={savingAction !== null}
-                            size="sm"
-                            startContent={<Pencil size={15} />}
-                            onPress={() => setShowEditBus(true)}
-                          >
-                            แก้ไขรถ
-                          </Button>
-                          <Button
-                            className="bg-red-50 font-medium text-red-700"
-                            isDisabled={savingAction !== null}
-                            size="sm"
-                            startContent={<Trash2 size={15} />}
-                            onPress={() => setShowDeleteConfirm(true)}
-                          >
-                            ลบรถ
-                          </Button>
-                        </div>
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
+                        <Button
+                          className="bg-[#e2eee7] font-medium text-[#365f4f]"
+                          isDisabled={savingAction !== null}
+                          size="sm"
+                          startContent={<Pencil size={15} />}
+                          onPress={() => setShowEditBus(true)}
+                        >
+                          แก้ไขรถ
+                        </Button>
+                        <Button
+                          className="bg-red-50 font-medium text-red-700 hover:bg-red-100"
+                          isDisabled={savingAction !== null}
+                          size="sm"
+                          startContent={<Trash2 size={15} />}
+                          onPress={() => setShowDeleteConfirm(true)}
+                        >
+                          ลบรถ
+                        </Button>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-                      <p className="text-xs text-gray-500">อยู่บนรถตอนนี้</p>
-                      <p className="mt-1 text-2xl font-semibold text-[#6b857a]">
-                        {selectedBus.checkedInCount} คน
-                      </p>
-                      <p className="mt-1 text-[11px] text-gray-400">
-                        เช็คชื่อขึ้นรถแล้ว
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-                      <p className="text-xs text-gray-500">สถานะรถ</p>
-                      <p
-                        className={`mt-1 font-bold ${selectedBus.status === "TRAVELING" ? "text-blue-600" : "text-green-600"}`}
-                      >
-                        {selectedBus.status === "TRAVELING"
-                          ? "กำลังเดินทาง"
-                          : "จอด"}
-                      </p>
+
+                    <div className="grid grid-cols-2 gap-3 pt-4">
+                      <div className="min-w-0 rounded-xl bg-gray-50 p-3.5">
+                        <p className="truncate text-xs text-gray-500">อยู่บนรถตอนนี้</p>
+                        <p className="mt-1 truncate whitespace-nowrap text-lg font-bold text-[#6b857a] sm:text-2xl">
+                          {selectedBus.checkedInCount}{" "}
+                          <span className="text-sm font-normal text-gray-500">
+                            / {assignedCount} คน
+                          </span>
+                        </p>
+                        <p className="mt-0.5 truncate text-[11px] text-gray-400">
+                          เช็คชื่อขึ้นรถแล้ว
+                        </p>
+                      </div>
+                      <div className="min-w-0 rounded-xl bg-gray-50 p-3.5">
+                        <p className="truncate text-xs text-gray-500">สถานะรถ</p>
+                        <p
+                          className={`mt-1 truncate whitespace-nowrap text-lg font-medium sm:text-2xl ${
+                            selectedBus.status === "TRAVELING"
+                              ? "text-blue-600"
+                              : "text-green-600"
+                          }`}
+                        >
+                          {selectedBus.status === "TRAVELING"
+                            ? "กำลังเดินทาง"
+                            : "จอด"}
+                        </p>
+                        <p className="mt-0.5 truncate text-[11px] text-gray-400">
+                          {selectedBus.status === "TRAVELING"
+                            ? "อยู่ระหว่างเดินทาง"
+                            : "พร้อมรับผู้โดยสาร"}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
+                  {/* Operation Bar */}
                   <div className="sticky top-0 z-10 -mx-1 rounded-2xl border border-[#d8e5de] bg-[#f7faf8]/95 p-3 shadow-sm backdrop-blur sm:static sm:mx-0">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2.5">
                         <div
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${selectedBus.status === "TRAVELING" ? "bg-blue-100 text-blue-600" : "bg-green-100 text-green-600"}`}
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                            selectedBus.status === "TRAVELING"
+                              ? "bg-blue-100 text-blue-600"
+                              : "bg-green-100 text-green-600"
+                          }`}
                         >
                           <Bus size={18} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-gray-900">
-                            การดำเนินการรถ
-                          </p>
-                          <p className="truncate text-[11px] text-gray-500">
+                          <p className="truncate text-xs font-semibold text-gray-900">
+                            การดำเนินการรถ (
                             {selectedBus.status === "TRAVELING"
                               ? "กำลังเดินทาง"
                               : "รถจอดอยู่"}{" "}
-                            · อยู่บนรถ {selectedBus.checkedInCount} คน
+                            · อยู่บนรถ {selectedBus.checkedInCount}/
+                            {assignedCount} คน)
+                          </p>
+                          <p className="truncate text-[11px] text-gray-500">
+                            {selectedBus.name} ·{" "}
+                            {gradeLabel(selectedBus.classroom.grade)} ห้อง{" "}
+                            {selectedBus.classroom.roomName}
                           </p>
                         </div>
                       </div>

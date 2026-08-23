@@ -39,6 +39,7 @@ import StudentCampDetailSkeleton from "./components/StudentCampDetailSkeleton";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import {
   BANGKOK_TIME_ZONE,
+  formatCampScheduleDate,
   getBangkokDaysUntil,
   getCampScheduleSlotState,
   isCampScheduleDayToday,
@@ -1496,13 +1497,18 @@ export default function StudentCampDetailPage() {
                     }`}
                   >
                     {/* Day Header */}
-                    <div className="bg-[#5d7c6f] px-4 py-2.5 flex items-center gap-2">
+                    <div className="bg-[#5d7c6f] px-4 py-2.5 flex items-center gap-2 flex-wrap">
                       <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">
                         {day.day}
                       </div>
                       <span className="text-white font-semibold text-sm">
                         วันที่ {day.day}
                       </span>
+                      {camp.rawStartDate && (
+                        <span className="text-white/80 text-xs font-normal">
+                          ({formatCampScheduleDate(camp.rawStartDate, day.day)})
+                        </span>
+                      )}
                       {isToday && (
                         <span className="ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-bold text-white">
                           วันนี้

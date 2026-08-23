@@ -59,6 +59,7 @@ import CampBreadcrumb from "../../CampBreadcrumb";
 import { useStatusModal } from "@/components/StatusModalProvider";
 
 interface Question {
+  id?: number;
   text: string;
   type: "text" | "scale" | "header" | "grid" | "checkbox";
   scaleMax: number;
@@ -371,6 +372,7 @@ export default function SurveyPage() {
           ) {
             setQuestions(
               surveyData.survey_question.map((q: any) => ({
+                id: q.question_id,
                 text: q.question_text,
                 type: q.question_type,
                 scaleMax: q.scale_max || 5,
@@ -613,8 +615,11 @@ export default function SurveyPage() {
     }
 
     const finalQuestions = questions.map((q) => ({
-      ...q,
+      id: q.id,
+      text: q.text,
+      type: q.type,
       scaleMax: q.type === "scale" ? globalScaleMax : 5,
+      options: q.options,
     }));
 
     try {
@@ -646,6 +651,20 @@ export default function SurveyPage() {
       const updatedSurvey = await res.json();
 
       setSurvey(updatedSurvey);
+      if (
+        updatedSurvey.survey_question &&
+        updatedSurvey.survey_question.length > 0
+      ) {
+        setQuestions(
+          updatedSurvey.survey_question.map((q: any) => ({
+            id: q.question_id,
+            text: q.question_text,
+            type: q.question_type,
+            scaleMax: q.scale_max || 5,
+            options: q.options ? JSON.parse(q.options) : [],
+          })),
+        );
+      }
       toast.success(
         isEditing
           ? "บันทึกการแก้ไขเรียบร้อยแล้ว"
