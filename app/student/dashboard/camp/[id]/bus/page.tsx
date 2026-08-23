@@ -526,19 +526,22 @@ export default function StudentBusCheckinPage() {
                           key={rowIndex}
                           className="grid grid-cols-[1fr_1fr_0.3fr_1fr_1fr] gap-1"
                         >
-                          {rowPositions.map((position: any, index: number) => (
-                            <div
-                              key={position.positionId}
-                              aria-current={position.isOwn ? "true" : undefined}
-                              className={`flex min-h-9 min-w-0 items-center justify-center rounded-lg border px-1 text-center text-[10px] font-bold ${
-                                position.isOwn
-                                  ? "border-[#5d7c6f] bg-[#bfe8d2] text-[#24523f] ring-2 ring-[#5d7c6f]/25"
-                                  : "border-gray-200 bg-white text-gray-400"
-                              } ${index === 2 ? "col-start-4" : ""}`}
-                            >
-                              {position.label}
-                            </div>
-                          ))}
+                          {rowPositions.map((position: any) => {
+                            const colClass = ["col-start-1", "col-start-2", "col-start-4", "col-start-5"][position.seatIndex] ?? "";
+                            return (
+                              <div
+                                key={position.positionId}
+                                aria-current={position.isOwn ? "true" : undefined}
+                                className={`flex min-h-9 min-w-0 items-center justify-center rounded-lg border px-1 text-center text-[10px] font-bold ${
+                                  position.isOwn
+                                    ? "border-[#5d7c6f] bg-[#bfe8d2] text-[#24523f] ring-2 ring-[#5d7c6f]/25"
+                                    : "border-gray-200 bg-white text-gray-400"
+                                } ${colClass}`}
+                              >
+                                {position.label}
+                              </div>
+                            );
+                          })}
                         </div>
                       );
                     })}

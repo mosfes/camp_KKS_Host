@@ -351,10 +351,10 @@ function FloorCountRadioGroup({
           <label
             key={option.value}
             className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${disabled
-                ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                : isSelected
-                  ? "border-[#6b857a] bg-[#edf5f0] text-[#365f4f] shadow-sm"
-                  : "border-gray-200 bg-white text-gray-700 hover:border-[#9ab4a7] hover:bg-[#f8fbf9]"
+              ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+              : isSelected
+                ? "border-[#6b857a] bg-[#edf5f0] text-[#365f4f] shadow-sm"
+                : "border-gray-200 bg-white text-gray-700 hover:border-[#9ab4a7] hover:bg-[#f8fbf9]"
               }`}
           >
             <input
@@ -1258,8 +1258,8 @@ export default function BusManagementModal({
       <>
         <Header
           className={`relative flex flex-col gap-1 px-6 ${pageMode
-              ? "mx-auto w-full max-w-7xl border-0 pb-8 pt-8 sm:px-8"
-              : "border-b border-gray-100 p-6 pb-4"
+            ? "mx-auto w-full max-w-7xl border-0 pb-8 pt-8 sm:px-8"
+            : "border-b border-gray-100 p-6 pb-4"
             }`}
         >
           {pageMode && (
@@ -1325,8 +1325,8 @@ export default function BusManagementModal({
                       <button
                         key={bus.busId}
                         className={`whitespace-nowrap rounded-xl border px-3.5 py-2 text-left text-sm transition ${isSelected
-                            ? "border-[#6b857a] bg-[#6b857a] font-semibold text-white shadow-sm"
-                            : "border-gray-200 bg-gray-50 font-medium text-gray-700 hover:border-[#6b857a] hover:bg-gray-100"
+                          ? "border-[#6b857a] bg-[#6b857a] font-semibold text-white shadow-sm"
+                          : "border-gray-200 bg-gray-50 font-medium text-gray-700 hover:border-[#6b857a] hover:bg-gray-100"
                           }`}
                         type="button"
                         onClick={() => {
@@ -1419,8 +1419,8 @@ export default function BusManagementModal({
                         <div className="mt-2 grid gap-3 sm:grid-cols-2">
                           <button
                             className={`rounded-2xl border p-4 text-left transition ${createForm.layoutTemplateId === "custom"
-                                ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
-                                : "border-gray-200 bg-white hover:border-[#9ab4a7]"
+                              ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
+                              : "border-gray-200 bg-white hover:border-[#9ab4a7]"
                               }`}
                             type="button"
                             onClick={() =>
@@ -1441,8 +1441,8 @@ export default function BusManagementModal({
                             <button
                               key={template.id}
                               className={`rounded-2xl border p-4 text-left transition ${createForm.layoutTemplateId === template.id
-                                  ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
-                                  : "border-gray-200 bg-white hover:border-[#9ab4a7]"
+                                ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
+                                : "border-gray-200 bg-white hover:border-[#9ab4a7]"
                                 }`}
                               type="button"
                               onClick={() =>
@@ -1637,8 +1637,8 @@ export default function BusManagementModal({
                         <p className="truncate text-xs text-gray-500">สถานะรถ</p>
                         <p
                           className={`mt-1 truncate whitespace-nowrap text-lg font-medium sm:text-2xl ${selectedBus.status === "TRAVELING"
-                              ? "text-blue-600"
-                              : "text-green-600"
+                            ? "text-blue-600"
+                            : "text-green-600"
                             }`}
                         >
                           {selectedBus.status === "TRAVELING"
@@ -1660,8 +1660,8 @@ export default function BusManagementModal({
                       <div className="flex min-w-0 items-center gap-2.5">
                         <div
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${selectedBus.status === "TRAVELING"
-                              ? "bg-blue-100 text-blue-600"
-                              : "bg-green-100 text-green-600"
+                            ? "bg-blue-100 text-blue-600"
+                            : "bg-green-100 text-green-600"
                             }`}
                         >
                           <Bus size={18} />
@@ -1788,8 +1788,8 @@ export default function BusManagementModal({
                                         : null;
                                       const seatStateClass = assignment
                                         ? assignment.status === "ON_BUS"
-                                          ? "border-green-300 bg-green-50 text-green-800"
-                                          : "border-yellow-300 bg-yellow-50 text-yellow-800"
+                                          ? "border-green-400 bg-green-200 text-green-900"
+                                          : "border-yellow-300 bg-yellow-100 text-yellow-800"
                                         : "border-gray-200 bg-white text-gray-600 hover:border-[#6b857a]";
                                       const isOnBus =
                                         assignment?.status === "ON_BUS";
@@ -2250,8 +2250,8 @@ export default function BusManagementModal({
                             key={floor.floorId}
                             aria-pressed={selectedFloor === floor.floorNumber}
                             className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${selectedFloor === floor.floorNumber
-                                ? "bg-[#365f4f] text-white"
-                                : "bg-[#e2eee7] text-[#365f4f] hover:bg-[#cfe0d6]"
+                              ? "bg-[#365f4f] text-white"
+                              : "bg-[#e2eee7] text-[#365f4f] hover:bg-[#cfe0d6]"
                               }`}
                             type="button"
                             onClick={() => setSelectedFloor(floor.floorNumber)}
@@ -2603,8 +2603,8 @@ export default function BusManagementModal({
               <div className="flex items-center gap-3">
                 <div
                   className={`flex h-10 w-10 items-center justify-center rounded-2xl ${pendingBusStatus === "TRAVELING"
-                      ? "bg-[#e2eee7] text-[#365f4f]"
-                      : "bg-[#e8f2ed] text-[#3d6357]"
+                    ? "bg-[#e2eee7] text-[#365f4f]"
+                    : "bg-[#e8f2ed] text-[#3d6357]"
                     }`}
                 >
                   {pendingBusStatus === "TRAVELING" ? (
@@ -2813,8 +2813,8 @@ export default function BusManagementModal({
                     <button
                       aria-pressed={parkClearPassengers === false}
                       className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/30 ${parkClearPassengers === false
-                          ? "border-[#5d7c6f] bg-[#f1f7f4] ring-2 ring-[#5d7c6f]/15"
-                          : "border-gray-200 bg-white hover:border-gray-300"
+                        ? "border-[#5d7c6f] bg-[#f1f7f4] ring-2 ring-[#5d7c6f]/15"
+                        : "border-gray-200 bg-white hover:border-gray-300"
                         }`}
                       type="button"
                       onClick={() => setParkClearPassengers(false)}
@@ -2841,8 +2841,8 @@ export default function BusManagementModal({
                     <button
                       aria-pressed={parkClearPassengers === true}
                       className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-400/30 ${parkClearPassengers === true
-                          ? "border-amber-400 bg-amber-50 ring-2 ring-amber-200/60"
-                          : "border-gray-200 bg-white hover:border-gray-300"
+                        ? "border-amber-400 bg-amber-50 ring-2 ring-amber-200/60"
+                        : "border-gray-200 bg-white hover:border-gray-300"
                         }`}
                       type="button"
                       onClick={() => setParkClearPassengers(true)}
