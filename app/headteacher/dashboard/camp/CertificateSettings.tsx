@@ -548,7 +548,7 @@ export default function CertificateSettings({
       <div className="min-w-0 space-y-4">
         <section className="rounded-2xl border border-[#6b857a]/20 bg-white p-4 shadow-sm sm:p-5">
           <div className="mb-4 flex items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1a3a32] text-sm font-bold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-[#1a3a32] bg-white text-sm font-bold text-[#1a3a32]">
               1
             </div>
             <div>
@@ -684,7 +684,7 @@ export default function CertificateSettings({
 
         <section className="rounded-2xl border border-[#6b857a]/20 bg-white p-4 shadow-sm sm:p-5">
           <div className="mb-4 flex items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1a3a32] text-sm font-bold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-[#1a3a32] bg-white text-sm font-bold text-[#1a3a32]">
               2
             </div>
             <div>
@@ -824,7 +824,7 @@ export default function CertificateSettings({
         {certImage && (
           <section className="rounded-2xl border border-[#6b857a]/20 bg-white p-4 shadow-sm sm:p-5">
             <div className="mb-4 flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1a3a32] text-sm font-bold text-white">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-[#1a3a32] bg-white text-sm font-bold text-[#1a3a32]">
                 3
               </div>
               <div>
