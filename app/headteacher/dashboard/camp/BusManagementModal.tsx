@@ -18,6 +18,9 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  History,
+  LogIn,
+  LogOut,
   Mars,
   MapPin,
   Pencil,
@@ -128,6 +131,14 @@ function StudentAvatarFallback({
 }
 
 type SavingAction = "create" | "save" | "update" | "delete" | "status";
+
+type TripHistoryEntry = {
+  tripNumber: number;
+  departedAt: string;
+  parkedAt: string | null;
+  departedBy: string | null;
+  parkedBy: string | null;
+};
 
 type Bus = {
   busId: number;
@@ -434,6 +445,11 @@ export default function BusManagementModal({
     floorCount: "1",
     rowCounts: [10] as RowCountValue[],
   });
+  const [showTripHistory, setShowTripHistory] = useState(false);
+  const [tripHistory, setTripHistory] = useState<TripHistoryEntry[] | null>(
+    null,
+  );
+  const [tripHistoryLoading, setTripHistoryLoading] = useState(false);
 
   const selectedBus = useMemo(
     () => buses.find((bus) => bus.busId === selectedBusId) || null,
@@ -938,6 +954,27 @@ export default function BusManagementModal({
     }
 
     void saveLayout();
+  };
+
+  const fetchTripHistory = async (busId: number) => {
+    setTripHistoryLoading(true);
+    setTripHistory(null);
+    setShowTripHistory(true);
+
+    try {
+      const response = await fetch(
+        `/api/camps/${campId}/buses/${busId}/trip-history`,
+        { cache: "no-store" },
+      );
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "โหลดประวัติไม่สำเร็จ");
+      setTripHistory(data.trips);
+    } catch {
+      setTripHistory([]);
+    } finally {
+      setTripHistoryLoading(false);
+    }
   };
 
   const requestBusStatusChange = () => {
@@ -1682,21 +1719,37 @@ export default function BusManagementModal({
                           </p>
                         </div>
                       </div>
-                      <Button
-                        className={
-                          selectedBus.status === "TRAVELING"
-                            ? "min-h-11 min-w-[118px] shrink-0 bg-amber-100 px-3 text-xs font-medium text-amber-800"
-                            : "min-h-11 min-w-[118px] shrink-0 bg-[#365f4f] px-3 text-xs font-medium text-white"
-                        }
-                        isDisabled={savingAction !== null || !hasAssignedSeat}
-                        isLoading={savingAction === "status"}
-                        size="sm"
-                        onPress={requestBusStatusChange}
-                      >
-                        {selectedBus.status === "TRAVELING"
-                          ? "รถถึงจุดแวะ"
-                          : "เริ่มเดินทาง"}
-                      </Button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {selectedBus.lastDepartedAt !== null && (
+                          <Button
+                            aria-label="ดูประวัติการเดินทาง"
+                            className="min-h-11 min-w-11 bg-gray-100 px-3 text-xs font-medium text-gray-600"
+                            isIconOnly
+                            size="sm"
+                            title="ประวัติการเดินทาง"
+                            onPress={() =>
+                              void fetchTripHistory(selectedBus.busId)
+                            }
+                          >
+                            <History size={17} />
+                          </Button>
+                        )}
+                        <Button
+                          className={
+                            selectedBus.status === "TRAVELING"
+                              ? "min-h-11 min-w-[118px] shrink-0 bg-amber-100 px-3 text-xs font-medium text-amber-800"
+                              : "min-h-11 min-w-[118px] shrink-0 bg-[#365f4f] px-3 text-xs font-medium text-white"
+                          }
+                          isDisabled={savingAction !== null || !hasAssignedSeat}
+                          isLoading={savingAction === "status"}
+                          size="sm"
+                          onPress={requestBusStatusChange}
+                        >
+                          {selectedBus.status === "TRAVELING"
+                            ? "รถถึงจุดแวะ"
+                            : "เริ่มเดินทาง"}
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -3115,6 +3168,184 @@ export default function BusManagementModal({
                 onPress={() => void handleDeleteBus()}
               >
                 ยืนยันลบรถ
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Trip History Modal */}
+        <Modal
+          classNames={{
+            wrapper: "z-[1200]",
+            base: "z-[1200] max-h-[88vh] overflow-hidden rounded-3xl",
+            backdrop: "z-[1190]",
+            header: "border-b border-gray-100 bg-white px-5 py-4",
+            body: "p-4 bg-[#f7faf8]",
+            footer: "border-t border-gray-100 bg-white px-5 py-4",
+          }}
+          isOpen={showTripHistory}
+          placement="center"
+          scrollBehavior="inside"
+          size="sm"
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowTripHistory(false);
+              setTripHistory(null);
+            }
+          }}
+        >
+          <ModalContent>
+            <ModalHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#e2eee7] text-[#365f4f]">
+                  <History size={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-base font-bold text-gray-900">
+                    ประวัติการเดินทาง
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-gray-500">
+                    {selectedBus?.name}
+                  </p>
+                </div>
+              </div>
+            </ModalHeader>
+            <ModalBody>
+              {tripHistoryLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }, (_, i) => (
+                    <div
+                      key={i}
+                      className="animate-pulse rounded-2xl border border-gray-100 bg-white p-4"
+                    >
+                      <div className="mb-3 h-4 w-20 rounded bg-gray-200" />
+                      <div className="space-y-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-7 w-7 rounded-full bg-gray-200" />
+                          <div className="h-3 w-40 rounded bg-gray-100" />
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-7 w-7 rounded-full bg-gray-200" />
+                          <div className="h-3 w-48 rounded bg-gray-100" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : tripHistory === null || tripHistory.length === 0 ? (
+                <div className="py-12 text-center">
+                  <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+                    <History size={28} />
+                  </div>
+                  <p className="font-semibold text-gray-700">
+                    ยังไม่มีประวัติการเดินทาง
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    กดปุ่ม "เริ่มเดินทาง" เพื่อเริ่มบันทึกรอบแรก
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tripHistory.map((trip) => (
+                    <div
+                      key={trip.tripNumber}
+                      className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-2.5">
+                        <span className="text-xs font-bold text-[#365f4f]">
+                          รอบที่ {trip.tripNumber}
+                        </span>
+                        {trip.parkedAt === null && (
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                            กำลังเดินทาง
+                          </span>
+                        )}
+                      </div>
+                      <div className="divide-y divide-gray-50 px-4 py-1">
+                        {/* Departed */}
+                        <div className="flex items-start gap-3 py-3">
+                          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e2eee7] text-[#365f4f]">
+                            <LogIn size={13} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-gray-800">
+                              ออกรถ
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-gray-500">
+                              {new Date(trip.departedAt).toLocaleString(
+                                "th-TH",
+                                {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                  timeZone: "Asia/Bangkok",
+                                },
+                              )}
+                            </p>
+                            {trip.departedBy && (
+                              <p className="mt-0.5 text-[10px] text-gray-400">
+                                ครู {trip.departedBy}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {/* Parked */}
+                        <div className="flex items-start gap-3 py-3">
+                          <div
+                            className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                              trip.parkedAt
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-gray-100 text-gray-400"
+                            }`}
+                          >
+                            <LogOut size={13} />
+                          </div>
+                          <div className="min-w-0">
+                            <p
+                              className={`text-xs font-semibold ${trip.parkedAt ? "text-gray-800" : "text-gray-400"}`}
+                            >
+                              ถึงจุดแวะ
+                            </p>
+                            {trip.parkedAt ? (
+                              <>
+                                <p className="mt-0.5 text-[11px] text-gray-500">
+                                  {new Date(trip.parkedAt).toLocaleString(
+                                    "th-TH",
+                                    {
+                                      dateStyle: "medium",
+                                      timeStyle: "short",
+                                      timeZone: "Asia/Bangkok",
+                                    },
+                                  )}
+                                </p>
+                                {trip.parkedBy && (
+                                  <p className="mt-0.5 text-[10px] text-gray-400">
+                                    ครู {trip.parkedBy}
+                                  </p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="mt-0.5 text-[11px] text-gray-400">
+                                ยังอยู่ระหว่างเดินทาง
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ModalBody>
+            <ModalFooter className="flex justify-end">
+              <Button
+                className="font-medium text-gray-600"
+                variant="light"
+                onPress={() => {
+                  setShowTripHistory(false);
+                  setTripHistory(null);
+                }}
+              >
+                ปิด
               </Button>
             </ModalFooter>
           </ModalContent>
