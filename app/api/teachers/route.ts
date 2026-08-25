@@ -33,6 +33,10 @@ export async function GET(req) {
               where: { deletedAt: null },
               select: { classroom_id: true },
             },
+            classroom_teacher: {
+              where: { classroom: { deletedAt: null } },
+              select: { classroom_teacher_id: true },
+            },
             camp: {
               where: { deletedAt: null },
               select: { camp_id: true },
@@ -62,6 +66,10 @@ export async function GET(req) {
         classrooms: {
           where: { deletedAt: null },
           select: { classroom_id: true },
+        },
+        classroom_teacher: {
+          where: { classroom: { deletedAt: null } },
+          select: { classroom_teacher_id: true },
         },
         camp: {
           where: { deletedAt: null },
