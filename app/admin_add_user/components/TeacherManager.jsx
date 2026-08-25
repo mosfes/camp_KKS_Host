@@ -487,7 +487,8 @@ const TeacherManager = () => {
                                             >
                                                 {t.role?.toUpperCase() === "ADMIN"
                                                     ? "ผู้ดูแลระบบ"
-                                                    : (t.classrooms && t.classrooms.length > 0)
+                                                    : ((t.classrooms && t.classrooms.length > 0) ||
+                                                        (t.classroom_teacher && t.classroom_teacher.length > 0))
                                                         ? "ครูประจำชั้น"
                                                         : (t.camp && t.camp.length > 0)
                                                             ? "ครูหัวหน้าค่าย"
