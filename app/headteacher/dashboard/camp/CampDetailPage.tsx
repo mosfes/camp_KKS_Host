@@ -232,6 +232,16 @@ export default function CampDetailPage() {
     useStatusModal();
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editModalTargetSection, setEditModalTargetSection] = useState<
+    "info" | "schedule" | "shirt" | "all"
+  >("all");
+
+  const handleOpenEditModal = (
+    section: "info" | "schedule" | "shirt" | "all" = "all",
+  ) => {
+    setEditModalTargetSection(section);
+    setIsEditModalOpen(true);
+  };
   const [isEditCertificateModalOpen, setIsEditCertificateModalOpen] =
     useState(false);
   const [isCreateBaseModalOpen, setIsCreateBaseModalOpen] = useState(false);
@@ -742,13 +752,13 @@ export default function CampDetailPage() {
                       <Trash2 size={18} />
                     </Button>
                     <Button
-                      className="bg-white text-[#1a3a32] font-bold hover:bg-gray-100 transition-colors h-10 px-5 rounded-lg shadow-sm"
+                      className="bg-white text-[#1a3a32] font-bold hover:bg-gray-100 transition-colors h-10 px-3 sm:px-5 rounded-lg shadow-sm"
                       startContent={
                         <Pencil className="text-[#1a3a32]" size={16} />
                       }
-                      onPress={() => setIsEditModalOpen(true)}
+                      onPress={() => handleOpenEditModal("all")}
                     >
-                      แก้ไขค่าย
+                      <span className="hidden sm:inline">แก้ไขค่าย</span>
                     </Button>
                   </>
                 )}
@@ -773,16 +783,16 @@ export default function CampDetailPage() {
                 camp?.enrolled_student_count ?? 0,
                 camp?.total_eligible_students ?? 0,
               ) > 0 && (
-                <>
-                  <span className="text-lg text-gray-300 mx-1">/</span>
-                  <span className="text-lg text-gray-400">
-                    {Math.max(
-                      camp?.enrolled_student_count ?? 0,
-                      camp?.total_eligible_students ?? 0,
-                    )}
-                  </span>
-                </>
-              )}
+                  <>
+                    <span className="text-lg text-gray-300 mx-1">/</span>
+                    <span className="text-lg text-gray-400">
+                      {Math.max(
+                        camp?.enrolled_student_count ?? 0,
+                        camp?.total_eligible_students ?? 0,
+                      )}
+                    </span>
+                  </>
+                )}
             </p>
             <p className="text-gray-400 text-[9px] font-medium mb-1">คน</p>
             <p className="text-[#1a3a32] font-semibold text-xs">ผู้เข้าร่วม</p>
@@ -812,219 +822,217 @@ export default function CampDetailPage() {
         {/* Quick Actions are now provided by the camp Sidebar. */}
         {camp
           ? false && (
-              <div className="mb-8">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {camp?.isOwner && (
-                    <button
-                      className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                      onClick={() =>
-                        router.push(
-                          `/headteacher/dashboard/camp/${campId}/project-document`,
-                        )
-                      }
-                    >
-                      <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                        <FileText size={32} />
-                      </div>
-                      <span className="font-semibold text-sm text-center text-gray-700">
-                        เอกสาร
-                        <br />
-                        โครงการ
-                      </span>
-                    </button>
-                  )}
-                  {camp?.isOwner && (
-                    <button
-                      className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                      onClick={() => setIsCreateBaseModalOpen(true)}
-                    >
-                      <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                        <Target size={32} />
-                      </div>
-                      <span className="font-semibold text-sm text-center text-gray-700">
-                        สร้าง
-                        <br />
-                        ฐานกิจกรรม
-                      </span>
-                    </button>
-                  )}
-
-                  {camp?.isOwner && (
-                    <button
-                      className={`rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] cursor-pointer`}
-                      onClick={() =>
-                        survey !== null
-                          ? setIsSurveyResultsModalOpen(true)
-                          : setIsCreateSurveyModalOpen(true)
-                      }
-                    >
-                      <div
-                        className={`text-[#6b857a] group-hover:scale-110 transition-transform`}
-                      >
-                        {survey !== null ? (
-                          <BarChart3 size={32} />
-                        ) : (
-                          <ClipboardList size={32} />
-                        )}
-                      </div>
-                      <span
-                        className={`font-semibold text-sm text-center text-gray-700`}
-                      >
-                        {survey !== null ? (
-                          <>
-                            ดูผลการ
-                            <br />
-                            ตอบกลับ
-                          </>
-                        ) : (
-                          <>
-                            สร้าง
-                            <br />
-                            แบบสอบถาม
-                          </>
-                        )}
-                      </span>
-                    </button>
-                  )}
-
-                  {camp?.has_transport &&
-                    (camp?.isOwner || camp?.isHomeroomTeacher) && (
-                      <button
-                        className={`bg-white rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 border shadow-sm ${
-                          camp?.has_shirt
-                            ? "hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] group cursor-pointer"
-                            : "opacity-50 cursor-not-allowed border-gray-100 bg-gray-50"
-                        }`}
-                        disabled={!camp?.has_shirt}
-                        onClick={() => setIsShirtModalOpen(true)}
-                      >
-                        <div
-                          className={`text-[#6b857a] ${
-                            camp?.has_shirt
-                              ? "group-hover:scale-110 transition-transform"
-                              : ""
-                          }`}
-                        >
-                          <Shirt size={32} />
-                        </div>
-                        <span className="font-semibold text-sm text-center text-gray-700">
-                          รายการ
-                          <br />
-                          จองเสื้อ
-                        </span>
-                      </button>
-                    )}
-
-                  {camp?.isOwner && (
-                    <button
-                      className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                      onClick={() => setIsPrePostTestModalOpen(true)}
-                    >
-                      <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                        <TrendingUp size={32} />
-                      </div>
-                      <span className="font-semibold text-sm text-center text-gray-700">
-                        เปรียบเทียบ
-                        <br />
-                        คะแนน
-                      </span>
-                    </button>
-                  )}
-
-                  <button
-                    className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                    onClick={() => setIsTrackingModalOpen(true)}
-                  >
-                    <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                      <Users size={32} />
-                    </div>
-                    <span className="font-semibold text-sm text-center text-gray-700">
-                      ติดตาม
-                      <br />
-                      นักเรียน
-                    </span>
-                  </button>
-
+            <div className="mb-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {camp?.isOwner && (
                   <button
                     className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
                     onClick={() =>
                       router.push(
-                        `/headteacher/dashboard/camp/${campId}/attendance`,
+                        `/headteacher/dashboard/camp/${campId}/project-document`,
                       )
                     }
                   >
                     <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                      <UserCheck size={32} />
+                      <FileText size={32} />
+                    </div>
+                    <span className="font-semibold text-sm text-center text-gray-700">
+                      เอกสาร
+                      <br />
+                      โครงการ
+                    </span>
+                  </button>
+                )}
+                {camp?.isOwner && (
+                  <button
+                    className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                    onClick={() => setIsCreateBaseModalOpen(true)}
+                  >
+                    <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                      <Target size={32} />
+                    </div>
+                    <span className="font-semibold text-sm text-center text-gray-700">
+                      สร้าง
+                      <br />
+                      ฐานกิจกรรม
+                    </span>
+                  </button>
+                )}
+
+                {camp?.isOwner && (
+                  <button
+                    className={`rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] cursor-pointer`}
+                    onClick={() =>
+                      survey !== null
+                        ? setIsSurveyResultsModalOpen(true)
+                        : setIsCreateSurveyModalOpen(true)
+                    }
+                  >
+                    <div
+                      className={`text-[#6b857a] group-hover:scale-110 transition-transform`}
+                    >
+                      {survey !== null ? (
+                        <BarChart3 size={32} />
+                      ) : (
+                        <ClipboardList size={32} />
+                      )}
+                    </div>
+                    <span
+                      className={`font-semibold text-sm text-center text-gray-700`}
+                    >
+                      {survey !== null ? (
+                        <>
+                          ดูผลการ
+                          <br />
+                          ตอบกลับ
+                        </>
+                      ) : (
+                        <>
+                          สร้าง
+                          <br />
+                          แบบสอบถาม
+                        </>
+                      )}
+                    </span>
+                  </button>
+                )}
+
+                {camp?.has_transport &&
+                  (camp?.isOwner || camp?.isHomeroomTeacher) && (
+                    <button
+                      className={`bg-white rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 border shadow-sm ${camp?.has_shirt
+                          ? "hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] group cursor-pointer"
+                          : "opacity-50 cursor-not-allowed border-gray-100 bg-gray-50"
+                        }`}
+                      disabled={!camp?.has_shirt}
+                      onClick={() => setIsShirtModalOpen(true)}
+                    >
+                      <div
+                        className={`text-[#6b857a] ${camp?.has_shirt
+                            ? "group-hover:scale-110 transition-transform"
+                            : ""
+                          }`}
+                      >
+                        <Shirt size={32} />
+                      </div>
+                      <span className="font-semibold text-sm text-center text-gray-700">
+                        รายการ
+                        <br />
+                        จองเสื้อ
+                      </span>
+                    </button>
+                  )}
+
+                {camp?.isOwner && (
+                  <button
+                    className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                    onClick={() => setIsPrePostTestModalOpen(true)}
+                  >
+                    <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                      <TrendingUp size={32} />
+                    </div>
+                    <span className="font-semibold text-sm text-center text-gray-700">
+                      เปรียบเทียบ
+                      <br />
+                      คะแนน
+                    </span>
+                  </button>
+                )}
+
+                <button
+                  className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                  onClick={() => setIsTrackingModalOpen(true)}
+                >
+                  <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                    <Users size={32} />
+                  </div>
+                  <span className="font-semibold text-sm text-center text-gray-700">
+                    ติดตาม
+                    <br />
+                    นักเรียน
+                  </span>
+                </button>
+
+                <button
+                  className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                  onClick={() =>
+                    router.push(
+                      `/headteacher/dashboard/camp/${campId}/attendance`,
+                    )
+                  }
+                >
+                  <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                    <UserCheck size={32} />
+                  </div>
+                  <span className="font-semibold text-sm text-center text-gray-700">
+                    เช็คชื่อ
+                    <br />
+                    นักเรียน
+                  </span>
+                </button>
+
+                {(camp?.isOwner || camp?.isHomeroomTeacher) && (
+                  <button
+                    className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                    onClick={() =>
+                      router.push(
+                        `/headteacher/dashboard/camp/${campId}/bus-checkin`,
+                      )
+                    }
+                  >
+                    <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                      <Bus size={32} />
                     </div>
                     <span className="font-semibold text-sm text-center text-gray-700">
                       เช็คชื่อ
                       <br />
-                      นักเรียน
+                      ขึ้นรถ
                     </span>
                   </button>
+                )}
 
-                  {(camp?.isOwner || camp?.isHomeroomTeacher) && (
-                    <button
-                      className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                      onClick={() =>
-                        router.push(
-                          `/headteacher/dashboard/camp/${campId}/bus-checkin`,
-                        )
-                      }
-                    >
-                      <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                        <Bus size={32} />
-                      </div>
-                      <span className="font-semibold text-sm text-center text-gray-700">
-                        เช็คชื่อ
-                        <br />
-                        ขึ้นรถ
-                      </span>
-                    </button>
-                  )}
-
-                  {camp?.isOwner && (
-                    <button
-                      className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                      onClick={() => setIsEditCertificateModalOpen(true)}
-                    >
-                      <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
-                        <Award size={32} />
-                      </div>
-                      <span className="font-semibold text-sm text-center text-gray-700">
-                        ตั้งค่า
-                        <br />
-                        เกียรติบัตร
-                      </span>
-                    </button>
-                  )}
-
+                {camp?.isOwner && (
                   <button
                     className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
-                    disabled={isStudentsLoading}
-                    onClick={() => {
-                      setIsStudentsLoading(true);
-                      router.push(
-                        `/headteacher/dashboard/camp/${campId}/students`,
-                      );
-                    }}
+                    onClick={() => setIsEditCertificateModalOpen(true)}
                   >
-                    <div className="text-[#6b857a] group-hover:scale-110 transition-transform flex items-center justify-center w-[32px] h-[32px]">
-                      {isStudentsLoading ? (
-                        <div className="w-8 h-8 border-3 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <BookOpen size={32} />
-                      )}
+                    <div className="text-[#6b857a] group-hover:scale-110 transition-transform">
+                      <Award size={32} />
                     </div>
                     <span className="font-semibold text-sm text-center text-gray-700">
-                      ข้อมูล
+                      ตั้งค่า
                       <br />
-                      นักเรียน
+                      เกียรติบัตร
                     </span>
                   </button>
-                </div>
+                )}
+
+                <button
+                  className="bg-white hover:bg-[#f0f4f2] border-gray-100 hover:border-[#6b857a] rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 group border shadow-sm cursor-pointer"
+                  disabled={isStudentsLoading}
+                  onClick={() => {
+                    setIsStudentsLoading(true);
+                    router.push(
+                      `/headteacher/dashboard/camp/${campId}/students`,
+                    );
+                  }}
+                >
+                  <div className="text-[#6b857a] group-hover:scale-110 transition-transform flex items-center justify-center w-[32px] h-[32px]">
+                    {isStudentsLoading ? (
+                      <div className="w-8 h-8 border-3 border-[#6b857a] border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <BookOpen size={32} />
+                    )}
+                  </div>
+                  <span className="font-semibold text-sm text-center text-gray-700">
+                    ข้อมูล
+                    <br />
+                    นักเรียน
+                  </span>
+                </button>
               </div>
-            )
+            </div>
+          )
           : null}
 
         {/* Quick Actions */}
@@ -1036,11 +1044,10 @@ export default function CampDetailPage() {
             </p>
           </div>
           <div
-            className={`grid ${
-              camp?.has_transport && (camp.isOwner || camp.isHomeroomTeacher)
+            className={`grid ${camp?.has_transport && (camp.isOwner || camp.isHomeroomTeacher)
                 ? "grid-cols-3"
                 : "grid-cols-2"
-            } gap-2 sm:gap-3`}
+              } gap-2 sm:gap-3`}
           >
             <button
               className="group flex min-h-[8rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-gray-100 bg-white p-2 shadow-sm transition-all hover:border-[#6b857a] hover:bg-[#f0f4f2] sm:gap-2 sm:p-4"
@@ -1097,8 +1104,8 @@ export default function CampDetailPage() {
         {/* Camp Information - Collapsible */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
           {/* Header - clickable toggle */}
-          <button
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+          <div
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
             onClick={() => setIsInfoOpen((prev) => !prev)}
           >
             <div className="flex items-center gap-2">
@@ -1109,10 +1116,26 @@ export default function CampDetailPage() {
                 ข้อมูลค่าย
               </h3>
             </div>
-            <div className="text-gray-400 transition-transform duration-200">
-              {isInfoOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            <div className="flex items-center gap-2">
+              {camp?.isOwner && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold text-[#6b857a] bg-[#f0f4f2] hover:bg-[#6b857a] hover:text-white transition-all shadow-sm cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenEditModal("info");
+                  }}
+                  title="แก้ไขข้อมูลค่าย"
+                >
+                  <Pencil size={14} />
+                  <span className="hidden sm:inline">แก้ไขข้อมูล</span>
+                </button>
+              )}
+              <div className="text-gray-400 transition-transform duration-200">
+                {isInfoOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </div>
             </div>
-          </button>
+          </div>
 
           {/* Collapsible Body */}
           {isInfoOpen && (
@@ -1158,7 +1181,7 @@ export default function CampDetailPage() {
                       ประเภทห้องเรียน/แผนการเรียน
                     </p>
                     {camp.gradeDisplayList &&
-                    camp.gradeDisplayList.length > 0 ? (
+                      camp.gradeDisplayList.length > 0 ? (
                       <div className="flex flex-wrap gap-2.5">
                         {camp.gradeDisplayList.map(
                           (item: { type: string; grades: string[] }) => (
@@ -1215,11 +1238,11 @@ export default function CampDetailPage() {
         {/* Shirt Reservations - Collapsible */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
           {/* Header - clickable toggle */}
-          <button
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+          <div
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
             onClick={() => setIsShirtOpen((prev) => !prev)}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="w-8 h-8 rounded-lg bg-[#f0f4f2] flex items-center justify-center flex-shrink-0">
                 <Shirt className="text-[#6b857a]" size={16} />
               </div>
@@ -1238,14 +1261,30 @@ export default function CampDetailPage() {
                 </span>
               )}
             </div>
-            <div className="text-gray-400 transition-transform duration-200">
-              {isShirtOpen ? (
-                <ChevronUp size={18} />
-              ) : (
-                <ChevronDown size={18} />
+            <div className="flex items-center gap-2">
+              {camp?.isOwner && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold text-[#6b857a] bg-[#f0f4f2] hover:bg-[#6b857a] hover:text-white transition-all shadow-sm cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenEditModal("shirt");
+                  }}
+                  title="แก้ไขเสื้อค่าย"
+                >
+                  <Pencil size={14} />
+                  <span className="hidden sm:inline">แก้ไขเสื้อค่าย</span>
+                </button>
               )}
+              <div className="text-gray-400 transition-transform duration-200">
+                {isShirtOpen ? (
+                  <ChevronUp size={18} />
+                ) : (
+                  <ChevronDown size={18} />
+                )}
+              </div>
             </div>
-          </button>
+          </div>
 
           {/* Collapsible Body */}
           {isShirtOpen && (
@@ -1336,21 +1375,32 @@ export default function CampDetailPage() {
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-3 py-2">
-                  <svg
-                    className="w-5 h-5 text-gray-300 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      clipRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      fillRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-sm text-gray-400">
-                    ค่ายนี้ไม่ได้เปิดจองเสื้อ
-                  </p>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-3 px-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 text-gray-300 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        clipRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        fillRule="evenodd"
+                      />
+                    </svg>
+                    <p className="text-sm text-gray-500 font-medium">
+                      ค่ายนี้ไม่ได้เปิดจองเสื้อ
+                    </p>
+                  </div>
+                  {camp?.isOwner && (
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-[#6b857a] bg-white border border-[#6b857a] hover:bg-[#6b857a] hover:text-white px-3 py-1.5 rounded-lg transition-all shadow-sm cursor-pointer"
+                      onClick={() => handleOpenEditModal("shirt")}
+                    >
+                      + เปิดให้จองเสื้อค่าย
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1360,11 +1410,11 @@ export default function CampDetailPage() {
         {/* Complete Schedule - Collapsible */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
           {/* Header - clickable toggle */}
-          <button
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+          <div
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
             onClick={() => setIsScheduleOpen((prev) => !prev)}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="w-8 h-8 rounded-lg bg-[#f0f4f2] flex items-center justify-center flex-shrink-0">
                 <Clock className="text-[#6b857a]" size={16} />
               </div>
@@ -1383,14 +1433,30 @@ export default function CampDetailPage() {
                 </span>
               )}
             </div>
-            <div className="text-gray-400 transition-transform duration-200">
-              {isScheduleOpen ? (
-                <ChevronUp size={18} />
-              ) : (
-                <ChevronDown size={18} />
+            <div className="flex items-center gap-2">
+              {camp?.isOwner && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold text-[#6b857a] bg-[#f0f4f2] hover:bg-[#6b857a] hover:text-white transition-all shadow-sm cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenEditModal("schedule");
+                  }}
+                  title="แก้ไขกำหนดการ"
+                >
+                  <Pencil size={14} />
+                  <span className="hidden sm:inline">แก้ไขกำหนดการ</span>
+                </button>
               )}
+              <div className="text-gray-400 transition-transform duration-200">
+                {isScheduleOpen ? (
+                  <ChevronUp size={18} />
+                ) : (
+                  <ChevronDown size={18} />
+                )}
+              </div>
             </div>
-          </button>
+          </div>
 
           {/* Collapsible Body */}
           {isScheduleOpen && (
@@ -1445,11 +1511,10 @@ export default function CampDetailPage() {
                           <div
                             key={slotIndex}
                             aria-current={isCurrent ? "step" : undefined}
-                            className={`flex flex-col items-stretch gap-2 rounded-lg p-3 transition-colors sm:flex-row sm:items-center sm:gap-3 ${
-                              isCurrent
+                            className={`flex flex-col items-stretch gap-2 rounded-lg p-3 transition-colors sm:flex-row sm:items-center sm:gap-3 ${isCurrent
                                 ? "bg-emerald-100 ring-1 ring-inset ring-emerald-300"
                                 : "bg-gray-50 hover:bg-gray-100"
-                            }`}
+                              }`}
                           >
                             <div className="flex w-full flex-wrap items-center gap-2 text-gray-600 sm:w-auto sm:min-w-[120px] sm:flex-shrink-0">
                               <Clock size={16} />
@@ -1478,7 +1543,16 @@ export default function CampDetailPage() {
               })}
               {(!camp.daily_schedule || camp.daily_schedule.length === 0) && (
                 <div className="text-center py-6 text-gray-500">
-                  ไม่มีข้อมูลกำหนดการ
+                  <p className="mb-2">ไม่มีข้อมูลกำหนดการ</p>
+                  {camp?.isOwner && (
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-[#6b857a] bg-[#f0f4f2] hover:bg-[#6b857a] hover:text-white px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                      onClick={() => handleOpenEditModal("schedule")}
+                    >
+                      + เพิ่มกำหนดการ
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1713,6 +1787,7 @@ export default function CampDetailPage() {
 
       <EditCampModal
         campData={camp}
+        targetSection={editModalTargetSection}
         isLoading={isEditing}
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}

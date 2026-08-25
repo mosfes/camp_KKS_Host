@@ -5,11 +5,16 @@ import type { DateValue } from "@internationalized/date";
 import React, { useState, useEffect } from "react";
 import {
   ChevronRight,
+  ChevronLeft,
   ImageOff,
   X,
   Trash2,
   FileText,
   Shirt,
+  Calendar,
+  Clock,
+  Info,
+  Check,
 } from "lucide-react";
 import { Select, SelectItem } from "@heroui/react";
 import { DateRangePicker } from "@heroui/react";
@@ -55,6 +60,8 @@ interface Props {
   onSubmit: (data: any) => void;
   campData: any;
   isLoading?: boolean;
+  initialStep?: number;
+  targetSection?: "info" | "schedule" | "shirt" | "all";
 }
 
 function dateValueToString(date: DateValue) {
@@ -85,8 +92,22 @@ export default function EditCampModal({
   onSubmit,
   campData,
   isLoading,
+  initialStep = 1,
+  targetSection = "all",
 }: Props) {
   const { showWarning } = useStatusModal();
+  const isSingleSection =
+    targetSection === "info" ||
+    targetSection === "schedule" ||
+    targetSection === "shirt";
+
+  const getEffectiveStep = () => {
+    if (targetSection === "info") return 1;
+    if (targetSection === "schedule") return 2;
+    if (targetSection === "shirt") return 3;
+    return initialStep || 1;
+  };
+
   const [classrooms, setClassrooms] = useState<any[]>([]);
   const [filteredClassrooms, setFilteredClassrooms] = useState<any[]>([]);
   const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
@@ -107,6 +128,13 @@ export default function EditCampModal({
   const [campImageFile, setCampImageFile] = useState<File | null>(null);
   const [destination, setDestination] = useState<CampDestination | null>(null);
   const [locationTrackingEnabled, setLocationTrackingEnabled] = useState(false);
+  const [currentStep, setCurrentStep] = useState(getEffectiveStep());
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentStep(getEffectiveStep());
+    }
+  }, [isOpen, targetSection, initialStep]);
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -552,35 +580,45 @@ export default function EditCampModal({
     setCampImageFile(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const validateStep1 = () => {
+    if (!formData.name.trim()) {
+      showWarning("ข้อมูลไม่ครบถ้วน", "กรุณากรอกชื่อค่าย");
+      return false;
+    }
     if (selectedClassroomIds.length === 0) {
       showWarning("ข้อมูลไม่ครบถ้วน", "กรุณาเลือกห้องเรียนอย่างน้อย 1 ห้อง");
-
-      return;
+      return false;
     }
-
-    if (formData.hasShirt) {
-      if (!formData.shirtEndDate || !formData.campStartDate) {
-        showWarning(
-          "ข้อมูลไม่ครบถ้วน",
-          "กรุณากรอกวันที่สิ้นสุดการจองเสื้อ และวันเริ่มค่าย",
-        );
-
-        return;
-      }
-      if (new Date(formData.shirtEndDate) >= new Date(formData.campStartDate)) {
-        showWarning(
-          "วันที่ไม่ถูกต้อง",
-          "วันสิ้นสุดการจองเสื้อต้องเป็นวันก่อนเริ่มค่ายเท่านั้น",
-        );
-
-        return;
-      }
+    if (!formData.location.trim()) {
+      showWarning("ข้อมูลไม่ครบถ้วน", "กรุณากรอกสถานที่จัดค่าย");
+      return false;
     }
+    if (locationTrackingEnabled && !destination) {
+      showWarning(
+        "ยังไม่ได้ปักหมุด",
+        "กรุณาค้นหาสถานที่หรือคลิกบนแผนที่เพื่อปักหมุดจุดหมาย",
+      );
+      return false;
+    }
+    if (!formData.registrationStartDate || !formData.registrationEndDate) {
+      showWarning("ข้อมูลไม่ครบถ้วน", "กรุณาเลือกช่วงเวลารับสมัคร");
+      return false;
+    }
+    if (!formData.campStartDate || !formData.campEndDate) {
+      showWarning("ข้อมูลไม่ครบถ้วน", "กรุณาเลือกวันจัดค่าย");
+      return false;
+    }
+    if (dateErrors.registration || dateErrors.camp) {
+      showWarning(
+        "วันที่ไม่ถูกต้อง",
+        dateErrors.registration || dateErrors.camp,
+      );
+      return false;
+    }
+    return true;
+  };
 
-    // Validation for daily schedule time slots
+  const validateStep2 = () => {
     const hasInvalidSchedule = formData.dailySchedule.some((day) =>
       day.timeSlots.some(
         (slot) =>
@@ -593,17 +631,49 @@ export default function EditCampModal({
         "ข้อมูลไม่ถูกต้อง",
         "กรุณาตรวจสอบเวลาในกำหนดการรายวัน (เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่ม)",
       );
+      return false;
+    }
+    return true;
+  };
 
-      return;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (isLoading) return;
+
+    if (targetSection === "info" || !targetSection || targetSection === "all") {
+      if (!validateStep1()) {
+        if (!isSingleSection) setCurrentStep(1);
+        return;
+      }
     }
 
-    if (locationTrackingEnabled && !destination) {
-      showWarning(
-        "ยังไม่ได้ปักหมุด",
-        "กรุณาค้นหาสถานที่หรือคลิกบนแผนที่เพื่อปักหมุดจุดหมาย",
-      );
+    if (targetSection === "schedule" || !targetSection || targetSection === "all") {
+      if (!validateStep2()) {
+        if (!isSingleSection) setCurrentStep(2);
+        return;
+      }
+    }
 
-      return;
+    if (targetSection === "shirt" || !targetSection || targetSection === "all") {
+      if (formData.hasShirt) {
+        if (!formData.shirtEndDate || !formData.campStartDate) {
+          showWarning(
+            "ข้อมูลไม่ครบถ้วน",
+            "กรุณากรอกวันที่สิ้นสุดการจองเสื้อ และวันเริ่มค่าย",
+          );
+          if (!isSingleSection) setCurrentStep(3);
+          return;
+        }
+        if (new Date(formData.shirtEndDate) >= new Date(formData.campStartDate)) {
+          showWarning(
+            "วันที่ไม่ถูกต้อง",
+            "วันสิ้นสุดการจองเสื้อต้องเป็นวันก่อนเริ่มค่ายเท่านั้น",
+          );
+          if (!isSingleSection) setCurrentStep(3);
+          return;
+        }
+      }
     }
 
     const payload = {
@@ -634,6 +704,39 @@ export default function EditCampModal({
     onSubmit(payload);
   };
 
+  const steps = [
+    { id: 1, title: "ข้อมูลค่าย", desc: "ข้อมูลทั่วไป & วันจัดค่าย", icon: <Info size={16} /> },
+    { id: 2, title: "กำหนดการ", desc: "ตารางกิจกรรมรายวัน", icon: <Clock size={16} /> },
+    { id: 3, title: "เสื้อค่าย", desc: "การจอง & แบบเสื้อ", icon: <Shirt size={16} /> },
+  ];
+
+  const getHeaderInfo = () => {
+    if (targetSection === "info") {
+      return {
+        title: "แก้ไขข้อมูลค่าย",
+        subtitle: "แก้ไขข้อมูลทั่วไป ระดับชั้น ห้องเรียน สถานที่ และช่วงเวลาจัดค่าย",
+      };
+    }
+    if (targetSection === "schedule") {
+      return {
+        title: "แก้ไขกำหนดการค่าย",
+        subtitle: "จัดการช่วงเวลาและกิจกรรมในแต่ละวันของค่าย",
+      };
+    }
+    if (targetSection === "shirt") {
+      return {
+        title: "แก้ไขการจองเสื้อค่าย",
+        subtitle: "ตั้งค่าเปิด/ปิดการจองเสื้อ ช่วงเวลาจอง และรูปตัวอย่างเสื้อ",
+      };
+    }
+    return {
+      title: "แก้ไขรายละเอียดค่าย",
+      subtitle: `อัปเดตรายละเอียดของค่าย (${steps[currentStep - 1]?.title || "ข้อมูลค่าย"})`,
+    };
+  };
+
+  const headerInfo = getHeaderInfo();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
@@ -642,316 +745,385 @@ export default function EditCampModal({
       />
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b bg-white flex justify-between items-center">
+        <div className="p-5 sm:p-6 border-b bg-white flex justify-between items-center">
           <div>
-            <button
-              className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors mb-1"
-              onClick={onClose}
-            >
-              <ChevronRight className="rotate-180" size={18} />
-              <span className="text-sm font-medium">กลับ</span>
-            </button>
-            <h2 className="text-xl font-bold text-gray-900">แก้ไขข้อมูลค่าย</h2>
-            <p className="text-sm text-gray-500">อัปเดตรายละเอียดของค่าย</p>
+            <h2 className="text-xl font-bold text-gray-900">{headerInfo.title}</h2>
+            <p className="text-xs sm:text-sm text-gray-500">{headerInfo.subtitle}</p>
           </div>
           <button
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
             onClick={onClose}
           >
             <X className="text-gray-400" size={24} />
           </button>
         </div>
 
-        {/* Form Body */}
-        <div className="overflow-y-auto p-6 space-y-8">
-          {/* Basic Information Section */}
-          <section className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <span className="w-1.5 h-6 bg-[#6b857a] rounded-full" />
-              ข้อมูลทั่วไป
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ชื่อค่าย
-                </label>
-                <input
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none"
-                  placeholder="เช่น MSEC Camp 2025"
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleChange("name", e.target.value)}
-                />
-              </div>
-
-              {/* Grade Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  เลือกระดับชั้น (เลือกได้มากกว่า 1)
-                  <Select
-                    isRequired
-                    classNames={{
-                      trigger: "border-gray-300",
-                    }}
-                    label="ระดับชั้น"
-                    placeholder="-- เลือกระดับชั้น --"
-                    selectedKeys={new Set(selectedGrades)}
-                    selectionMode="multiple"
-                    onSelectionChange={(keys) => {
-                      const grades = Array.from(keys) as string[];
-
-                      setSelectedGrades(grades);
-                      handleChange("gradeLevel", grades.join(","));
-                    }}
-                  >
-                    {grades.map((grade) => (
-                      <SelectItem key={grade}>
-                        {grade.replace("Level_", "ม.")}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </label>
-              </div>
-
-              {/* Classroom Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  เลือกห้องเรียน
-                  {selectedClassroomIds.length > 0 && (
-                    <span className="ml-2 text-xs text-[#6b857a]">
-                      (เลือกแล้ว {selectedClassroomIds.length} ห้อง)
-                    </span>
-                  )}
-                </label>
-                <div className="w-full px-4 py-2 border border-gray-300 rounded-lg max-h-40 overflow-y-auto bg-white">
-                  {selectedGrades.length === 0 ? (
-                    <p className="text-sm text-gray-400">
-                      กรุณาเลือกระดับชั้นก่อน
-                    </p>
-                  ) : filteredClassrooms.length === 0 ? (
-                    <p className="text-sm text-gray-400">
-                      ไม่มีห้องเรียนสำหรับระดับชั้นนี้
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {filteredClassrooms.map((classroom) => (
-                        <label
-                          key={classroom.classroom_id}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
+        {/* Step Indicator Bar - Show only when editing all steps */}
+        {!isSingleSection && (
+          <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-100">
+            <div className="flex items-center justify-between max-w-2xl mx-auto">
+              {steps.map((s, idx) => {
+                const isActive = currentStep === s.id;
+                const isPassed = currentStep > s.id;
+                return (
+                  <React.Fragment key={s.id}>
+                    {idx > 0 && (
+                      <div
+                        className={`flex-1 h-0.5 mx-2 sm:mx-4 transition-colors ${
+                          isPassed ? "bg-[#6b857a]" : "bg-gray-200"
+                        }`}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (s.id < currentStep) {
+                          setCurrentStep(s.id);
+                        } else if (s.id === 2 && currentStep === 1) {
+                          if (validateStep1()) setCurrentStep(2);
+                        } else if (s.id === 3 && currentStep === 1) {
+                          if (validateStep1() && validateStep2()) setCurrentStep(3);
+                        } else if (s.id === 3 && currentStep === 2) {
+                          if (validateStep2()) setCurrentStep(3);
+                        }
+                      }}
+                      className="flex items-center gap-2 group cursor-pointer focus:outline-none"
+                    >
+                      <div
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                          isActive
+                            ? "bg-[#6b857a] text-white shadow-md ring-4 ring-[#6b857a]/20"
+                            : isPassed
+                            ? "bg-[#6b857a] text-white"
+                            : "bg-gray-200 text-gray-500 group-hover:bg-gray-300"
+                        }`}
+                      >
+                        {isPassed ? <Check size={14} /> : s.id}
+                      </div>
+                      <div className="hidden sm:flex flex-col text-left">
+                        <span
+                          className={`text-xs font-bold ${
+                            isActive
+                              ? "text-[#6b857a]"
+                              : isPassed
+                              ? "text-gray-800"
+                              : "text-gray-400"
+                          }`}
                         >
-                          <input
-                            checked={selectedClassroomIds.includes(
-                              classroom.classroom_id,
-                            )}
-                            className="w-4 h-4 rounded border-gray-300 text-[#6b857a] focus:ring-[#6b857a]"
-                            type="checkbox"
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedClassroomIds([
-                                  ...selectedClassroomIds,
-                                  classroom.classroom_id,
-                                ]);
-                              } else {
-                                setSelectedClassroomIds(
-                                  selectedClassroomIds.filter(
-                                    (id) => id !== classroom.classroom_id,
-                                  ),
-                                );
-                              }
-                            }}
-                          />
-                          <span className="text-sm">
-                            {classroom.grade?.replace("Level_", "ม.")}{" "}
-                            {classroom.classroom_types?.name ||
-                              classroom.type_classroom}{" "}
-                            -{" "}
-                            <span className="text-gray-400">
-                              {classroom.teacher.firstname}{" "}
-                              {classroom.teacher.lastname}
-                              {classroom.classroom_teacher &&
-                                classroom.classroom_teacher.length > 0 && (
-                                  <>
-                                    {", "}
-                                    {classroom.classroom_teacher
-                                      .map(
-                                        (ct: any) =>
-                                          `${ct.teacher.firstname} ${ct.teacher.lastname}`,
-                                      )
-                                      .join(", ")}
-                                  </>
-                                )}
-                            </span>
-                          </span>
-                        </label>
+                          {s.title}
+                        </span>
+                        <span className="text-[10px] text-gray-400">{s.desc}</span>
+                      </div>
+                    </button>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Form Body - Paginated by Step */}
+        <div className="overflow-y-auto p-5 sm:p-6 flex-1">
+          {/* STEP 1: ข้อมูลค่าย & ช่วงเวลา */}
+          {currentStep === 1 && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-1">
+                  <span className="w-1.5 h-6 bg-[#6b857a] rounded-full" />
+                  ข้อมูลทั่วไปและช่วงเวลา
+                </h3>
+                <p className="text-xs text-gray-500">
+                  กรอกข้อมูลพื้นฐาน ระดับชั้นที่เปิดรับ และช่วงเวลาจัดกิจกรรม
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ชื่อค่าย <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none"
+                    placeholder="เช่น MSEC Camp 2025"
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                  />
+                </div>
+
+                {/* Grade Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    เลือกระดับชั้น (เลือกได้มากกว่า 1) <span className="text-red-500">*</span>
+                    <Select
+                      isRequired
+                      classNames={{
+                        trigger: "border-gray-300",
+                      }}
+                      label="ระดับชั้น"
+                      placeholder="-- เลือกระดับชั้น --"
+                      selectedKeys={new Set(selectedGrades)}
+                      selectionMode="multiple"
+                      onSelectionChange={(keys) => {
+                        const grades = Array.from(keys) as string[];
+
+                        setSelectedGrades(grades);
+                        handleChange("gradeLevel", grades.join(","));
+                      }}
+                    >
+                      {grades.map((grade) => (
+                        <SelectItem key={grade}>
+                          {grade.replace("Level_", "ม.")}
+                        </SelectItem>
                       ))}
+                    </Select>
+                  </label>
+                </div>
+
+                {/* Classroom Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    เลือกห้องเรียน <span className="text-red-500">*</span>
+                    {selectedClassroomIds.length > 0 && (
+                      <span className="ml-2 text-xs text-[#6b857a]">
+                        (เลือกแล้ว {selectedClassroomIds.length} ห้อง)
+                      </span>
+                    )}
+                  </label>
+                  <div className="w-full px-4 py-2 border border-gray-300 rounded-lg max-h-40 overflow-y-auto bg-white">
+                    {selectedGrades.length === 0 ? (
+                      <p className="text-sm text-gray-400">
+                        กรุณาเลือกระดับชั้นก่อน
+                      </p>
+                    ) : filteredClassrooms.length === 0 ? (
+                      <p className="text-sm text-gray-400">
+                        ไม่มีห้องเรียนสำหรับระดับชั้นนี้
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {filteredClassrooms.map((classroom) => (
+                          <label
+                            key={classroom.classroom_id}
+                            className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
+                          >
+                            <input
+                              checked={selectedClassroomIds.includes(
+                                classroom.classroom_id,
+                              )}
+                              className="w-4 h-4 rounded border-gray-300 text-[#6b857a] focus:ring-[#6b857a]"
+                              type="checkbox"
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedClassroomIds([
+                                    ...selectedClassroomIds,
+                                    classroom.classroom_id,
+                                  ]);
+                                } else {
+                                  setSelectedClassroomIds(
+                                    selectedClassroomIds.filter(
+                                      (id) => id !== classroom.classroom_id,
+                                    ),
+                                  );
+                                }
+                              }}
+                            />
+                            <span className="text-sm">
+                              {classroom.grade?.replace("Level_", "ม.")}{" "}
+                              {classroom.classroom_types?.name ||
+                                classroom.type_classroom}{" "}
+                              -{" "}
+                              <span className="text-gray-400">
+                                {classroom.teacher.firstname}{" "}
+                                {classroom.teacher.lastname}
+                                {classroom.classroom_teacher &&
+                                  classroom.classroom_teacher.length > 0 && (
+                                    <>
+                                      {", "}
+                                      {classroom.classroom_teacher
+                                        .map(
+                                          (ct: any) =>
+                                            `${ct.teacher.firstname} ${ct.teacher.lastname}`,
+                                        )
+                                        .join(", ")}
+                                    </>
+                                  )}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    สถานที่ <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none"
+                    placeholder="อาคารวิทยวิภาส คณะวิทยาศาสตร์ มข."
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => handleChange("location", e.target.value)}
+                  />
+                </div>
+
+                <CampDestinationField
+                  destination={destination}
+                  enabled={locationTrackingEnabled}
+                  hasTransport={formData.hasTransport}
+                  onDestinationChange={setDestination}
+                  onEnabledChange={(enabled) => {
+                    setLocationTrackingEnabled(enabled);
+                    if (enabled) handleChange("hasTransport", true);
+                  }}
+                  onHasTransportChange={(hasTransport) =>
+                    handleChange("hasTransport", hasTransport)
+                  }
+                />
+
+                {/* Camp Image Upload */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    รูปภาพหน้าปกค่าย
+                  </label>
+                  {!campImage ? (
+                    <label className="block w-full cursor-pointer mt-1">
+                      <input
+                        accept="image/*"
+                        className="hidden"
+                        type="file"
+                        onChange={handleCampImageChange}
+                      />
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all">
+                        <ImageOff
+                          className="mx-auto text-gray-400 mb-2"
+                          size={28}
+                        />
+                        <p className="text-sm text-gray-500 font-medium">
+                          คลิกเพื่ออัปโหลดรูปปกค่าย
+                        </p>
+                      </div>
+                    </label>
+                  ) : (
+                    <div className="relative rounded-xl overflow-hidden mt-2 border border-gray-200 shadow-sm max-w-3xl mx-auto">
+                      <img
+                        alt="Camp cover"
+                        className="w-full h-64 object-cover bg-gray-50"
+                        src={campImage}
+                      />
+                      <button
+                        className="absolute top-3 right-3 p-2 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg backdrop-blur-sm"
+                        type="button"
+                        onClick={removeCampImage}
+                      >
+                        <X size={18} />
+                      </button>
                     </div>
                   )}
                 </div>
-              </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  สถานที่
-                </label>
-                <input
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none"
-                  placeholder="อาคารวิทยวิภาส คณะวิทยาศาสตร์ มข."
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => handleChange("location", e.target.value)}
-                />
-              </div>
-
-              <CampDestinationField
-                destination={destination}
-                enabled={locationTrackingEnabled}
-                hasTransport={formData.hasTransport}
-                onDestinationChange={setDestination}
-                onEnabledChange={(enabled) => {
-                  setLocationTrackingEnabled(enabled);
-                  if (enabled) handleChange("hasTransport", true);
-                }}
-                onHasTransportChange={(hasTransport) =>
-                  handleChange("hasTransport", hasTransport)
-                }
-              />
-
-              {/* Camp Image Upload */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  รูปภาพหน้าปกค่าย
-                </label>
-                {!campImage ? (
-                  <label className="block w-full cursor-pointer mt-1">
-                    <input
-                      accept="image/*"
-                      className="hidden"
-                      type="file"
-                      onChange={handleCampImageChange}
-                    />
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all">
-                      <ImageOff
-                        className="mx-auto text-gray-400 mb-2"
-                        size={28}
-                      />
-                      <p className="text-sm text-gray-500 font-medium">
-                        คลิกเพื่ออัปโหลดรูปปกค่าย
-                      </p>
-                    </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    รายละเอียด
                   </label>
-                ) : (
-                  <div className="relative rounded-xl overflow-hidden mt-2 border border-gray-200 shadow-sm max-w-3xl mx-auto">
-                    <img
-                      alt="Camp cover"
-                      className="w-full h-64 object-cover bg-gray-50"
-                      src={campImage}
+                  <textarea
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none"
+                    placeholder="รายละเอียดของค่าย..."
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) => handleChange("description", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Dates Section inside Step 1 */}
+              <div className="border-t pt-6 space-y-4">
+                <h4 className="text-base font-semibold text-gray-800">
+                  ช่วงเวลารับสมัครและจัดค่าย
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Registration Period */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                      ช่วงเวลารับสมัคร <span className="text-red-500">*</span>
+                    </label>
+                    <DateRangePicker
+                      aria-label="Registration Period"
+                      className="w-full h-[56px]"
+                      errorMessage={dateErrors.registration}
+                      isInvalid={!!dateErrors.registration}
+                      minValue={today(BANGKOK_TIME_ZONE)}
+                      value={
+                        formData.registrationStartDate &&
+                        formData.registrationEndDate
+                          ? {
+                              start: parseDate(formData.registrationStartDate),
+                              end: parseDate(formData.registrationEndDate),
+                            }
+                          : null
+                      }
+                      onChange={(range) => {
+                        if (!range) return;
+                        handleChange(
+                          "registrationStartDate",
+                          dateValueToString(range.start),
+                        );
+                        handleChange(
+                          "registrationEndDate",
+                          dateValueToString(range.end),
+                        );
+                      }}
                     />
-                    <button
-                      className="absolute top-3 right-3 p-2 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg backdrop-blur-sm"
-                      type="button"
-                      onClick={removeCampImage}
-                    >
-                      <X size={18} />
-                    </button>
                   </div>
-                )}
-              </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  รายละเอียด
-                </label>
-                <textarea
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6b857a] outline-none"
-                  placeholder="รายละเอียดของค่าย..."
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => handleChange("description", e.target.value)}
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* Dates Section */}
-          <section className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <span className="w-1.5 h-6 bg-[#6b857a] rounded-full" />
-              ช่วงเวลาและกำหนดการ
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Registration Period */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  ช่วงเวลารับสมัคร
-                </label>
-                <DateRangePicker
-                  aria-label="Registration Period"
-                  className="w-full h-[56px]"
-                  errorMessage={dateErrors.registration}
-                  isInvalid={!!dateErrors.registration}
-                  minValue={today(BANGKOK_TIME_ZONE)}
-                  value={
-                    formData.registrationStartDate &&
-                    formData.registrationEndDate
-                      ? {
-                          start: parseDate(formData.registrationStartDate),
-                          end: parseDate(formData.registrationEndDate),
-                        }
-                      : null
-                  }
-                  onChange={(range) => {
-                    if (!range) return;
-                    handleChange(
-                      "registrationStartDate",
-                      dateValueToString(range.start),
-                    );
-                    handleChange(
-                      "registrationEndDate",
-                      dateValueToString(range.end),
-                    );
-                  }}
-                />
-              </div>
-
-              {/* Camp Period */}
-              <div>
-                <label className="block text-xs font-bold text-[#6b857a] uppercase mb-1">
-                  วันจัดค่าย
-                </label>
-                <DateRangePicker
-                  aria-label="Camp Period"
-                  className="w-full h-[56px]"
-                  errorMessage={dateErrors.camp}
-                  isInvalid={!!dateErrors.camp}
-                  value={
-                    formData.campStartDate && formData.campEndDate
-                      ? {
-                          start: parseDate(formData.campStartDate),
-                          end: parseDate(formData.campEndDate),
-                        }
-                      : null
-                  }
-                  onChange={(range) => {
-                    if (!range) return;
-                    handleChange(
-                      "campStartDate",
-                      dateValueToString(range.start),
-                    );
-                    handleChange("campEndDate", dateValueToString(range.end));
-                  }}
-                />
+                  {/* Camp Period */}
+                  <div>
+                    <label className="block text-xs font-bold text-[#6b857a] uppercase mb-1">
+                      วันจัดค่าย <span className="text-red-500">*</span>
+                    </label>
+                    <DateRangePicker
+                      aria-label="Camp Period"
+                      className="w-full h-[56px]"
+                      errorMessage={dateErrors.camp}
+                      isInvalid={!!dateErrors.camp}
+                      value={
+                        formData.campStartDate && formData.campEndDate
+                          ? {
+                              start: parseDate(formData.campStartDate),
+                              end: parseDate(formData.campEndDate),
+                            }
+                          : null
+                      }
+                      onChange={(range) => {
+                        if (!range) return;
+                        handleChange(
+                          "campStartDate",
+                          dateValueToString(range.start),
+                        );
+                        handleChange("campEndDate", dateValueToString(range.end));
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Daily Schedule Section */}
-            <div className="border-t pt-6">
-              <div className="flex items-center justify-between mb-4">
+          {/* STEP 2: กำหนดการรายวัน */}
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold">กําหนดการรายวัน</h3>
-                  <p className="text-sm text-gray-500">
-                    จำนวนวันจะถูกสร้างอัตโนมัติตามช่วงเวลาค่าย
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-1">
+                    <span className="w-1.5 h-6 bg-[#6b857a] rounded-full" />
+                    กำหนดการรายวัน
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    จัดการช่วงเวลาและกิจกรรมในแต่ละวันของค่าย (จำนวนวันสร้างตามวันจัดค่าย)
                   </p>
                 </div>
               </div>
@@ -960,7 +1132,7 @@ export default function EditCampModal({
                 {formData.dailySchedule.map((day, dayIndex) => (
                   <div
                     key={dayIndex}
-                    className="border border-gray-200 rounded-xl overflow-hidden bg-white"
+                    className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm"
                   >
                     {/* Day Header */}
                     <div className="bg-gray-50 px-4 py-3 border-b flex items-center justify-between">
@@ -969,7 +1141,7 @@ export default function EditCampModal({
                           {day.day}
                         </div>
                         <span className="font-medium text-gray-700">
-                          Day {day.day}
+                          วันที่ {day.day}
                           {formData.campStartDate && (
                             <span className="ml-2 text-gray-500 font-normal">
                               :{" "}
@@ -983,14 +1155,13 @@ export default function EditCampModal({
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700"
                           type="button"
                           onClick={() => addTimeSlot(dayIndex)}
                         >
-                          <span className="text-base">+</span>
+                          <span className="text-base leading-none">+</span>
                           เพิ่มช่วงเวลา
                         </button>
-                        {/* Hide delete day button for auto-managed schedule */}
                       </div>
                     </div>
 
@@ -999,7 +1170,7 @@ export default function EditCampModal({
                       {day.timeSlots.map((slot, slotIndex) => (
                         <div
                           key={slotIndex}
-                          className="p-4 hover:bg-gray-50 transition-colors"
+                          className="p-4 hover:bg-gray-50/50 transition-colors"
                         >
                           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                             {/* Start Time */}
@@ -1049,7 +1220,7 @@ export default function EditCampModal({
                               </label>
                               <input
                                 className="w-full min-w-0 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6b857a] focus:border-transparent"
-                                placeholder="ชื่อกิจกรรม"
+                                placeholder="ชื่อกิจกรรม เช่น ลงทะเบียน, กิจกรรมกลุ่ม"
                                 type="text"
                                 value={slot.activity}
                                 onChange={(e) =>
@@ -1092,144 +1263,310 @@ export default function EditCampModal({
                 ))}
               </div>
             </div>
-          </section>
+          )}
 
-          {/* Shirt Section */}
-          <section className="pt-6 border-t space-y-6">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <div className="flex gap-3">
-                <div className="p-2 bg-white rounded-lg shadow-sm">
-                  <Shirt className="text-[#6b857a]" size={20} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm">การจองเสื้อ</h4>
-                  <p className="text-xs text-gray-500">
-                    เปิดให้มีการเลือกขนาดเสื้อระหว่างการสมัคร
-                  </p>
-                </div>
+          {/* STEP 3: เสื้อค่าย */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-1">
+                  <span className="w-1.5 h-6 bg-[#6b857a] rounded-full" />
+                  เสื้อค่าย
+                </h3>
+                <p className="text-xs text-gray-500">
+                  เลือกเปิดหรือปิดการรับจองเสื้อ และอัปโหลดตัวอย่างเสื้อค่าย
+                </p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  checked={formData.hasShirt}
-                  className="sr-only peer"
-                  type="checkbox"
-                  onChange={(e) => handleChange("hasShirt", e.target.checked)}
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#6b857a]" />
-              </label>
-            </div>
 
-            {formData.hasShirt && (
-              <div className="space-y-4 p-4 border rounded-xl">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    ช่วงเวลาจองเสื้อ
-                  </label>
-                  <DateRangePicker
-                    aria-label="Shirt Reservation Period"
-                    className="w-full h-[56px]"
-                    errorMessage={dateErrors.shirt}
-                    isInvalid={!!dateErrors.shirt}
-                    minValue={today(BANGKOK_TIME_ZONE)}
-                    value={
-                      formData.shirtStartDate && formData.shirtEndDate
-                        ? {
-                            start: parseDate(formData.shirtStartDate),
-                            end: parseDate(formData.shirtEndDate),
-                          }
-                        : null
-                    }
-                    onChange={(range) => {
-                      if (!range) return;
-                      handleChange(
-                        "shirtStartDate",
-                        dateValueToString(range.start),
-                      );
-                      handleChange(
-                        "shirtEndDate",
-                        dateValueToString(range.end),
-                      );
-                    }}
-                  />
+              {/* Option Cards: มีเสื้อ vs ไม่มีเสื้อ */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Option 1: มีเสื้อค่าย */}
+                <div
+                  className={`cursor-pointer rounded-2xl p-5 border-2 transition-all flex items-start gap-4 ${
+                    formData.hasShirt
+                      ? "border-[#6b857a] bg-[#6b857a]/5 shadow-sm"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
+                  }`}
+                  onClick={() => handleChange("hasShirt", true)}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      formData.hasShirt
+                        ? "bg-[#6b857a] text-white"
+                        : "bg-gray-100 text-gray-400"
+                    }`}
+                  >
+                    <Shirt size={22} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-gray-900 text-sm">
+                        เปิดให้จองเสื้อค่าย
+                      </h4>
+                      <input
+                        type="radio"
+                        name="hasShirt"
+                        checked={formData.hasShirt}
+                        onChange={() => handleChange("hasShirt", true)}
+                        className="w-4 h-4 text-[#6b857a] focus:ring-[#6b857a]"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      นักเรียนสามารถเลือกขนาดเสื้อและจองเสื้อได้ตอนสมัครค่าย
+                    </p>
+                  </div>
                 </div>
 
-                {/* Shirt Image Upload - max 3 images */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">
-                    ตัวอย่างเสื้อ (สูงสุด 3 รูป)
-                  </label>
-                  <p className="text-xs text-gray-400 mb-3">
-                    อัปโหลดรูปภาพตัวอย่างเสื้อค่ายสำหรับให้นักเรียนดู
-                  </p>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    {[0, 1, 2].map((index) => (
-                      <div key={index}>
-                        {!shirtImages[index] ? (
-                          <label className="block w-full cursor-pointer">
-                            <input
-                              accept="image/*"
-                              className="hidden"
-                              type="file"
-                              onChange={handleShirtImageChange(index)}
-                            />
-                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#6b857a] hover:bg-gray-50 transition-all aspect-square flex flex-col items-center justify-center">
-                              <Shirt className="text-gray-400 mb-1" size={24} />
-                              <p className="text-xs text-gray-400">
-                                รูปที่ {index + 1}
-                              </p>
-                            </div>
-                          </label>
-                        ) : (
-                          <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden aspect-square">
-                            <img
-                              alt={`Shirt ${index + 1}`}
-                              className="w-full h-full object-cover bg-gray-50"
-                              src={shirtImages[index]!}
-                            />
-                            <button
-                              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
-                              type="button"
-                              onClick={() => removeShirtImage(index)}
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                {/* Option 2: ไม่มีเสื้อค่าย */}
+                <div
+                  className={`cursor-pointer rounded-2xl p-5 border-2 transition-all flex items-start gap-4 ${
+                    !formData.hasShirt
+                      ? "border-[#6b857a] bg-[#6b857a]/5 shadow-sm"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
+                  }`}
+                  onClick={() => handleChange("hasShirt", false)}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      !formData.hasShirt
+                        ? "bg-[#6b857a] text-white"
+                        : "bg-gray-100 text-gray-400"
+                    }`}
+                  >
+                    <X size={22} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-gray-900 text-sm">ไม่มีเสื้อค่าย</h4>
+                      <input
+                        type="radio"
+                        name="hasShirt"
+                        checked={!formData.hasShirt}
+                        onChange={() => handleChange("hasShirt", false)}
+                        className="w-4 h-4 text-[#6b857a] focus:ring-[#6b857a]"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      ค่ายนี้ไม่มีเสื้อแจกหรือเปิดรับจองเสื้อ
+                    </p>
                   </div>
                 </div>
               </div>
-            )}
-          </section>
+
+              {/* Detail if hasShirt is true */}
+              {formData.hasShirt ? (
+                <div className="space-y-6 p-5 border border-gray-200 rounded-2xl bg-gray-50/50">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 uppercase mb-2">
+                      ช่วงเวลาจองเสื้อ
+                    </label>
+                    <DateRangePicker
+                      aria-label="Shirt Reservation Period"
+                      className="w-full h-[56px] bg-white rounded-lg"
+                      errorMessage={dateErrors.shirt}
+                      isInvalid={!!dateErrors.shirt}
+                      minValue={today(BANGKOK_TIME_ZONE)}
+                      value={
+                        formData.shirtStartDate && formData.shirtEndDate
+                          ? {
+                              start: parseDate(formData.shirtStartDate),
+                              end: parseDate(formData.shirtEndDate),
+                            }
+                          : null
+                      }
+                      onChange={(range) => {
+                        if (!range) return;
+                        handleChange(
+                          "shirtStartDate",
+                          dateValueToString(range.start),
+                        );
+                        handleChange(
+                          "shirtEndDate",
+                          dateValueToString(range.end),
+                        );
+                      }}
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1.5">
+                      * วันสิ้นสุดการจองเสื้อต้องเป็นวันก่อนเริ่มค่าย
+                    </p>
+                  </div>
+
+                  {/* Shirt Image Upload - max 3 images */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                      ตัวอย่างเสื้อ (สูงสุด 3 รูป)
+                    </label>
+                    <p className="text-xs text-gray-400 mb-3">
+                      อัปโหลดรูปภาพตัวอย่างเสื้อค่ายสำหรับให้นักเรียนดู
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      {[0, 1, 2].map((index) => (
+                        <div key={index}>
+                          {!shirtImages[index] ? (
+                            <label className="block w-full cursor-pointer">
+                              <input
+                                accept="image/*"
+                                className="hidden"
+                                type="file"
+                                onChange={handleShirtImageChange(index)}
+                              />
+                              <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-[#6b857a] hover:bg-white transition-all aspect-square flex flex-col items-center justify-center bg-white/70">
+                                <Shirt className="text-gray-400 mb-1" size={24} />
+                                <p className="text-xs text-gray-400 font-medium">
+                                  รูปที่ {index + 1}
+                                </p>
+                              </div>
+                            </label>
+                          ) : (
+                            <div className="relative border-2 border-gray-200 rounded-xl overflow-hidden aspect-square shadow-sm bg-white">
+                              <img
+                                alt={`Shirt ${index + 1}`}
+                                className="w-full h-full object-cover bg-gray-50"
+                                src={shirtImages[index]!}
+                              />
+                              <button
+                                className="absolute top-1.5 right-1.5 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow"
+                                type="button"
+                                onClick={() => removeShirtImage(index)}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-8 border border-dashed border-gray-200 rounded-2xl text-center bg-gray-50/50">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400">
+                    <Shirt size={28} />
+                  </div>
+                  <h4 className="font-semibold text-gray-700 text-sm mb-1">
+                    ไม่ได้เปิดรับจองเสื้อค่าย
+                  </h4>
+                  <p className="text-xs text-gray-400 max-w-sm mx-auto mb-4">
+                    หากต้องการเปิดรับจองเสื้อและให้ผู้สมัครเลือกขนาดเสื้อ
+                    สามารถคลิกเปิดใช้งานด้านบนได้ตลอดเวลา
+                  </p>
+                  <button
+                    type="button"
+                    className="px-4 py-2 text-xs font-semibold text-[#6b857a] bg-white border border-[#6b857a] rounded-lg hover:bg-[#6b857a] hover:text-white transition-all shadow-sm"
+                    onClick={() => handleChange("hasShirt", true)}
+                  >
+                    + เปิดให้จองเสื้อค่าย
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t bg-gray-50 flex gap-2">
+        {/* Footer Navigation Buttons */}
+        <div className="p-4 sm:p-5 border-t bg-gray-50 flex items-center justify-between gap-3">
           <button
-            className="w-full py-4 bg-transparent text-gray-600 rounded-xl hover:bg-gray-100 transition-all font-bold flex items-center justify-center gap-2"
+            className="px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-100 transition-all font-semibold text-sm cursor-pointer"
             disabled={isLoading}
             onClick={onClose}
+            type="button"
           >
             ยกเลิก
           </button>
-          <button
-            className="w-full py-4 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-bold shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading}
-            onClick={handleSubmit}
-          >
-            {isLoading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <div className="flex items-center gap-2">
-                <FileText size={20} />
-                <span>บันทึกการแก้ไข</span>
-              </div>
-            )}
-          </button>
+
+          {!isSingleSection && (
+            <div className="text-xs text-gray-400 font-medium hidden sm:block">
+              หน้า {currentStep} จาก {steps.length}
+            </div>
+          )}
+
+          {isSingleSection ? (
+            <button
+              className="px-6 sm:px-8 py-2.5 sm:py-3 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-semibold shadow-sm flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              disabled={isLoading}
+              onClick={handleSubmit}
+              type="button"
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <FileText size={16} />
+                  <span>
+                    {targetSection === "info"
+                      ? "บันทึกข้อมูลค่าย"
+                      : targetSection === "schedule"
+                      ? "บันทึกกำหนดการ"
+                      : "บันทึกการจองเสื้อ"}
+                  </span>
+                </>
+              )}
+            </button>
+          ) : currentStep === 1 ? (
+            <button
+              className="px-6 sm:px-8 py-2.5 sm:py-3 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-semibold shadow-sm flex items-center gap-1.5 text-sm cursor-pointer"
+              onClick={() => {
+                if (validateStep1()) setCurrentStep(2);
+              }}
+              type="button"
+            >
+              <span>ถัดไป: กำหนดการ</span>
+              <ChevronRight size={16} />
+            </button>
+          ) : currentStep === 2 ? (
+            <div className="flex items-center gap-2">
+              <button
+                className="px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-100 transition-all font-semibold flex items-center gap-1.5 text-sm cursor-pointer"
+                disabled={isLoading}
+                onClick={() => setCurrentStep(1)}
+                type="button"
+              >
+                <ChevronLeft size={16} />
+                <span>ก่อนหน้า</span>
+              </button>
+              <button
+                className="px-6 sm:px-8 py-2.5 sm:py-3 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-semibold shadow-sm flex items-center gap-1.5 text-sm cursor-pointer"
+                onClick={() => {
+                  if (validateStep2()) setCurrentStep(3);
+                }}
+                type="button"
+              >
+                <span>ถัดไป: เสื้อค่าย</span>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                className="px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-100 transition-all font-semibold flex items-center gap-1.5 text-sm cursor-pointer"
+                disabled={isLoading}
+                onClick={() => setCurrentStep(2)}
+                type="button"
+              >
+                <ChevronLeft size={16} />
+                <span>ก่อนหน้า</span>
+              </button>
+              <button
+                className="px-6 sm:px-8 py-2.5 sm:py-3 bg-[#6b857a] text-white rounded-xl hover:bg-[#5a7268] transition-all font-semibold shadow-sm flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                disabled={isLoading}
+                onClick={handleSubmit}
+                type="button"
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <FileText size={16} />
+                    <span>บันทึกการแก้ไข</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
+
