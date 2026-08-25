@@ -326,7 +326,18 @@ export async function GET(request, context) {
           include: { time_slots: true },
           orderBy: { day: "asc" },
         },
-        station: { where: { deletedAt: null } },
+        station: {
+          where: { deletedAt: null },
+          include: {
+            _count: {
+              select: {
+                mission: {
+                  where: { deletedAt: null },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -362,6 +373,11 @@ export async function GET(request, context) {
       camp.student_enrollment?.filter((enrollment) => enrollment.enrolled_at)
         .length ?? 0;
     const totalEligibleStudents = eligibleStudentIds.size;
+    const totalMissionCount =
+      camp.station?.reduce(
+        (total, station) => total + (station._count?.mission ?? 0),
+        0,
+      ) ?? 0;
 
     const typeMap = new Map();
     const allGrades = new Set();
@@ -421,6 +437,7 @@ export async function GET(request, context) {
         isBusTeacher: camp.camp_bus_teacher.length > 0,
         total_eligible_students: totalEligibleStudents,
         enrolled_student_count: enrolledStudentCount,
+        total_mission_count: totalMissionCount,
         certificate_candidate_count: certificateCandidateIds.size,
         grades: sortedGrades,
         gradeDisplay: gradeDisplay,

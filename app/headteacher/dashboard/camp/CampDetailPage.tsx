@@ -114,6 +114,7 @@ interface CampDetail {
   location_sharing_enabled?: boolean;
   total_eligible_students?: number;
   enrolled_student_count?: number;
+  total_mission_count?: number;
   certificate_candidate_count?: number;
   student_enrollment?: any[];
 }
@@ -777,7 +778,7 @@ export default function CampDetailPage() {
         {/* ... existing detailed content ... */}
         {/* Stats Summary */}
         <div
-          className={`grid ${camp?.has_shirt ? "grid-cols-2" : "grid-cols-1"} gap-3 mb-6`}
+          className={`grid ${camp?.has_shirt ? "grid-cols-3" : "grid-cols-2"} gap-3 mb-6`}
         >
           {/* Participants Card */}
           <div className="bg-white border border-gray-100 rounded-xl p-3 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
@@ -800,6 +801,17 @@ export default function CampDetailPage() {
             </p>
             <p className="text-gray-400 text-[9px] font-medium mb-1">คน</p>
             <p className="text-[#1a3a32] font-semibold text-xs">ผู้เข้าร่วม</p>
+          </div>
+
+          {/* Missions Card */}
+          <div className="bg-white border border-gray-100 rounded-xl p-3 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-xl md:text-2xl font-bold text-[#6b857a] mb-0.5">
+              {camp?.total_mission_count ?? 0}
+            </p>
+            <p className="text-gray-400 text-[9px] font-medium mb-1">ภารกิจ</p>
+            <p className="text-[#1a3a32] font-semibold text-xs">
+              ภารกิจทั้งหมด
+            </p>
           </div>
 
           {/* Shirt Reservations Card */}
