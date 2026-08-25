@@ -4,6 +4,7 @@ import { requireCampTeacher } from "@/lib/attendance-auth";
 import { recordStudentAttendanceOnce } from "@/lib/attendance-record";
 import { prisma } from "@/lib/db";
 import { parseNfcStudentId } from "@/lib/nfc-card";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 export async function POST(
   request: Request,
@@ -87,6 +88,7 @@ export async function POST(
       camp_camp_id: campId,
       student_students_id: student.students_id,
       enrolled_at: { not: null },
+      student: activeCampStudentWhere(campId),
     },
     select: { student_enrollment_id: true },
   });

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 
 export async function GET(request, { params }) {
   const { teacher, error } = await requireTeacher();
@@ -76,7 +77,7 @@ export async function GET(request, { params }) {
     // Fetch enrollments that belong to the classrooms assigned to this camp, and ONLY if they actually enrolled
     const enrollments = await prisma.student_enrollment.findMany({
       where: {
-        camp_camp_id: campId,
+        ...activeCampEnrollmentWhere(campId),
         enrolled_at: { not: null },
       },
       include: {

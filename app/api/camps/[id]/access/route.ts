@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { NextResponse } from "next/server";
 
 import { requireTeacher } from "@/lib/auth";
@@ -10,7 +8,7 @@ import { prisma } from "@/lib/db";
  * Keep this endpoint intentionally small; the full camp endpoint includes
  * all enrollments and classroom students and is not needed for navigation.
  */
-export async function GET(_request, context) {
+export async function GET(_request: Request, context: any) {
   const { teacher, error: authError } = await requireTeacher();
 
   if (authError) return authError;
@@ -18,6 +16,7 @@ export async function GET(_request, context) {
   try {
     const { id } = await context.params;
     const campId = Number(id);
+    const teacherId = Number(teacher.teachers_id);
 
     if (!Number.isInteger(campId) || campId <= 0) {
       return NextResponse.json(
@@ -43,6 +42,13 @@ export async function GET(_request, context) {
             },
           },
         },
+        camp_bus_teacher: {
+          where: {
+            teacher_teachers_id: teacherId,
+            removed_at: null,
+          },
+          select: { assignment_id: true },
+        },
       },
     });
 
@@ -51,21 +57,24 @@ export async function GET(_request, context) {
     }
 
     const isOwner =
-      camp.created_by_teacher_id === teacher.teachers_id ||
-      teacher.role === "ADMIN";
+      camp.created_by_teacher_id === teacherId || teacher.role === "ADMIN";
     const isHomeroomTeacher = camp.camp_classroom.some(
       ({ classroom }) =>
-        classroom?.teachers_teachers_id === teacher.teachers_id ||
+        classroom?.teachers_teachers_id === teacherId ||
         classroom?.classroom_teacher.some(
-          (entry) => entry.teacher_teachers_id === teacher.teachers_id,
+          (entry) => entry.teacher_teachers_id === teacherId,
         ),
     );
 
-    return NextResponse.json({
-      isOwner,
-      isHomeroomTeacher,
-      hasTransport: camp.has_transport,
-    });
+    return NextResponse.json(
+      {
+        isOwner,
+        isHomeroomTeacher,
+        isBusTeacher: camp.camp_bus_teacher.length > 0,
+        hasTransport: camp.has_transport,
+      },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
   } catch {
     return NextResponse.json(
       { _error: "Failed to fetch camp access" },

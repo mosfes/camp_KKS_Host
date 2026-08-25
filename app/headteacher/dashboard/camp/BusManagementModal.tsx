@@ -18,6 +18,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  GraduationCap,
   History,
   LogIn,
   LogOut,
@@ -79,12 +80,38 @@ type Assignment = {
   isRegistered: boolean;
 };
 
+type TeacherAssignment = {
+  assignmentId: number;
+  teacherId: number;
+  teacherName: string;
+  firstName: string;
+  prefixName: string | null;
+  positionId: number | null;
+  positionLabel: string | null;
+  floorNumber: number | null;
+  status: "OFF_BUS" | "ON_BUS";
+  lastBoardedAt: string | null;
+  lastStatusEvent: BusStatusEvent | null;
+  isCurrentTeacher: boolean;
+};
+
+type EligibleTeacher = {
+  teacherId: number;
+  prefixName: string | null;
+  firstName: string;
+  lastName: string;
+  teacherName: string;
+  email: string;
+  assignedBus: { busId: number; busName: string } | null;
+};
+
 type Position = {
   positionId: number;
   rowNumber: number;
   seatIndex: number;
   label: string;
   assignmentId: number | null;
+  teacherAssignmentId: number | null;
 };
 
 type RowCountValue = number | "";
@@ -163,19 +190,38 @@ type Bus = {
     positions: Position[];
   }[];
   assignments: Assignment[];
+  teacherAssignments: TeacherAssignment[];
   checkedInCount: number;
+  studentCheckedInCount: number;
+  teacherCheckedInCount: number;
   assignedCount: number;
+  assignedStudentCount: number;
+  assignedTeacherCount: number;
   unassignedSeatCount: number;
+  permissions: {
+    canConfigure: boolean;
+    canOperate: boolean;
+    canManageTeachers: boolean;
+  };
 };
 
 type LiveBusStatus = {
   busId: number;
   status: "PARKED" | "TRAVELING";
   checkedInCount: number;
+  studentCheckedInCount: number;
+  teacherCheckedInCount: number;
   assignmentStatuses: {
     assignmentId: number;
     status: "OFF_BUS" | "ON_BUS";
     participationStatus: "ACTIVE" | "NOT_TRAVELING";
+    lastBoardedAt: string | null;
+    lastStatusEvent: BusStatusEvent | null;
+  }[];
+  teacherAssignmentStatuses: {
+    assignmentId: number;
+    teacherId: number;
+    status: "OFF_BUS" | "ON_BUS";
     lastBoardedAt: string | null;
     lastStatusEvent: BusStatusEvent | null;
   }[];
@@ -318,8 +364,9 @@ function BusManagementSkeleton() {
                 {Array.from({ length: 4 }, (_, seatIndex) => (
                   <div
                     key={seatIndex}
-                    className={`h-16 rounded-xl bg-white ${seatIndex === 2 ? "col-start-4" : ""
-                      }`}
+                    className={`h-16 rounded-xl bg-white ${
+                      seatIndex === 2 ? "col-start-4" : ""
+                    }`}
                   />
                 ))}
               </div>
@@ -361,12 +408,13 @@ function FloorCountRadioGroup({
         return (
           <label
             key={option.value}
-            className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${disabled
-              ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-              : isSelected
-                ? "border-[#6b857a] bg-[#edf5f0] text-[#365f4f] shadow-sm"
-                : "border-gray-200 bg-white text-gray-700 hover:border-[#9ab4a7] hover:bg-[#f8fbf9]"
-              }`}
+            className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
+              disabled
+                ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                : isSelected
+                  ? "border-[#6b857a] bg-[#edf5f0] text-[#365f4f] shadow-sm"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-[#9ab4a7] hover:bg-[#f8fbf9]"
+            }`}
           >
             <input
               checked={isSelected}
@@ -378,8 +426,9 @@ function FloorCountRadioGroup({
               onChange={() => onChange(option.value)}
             />
             <span
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${isSelected ? "border-[#6b857a]" : "border-gray-300 bg-white"
-                }`}
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                isSelected ? "border-[#6b857a]" : "border-gray-300 bg-white"
+              }`}
             >
               {isSelected && (
                 <span className="h-2.5 w-2.5 rounded-full bg-[#6b857a]" />
@@ -403,15 +452,29 @@ export default function BusManagementModal({
   const { showError, showSuccess } = useStatusModal();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [buses, setBuses] = useState<Bus[]>([]);
+  const [eligibleTeachers, setEligibleTeachers] = useState<EligibleTeacher[]>(
+    [],
+  );
+  const [busPermissions, setBusPermissions] = useState({
+    canManageTeachers: false,
+    canConfigureAny: false,
+  });
   const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
   const [selectedFloor, setSelectedFloor] = useState(1);
   const [draftAssignments, setDraftAssignments] = useState<
+    Record<number, number | null>
+  >({});
+  const [draftTeacherAssignments, setDraftTeacherAssignments] = useState<
     Record<number, number | null>
   >({});
   const [selectedPositionId, setSelectedPositionId] = useState<number | null>(
     null,
   );
   const [studentSearch, setStudentSearch] = useState("");
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [seatSelectionTab, setSeatSelectionTab] = useState<
+    "STUDENT" | "TEACHER"
+  >("STUDENT");
   const [studentStatusFilter, setStudentStatusFilter] =
     useState<StudentStatusFilter>("registered");
   const [busStudentSearch, setBusStudentSearch] = useState("");
@@ -423,6 +486,8 @@ export default function BusManagementModal({
     assignmentId: number;
     action: "status" | "not_traveling" | "active";
   } | null>(null);
+  const [changingTeacherSelfStatus, setChangingTeacherSelfStatus] =
+    useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showEditBus, setShowEditBus] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -463,23 +528,29 @@ export default function BusManagementModal({
     () =>
       selectedBus
         ? JSON.stringify({
-          busId: selectedBus.busId,
-          name: selectedBus.name,
-          floorCount: selectedBus.floorCount,
-          layoutTemplateId: selectedBus.layoutTemplateId,
-          floors: selectedBus.floors.map((floor) => ({
-            floorId: floor.floorId,
-            floorNumber: floor.floorNumber,
-            rowCount: floor.rowCount,
-            positionIds: floor.positions.map(
-              (position) => position.positionId,
+            busId: selectedBus.busId,
+            name: selectedBus.name,
+            floorCount: selectedBus.floorCount,
+            layoutTemplateId: selectedBus.layoutTemplateId,
+            floors: selectedBus.floors.map((floor) => ({
+              floorId: floor.floorId,
+              floorNumber: floor.floorNumber,
+              rowCount: floor.rowCount,
+              positionIds: floor.positions.map(
+                (position) => position.positionId,
+              ),
+            })),
+            assignments: selectedBus.assignments.map((assignment) => ({
+              assignmentId: assignment.assignmentId,
+              positionId: assignment.positionId,
+            })),
+            teacherAssignments: selectedBus.teacherAssignments.map(
+              (assignment) => ({
+                assignmentId: assignment.assignmentId,
+                positionId: assignment.positionId,
+              }),
             ),
-          })),
-          assignments: selectedBus.assignments.map((assignment) => ({
-            assignmentId: assignment.assignmentId,
-            positionId: assignment.positionId,
-          })),
-        })
+          })
         : "",
     [selectedBus],
   );
@@ -503,9 +574,13 @@ export default function BusManagementModal({
     );
   }, [selectedBus]);
 
-  const assignedCount = Object.values(draftAssignments).filter(
+  const assignedStudentCount = Object.values(draftAssignments).filter(
     (positionId) => positionId !== null,
   ).length;
+  const assignedTeacherCount = Object.values(draftTeacherAssignments).filter(
+    (positionId) => positionId !== null,
+  ).length;
+  const assignedCount = assignedStudentCount + assignedTeacherCount;
   const hasAssignedSeat = assignedCount > 0;
 
   const unassignedStudents = selectedBus?.assignments.filter(
@@ -526,6 +601,11 @@ export default function BusManagementModal({
 
       setClassrooms(data.classrooms || []);
       setBuses(busList);
+      setEligibleTeachers(data.eligibleTeachers || []);
+      setBusPermissions({
+        canManageTeachers: Boolean(data.permissions?.canManageTeachers),
+        canConfigureAny: Boolean(data.permissions?.canConfigureAny),
+      });
 
       const isCurrentSelectedValid = busList.some(
         (b: Bus) => b.busId === selectedBusId,
@@ -539,7 +619,7 @@ export default function BusManagementModal({
             : busList[0]?.busId;
 
       setSelectedBusId(nextBusId || null);
-      setShowCreate(!nextBusId);
+      setShowCreate(!nextBusId && Boolean(data.permissions?.canConfigureAny));
     } catch (error: any) {
       showError(
         "โหลดข้อมูลไม่สำเร็จ",
@@ -600,6 +680,12 @@ export default function BusManagementModal({
             assignment,
           ]),
         );
+        const teacherAssignmentStatuses = new Map(
+          liveStatus.teacherAssignmentStatuses.map((assignment) => [
+            assignment.assignmentId,
+            assignment,
+          ]),
+        );
 
         setBuses((current) => {
           let hasChanges = false;
@@ -625,7 +711,7 @@ export default function BusManagementModal({
                 assignment.participationStatus === participationStatus &&
                 assignment.lastBoardedAt === lastBoardedAt &&
                 JSON.stringify(assignment.lastStatusEvent) ===
-                JSON.stringify(lastStatusEvent)
+                  JSON.stringify(lastStatusEvent)
               ) {
                 return assignment;
               }
@@ -640,9 +726,38 @@ export default function BusManagementModal({
                 lastStatusEvent,
               };
             });
+            let teacherAssignmentsChanged = false;
+            const teacherAssignments = bus.teacherAssignments.map(
+              (assignment) => {
+                const liveAssignment = teacherAssignmentStatuses.get(
+                  assignment.assignmentId,
+                );
+
+                if (!liveAssignment) return assignment;
+
+                if (
+                  assignment.status === liveAssignment.status &&
+                  assignment.lastBoardedAt === liveAssignment.lastBoardedAt &&
+                  JSON.stringify(assignment.lastStatusEvent) ===
+                    JSON.stringify(liveAssignment.lastStatusEvent)
+                ) {
+                  return assignment;
+                }
+
+                teacherAssignmentsChanged = true;
+
+                return {
+                  ...assignment,
+                  status: liveAssignment.status,
+                  lastBoardedAt: liveAssignment.lastBoardedAt,
+                  lastStatusEvent: liveAssignment.lastStatusEvent,
+                };
+              },
+            );
 
             if (
               !assignmentsChanged &&
+              !teacherAssignmentsChanged &&
               bus.status === liveStatus.status &&
               bus.checkedInCount === liveStatus.checkedInCount
             ) {
@@ -655,7 +770,10 @@ export default function BusManagementModal({
               ...bus,
               status: liveStatus.status,
               checkedInCount: liveStatus.checkedInCount,
+              studentCheckedInCount: liveStatus.studentCheckedInCount,
+              teacherCheckedInCount: liveStatus.teacherCheckedInCount,
               assignments,
+              teacherAssignments,
             };
           });
 
@@ -698,6 +816,7 @@ export default function BusManagementModal({
   useEffect(() => {
     if (!selectedBus) {
       setDraftAssignments({});
+      setDraftTeacherAssignments({});
 
       return;
     }
@@ -706,6 +825,14 @@ export default function BusManagementModal({
       Object.fromEntries(
         selectedBus.assignments.map((assignment) => [
           assignment.assignmentId,
+          assignment.positionId,
+        ]),
+      ),
+    );
+    setDraftTeacherAssignments(
+      Object.fromEntries(
+        selectedBus.teacherAssignments.map((assignment) => [
+          assignment.teacherId,
           assignment.positionId,
         ]),
       ),
@@ -869,6 +996,26 @@ export default function BusManagementModal({
     positionId: number,
     assignmentId: number | null,
   ) => {
+    const occupyingTeacherId = Object.entries(draftTeacherAssignments).find(
+      ([, teacherPositionId]) => teacherPositionId === positionId,
+    )?.[0];
+
+    if (occupyingTeacherId && !selectedBus?.permissions.canManageTeachers) {
+      showError("เปลี่ยนที่นั่งไม่ได้", "ตำแหน่งนี้ถูกจัดให้ครูในรถแล้ว");
+
+      return;
+    }
+
+    if (occupyingTeacherId) {
+      setDraftTeacherAssignments((current) => {
+        const next = { ...current };
+
+        delete next[Number(occupyingTeacherId)];
+
+        return next;
+      });
+    }
+
     setDraftAssignments((current) => {
       const next = { ...current };
 
@@ -884,6 +1031,36 @@ export default function BusManagementModal({
     });
   };
 
+  const setTeacherAtPosition = (
+    positionId: number,
+    teacherId: number | null,
+  ) => {
+    if (!selectedBus?.permissions.canManageTeachers) return;
+
+    setDraftAssignments((current) => {
+      const next = { ...current };
+
+      Object.keys(next).forEach((key) => {
+        if (next[Number(key)] === positionId) next[Number(key)] = null;
+      });
+
+      return next;
+    });
+    setDraftTeacherAssignments((current) => {
+      const next = { ...current };
+
+      Object.keys(next).forEach((key) => {
+        const id = Number(key);
+
+        if (next[id] === positionId || id === teacherId) delete next[id];
+      });
+
+      if (teacherId !== null) next[teacherId] = positionId;
+
+      return next;
+    });
+  };
+
   const saveLayout = async (
     showMessage = true,
     action: SavingAction = "save",
@@ -893,7 +1070,7 @@ export default function BusManagementModal({
     if (!hasAssignedSeat) {
       showError(
         "ยังจัดที่นั่งไม่ครบ",
-        "กรุณาจัดที่นั่งให้นักเรียนอย่างน้อย 1 คนก่อนบันทึกผัง",
+        "กรุณาจัดที่นั่งให้ผู้โดยสารอย่างน้อย 1 คนก่อนบันทึกผัง",
       );
 
       return false;
@@ -911,6 +1088,16 @@ export default function BusManagementModal({
               assignmentId: assignment.assignmentId,
               positionId: draftAssignments[assignment.assignmentId] ?? null,
             })),
+            ...(selectedBus.permissions.canManageTeachers
+              ? {
+                  teacherAssignments: Object.entries(draftTeacherAssignments)
+                    .filter(([, positionId]) => positionId !== null)
+                    .map(([teacherId, positionId]) => ({
+                      teacherId: Number(teacherId),
+                      positionId: Number(positionId),
+                    })),
+                }
+              : {}),
           }),
         },
       );
@@ -1109,48 +1296,114 @@ export default function BusManagementModal({
     }
   };
 
+  const currentTeacherAssignment = selectedBus?.teacherAssignments.find(
+    (assignment) => assignment.isCurrentTeacher,
+  );
+
+  const changeOwnTeacherBusStatus = async () => {
+    if (!currentTeacherAssignment || changingTeacherSelfStatus) return;
+
+    const action =
+      currentTeacherAssignment.status === "ON_BUS" ? "alight" : "board";
+
+    try {
+      setChangingTeacherSelfStatus(true);
+      const response = await fetch(
+        `/api/teacher/camps/${campId}/bus/${action}`,
+        { method: "POST" },
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "เปลี่ยนสถานะขึ้นลงรถไม่สำเร็จ");
+      }
+
+      showSuccess(
+        action === "board" ? "บันทึกการขึ้นรถแล้ว" : "บันทึกการลงรถแล้ว",
+        data.message,
+      );
+      await fetchBuses(selectedBus?.busId || null);
+    } catch (error: any) {
+      showError(
+        "เปลี่ยนสถานะขึ้นลงรถไม่สำเร็จ",
+        error.message || "กรุณาลองใหม่อีกครั้ง",
+      );
+    } finally {
+      setChangingTeacherSelfStatus(false);
+    }
+  };
+
   const availableClassrooms = classrooms.filter(
     (classroom) => !classroom.busId,
   );
   const activePositionAssignmentId = selectedPositionId
     ? Object.entries(draftAssignments).find(
-      ([, positionId]) => positionId === selectedPositionId,
-    )?.[0]
+        ([, positionId]) => positionId === selectedPositionId,
+      )?.[0]
+    : undefined;
+  const activePositionTeacherId = selectedPositionId
+    ? Object.entries(draftTeacherAssignments).find(
+        ([, positionId]) => positionId === selectedPositionId,
+      )?.[0]
     : undefined;
   const selectedPosition = selectedPositionId
     ? currentFloor?.positions.find(
-      (position) => position.positionId === selectedPositionId,
-    )
+        (position) => position.positionId === selectedPositionId,
+      )
     : null;
   const orderedPositions = useMemo(
     () =>
       selectedBus
         ? selectedBus.floors
-          .slice()
-          .sort((a, b) => a.floorNumber - b.floorNumber)
-          .flatMap((floor) =>
-            floor.positions
-              .slice()
-              .sort(
-                (a, b) =>
-                  a.rowNumber - b.rowNumber || a.seatIndex - b.seatIndex,
-              )
-              .map((position) => ({
-                ...position,
-                floorNumber: floor.floorNumber,
-              })),
-          )
+            .slice()
+            .sort((a, b) => a.floorNumber - b.floorNumber)
+            .flatMap((floor) =>
+              floor.positions
+                .slice()
+                .sort(
+                  (a, b) =>
+                    a.rowNumber - b.rowNumber || a.seatIndex - b.seatIndex,
+                )
+                .map((position) => ({
+                  ...position,
+                  floorNumber: floor.floorNumber,
+                })),
+            )
         : [],
     [selectedBus],
   );
   const selectedPositionIndex = selectedPositionId
     ? orderedPositions.findIndex(
-      (position) => position.positionId === selectedPositionId,
-    )
+        (position) => position.positionId === selectedPositionId,
+      )
     : -1;
 
   const activeAssignment = activePositionAssignmentId
     ? assignmentById.get(Number(activePositionAssignmentId)) || null
+    : null;
+  const activeTeacherAssignment = activePositionTeacherId
+    ? selectedBus?.teacherAssignments.find(
+        (assignment) =>
+          assignment.teacherId === Number(activePositionTeacherId),
+      ) || null
+    : null;
+  const activeTeacher = activePositionTeacherId
+    ? eligibleTeachers.find(
+        (teacher) => teacher.teacherId === Number(activePositionTeacherId),
+      ) ||
+      (activeTeacherAssignment
+        ? {
+            teacherId: activeTeacherAssignment.teacherId,
+            prefixName: activeTeacherAssignment.prefixName,
+            firstName: activeTeacherAssignment.firstName,
+            lastName: "",
+            teacherName: activeTeacherAssignment.teacherName,
+            email: "",
+            assignedBus: selectedBus
+              ? { busId: selectedBus.busId, busName: selectedBus.name }
+              : null,
+          }
+        : null)
     : null;
   const seatedAssignmentIds = useMemo(
     () =>
@@ -1162,6 +1415,15 @@ export default function BusManagementModal({
           .map(([assignmentId]) => Number(assignmentId)),
       ),
     [draftAssignments],
+  );
+  const seatedTeacherIds = useMemo(
+    () =>
+      new Set(
+        Object.entries(draftTeacherAssignments)
+          .filter(([, positionId]) => positionId !== null)
+          .map(([teacherId]) => Number(teacherId)),
+      ),
+    [draftTeacherAssignments],
   );
   const studentCounts = useMemo(() => {
     const assignments = selectedBus?.assignments || [];
@@ -1196,6 +1458,20 @@ export default function BusManagementModal({
       );
     });
   }, [seatedAssignmentIds, selectedBus, studentSearch, studentStatusFilter]);
+  const filteredTeachers = useMemo(() => {
+    const query = teacherSearch.trim().toLocaleLowerCase();
+
+    return eligibleTeachers.filter((teacher) => {
+      const matchesSearch =
+        !query ||
+        teacher.teacherName.toLocaleLowerCase().includes(query) ||
+        teacher.email.toLocaleLowerCase().includes(query) ||
+        String(teacher.teacherId).includes(query);
+      const isAlreadySeated = seatedTeacherIds.has(teacher.teacherId);
+
+      return matchesSearch && (!isAlreadySeated || Boolean(query));
+    });
+  }, [eligibleTeachers, seatedTeacherIds, teacherSearch]);
 
   const busStudentCounts = useMemo(() => {
     const assignments = selectedBus?.assignments || [];
@@ -1253,9 +1529,9 @@ export default function BusManagementModal({
         busStudentStatusFilter === "all" ||
         (busStudentStatusFilter === "on"
           ? assignment.participationStatus === "ACTIVE" &&
-          assignment.status === "ON_BUS"
+            assignment.status === "ON_BUS"
           : assignment.participationStatus === "ACTIVE" &&
-          assignment.status === "OFF_BUS");
+            assignment.status === "OFF_BUS");
       const matchesSearch =
         !query ||
         assignment.studentName.toLocaleLowerCase().includes(query) ||
@@ -1268,7 +1544,14 @@ export default function BusManagementModal({
 
   useEffect(() => {
     setStudentSearch("");
+    setTeacherSearch("");
     setStudentStatusFilter("registered");
+    setSeatSelectionTab(
+      selectedPositionId !== null &&
+        Object.values(draftTeacherAssignments).includes(selectedPositionId)
+        ? "TEACHER"
+        : "STUDENT",
+    );
   }, [selectedPositionId]);
 
   useEffect(() => {
@@ -1294,10 +1577,11 @@ export default function BusManagementModal({
     <BusManagementShell isOpen={isOpen} pageMode={pageMode} onClose={onClose}>
       <>
         <Header
-          className={`relative flex flex-col gap-1 px-6 ${pageMode
-            ? "mx-auto w-full max-w-7xl border-0 pb-8 pt-8 sm:px-8"
-            : "border-b border-gray-100 p-6 pb-4"
-            }`}
+          className={`relative flex flex-col gap-1 px-6 ${
+            pageMode
+              ? "mx-auto w-full max-w-7xl border-0 pb-8 pt-8 sm:px-8"
+              : "border-b border-gray-100 p-6 pb-4"
+          }`}
         >
           {pageMode && (
             <CampBreadcrumb
@@ -1311,25 +1595,28 @@ export default function BusManagementModal({
             <div className="flex min-w-0 items-center gap-2 text-[#6b857a]">
               <Bus size={pageMode ? 20 : 24} />
               <h2
-                className={`${pageMode ? "text-lg leading-tight" : "text-xl"
-                  } truncate font-bold text-gray-900`}
+                className={`${
+                  pageMode ? "text-lg leading-tight" : "text-xl"
+                } truncate font-bold text-gray-900`}
               >
                 เช็คชื่อขึ้นรถ
               </h2>
             </div>
-            <Button
-              className="shrink-0 bg-[#6b857a] px-3 text-sm font-medium text-white"
-              size="sm"
-              startContent={
-                showCreate ? <ArrowLeft size={15} /> : <Plus size={15} />
-              }
-              onPress={() => {
-                setShowCreate((current) => !current);
-                setSelectedBusId(null);
-              }}
-            >
-              {showCreate ? "กลับไปรายการรถ" : "สร้างรถ"}
-            </Button>
+            {busPermissions.canConfigureAny && (
+              <Button
+                className="shrink-0 bg-[#6b857a] px-3 text-sm font-medium text-white"
+                size="sm"
+                startContent={
+                  showCreate ? <ArrowLeft size={15} /> : <Plus size={15} />
+                }
+                onPress={() => {
+                  setShowCreate((current) => !current);
+                  setSelectedBusId(null);
+                }}
+              >
+                {showCreate ? "กลับไปรายการรถ" : "สร้างรถ"}
+              </Button>
+            )}
           </div>
           {campName && (
             <p className="text-sm font-normal text-gray-500">
@@ -1361,10 +1648,11 @@ export default function BusManagementModal({
                     return (
                       <button
                         key={bus.busId}
-                        className={`whitespace-nowrap rounded-xl border px-3.5 py-2 text-left text-sm transition ${isSelected
-                          ? "border-[#6b857a] bg-[#6b857a] font-semibold text-white shadow-sm"
-                          : "border-gray-200 bg-gray-50 font-medium text-gray-700 hover:border-[#6b857a] hover:bg-gray-100"
-                          }`}
+                        className={`whitespace-nowrap rounded-xl border px-3.5 py-2 text-left text-sm transition ${
+                          isSelected
+                            ? "border-[#6b857a] bg-[#6b857a] font-semibold text-white shadow-sm"
+                            : "border-gray-200 bg-gray-50 font-medium text-gray-700 hover:border-[#6b857a] hover:bg-gray-100"
+                        }`}
                         type="button"
                         onClick={() => {
                           setSelectedBusId(bus.busId);
@@ -1455,10 +1743,11 @@ export default function BusManagementModal({
                         </p>
                         <div className="mt-2 grid gap-3 sm:grid-cols-2">
                           <button
-                            className={`rounded-2xl border p-4 text-left transition ${createForm.layoutTemplateId === "custom"
-                              ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
-                              : "border-gray-200 bg-white hover:border-[#9ab4a7]"
-                              }`}
+                            className={`rounded-2xl border p-4 text-left transition ${
+                              createForm.layoutTemplateId === "custom"
+                                ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
+                                : "border-gray-200 bg-white hover:border-[#9ab4a7]"
+                            }`}
                             type="button"
                             onClick={() =>
                               setCreateForm((form) => ({
@@ -1477,10 +1766,11 @@ export default function BusManagementModal({
                           {BUS_LAYOUT_TEMPLATES.map((template) => (
                             <button
                               key={template.id}
-                              className={`rounded-2xl border p-4 text-left transition ${createForm.layoutTemplateId === template.id
-                                ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
-                                : "border-gray-200 bg-white hover:border-[#9ab4a7]"
-                                }`}
+                              className={`rounded-2xl border p-4 text-left transition ${
+                                createForm.layoutTemplateId === template.id
+                                  ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
+                                  : "border-gray-200 bg-white hover:border-[#9ab4a7]"
+                              }`}
                               type="button"
                               onClick={() =>
                                 setCreateForm((form) => ({
@@ -1520,9 +1810,9 @@ export default function BusManagementModal({
                                   rowCounts:
                                     floorCount === 2
                                       ? [
-                                        form.rowCounts[0] || 10,
-                                        form.rowCounts[1] || 10,
-                                      ]
+                                          form.rowCounts[0] || 10,
+                                          form.rowCounts[1] || 10,
+                                        ]
                                       : [form.rowCounts[0] || 10],
                                 }));
                               }}
@@ -1635,31 +1925,35 @@ export default function BusManagementModal({
                         </p>
                       </div>
 
-                      <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
-                        <Button
-                          className="bg-[#e2eee7] font-medium text-[#365f4f]"
-                          isDisabled={savingAction !== null}
-                          size="sm"
-                          startContent={<Pencil size={15} />}
-                          onPress={() => setShowEditBus(true)}
-                        >
-                          แก้ไขรถ
-                        </Button>
-                        <Button
-                          className="bg-red-50 font-medium text-red-700 hover:bg-red-100"
-                          isDisabled={savingAction !== null}
-                          size="sm"
-                          startContent={<Trash2 size={15} />}
-                          onPress={() => setShowDeleteConfirm(true)}
-                        >
-                          ลบรถ
-                        </Button>
-                      </div>
+                      {selectedBus.permissions.canConfigure && (
+                        <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
+                          <Button
+                            className="bg-[#e2eee7] font-medium text-[#365f4f]"
+                            isDisabled={savingAction !== null}
+                            size="sm"
+                            startContent={<Pencil size={15} />}
+                            onPress={() => setShowEditBus(true)}
+                          >
+                            แก้ไขรถ
+                          </Button>
+                          <Button
+                            className="bg-red-50 font-medium text-red-700 hover:bg-red-100"
+                            isDisabled={savingAction !== null}
+                            size="sm"
+                            startContent={<Trash2 size={15} />}
+                            onPress={() => setShowDeleteConfirm(true)}
+                          >
+                            ลบรถ
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 pt-4">
                       <div className="min-w-0 rounded-xl bg-gray-50 p-3.5">
-                        <p className="truncate text-xs text-gray-500">อยู่บนรถตอนนี้</p>
+                        <p className="truncate text-xs text-gray-500">
+                          อยู่บนรถตอนนี้
+                        </p>
                         <p className="mt-1 truncate whitespace-nowrap text-lg font-bold text-[#6b857a] sm:text-2xl">
                           {selectedBus.checkedInCount}{" "}
                           <span className="text-sm font-normal text-gray-500">
@@ -1671,12 +1965,15 @@ export default function BusManagementModal({
                         </p>
                       </div>
                       <div className="min-w-0 rounded-xl bg-gray-50 p-3.5">
-                        <p className="truncate text-xs text-gray-500">สถานะรถ</p>
+                        <p className="truncate text-xs text-gray-500">
+                          สถานะรถ
+                        </p>
                         <p
-                          className={`mt-1 truncate whitespace-nowrap text-lg font-medium sm:text-2xl ${selectedBus.status === "TRAVELING"
-                            ? "text-blue-600"
-                            : "text-green-600"
-                            }`}
+                          className={`mt-1 truncate whitespace-nowrap text-lg font-medium sm:text-2xl ${
+                            selectedBus.status === "TRAVELING"
+                              ? "text-blue-600"
+                              : "text-green-600"
+                          }`}
                         >
                           {selectedBus.status === "TRAVELING"
                             ? "กำลังเดินทาง"
@@ -1691,15 +1988,67 @@ export default function BusManagementModal({
                     </div>
                   </div>
 
+                  {currentTeacherAssignment && (
+                    <div className="rounded-2xl border border-[#cfe0d6] bg-[#eef6f1] p-4 shadow-sm">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-[#365f4f]">
+                            สถานะขึ้นรถของฉัน
+                          </p>
+                          <p className="mt-1 text-xs text-gray-600">
+                            ที่นั่ง{" "}
+                            {currentTeacherAssignment.positionLabel ||
+                              "ยังไม่ระบุ"}
+                            {floorSuffix(
+                              currentTeacherAssignment.floorNumber,
+                              selectedBus.floorCount,
+                            )}
+                            {" · "}
+                            {currentTeacherAssignment.status === "ON_BUS"
+                              ? "อยู่บนรถ"
+                              : "ยังไม่อยู่บนรถ"}
+                          </p>
+                        </div>
+                        <Button
+                          className={
+                            currentTeacherAssignment.status === "ON_BUS"
+                              ? "bg-white font-semibold text-[#365f4f]"
+                              : "bg-[#365f4f] font-semibold text-white"
+                          }
+                          isDisabled={
+                            selectedBus.status === "TRAVELING" ||
+                            changingTeacherSelfStatus
+                          }
+                          isLoading={changingTeacherSelfStatus}
+                          startContent={
+                            currentTeacherAssignment.status === "ON_BUS" ? (
+                              <LogOut size={16} />
+                            ) : (
+                              <LogIn size={16} />
+                            )
+                          }
+                          onPress={() => void changeOwnTeacherBusStatus()}
+                        >
+                          {selectedBus.status === "TRAVELING"
+                            ? "เปลี่ยนได้เมื่อรถจอด"
+                            : currentTeacherAssignment.status === "ON_BUS"
+                              ? "ยืนยันว่าลงรถ"
+                              : "ยืนยันว่าขึ้นรถ"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Operation Bar */}
                   <div className="sticky top-0 z-10 -mx-1 rounded-2xl border border-[#d8e5de] bg-[#f7faf8]/95 p-3 shadow-sm backdrop-blur sm:static sm:mx-0">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2.5">
                         <div
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${selectedBus.status === "TRAVELING"
-                            ? "bg-blue-100 text-blue-600"
-                            : "bg-green-100 text-green-600"
-                            }`}
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                            selectedBus.status === "TRAVELING"
+                              ? "bg-blue-100 text-blue-600"
+                              : "bg-green-100 text-green-600"
+                          }`}
                         >
                           <Bus size={18} />
                         </div>
@@ -1722,9 +2071,9 @@ export default function BusManagementModal({
                       <div className="flex shrink-0 items-center gap-2">
                         {selectedBus.lastDepartedAt !== null && (
                           <Button
+                            isIconOnly
                             aria-label="ดูประวัติการเดินทาง"
                             className="min-h-11 min-w-11 bg-gray-100 px-3 text-xs font-medium text-gray-600"
-                            isIconOnly
                             size="sm"
                             title="ประวัติการเดินทาง"
                             onPress={() =>
@@ -1740,7 +2089,11 @@ export default function BusManagementModal({
                               ? "min-h-11 min-w-[118px] shrink-0 bg-amber-100 px-3 text-xs font-medium text-amber-800"
                               : "min-h-11 min-w-[118px] shrink-0 bg-[#365f4f] px-3 text-xs font-medium text-white"
                           }
-                          isDisabled={savingAction !== null || !hasAssignedSeat}
+                          isDisabled={
+                            savingAction !== null ||
+                            !hasAssignedSeat ||
+                            !selectedBus.permissions.canOperate
+                          }
                           isLoading={savingAction === "status"}
                           size="sm"
                           onPress={requestBusStatusChange}
@@ -1761,7 +2114,9 @@ export default function BusManagementModal({
                           ผังตำแหน่งบนรถ
                         </h3>
                         <p className="mt-1 text-xs text-gray-500">
-                          คลิกตำแหน่ง แล้วเลือกชื่อนักเรียนที่นั่งตรงนั้น
+                          {selectedBus.permissions.canConfigure
+                            ? "คลิกตำแหน่ง แล้วเลือกนักเรียนหรือครูที่นั่งตรงนั้น"
+                            : "ดูตำแหน่งและสถานะผู้โดยสารของรถคันนี้"}
                         </p>
                         <p className="mt-1 text-[11px] text-gray-400">
                           {selectedLayoutTemplate
@@ -1836,26 +2191,57 @@ export default function BusManagementModal({
                                       )?.[0];
                                       const assignment = assignmentId
                                         ? assignmentById.get(
-                                          Number(assignmentId),
-                                        )
+                                            Number(assignmentId),
+                                          )
                                         : null;
-                                      const seatStateClass = assignment
+                                      const teacherId = Object.entries(
+                                        draftTeacherAssignments,
+                                      ).find(
+                                        ([, positionId]) =>
+                                          positionId === position.positionId,
+                                      )?.[0];
+                                      const teacherAssignment = teacherId
+                                        ? selectedBus.teacherAssignments.find(
+                                            (item) =>
+                                              item.teacherId ===
+                                              Number(teacherId),
+                                          ) || null
+                                        : null;
+                                      const teacherPassenger = teacherId
+                                        ? eligibleTeachers.find(
+                                            (item) =>
+                                              item.teacherId ===
+                                              Number(teacherId),
+                                          ) || teacherAssignment
+                                        : null;
+                                      const hasOccupant = Boolean(
+                                        assignment || teacherPassenger,
+                                      );
+                                      const isOnBus = assignment
                                         ? assignment.status === "ON_BUS"
+                                        : teacherAssignment?.status ===
+                                          "ON_BUS";
+                                      const seatStateClass = hasOccupant
+                                        ? isOnBus
                                           ? "border-green-400 bg-green-200 text-green-900"
                                           : "border-yellow-300 bg-yellow-100 text-yellow-800"
                                         : "border-gray-200 bg-white text-gray-600 hover:border-[#6b857a]";
-                                      const isOnBus =
-                                        assignment?.status === "ON_BUS";
 
                                       return (
                                         <button
                                           key={position.positionId}
                                           className={`flex h-[76px] min-w-0 flex-col overflow-hidden rounded-xl border p-1.5 text-left transition ${seatStateClass} ${selectedPositionId === position.positionId ? "border-[#365f4f] ring-2 ring-[#6b857a]/30" : ""} ${seatGridColumnClass(position.seatIndex)}`}
-                                          disabled={savingAction !== null}
+                                          disabled={
+                                            savingAction !== null ||
+                                            !selectedBus.permissions
+                                              .canConfigure
+                                          }
                                           title={
                                             assignment
                                               ? `${assignment.studentId} · ${assignment.studentName}${assignment.nickname ? ` · ชื่อเล่น ${assignment.nickname}` : ""}`
-                                              : `${position.label} ว่าง`
+                                              : teacherPassenger
+                                                ? `ครู · ${teacherPassenger.teacherName}`
+                                                : `${position.label} ว่าง`
                                           }
                                           onClick={() =>
                                             setSelectedPositionId(
@@ -1867,7 +2253,7 @@ export default function BusManagementModal({
                                             <span className="truncate text-[9px] font-semibold text-gray-700">
                                               {position.label}
                                             </span>
-                                            {assignment && (
+                                            {hasOccupant && (
                                               <span
                                                 className={`shrink-0 rounded-full px-1 py-0.5 text-[7px] font-semibold leading-none ${isOnBus ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"}`}
                                               >
@@ -1875,35 +2261,41 @@ export default function BusManagementModal({
                                               </span>
                                             )}
                                           </span>
-                                          {assignment ? (
+                                          {hasOccupant ? (
                                             <span className="mt-1 flex min-h-0 flex-1 items-center gap-1.5">
                                               <Avatar
                                                 className="h-5 w-5 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-[#3d6357]"
                                                 fallback={
                                                   <StudentAvatarFallback
                                                     prefixName={
-                                                      assignment.prefixName
+                                                      assignment?.prefixName ||
+                                                      teacherPassenger?.prefixName ||
+                                                      null
                                                     }
                                                     size="sm"
                                                   />
                                                 }
                                                 src={
-                                                  assignment.profileImageUrl ||
+                                                  assignment?.profileImageUrl ||
                                                   undefined
                                                 }
                                               />
                                               <span className="min-w-0 flex-1">
                                                 <span className="block h-3 truncate text-[10px] font-bold leading-3 text-gray-800">
-                                                  {assignment.firstName}
+                                                  {assignment?.firstName ||
+                                                    teacherPassenger?.firstName}
                                                 </span>
                                                 <span
                                                   aria-hidden={
-                                                    !assignment.nickname
+                                                    !assignment?.nickname &&
+                                                    !teacherPassenger
                                                   }
-                                                  className={`block h-3 truncate text-[9px] font-semibold leading-3 ${assignment.nickname ? "text-[#46695c]" : "invisible"}`}
+                                                  className={`block h-3 truncate text-[9px] font-semibold leading-3 ${assignment?.nickname || teacherPassenger ? "text-[#46695c]" : "invisible"}`}
                                                 >
-                                                  {assignment.nickname ||
-                                                    "ชื่อเล่น"}
+                                                  {assignment?.nickname ||
+                                                    (teacherPassenger
+                                                      ? "ครู"
+                                                      : "ชื่อเล่น")}
                                                 </span>
                                               </span>
                                             </span>
@@ -1924,31 +2316,35 @@ export default function BusManagementModal({
                       </div>
                     )}
 
-                    <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center">
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <Save size={15} />
-                        แก้ไขผังได้ตลอดเวลา
-                        {!hasAssignedSeat
-                          ? " · ต้องจัดที่นั่งอย่างน้อย 1 คนก่อนบันทึก"
-                          : unassignedStudents?.length
-                            ? ` · เหลือ ${unassignedStudents.length} คน รอยืนยันว่าไม่ร่วมเดินทาง`
-                            : " · จัดที่นั่งครบแล้ว"}
+                    {selectedBus.permissions.canConfigure && (
+                      <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center">
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Save size={15} />
+                          แก้ไขผังได้ตลอดเวลา
+                          {!hasAssignedSeat
+                            ? " · ต้องจัดที่นั่งอย่างน้อย 1 คนก่อนบันทึก"
+                            : unassignedStudents?.length
+                              ? ` · เหลือ ${unassignedStudents.length} คน รอยืนยันว่าไม่ร่วมเดินทาง`
+                              : " · จัดที่นั่งครบแล้ว"}
+                        </div>
+                        <div className="flex justify-end gap-2 sm:ml-auto">
+                          <Button
+                            className="bg-[#365f4f] font-medium text-white"
+                            isDisabled={
+                              savingAction !== null || !hasAssignedSeat
+                            }
+                            isLoading={savingAction === "save"}
+                            size="sm"
+                            startContent={<Save size={15} />}
+                            onPress={requestSaveLayout}
+                          >
+                            {selectedBus.lastDepartedAt === null
+                              ? "บันทึกผังและเช็คชื่อเที่ยวแรก"
+                              : "บันทึกผัง"}
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex justify-end gap-2 sm:ml-auto">
-                        <Button
-                          className="bg-[#365f4f] font-medium text-white"
-                          isDisabled={savingAction !== null || !hasAssignedSeat}
-                          isLoading={savingAction === "save"}
-                          size="sm"
-                          startContent={<Save size={15} />}
-                          onPress={requestSaveLayout}
-                        >
-                          {selectedBus.lastDepartedAt === null
-                            ? "บันทึกผังและเช็คชื่อเที่ยวแรก"
-                            : "บันทึกผัง"}
-                        </Button>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -2044,13 +2440,13 @@ export default function BusManagementModal({
                             <Button
                               aria-label={
                                 assignment.participationStatus ===
-                                  "NOT_TRAVELING"
+                                "NOT_TRAVELING"
                                   ? `${assignment.studentName}: ไม่ร่วมเดินทางต่อในค่ายนี้`
                                   : `${assignment.studentName}: กดเปลี่ยนเป็น${assignment.status === "ON_BUS" ? "ไม่อยู่บนรถ" : "อยู่บนรถ"}`
                               }
                               className={
                                 assignment.participationStatus ===
-                                  "NOT_TRAVELING"
+                                "NOT_TRAVELING"
                                   ? "h-8 min-w-24 bg-slate-100 px-3 text-[11px] font-semibold text-slate-600"
                                   : assignment.status === "ON_BUS"
                                     ? "h-8 min-w-24 bg-green-100 px-3 text-[11px] font-semibold text-green-700"
@@ -2060,13 +2456,13 @@ export default function BusManagementModal({
                                 selectedBus.status === "TRAVELING" ||
                                 changingAssignmentAction !== null ||
                                 assignment.participationStatus ===
-                                "NOT_TRAVELING" ||
+                                  "NOT_TRAVELING" ||
                                 (assignment.status === "OFF_BUS" &&
                                   assignment.positionId === null)
                               }
                               isLoading={
                                 changingAssignmentAction?.assignmentId ===
-                                assignment.assignmentId &&
+                                  assignment.assignmentId &&
                                 changingAssignmentAction.action === "status"
                               }
                               size="sm"
@@ -2076,7 +2472,7 @@ export default function BusManagementModal({
                               }
                             >
                               {assignment.participationStatus ===
-                                "NOT_TRAVELING"
+                              "NOT_TRAVELING"
                                 ? "ไม่ร่วมเดินทางต่อ"
                                 : assignment.status === "ON_BUS"
                                   ? "อยู่บนรถ"
@@ -2095,6 +2491,64 @@ export default function BusManagementModal({
                       )}
                     </div>
                   </div>
+
+                  {selectedBus.teacherAssignments.length > 0 && (
+                    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="font-bold text-gray-900">
+                            รายชื่อครูบนรถ
+                          </h3>
+                          <p className="mt-1 text-xs text-gray-500">
+                            อยู่บนรถ {selectedBus.teacherCheckedInCount} ·
+                            ไม่อยู่บนรถ{" "}
+                            {selectedBus.assignedTeacherCount -
+                              selectedBus.teacherCheckedInCount}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-[#e8f2ed] px-2.5 py-1 text-xs font-semibold text-[#365f4f]">
+                          {selectedBus.assignedTeacherCount} คน
+                        </span>
+                      </div>
+                      <div className="mt-3 max-h-56 space-y-1 overflow-y-auto rounded-xl border border-gray-100 bg-gray-50 p-1.5">
+                        {selectedBus.teacherAssignments.map((assignment) => (
+                          <div
+                            key={assignment.assignmentId}
+                            className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2.5"
+                          >
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <Avatar
+                                className="h-9 w-9 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-sm font-medium text-[#3d6357]"
+                                name={assignment.firstName.charAt(0) || "?"}
+                              />
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-gray-800">
+                                  {assignment.teacherName}
+                                  {assignment.isCurrentTeacher ? " (คุณ)" : ""}
+                                </p>
+                                <p className="truncate text-[10px] text-gray-400">
+                                  ที่นั่ง{" "}
+                                  {assignment.positionLabel ||
+                                    "ยังไม่จัดที่นั่ง"}
+                                  {floorSuffix(
+                                    assignment.floorNumber,
+                                    selectedBus.floorCount,
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            <span
+                              className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${assignment.status === "ON_BUS" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}
+                            >
+                              {assignment.status === "ON_BUS"
+                                ? "อยู่บนรถ"
+                                : "ไม่อยู่บนรถ"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs leading-relaxed text-blue-800">
                     <div className="flex items-start gap-2">
@@ -2208,13 +2662,13 @@ export default function BusManagementModal({
                 </div>
                 <div className="min-w-0">
                   <p className="text-base font-bold text-gray-900">
-                    จัดที่นั่งนักเรียน
+                    จัดที่นั่งผู้โดยสาร
                   </p>
                   <p className="mt-1 text-sm font-semibold text-[#365f4f]">
                     {selectedPosition?.label || "ที่เลือก"}
                     {hasMultipleFloors
                       ? " · " +
-                      floorLabel(selectedFloor, selectedBus?.floorCount || 1)
+                        floorLabel(selectedFloor, selectedBus?.floorCount || 1)
                       : ""}
                   </p>
                 </div>
@@ -2269,7 +2723,7 @@ export default function BusManagementModal({
                     }
                     isLoading={
                       changingAssignmentAction?.assignmentId ===
-                      activeAssignment.assignmentId &&
+                        activeAssignment.assignmentId &&
                       changingAssignmentAction.action === "status"
                     }
                     size="sm"
@@ -2283,6 +2737,48 @@ export default function BusManagementModal({
                         ? "กดยืนยันว่าลงจากรถ"
                         : "กดยืนยันว่าขึ้นรถ"}
                   </Button>
+                </div>
+              )}
+
+              {activeTeacher && (
+                <div className="rounded-xl border border-[#dce8e0] bg-white px-3 py-2.5 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Avatar
+                        className="h-9 w-9 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-sm font-medium text-[#3d6357]"
+                        name={activeTeacher.firstName.charAt(0) || "?"}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-gray-500">
+                          ครูประจำที่นั่งนี้
+                        </p>
+                        <p className="mt-0.5 break-words text-xs font-semibold text-gray-900">
+                          {activeTeacher.teacherName}
+                        </p>
+                        {activeTeacher.email && (
+                          <p className="mt-0.5 truncate text-[10px] text-gray-500">
+                            {activeTeacher.email}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${activeTeacherAssignment?.status === "ON_BUS" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
+                    >
+                      {activeTeacherAssignment
+                        ? activeTeacherAssignment.status === "ON_BUS"
+                          ? "อยู่บนรถ"
+                          : "ไม่อยู่บนรถ"
+                        : "รอบันทึก"}
+                    </span>
+                  </div>
+                  {activeTeacherAssignment && (
+                    <p className="mt-1 text-[10px] leading-relaxed text-gray-500">
+                      {statusEventLabel(
+                        activeTeacherAssignment.lastStatusEvent,
+                      )}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -2302,10 +2798,11 @@ export default function BusManagementModal({
                           <button
                             key={floor.floorId}
                             aria-pressed={selectedFloor === floor.floorNumber}
-                            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${selectedFloor === floor.floorNumber
-                              ? "bg-[#365f4f] text-white"
-                              : "bg-[#e2eee7] text-[#365f4f] hover:bg-[#cfe0d6]"
-                              }`}
+                            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+                              selectedFloor === floor.floorNumber
+                                ? "bg-[#365f4f] text-white"
+                                : "bg-[#e2eee7] text-[#365f4f] hover:bg-[#cfe0d6]"
+                            }`}
                             type="button"
                             onClick={() => setSelectedFloor(floor.floorNumber)}
                           >
@@ -2344,10 +2841,33 @@ export default function BusManagementModal({
                                 const assignment = assignmentId
                                   ? assignmentById.get(Number(assignmentId))
                                   : null;
+                                const teacherId = Object.entries(
+                                  draftTeacherAssignments,
+                                ).find(
+                                  ([, positionId]) =>
+                                    positionId === position.positionId,
+                                )?.[0];
+                                const teacherAssignment = teacherId
+                                  ? selectedBus?.teacherAssignments.find(
+                                      (item) =>
+                                        item.teacherId === Number(teacherId),
+                                    ) || null
+                                  : null;
+                                const teacherPassenger = teacherId
+                                  ? eligibleTeachers.find(
+                                      (item) =>
+                                        item.teacherId === Number(teacherId),
+                                    ) || teacherAssignment
+                                  : null;
                                 const isCurrent =
                                   selectedPositionId === position.positionId;
-                                const isOnBus = assignment?.status === "ON_BUS";
-                                const seatStateClass = assignment
+                                const hasOccupant = Boolean(
+                                  assignment || teacherPassenger,
+                                );
+                                const isOnBus = assignment
+                                  ? assignment.status === "ON_BUS"
+                                  : teacherAssignment?.status === "ON_BUS";
+                                const seatStateClass = hasOccupant
                                   ? isOnBus
                                     ? "border-green-200 bg-green-50 text-green-800"
                                     : "border-yellow-300 bg-yellow-50 text-yellow-800"
@@ -2364,6 +2884,9 @@ export default function BusManagementModal({
                                         : "",
                                       seatGridColumnClass(position.seatIndex),
                                     ].join(" ")}
+                                    disabled={
+                                      !selectedBus?.permissions.canConfigure
+                                    }
                                     type="button"
                                     onClick={() =>
                                       setSelectedPositionId(position.positionId)
@@ -2373,7 +2896,7 @@ export default function BusManagementModal({
                                       <span className="truncate text-[8px] font-semibold text-gray-700">
                                         {position.label}
                                       </span>
-                                      {assignment && (
+                                      {hasOccupant && (
                                         <span
                                           className={`shrink-0 rounded-full px-0.5 py-px text-[6px] font-semibold leading-none ${isOnBus ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"}`}
                                         >
@@ -2381,30 +2904,41 @@ export default function BusManagementModal({
                                         </span>
                                       )}
                                     </span>
-                                    {assignment ? (
+                                    {hasOccupant ? (
                                       <span className="mt-0.5 flex min-h-0 flex-1 items-center gap-1">
                                         <Avatar
                                           className="h-4 w-4 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-[#3d6357]"
                                           fallback={
                                             <StudentAvatarFallback
-                                              prefixName={assignment.prefixName}
+                                              prefixName={
+                                                assignment?.prefixName ||
+                                                teacherPassenger?.prefixName ||
+                                                null
+                                              }
                                               size="xs"
                                             />
                                           }
                                           src={
-                                            assignment.profileImageUrl ||
+                                            assignment?.profileImageUrl ||
                                             undefined
                                           }
                                         />
                                         <span className="min-w-0 flex-1">
                                           <span className="block h-2.5 truncate text-[8px] font-bold leading-[10px] text-gray-800">
-                                            {assignment.firstName}
+                                            {assignment?.firstName ||
+                                              teacherPassenger?.firstName}
                                           </span>
                                           <span
-                                            aria-hidden={!assignment.nickname}
-                                            className={`block h-2.5 truncate text-[7px] font-semibold leading-[10px] ${assignment.nickname ? "text-[#46695c]" : "invisible"}`}
+                                            aria-hidden={
+                                              !assignment?.nickname &&
+                                              !teacherPassenger
+                                            }
+                                            className={`block h-2.5 truncate text-[7px] font-semibold leading-[10px] ${assignment?.nickname || teacherPassenger ? "text-[#46695c]" : "invisible"}`}
                                           >
-                                            {assignment.nickname || "ชื่อเล่น"}
+                                            {assignment?.nickname ||
+                                              (teacherPassenger
+                                                ? "ครู"
+                                                : "ชื่อเล่น")}
                                           </span>
                                         </span>
                                       </span>
@@ -2445,157 +2979,316 @@ export default function BusManagementModal({
               </div>
 
               <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-gray-800">
-                      เลือกนักเรียนสำหรับที่นั่งนี้
-                    </p>
-                    <p className="mt-1 text-[11px] font-normal text-gray-500">
-                      ค้นหาและเลือกชื่อเพื่อจัดหรือเปลี่ยนที่นั่ง
-                    </p>
-                  </div>
-                  {activeAssignment && (
-                    <span className="shrink-0 rounded-full bg-[#e2eee7] px-2 py-1 text-[10px] font-semibold text-[#365f4f]">
-                      เลือกอยู่
-                    </span>
-                  )}
-                </div>
-
-                <div className="relative mt-3">
-                  <Search
-                    aria-hidden="true"
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                  <input
-                    aria-label="ค้นหานักเรียน"
-                    className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm font-normal text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[#6b857a] focus:ring-2 focus:ring-[#6b857a]/15"
-                    placeholder="ค้นหาชื่อหรือรหัสนักเรียน"
-                    value={studentSearch}
-                    onChange={(event) => setStudentSearch(event.target.value)}
-                  />
-                </div>
-
-                {studentSearch.trim() ? (
-                  <div className="mt-3 rounded-xl bg-[#e8f2ed] px-3 py-2 text-[11px] font-medium text-[#365f4f]">
-                    กำลังค้นหาจากนักเรียนทั้งหมด ระบบจะข้ามตัวกรองสถานะ
-                  </div>
-                ) : (
+                {selectedBus?.permissions.canManageTeachers && (
                   <div
-                    aria-label="กรองสถานะการลงทะเบียน"
-                    className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-[#f4f7f5] p-1"
+                    aria-label="เลือกประเภทผู้โดยสาร"
+                    className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-[#f1f5f2] p-1"
                     role="tablist"
                   >
                     {(
                       [
-                        ["all", "ทั้งหมด", studentCounts.all],
-                        [
-                          "registered",
-                          "ลงทะเบียนแล้ว",
-                          studentCounts.registered,
-                        ],
-                        [
-                          "unregistered",
-                          "ยังไม่ลงทะเบียน",
-                          studentCounts.unregistered,
-                        ],
+                        ["STUDENT", "นักเรียน", Users],
+                        ["TEACHER", "ครู", GraduationCap],
                       ] as const
-                    ).map(([value, label, count]) => (
+                    ).map(([value, label, Icon]) => (
                       <button
                         key={value}
-                        aria-selected={studentStatusFilter === value}
+                        aria-selected={seatSelectionTab === value}
                         className={
-                          studentStatusFilter === value
-                            ? "rounded-lg bg-white px-2 py-2 text-[11px] font-semibold text-[#365f4f] shadow-sm"
-                            : "rounded-lg px-2 py-2 text-[11px] font-semibold text-gray-500 transition hover:text-gray-700"
+                          seatSelectionTab === value
+                            ? "flex items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2.5 text-sm font-semibold text-[#365f4f] shadow-sm"
+                            : "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-500 transition hover:text-gray-700"
                         }
                         role="tab"
                         type="button"
-                        onClick={() => setStudentStatusFilter(value)}
+                        onClick={() => setSeatSelectionTab(value)}
                       >
-                        {label} ({count})
+                        <Icon size={15} />
+                        {label}
                       </button>
                     ))}
                   </div>
                 )}
 
-                <div className="mt-3 h-56 space-y-1 overflow-y-auto rounded-xl border border-gray-100 bg-gray-50 p-1.5">
-                  <button
-                    className={
-                      !activeAssignment
-                        ? "flex h-10 min-h-10 w-full items-center justify-between rounded-lg bg-[#e2eee7] px-3 py-0 text-left text-xs font-semibold text-[#365f4f]"
-                        : "flex h-10 min-h-10 w-full items-center justify-between rounded-lg px-3 py-0 text-left text-xs text-gray-600 transition hover:bg-white"
-                    }
-                    type="button"
-                    onClick={() => {
-                      if (selectedPositionId !== null)
-                        setStudentAtPosition(selectedPositionId, null);
-                    }}
-                  >
-                    <span>-- ว่าง --</span>
-                    {!activeAssignment && <span>✓</span>}
-                  </button>
+                {seatSelectionTab === "STUDENT" ? (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-800">
+                          เลือกนักเรียนสำหรับที่นั่งนี้
+                        </p>
+                        <p className="mt-1 text-[11px] font-normal text-gray-500">
+                          ค้นหาและเลือกชื่อเพื่อจัดหรือเปลี่ยนที่นั่ง
+                        </p>
+                      </div>
+                      {activeAssignment && (
+                        <span className="shrink-0 rounded-full bg-[#e2eee7] px-2 py-1 text-[10px] font-semibold text-[#365f4f]">
+                          เลือกอยู่
+                        </span>
+                      )}
+                    </div>
 
-                  {filteredAssignments.map((assignment) => {
-                    const isAlreadySeated = seatedAssignmentIds.has(
-                      assignment.assignmentId,
-                    );
-
-                    return (
-                      <button
-                        key={assignment.assignmentId}
-                        className={
-                          isAlreadySeated
-                            ? "flex min-h-12 w-full cursor-not-allowed items-center gap-2 rounded-lg bg-gray-100 px-3 py-1.5 text-left text-gray-400"
-                            : "flex min-h-12 w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-gray-700 transition hover:bg-white"
+                    <div className="relative mt-3">
+                      <Search
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        size={16}
+                      />
+                      <input
+                        aria-label="ค้นหานักเรียน"
+                        className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm font-normal text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[#6b857a] focus:ring-2 focus:ring-[#6b857a]/15"
+                        placeholder="ค้นหาชื่อหรือรหัสนักเรียน"
+                        value={studentSearch}
+                        onChange={(event) =>
+                          setStudentSearch(event.target.value)
                         }
-                        disabled={isAlreadySeated}
+                      />
+                    </div>
+
+                    {studentSearch.trim() ? (
+                      <div className="mt-3 rounded-xl bg-[#e8f2ed] px-3 py-2 text-[11px] font-medium text-[#365f4f]">
+                        กำลังค้นหาจากนักเรียนทั้งหมด ระบบจะข้ามตัวกรองสถานะ
+                      </div>
+                    ) : (
+                      <div
+                        aria-label="กรองสถานะการลงทะเบียน"
+                        className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-[#f4f7f5] p-1"
+                        role="tablist"
+                      >
+                        {(
+                          [
+                            ["all", "ทั้งหมด", studentCounts.all],
+                            [
+                              "registered",
+                              "ลงทะเบียนแล้ว",
+                              studentCounts.registered,
+                            ],
+                            [
+                              "unregistered",
+                              "ยังไม่ลงทะเบียน",
+                              studentCounts.unregistered,
+                            ],
+                          ] as const
+                        ).map(([value, label, count]) => (
+                          <button
+                            key={value}
+                            aria-selected={studentStatusFilter === value}
+                            className={
+                              studentStatusFilter === value
+                                ? "rounded-lg bg-white px-2 py-2 text-[11px] font-semibold text-[#365f4f] shadow-sm"
+                                : "rounded-lg px-2 py-2 text-[11px] font-semibold text-gray-500 transition hover:text-gray-700"
+                            }
+                            role="tab"
+                            type="button"
+                            onClick={() => setStudentStatusFilter(value)}
+                          >
+                            {label} ({count})
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-3 h-56 space-y-1 overflow-y-auto rounded-xl border border-gray-100 bg-gray-50 p-1.5">
+                      <button
+                        className={
+                          !activeAssignment && !activeTeacher
+                            ? "flex h-10 min-h-10 w-full items-center justify-between rounded-lg bg-[#e2eee7] px-3 py-0 text-left text-xs font-semibold text-[#365f4f]"
+                            : "flex h-10 min-h-10 w-full items-center justify-between rounded-lg px-3 py-0 text-left text-xs text-gray-600 transition hover:bg-white"
+                        }
                         type="button"
                         onClick={() => {
-                          if (selectedPositionId !== null && !isAlreadySeated) {
-                            setStudentAtPosition(
-                              selectedPositionId,
-                              assignment.assignmentId,
-                            );
-                          }
+                          if (selectedPositionId !== null)
+                            setStudentAtPosition(selectedPositionId, null);
                         }}
                       >
-                        <Avatar
-                          className="h-7 w-7 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-xs font-medium text-[#3d6357]"
-                          name={assignment.firstName.charAt(0) || "?"}
-                          src={assignment.profileImageUrl || undefined}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-xs font-medium">
-                            {assignment.studentName}
-                          </span>
-                          <span className="block truncate text-[10px] text-gray-500">
-                            รหัส {assignment.studentId}
-                            {assignment.nickname
-                              ? ` · ชื่อเล่น: ${assignment.nickname}`
-                              : ""}
-                          </span>
-                        </span>
-                        {isAlreadySeated && (
-                          <span className="shrink-0 text-[10px] font-semibold text-gray-500">
-                            มีที่นั่งแล้ว
-                          </span>
-                        )}
+                        <span>-- ว่าง --</span>
+                        {!activeAssignment && !activeTeacher && <span>✓</span>}
                       </button>
-                    );
-                  })}
 
-                  {filteredAssignments.length === 0 && (
-                    <p className="px-3 py-5 text-center text-xs text-gray-500">
-                      ไม่พบรายชื่อนักเรียนตามเงื่อนไข
+                      {filteredAssignments.map((assignment) => {
+                        const isAlreadySeated = seatedAssignmentIds.has(
+                          assignment.assignmentId,
+                        );
+
+                        return (
+                          <button
+                            key={assignment.assignmentId}
+                            className={
+                              isAlreadySeated
+                                ? "flex min-h-12 w-full cursor-not-allowed items-center gap-2 rounded-lg bg-gray-100 px-3 py-1.5 text-left text-gray-400"
+                                : "flex min-h-12 w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-gray-700 transition hover:bg-white"
+                            }
+                            disabled={isAlreadySeated}
+                            type="button"
+                            onClick={() => {
+                              if (
+                                selectedPositionId !== null &&
+                                !isAlreadySeated
+                              ) {
+                                setStudentAtPosition(
+                                  selectedPositionId,
+                                  assignment.assignmentId,
+                                );
+                              }
+                            }}
+                          >
+                            <Avatar
+                              className="h-7 w-7 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-xs font-medium text-[#3d6357]"
+                              name={assignment.firstName.charAt(0) || "?"}
+                              src={assignment.profileImageUrl || undefined}
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-xs font-medium">
+                                {assignment.studentName}
+                              </span>
+                              <span className="block truncate text-[10px] text-gray-500">
+                                รหัส {assignment.studentId}
+                                {assignment.nickname
+                                  ? ` · ชื่อเล่น: ${assignment.nickname}`
+                                  : ""}
+                              </span>
+                            </span>
+                            {isAlreadySeated && (
+                              <span className="shrink-0 text-[10px] font-semibold text-gray-500">
+                                มีที่นั่งแล้ว
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      {filteredAssignments.length === 0 && (
+                        <p className="px-3 py-5 text-center text-xs text-gray-500">
+                          ไม่พบรายชื่อนักเรียนตามเงื่อนไข
+                        </p>
+                      )}
+                    </div>
+
+                    <p className="mt-2 text-[11px] font-normal text-gray-500">
+                      นักเรียนที่ยังไม่ลงทะเบียนจะถูกผูกที่นั่งไว้ก่อนเท่านั้น
+                      เมื่อลงทะเบียนแล้วจะกดขึ้นรถได้ทันที
                     </p>
-                  )}
-                </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-800">
+                          เลือกครูสำหรับที่นั่งนี้
+                        </p>
+                        <p className="mt-1 text-[11px] font-normal text-gray-500">
+                          เลือกครูที่ยังใช้งานอยู่ได้ทุกคนในระบบ
+                        </p>
+                      </div>
+                      {activeTeacher && (
+                        <span className="shrink-0 rounded-full bg-[#e2eee7] px-2 py-1 text-[10px] font-semibold text-[#365f4f]">
+                          เลือกอยู่
+                        </span>
+                      )}
+                    </div>
 
-                <p className="mt-2 text-[11px] font-normal text-gray-500">
-                  นักเรียนที่ยังไม่ลงทะเบียนจะถูกผูกที่นั่งไว้ก่อนเท่านั้น
-                  เมื่อลงทะเบียนแล้วจะกดขึ้นรถได้ทันที
-                </p>
+                    <div className="relative mt-3">
+                      <Search
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        size={16}
+                      />
+                      <input
+                        aria-label="ค้นหาครู"
+                        className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm font-normal text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[#6b857a] focus:ring-2 focus:ring-[#6b857a]/15"
+                        placeholder="ค้นหาชื่อ อีเมล หรือรหัสครู"
+                        value={teacherSearch}
+                        onChange={(event) =>
+                          setTeacherSearch(event.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="mt-3 h-56 space-y-1 overflow-y-auto rounded-xl border border-gray-100 bg-gray-50 p-1.5">
+                      <button
+                        className={
+                          !activeAssignment && !activeTeacher
+                            ? "flex h-10 min-h-10 w-full items-center justify-between rounded-lg bg-[#e2eee7] px-3 py-0 text-left text-xs font-semibold text-[#365f4f]"
+                            : "flex h-10 min-h-10 w-full items-center justify-between rounded-lg px-3 py-0 text-left text-xs text-gray-600 transition hover:bg-white"
+                        }
+                        type="button"
+                        onClick={() => {
+                          if (selectedPositionId !== null)
+                            setTeacherAtPosition(selectedPositionId, null);
+                        }}
+                      >
+                        <span>-- ว่าง --</span>
+                        {!activeAssignment && !activeTeacher && <span>✓</span>}
+                      </button>
+
+                      {filteredTeachers.map((teacher) => {
+                        const isAlreadySeated = seatedTeacherIds.has(
+                          teacher.teacherId,
+                        );
+                        const isOnAnotherBus = Boolean(
+                          teacher.assignedBus &&
+                            teacher.assignedBus.busId !== selectedBus?.busId,
+                        );
+                        const disabled = isAlreadySeated || isOnAnotherBus;
+
+                        return (
+                          <button
+                            key={teacher.teacherId}
+                            className={
+                              disabled
+                                ? "flex min-h-12 w-full cursor-not-allowed items-center gap-2 rounded-lg bg-gray-100 px-3 py-1.5 text-left text-gray-400"
+                                : "flex min-h-12 w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-gray-700 transition hover:bg-white"
+                            }
+                            disabled={disabled}
+                            type="button"
+                            onClick={() => {
+                              if (selectedPositionId !== null && !disabled) {
+                                setTeacherAtPosition(
+                                  selectedPositionId,
+                                  teacher.teacherId,
+                                );
+                              }
+                            }}
+                          >
+                            <Avatar
+                              className="h-7 w-7 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-xs font-medium text-[#3d6357]"
+                              name={teacher.firstName.charAt(0) || "?"}
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-xs font-medium">
+                                {teacher.teacherName}
+                              </span>
+                              <span className="block truncate text-[10px] text-gray-500">
+                                {teacher.email ||
+                                  `รหัสครู ${teacher.teacherId}`}
+                              </span>
+                            </span>
+                            {isAlreadySeated && (
+                              <span className="shrink-0 text-[10px] font-semibold text-gray-500">
+                                มีที่นั่งแล้ว
+                              </span>
+                            )}
+                            {isOnAnotherBus && (
+                              <span className="max-w-24 shrink-0 truncate text-[10px] font-semibold text-amber-700">
+                                อยู่ {teacher.assignedBus?.busName}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      {filteredTeachers.length === 0 && (
+                        <p className="px-3 py-5 text-center text-xs text-gray-500">
+                          ไม่พบรายชื่อครูตามเงื่อนไข
+                        </p>
+                      )}
+                    </div>
+
+                    <p className="mt-2 text-[11px] font-normal text-gray-500">
+                      เมื่อบันทึกแล้ว ครูจะกดขึ้น–ลงรถและควบคุมรถคันนี้ได้
+                    </p>
+                  </>
+                )}
               </div>
             </ModalBody>
             <ModalFooter className="flex flex-col gap-2">
@@ -2655,10 +3348,11 @@ export default function BusManagementModal({
             <ModalHeader>
               <div className="flex items-center gap-3">
                 <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-2xl ${pendingBusStatus === "TRAVELING"
-                    ? "bg-[#e2eee7] text-[#365f4f]"
-                    : "bg-[#e8f2ed] text-[#3d6357]"
-                    }`}
+                  className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                    pendingBusStatus === "TRAVELING"
+                      ? "bg-[#e2eee7] text-[#365f4f]"
+                      : "bg-[#e8f2ed] text-[#3d6357]"
+                  }`}
                 >
                   {pendingBusStatus === "TRAVELING" ? (
                     <Bus size={20} />
@@ -2718,7 +3412,7 @@ export default function BusManagementModal({
                                 isDisabled={changingAssignmentAction !== null}
                                 isLoading={
                                   changingAssignmentAction?.assignmentId ===
-                                  assignment.assignmentId &&
+                                    assignment.assignmentId &&
                                   changingAssignmentAction.action === "status"
                                 }
                                 size="sm"
@@ -2734,9 +3428,9 @@ export default function BusManagementModal({
                                 isDisabled={changingAssignmentAction !== null}
                                 isLoading={
                                   changingAssignmentAction?.assignmentId ===
-                                  assignment.assignmentId &&
+                                    assignment.assignmentId &&
                                   changingAssignmentAction.action ===
-                                  "not_traveling"
+                                    "not_traveling"
                                 }
                                 size="sm"
                                 startContent={<UserCheck size={13} />}
@@ -2797,7 +3491,7 @@ export default function BusManagementModal({
                                 isDisabled={changingAssignmentAction !== null}
                                 isLoading={
                                   changingAssignmentAction?.assignmentId ===
-                                  assignment.assignmentId &&
+                                    assignment.assignmentId &&
                                   changingAssignmentAction.action === "active"
                                 }
                                 size="sm"
@@ -2855,7 +3549,7 @@ export default function BusManagementModal({
                 <div className="space-y-4 text-sm leading-relaxed text-gray-700">
                   <div>
                     <p className="font-semibold text-gray-900">
-                      นักเรียนจะลงจากรถอย่างไร?
+                      ผู้โดยสารจะลงจากรถอย่างไร?
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
                       เลือก 1 วิธี แล้วกดยืนยันการจอดรถ
@@ -2865,10 +3559,11 @@ export default function BusManagementModal({
                   <div className="grid gap-3">
                     <button
                       aria-pressed={parkClearPassengers === false}
-                      className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/30 ${parkClearPassengers === false
-                        ? "border-[#5d7c6f] bg-[#f1f7f4] ring-2 ring-[#5d7c6f]/15"
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                        }`}
+                      className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-[#5d7c6f]/30 ${
+                        parkClearPassengers === false
+                          ? "border-[#5d7c6f] bg-[#f1f7f4] ring-2 ring-[#5d7c6f]/15"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
                       type="button"
                       onClick={() => setParkClearPassengers(false)}
                     >
@@ -2877,7 +3572,7 @@ export default function BusManagementModal({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center justify-between gap-2 font-semibold text-gray-900">
-                          ให้นักเรียนกดยืนยันลงรถเอง
+                          ให้นักเรียนและครูกดยืนยันลงรถเอง
                           {parkClearPassengers === false && (
                             <Check
                               className="shrink-0 text-[#3d6357]"
@@ -2886,17 +3581,18 @@ export default function BusManagementModal({
                           )}
                         </span>
                         <span className="mt-1 block text-xs leading-relaxed text-gray-500">
-                          นักเรียนแต่ละคนกด “ลงจากรถแล้ว” หลังรถจอด
+                          นักเรียนและครูแต่ละคนกด “ลงจากรถแล้ว” หลังรถจอด
                         </span>
                       </span>
                     </button>
 
                     <button
                       aria-pressed={parkClearPassengers === true}
-                      className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-400/30 ${parkClearPassengers === true
-                        ? "border-amber-400 bg-amber-50 ring-2 ring-amber-200/60"
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                        }`}
+                      className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-400/30 ${
+                        parkClearPassengers === true
+                          ? "border-amber-400 bg-amber-50 ring-2 ring-amber-200/60"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
                       type="button"
                       onClick={() => setParkClearPassengers(true)}
                     >
@@ -2905,7 +3601,7 @@ export default function BusManagementModal({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center justify-between gap-2 font-semibold text-gray-900">
-                          เปลี่ยนสถานะเป็นลงจากรถทุกคน
+                          เคลียร์นักเรียนและครูทั้งหมด
                           {parkClearPassengers === true && (
                             <Check
                               className="shrink-0 text-amber-700"
@@ -2914,7 +3610,8 @@ export default function BusManagementModal({
                           )}
                         </span>
                         <span className="mt-1 block text-xs leading-relaxed text-gray-500">
-                          เปลี่ยนนักเรียนที่อยู่บนรถเป็น “ลงจากรถแล้ว” ทันที
+                          เปลี่ยนนักเรียนและครูที่อยู่บนรถเป็น “ลงจากรถแล้ว”
+                          ทันที
                         </span>
                       </span>
                     </button>
@@ -3034,9 +3731,9 @@ export default function BusManagementModal({
                             rowCounts:
                               floorCount === 2
                                 ? [
-                                  form.rowCounts[0] || 10,
-                                  form.rowCounts[1] || 10,
-                                ]
+                                    form.rowCounts[0] || 10,
+                                    form.rowCounts[1] || 10,
+                                  ]
                                 : [form.rowCounts[0] || 10],
                           }));
                         }}
@@ -3241,7 +3938,7 @@ export default function BusManagementModal({
                     ยังไม่มีประวัติการเดินทาง
                   </p>
                   <p className="mt-1 text-xs text-gray-400">
-                    กดปุ่ม "เริ่มเดินทาง" เพื่อเริ่มบันทึกรอบแรก
+                    กดปุ่ม “เริ่มเดินทาง” เพื่อเริ่มบันทึกรอบแรก
                   </p>
                 </div>
               ) : (

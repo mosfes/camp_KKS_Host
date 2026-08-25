@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 import { isBangkokDateBefore } from "@/lib/bangkok-date";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 /**
  * Full station payload. This is the only student read endpoint that returns
@@ -38,6 +39,7 @@ export async function GET(request, context) {
         student_students_id: studentId,
         camp_camp_id: campId,
         enrolled_at: { not: null },
+        student: activeCampStudentWhere(campId),
       },
       select: { student_enrollment_id: true },
     });

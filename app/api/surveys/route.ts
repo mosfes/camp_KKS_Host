@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 const surveySchema = z.object({
   campId: z
@@ -39,14 +40,23 @@ export async function GET(request) {
       );
     }
 
+    const parsedCampId = parseInt(campId);
     const survey = await prisma.survey.findUnique({
-      where: { camp_camp_id: parseInt(campId) },
+      where: { camp_camp_id: parsedCampId },
       include: {
         survey_question: {
           orderBy: { question_id: "asc" },
         },
         _count: {
-          select: { survey_response: true },
+          select: {
+            survey_response: {
+              where: {
+                student_enrollment: {
+                  student: activeCampStudentWhere(parsedCampId),
+                },
+              },
+            },
+          },
         },
       },
     });

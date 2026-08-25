@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 
 export async function GET(request: Request, context: any) {
   const { teacher, error: authError } = await requireTeacher();
@@ -50,7 +51,10 @@ export async function GET(request: Request, context: any) {
 
     // นับนักเรียนที่ลงทะเบียน
     const enrolledCount = await prisma.student_enrollment.count({
-      where: { camp_camp_id: campId, enrolled_at: { not: null } },
+      where: {
+        ...activeCampEnrollmentWhere(campId),
+        enrolled_at: { not: null },
+      },
     });
 
     const rangeCount =

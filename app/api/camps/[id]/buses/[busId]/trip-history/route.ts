@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
@@ -13,7 +12,7 @@ export async function GET(_request: Request, context: any) {
     return NextResponse.json({ error: "รหัสรถไม่ถูกต้อง" }, { status: 400 });
   }
 
-  const access = await requireSpecificCampBus(campId, busId);
+  const access = await requireSpecificCampBus(campId, busId, "view");
 
   if (access.error) return access.error;
 

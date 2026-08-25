@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -11,6 +10,7 @@ import {
 } from "@/lib/camp-bus-layout-templates";
 import { positionLabel } from "@/lib/camp-bus-seating";
 import { formatStudentName } from "@/lib/student-display-name";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 const createBusSchema = z.object({
   classroomId: z.number().int().positive(),
@@ -32,7 +32,14 @@ function getTeacherName(classroom: any) {
   return Array.from(new Set(names)).join(", ");
 }
 
-function formatBus(bus: any) {
+function formatTeacherName(teacher: any) {
+  return [teacher.prefix_name, teacher.firstname, teacher.lastname]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+function formatBus(bus: any, permission: any) {
   const lastParkedEvent = bus.events?.find(
     (event: any) => event.event_type === "PARK",
   );
@@ -97,6 +104,72 @@ function formatBus(bus: any) {
         : null,
     };
   });
+  const visibleStudentAssignmentIds = new Set(
+    assignments.map((assignment: any) => assignment.assignmentId),
+  );
+  const teacherAssignments = bus.teacher_assignments.map((assignment: any) => {
+    const teacherName = formatTeacherName(assignment.teacher);
+    const latestEvent = assignment.events?.[0] || null;
+    const departedBeforeEvent = latestEvent
+      ? departedEvents.filter(
+          (event: any) => event.event_id < latestEvent.event_id,
+        ).length
+      : 0;
+    const previousBoardEvent = assignment.events
+      ?.slice(1)
+      .find((event: any) => event.event_type === "BOARD");
+    const departedBeforePreviousBoard = previousBoardEvent
+      ? departedEvents.filter(
+          (event: any) => event.event_id < previousBoardEvent.event_id,
+        ).length
+      : 0;
+    const tripNumber = latestEvent
+      ? latestEvent.event_type === "BOARD"
+        ? departedBeforeEvent + 1
+        : previousBoardEvent
+          ? departedBeforePreviousBoard + 1
+          : Math.max(1, departedBeforeEvent)
+      : null;
+
+    return {
+      assignmentId: assignment.assignment_id,
+      teacherId: assignment.teacher_teachers_id,
+      teacherName,
+      firstName: assignment.teacher.firstname,
+      prefixName: assignment.teacher.prefix_name,
+      positionId: assignment.position_position_id,
+      positionLabel: assignment.position?.label || null,
+      floorNumber: assignment.position?.floor?.floor_number || null,
+      status: assignment.status,
+      lastBoardedAt: assignment.last_boarded_at,
+      isCurrentTeacher:
+        assignment.teacher_teachers_id ===
+        Number(permission.teacher?.teachers_id),
+      lastStatusEvent: latestEvent
+        ? {
+            eventType: latestEvent.event_type,
+            happenedAt: latestEvent.created_at,
+            tripNumber,
+            actorType: "TEACHER",
+            actorName: latestEvent.teacher
+              ? `${latestEvent.teacher.firstname} ${latestEvent.teacher.lastname}`.trim()
+              : teacherName,
+          }
+        : null,
+    };
+  });
+  const studentCheckedInCount = assignments.filter(
+    (item: any) =>
+      item.participationStatus === "ACTIVE" && item.status === "ON_BUS",
+  ).length;
+  const teacherCheckedInCount = teacherAssignments.filter(
+    (item: any) => item.status === "ON_BUS",
+  ).length;
+  const assignedStudentCount = assignments.filter(
+    (assignment: any) =>
+      assignment.participationStatus === "ACTIVE" &&
+      assignment.positionId !== null,
+  ).length;
 
   return {
     busId: bus.bus_id,
@@ -123,32 +196,56 @@ function formatBus(bus: any) {
         rowNumber: position.row_number,
         seatIndex: position.seat_index,
         label: position.label,
-        assignmentId: position.assignment?.assignment_id || null,
+        assignmentId:
+          position.assignment &&
+          visibleStudentAssignmentIds.has(position.assignment.assignment_id)
+            ? position.assignment.assignment_id
+            : null,
+        teacherAssignmentId: position.teacher_assignment?.assignment_id || null,
       })),
     })),
     assignments,
-    checkedInCount: assignments.filter(
-      (item: any) =>
-        item.participationStatus === "ACTIVE" && item.status === "ON_BUS",
-    ).length,
+    teacherAssignments,
+    checkedInCount: studentCheckedInCount + teacherCheckedInCount,
+    studentCheckedInCount,
+    teacherCheckedInCount,
     // Only students with a seat are participating in the current trip.
     // Students without a seat remain in the roster so the teacher can confirm
     // that they are not travelling this trip.
-    assignedCount: assignments.filter(
-      (assignment: any) =>
-        assignment.participationStatus === "ACTIVE" &&
-        assignment.positionId !== null,
-    ).length,
+    assignedCount: assignedStudentCount + teacherAssignments.length,
+    assignedStudentCount,
+    assignedTeacherCount: teacherAssignments.length,
     unassignedSeatCount: bus.floors.reduce(
       (sum: number, floor: any) =>
         sum +
-        floor.positions.filter((position: any) => !position.assignment).length,
+        floor.positions.filter(
+          (position: any) =>
+            (!position.assignment ||
+              !visibleStudentAssignmentIds.has(
+                position.assignment.assignment_id,
+              )) &&
+            !position.teacher_assignment,
+        ).length,
       0,
     ),
+    permissions: {
+      canConfigure: permission.configurableClassroomIds.includes(
+        bus.classroom_classroom_id,
+      ),
+      canOperate:
+        permission.configurableClassroomIds.includes(
+          bus.classroom_classroom_id,
+        ) || permission.teacherBusIds.includes(bus.bus_id),
+      canManageTeachers: permission.canManageTeachers,
+    },
   };
 }
 
-async function getBusData(campId: number, classroomIds: number[]) {
+async function getBusData(
+  campId: number,
+  classroomIds: number[],
+  permission: any,
+) {
   const classroomRows = await prisma.camp_classroom.findMany({
     where: {
       camp_camp_id: campId,
@@ -169,13 +266,18 @@ async function getBusData(campId: number, classroomIds: number[]) {
               teacher: {
                 select: {
                   teachers_id: true,
+                  prefix_name: true,
                   firstname: true,
                   lastname: true,
+                  email: true,
                 },
               },
             },
           },
-          classroom_students: { select: { student_students_id: true } },
+          classroom_students: {
+            where: { student: { deletedAt: null } },
+            select: { student_students_id: true },
+          },
         },
       },
     },
@@ -234,42 +336,77 @@ async function getBusData(campId: number, classroomIds: number[]) {
     select: {
       bus_id: true,
       classroom_classroom_id: true,
-      assignments: { select: { student_enrollment_id: true } },
+      assignments: {
+        select: {
+          assignment_id: true,
+          student_enrollment_id: true,
+          student_enrollment: {
+            select: { student_students_id: true },
+          },
+        },
+      },
     },
   });
 
+  const staleAssignmentIds = existingBuses.flatMap((bus) => {
+    const classroom = classroomRows.find(
+      (row) => row.classroom_classroom_id === bus.classroom_classroom_id,
+    );
+    const studentIds = new Set(
+      classroom?.classroom.classroom_students.map(
+        (item) => item.student_students_id,
+      ) || [],
+    );
+
+    return bus.assignments
+      .filter(
+        (assignment) =>
+          !studentIds.has(assignment.student_enrollment.student_students_id),
+      )
+      .map((assignment) => assignment.assignment_id);
+  });
+
+  if (staleAssignmentIds.length > 0) {
+    await prisma.camp_bus_student.deleteMany({
+      where: { assignment_id: { in: staleAssignmentIds } },
+    });
+  }
+  const staleAssignmentIdSet = new Set(staleAssignmentIds);
+
   // Backfill assignments for buses created before unregistered students became
   // selectable. The unique constraint keeps this idempotent on every refresh.
-  const assignmentCreates = existingBuses
-    .map((bus) => {
-      const classroom = classroomRows.find(
-        (row) => row.classroom_classroom_id === bus.classroom_classroom_id,
-      );
-      const studentIds = new Set(
-        classroom?.classroom.classroom_students.map(
-          (item) => item.student_students_id,
-        ),
-      );
-      const assignedEnrollmentIds = new Set(
-        bus.assignments.map((assignment) => assignment.student_enrollment_id),
-      );
-
-      const data = enrollments
+  const assignmentCreates = existingBuses.flatMap((bus) => {
+    const classroom = classroomRows.find(
+      (row) => row.classroom_classroom_id === bus.classroom_classroom_id,
+    );
+    const studentIds = new Set(
+      classroom?.classroom.classroom_students.map(
+        (item) => item.student_students_id,
+      ),
+    );
+    const assignedEnrollmentIds = new Set(
+      bus.assignments
         .filter(
-          (enrollment) =>
-            studentIds.has(enrollment.student_students_id) &&
-            !assignedEnrollmentIds.has(enrollment.student_enrollment_id),
+          (assignment) => !staleAssignmentIdSet.has(assignment.assignment_id),
         )
-        .map((enrollment) => ({
-          bus_bus_id: bus.bus_id,
-          student_enrollment_id: enrollment.student_enrollment_id,
-        }));
+        .map((assignment) => assignment.student_enrollment_id),
+    );
 
-      return data.length > 0
-        ? prisma.camp_bus_student.createMany({ data, skipDuplicates: true })
-        : null;
-    })
-    .filter(Boolean);
+    const data = enrollments
+      .filter(
+        (enrollment) =>
+          studentIds.has(enrollment.student_students_id) &&
+          !assignedEnrollmentIds.has(enrollment.student_enrollment_id),
+      )
+      .map((enrollment) => ({
+        bus_bus_id: bus.bus_id,
+        student_enrollment_id: enrollment.student_enrollment_id,
+      }));
+
+    return data.length > 0
+      ? [prisma.camp_bus_student.createMany({ data, skipDuplicates: true })]
+      : [];
+  });
 
   if (assignmentCreates.length > 0) {
     await prisma.$transaction(assignmentCreates);
@@ -305,11 +442,17 @@ async function getBusData(campId: number, classroomIds: number[]) {
             orderBy: [{ row_number: "asc" }, { seat_index: "asc" }],
             include: {
               assignment: { select: { assignment_id: true } },
+              teacher_assignment: { select: { assignment_id: true } },
             },
           },
         },
       },
       assignments: {
+        where: {
+          student_enrollment: {
+            student: activeCampStudentWhere(campId),
+          },
+        },
         include: {
           student_enrollment: {
             select: {
@@ -345,6 +488,35 @@ async function getBusData(campId: number, classroomIds: number[]) {
         },
         orderBy: { student_enrollment_id: "asc" },
       },
+      teacher_assignments: {
+        where: { removed_at: null },
+        include: {
+          teacher: {
+            select: {
+              teachers_id: true,
+              prefix_name: true,
+              firstname: true,
+              lastname: true,
+              email: true,
+            },
+          },
+          position: {
+            include: { floor: { select: { floor_number: true } } },
+          },
+          events: {
+            where: { event_type: { in: ["BOARD", "ALIGHT"] } },
+            orderBy: [{ created_at: "desc" }, { event_id: "desc" }],
+            take: 2,
+            select: {
+              event_id: true,
+              event_type: true,
+              created_at: true,
+              teacher: { select: { firstname: true, lastname: true } },
+            },
+          },
+        },
+        orderBy: { teacher_teachers_id: "asc" },
+      },
       events: {
         where: { event_type: { in: ["PARK", "DEPART"] } },
         orderBy: [{ created_at: "desc" }, { event_id: "desc" }],
@@ -372,7 +544,52 @@ async function getBusData(campId: number, classroomIds: number[]) {
     };
   });
 
-  return { classrooms, buses: buses.map(formatBus) };
+  const allTeachers = permission.canManageTeachers
+    ? await prisma.teachers.findMany({
+        where: { deletedAt: null },
+        select: {
+          teachers_id: true,
+          prefix_name: true,
+          firstname: true,
+          lastname: true,
+          email: true,
+        },
+        orderBy: [{ firstname: "asc" }, { lastname: "asc" }],
+      })
+    : [];
+
+  const teacherBusByTeacherId = new Map<number, any>();
+
+  buses.forEach((bus) => {
+    bus.teacher_assignments.forEach((assignment) => {
+      teacherBusByTeacherId.set(assignment.teacher_teachers_id, {
+        busId: bus.bus_id,
+        busName: bus.name,
+      });
+    });
+  });
+
+  const eligibleTeachers = allTeachers
+    .map((teacher) => ({
+      teacherId: teacher.teachers_id,
+      prefixName: teacher.prefix_name || null,
+      firstName: teacher.firstname,
+      lastName: teacher.lastname,
+      teacherName: formatTeacherName(teacher),
+      email: teacher.email || "",
+      assignedBus: teacherBusByTeacherId.get(teacher.teachers_id) || null,
+    }))
+    .sort((a, b) => a.teacherName.localeCompare(b.teacherName, "th"));
+
+  return {
+    classrooms,
+    buses: buses.map((bus) => formatBus(bus, permission)),
+    eligibleTeachers,
+    permissions: {
+      canManageTeachers: permission.canManageTeachers,
+      canConfigureAny: permission.configurableClassroomIds.length > 0,
+    },
+  };
 }
 
 export async function GET(request: Request, context: any) {
@@ -385,12 +602,16 @@ export async function GET(request: Request, context: any) {
 
   const classroomIdParam = new URL(request.url).searchParams.get("classroomId");
   const classroomId = classroomIdParam ? Number(classroomIdParam) : undefined;
-  const permission = await requireCampBusPermission(campId, classroomId);
+  const permission = await requireCampBusPermission(
+    campId,
+    classroomId,
+    "view",
+  );
 
   if (permission.error) return permission.error;
 
   const classroomIds = classroomId ? [classroomId] : permission.classroomIds;
-  const data = await getBusData(campId, classroomIds);
+  const data = await getBusData(campId, classroomIds, permission);
 
   return NextResponse.json(data, {
     headers: { "Cache-Control": "private, no-store" },
@@ -440,7 +661,10 @@ export async function POST(request: Request, context: any) {
     },
     select: {
       classroom_id: true,
-      classroom_students: { select: { student_students_id: true } },
+      classroom_students: {
+        where: { student: { deletedAt: null } },
+        select: { student_students_id: true },
+      },
     },
   });
 

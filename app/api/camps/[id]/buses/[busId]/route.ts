@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -71,11 +70,20 @@ export async function PUT(request: Request, context: any) {
         include: {
           positions: {
             orderBy: [{ row_number: "asc" }, { seat_index: "asc" }],
-            include: { assignment: { select: { assignment_id: true } } },
+            include: {
+              assignment: { select: { assignment_id: true } },
+              teacher_assignment: {
+                select: { assignment_id: true },
+              },
+            },
           },
         },
       },
       assignments: { select: { assignment_id: true } },
+      teacher_assignments: {
+        where: { removed_at: null },
+        select: { assignment_id: true },
+      },
     },
   });
 
@@ -94,12 +102,15 @@ export async function PUT(request: Request, context: any) {
     layoutTemplate?.capacity ||
     rowCounts.reduce((sum, rows) => sum + rows * 4, 0);
 
-  if (capacity < bus.assignments.length) {
+  const passengerCount =
+    bus.assignments.length + bus.teacher_assignments.length;
+
+  if (capacity < passengerCount) {
     return NextResponse.json(
       {
         error:
-          "จำนวนที่นั่งไม่พอ นักเรียน " +
-          bus.assignments.length +
+          "จำนวนที่นั่งไม่พอ ผู้โดยสาร " +
+          passengerCount +
           " คน แต่มีที่นั่ง " +
           capacity +
           " ที่",
@@ -141,7 +152,7 @@ export async function PUT(request: Request, context: any) {
     )
     .filter(
       ({ floorNumber, position }) =>
-        position.assignment &&
+        (position.assignment || position.teacher_assignment) &&
         !targetPositionKeys.has(
           positionKey(floorNumber, position.row_number, position.seat_index),
         ),
@@ -150,8 +161,7 @@ export async function PUT(request: Request, context: any) {
   if (assignedPositionsToRemove.length > 0) {
     return NextResponse.json(
       {
-        error:
-          "ไม่สามารถลดจำนวนแถวได้ เพราะมีนักเรียนจัดอยู่ในตำแหน่งที่จะถูกลบ",
+        error: "ไม่สามารถลดจำนวนแถวได้ เพราะมีผู้โดยสารอยู่ในตำแหน่งที่จะถูกลบ",
       },
       { status: 409 },
     );

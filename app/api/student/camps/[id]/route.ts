@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 import { getBangkokDateKey, isBangkokDateBefore } from "@/lib/bangkok-date";
 import { getCertificateEligibility } from "@/lib/certificate-eligibility";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 
 /**
  * Camp detail endpoint.
@@ -34,24 +35,19 @@ export async function GET(request, context) {
       where: {
         camp_id: campId,
         deletedAt: null,
-        OR: [
-          {
-            camp_classroom: {
-              some: {
-                classroom: {
-                  classroom_students: {
-                    some: { student_students_id: studentId },
-                  },
+        camp_classroom: {
+          some: {
+            classroom: {
+              deletedAt: null,
+              classroom_students: {
+                some: {
+                  student_students_id: studentId,
+                  student: { deletedAt: null },
                 },
               },
             },
           },
-          {
-            student_enrollment: {
-              some: { student_students_id: studentId },
-            },
-          },
-        ],
+        },
       },
       select: {
         camp_id: true,
@@ -134,7 +130,10 @@ export async function GET(request, context) {
     const [totalEnrolled, results, surveyResponseCount, certificateCount] =
       await Promise.all([
         prisma.student_enrollment.count({
-          where: { camp_camp_id: campId, enrolled_at: { not: null } },
+          where: {
+            ...activeCampEnrollmentWhere(campId),
+            enrolled_at: { not: null },
+          },
         }),
         enrollment
           ? prisma.mission_result.findMany({

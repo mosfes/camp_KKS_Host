@@ -37,6 +37,7 @@ model teachers {
   camp_location_update      camp_location_update[]
   project_document_template project_document_template[]
   camp_bus_events           camp_bus_event[]
+  camp_bus_teacher          camp_bus_teacher[]
 
   @@index([deletedAt])
 }
@@ -211,6 +212,7 @@ model camp {
   location_updates         camp_location_update[]
   student_location_updates student_location_update[]
   project_document         camp_project_document?
+  camp_bus_teacher         camp_bus_teacher[]
 
   @@index([deletedAt])
   @@index([created_by_teacher_id])
@@ -411,11 +413,12 @@ model camp_bus {
   created_at             DateTime        @default(now())
   updated_at             DateTime        @updatedAt
 
-  camp        camp               @relation(fields: [camp_camp_id], references: [camp_id], onDelete: Cascade)
-  classroom   classrooms         @relation(fields: [classroom_classroom_id], references: [classroom_id])
-  floors      camp_bus_floor[]
-  assignments camp_bus_student[]
-  events      camp_bus_event[]
+  camp                camp               @relation(fields: [camp_camp_id], references: [camp_id], onDelete: Cascade)
+  classroom           classrooms         @relation(fields: [classroom_classroom_id], references: [classroom_id])
+  floors              camp_bus_floor[]
+  assignments         camp_bus_student[]
+  teacher_assignments camp_bus_teacher[]
+  events              camp_bus_event[]
 
   @@unique([camp_camp_id, classroom_classroom_id])
   @@index([camp_camp_id])
@@ -440,8 +443,9 @@ model camp_bus_position {
   seat_index     Int
   label          String @db.VarChar(20)
 
-  floor      camp_bus_floor    @relation(fields: [floor_floor_id], references: [floor_id], onDelete: Cascade)
-  assignment camp_bus_student?
+  floor              camp_bus_floor    @relation(fields: [floor_floor_id], references: [floor_id], onDelete: Cascade)
+  assignment         camp_bus_student?
+  teacher_assignment camp_bus_teacher?
 
   @@unique([floor_floor_id, row_number, seat_index])
   @@unique([floor_floor_id, label])
@@ -467,20 +471,47 @@ model camp_bus_student {
   @@index([bus_bus_id, participation_status])
 }
 
+model camp_bus_teacher {
+  assignment_id        Int                     @id @default(autoincrement())
+  camp_camp_id         Int
+  bus_bus_id           Int
+  teacher_teachers_id  Int
+  position_position_id Int?                    @unique
+  status               camp_bus_student_status @default(OFF_BUS)
+  last_boarded_at      DateTime?
+  removed_at           DateTime?
+  created_at           DateTime                @default(now())
+  updated_at           DateTime                @updatedAt
+
+  camp     camp               @relation(fields: [camp_camp_id], references: [camp_id], onDelete: Cascade)
+  bus      camp_bus           @relation(fields: [bus_bus_id], references: [bus_id], onDelete: Cascade)
+  teacher  teachers           @relation(fields: [teacher_teachers_id], references: [teachers_id], onDelete: Cascade)
+  position camp_bus_position? @relation(fields: [position_position_id], references: [position_id], onDelete: SetNull)
+  events   camp_bus_event[]
+
+  @@unique([camp_camp_id, teacher_teachers_id])
+  @@unique([bus_bus_id, teacher_teachers_id])
+  @@index([bus_bus_id, status])
+  @@index([bus_bus_id, removed_at])
+}
+
 model camp_bus_event {
   event_id              Int                 @id @default(autoincrement())
   bus_bus_id            Int
   student_assignment_id Int?
+  teacher_assignment_id Int?
   teacher_teachers_id   Int?
   event_type            camp_bus_event_type
   created_at            DateTime            @default(now())
 
   bus                camp_bus          @relation(fields: [bus_bus_id], references: [bus_id], onDelete: Cascade)
   student_assignment camp_bus_student? @relation(fields: [student_assignment_id], references: [assignment_id], onDelete: SetNull)
+  teacher_assignment camp_bus_teacher? @relation(fields: [teacher_assignment_id], references: [assignment_id], onDelete: SetNull)
   teacher            teachers?         @relation(fields: [teacher_teachers_id], references: [teachers_id], onDelete: SetNull)
 
   @@index([bus_bus_id, created_at])
   @@index([student_assignment_id, created_at])
+  @@index([teacher_assignment_id, created_at])
   @@index([event_type, created_at])
 }
 

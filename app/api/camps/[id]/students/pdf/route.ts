@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requireTeacher } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createCampStudentsPdf } from "@/lib/camp-students-export-pdf";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 
 export const runtime = "nodejs";
 
@@ -79,7 +80,7 @@ export async function GET(
 
     const enrollments = await prisma.student_enrollment.findMany({
       where: {
-        camp_camp_id: campId,
+        ...activeCampEnrollmentWhere(campId),
       },
       include: {
         student: {

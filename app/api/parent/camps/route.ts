@@ -29,9 +29,11 @@ export async function GET() {
     // 1. Find classrooms for the student
     const classrooms = await prisma.classrooms.findMany({
       where: {
+        deletedAt: null,
         classroom_students: {
           some: {
             student_students_id: studentId,
+            student: { deletedAt: null },
           },
         },
       },
@@ -55,13 +57,23 @@ export async function GET() {
         },
       },
       include: {
-        student_enrollment: true,
+        student_enrollment: {
+          where: { student: { deletedAt: null } },
+        },
         camp_classroom: {
           include: {
             classroom: {
               include: {
                 _count: {
-                  select: { classroom_students: true },
+                  select: {
+                    classroom_students: {
+                      where: { student: { deletedAt: null } },
+                    },
+                  },
+                },
+                classroom_students: {
+                  where: { student: { deletedAt: null } },
+                  select: { student_students_id: true },
                 },
               },
             },
@@ -84,6 +96,13 @@ export async function GET() {
     // 3. Transform – same shape as student camps
     const parentCamps = camps.map((camp) => {
       const enrollments = camp.student_enrollment;
+      const activeStudentIds = new Set(
+        camp.camp_classroom.flatMap((item) =>
+          item.classroom.classroom_students.map(
+            (classroomStudent) => classroomStudent.student_students_id,
+          ),
+        ),
+      );
       const myEnrollment = enrollments.find(
         (e) => e.student_students_id === studentId,
       );
@@ -95,7 +114,9 @@ export async function GET() {
         (sum, cc) => sum + (cc.classroom?._count?.classroom_students || 0),
         0,
       );
-      const totalEnrolled = enrollments.filter((e) => e.enrolled_at).length;
+      const totalEnrolled = enrollments.filter(
+        (e) => e.enrolled_at && activeStudentIds.has(e.student_students_id),
+      ).length;
 
       // Count missions
       const totalMissions =

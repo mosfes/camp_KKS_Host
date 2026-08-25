@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -18,7 +17,7 @@ export async function POST(request: Request, context: any) {
     return NextResponse.json({ error: "รหัสรถไม่ถูกต้อง" }, { status: 400 });
   }
 
-  const access = await requireSpecificCampBus(campId, busId);
+  const access = await requireSpecificCampBus(campId, busId, "operate");
 
   if (access.error) return access.error;
 

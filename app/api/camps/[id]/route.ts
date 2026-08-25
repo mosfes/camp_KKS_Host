@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 // Define the schema for camp validation
 const campSchema = z
@@ -184,13 +185,16 @@ export async function GET(request, context) {
             },
           },
           student_enrollment: {
+            where: { student: activeCampStudentWhere(campId) },
             select: { student_students_id: true },
           },
           camp_classroom: {
+            where: { classroom: { deletedAt: null } },
             select: {
               classroom: {
                 select: {
                   classroom_students: {
+                    where: { student: { deletedAt: null } },
                     select: { student_students_id: true },
                   },
                 },
@@ -261,6 +265,7 @@ export async function GET(request, context) {
           select: { firstname: true, lastname: true, email: true },
         },
         student_enrollment: {
+          where: { student: activeCampStudentWhere(campId) },
           include: {
             student: {
               select: {
@@ -284,7 +289,15 @@ export async function GET(request, context) {
             },
           },
         },
+        camp_bus_teacher: {
+          where: {
+            teacher_teachers_id: teacher.teachers_id,
+            removed_at: null,
+          },
+          select: { assignment_id: true },
+        },
         camp_classroom: {
+          where: { classroom: { deletedAt: null } },
           include: {
             classroom: {
               include: {
@@ -293,10 +306,13 @@ export async function GET(request, context) {
                 classroom_teacher: true,
                 _count: {
                   select: {
-                    classroom_students: true,
+                    classroom_students: {
+                      where: { student: { deletedAt: null } },
+                    },
                   },
                 },
                 classroom_students: {
+                  where: { student: { deletedAt: null } },
                   select: {
                     student_students_id: true,
                   },
@@ -402,6 +418,7 @@ export async function GET(request, context) {
           camp.created_by_teacher_id === teacher.teachers_id ||
           teacher.role === "ADMIN",
         isHomeroomTeacher,
+        isBusTeacher: camp.camp_bus_teacher.length > 0,
         total_eligible_students: totalEligibleStudents,
         enrolled_student_count: enrolledStudentCount,
         certificate_candidate_count: certificateCandidateIds.size,
@@ -410,7 +427,10 @@ export async function GET(request, context) {
         gradeDisplayList: gradeDisplayList,
         academicYear: campAcademicYear,
       },
-      { status: 200 },
+      {
+        status: 200,
+        headers: { "Cache-Control": "private, no-store" },
+      },
     );
   } catch {
     //     console.error("Error fetching camp:", error);

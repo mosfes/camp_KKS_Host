@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 
 export async function GET(request, { params }) {
   try {
@@ -26,7 +27,7 @@ export async function GET(request, { params }) {
 
     const enrollments = await prisma.student_enrollment.findMany({
       where: {
-        camp_camp_id: mission.station.camp_camp_id,
+        ...activeCampEnrollmentWhere(mission.station.camp_camp_id),
         enrolled_at: { not: null },
       },
       include: {

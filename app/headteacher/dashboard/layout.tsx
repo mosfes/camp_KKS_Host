@@ -135,6 +135,7 @@ const campMenuItems: SidebarMenuItem[] = [
 type CampAccess = {
   isOwner: boolean;
   isHomeroomTeacher: boolean;
+  isBusTeacher: boolean;
   hasTransport: boolean;
 };
 
@@ -168,6 +169,9 @@ function filterCampMenuItems(
 
   return items.filter((item) => {
     if (item.id === "bus" && !access.hasTransport) return false;
+    if (item.id === "bus") {
+      return access.isOwner || access.isHomeroomTeacher || access.isBusTeacher;
+    }
     if (item.access === "owner") return access.isOwner;
     if (item.access === "ownerOrHomeroom") {
       return access.isOwner || access.isHomeroomTeacher;
@@ -432,12 +436,17 @@ function TeacherSidebar({
         }`}
       >
         {!collapsed && (
-          <div className="flex items-center gap-2">
+          <button
+            aria-label="กลับหน้าค่ายที่เกี่ยวข้อง"
+            className="flex items-center gap-2 rounded-lg text-left transition-colors hover:text-[#5d7c6f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6b857a]"
+            type="button"
+            onClick={() => router.push("/headteacher/dashboard?tab=camp")}
+          >
             <div className="w-7 h-7 rounded-lg bg-[#5d7c6f] flex items-center justify-center">
               <LayoutDashboard className="text-white" size={14} />
             </div>
             <span className="text-sm font-semibold text-gray-700">เมนูครู</span>
-          </div>
+          </button>
         )}
         <button
           aria-label="Toggle sidebar"
@@ -547,12 +556,20 @@ function MobileSidebar({
         }`}
       >
         <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
+          <button
+            aria-label="กลับหน้าค่ายที่เกี่ยวข้อง"
+            className="flex items-center gap-2 rounded-lg text-left transition-colors hover:text-[#5d7c6f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6b857a]"
+            type="button"
+            onClick={() => {
+              router.push("/headteacher/dashboard?tab=camp");
+              setIsOpen(false);
+            }}
+          >
             <div className="w-8 h-8 rounded-lg bg-[#5d7c6f] flex items-center justify-center">
               <LayoutDashboard className="text-white" size={16} />
             </div>
             <span className="text-sm font-semibold text-gray-700">เมนูครู</span>
-          </div>
+          </button>
           <button
             className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
             onClick={() => setIsOpen(false)}
@@ -636,6 +653,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               ? {
                   isOwner: Boolean(data.isOwner),
                   isHomeroomTeacher: Boolean(data.isHomeroomTeacher),
+                  isBusTeacher: Boolean(data.isBusTeacher),
                   hasTransport: Boolean(data.hasTransport),
                 }
               : null,

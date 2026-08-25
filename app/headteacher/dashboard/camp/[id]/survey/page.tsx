@@ -137,15 +137,6 @@ function SurveyPageSkeleton() {
       {/* ── Top Header Bar Skeleton ── */}
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-md shadow-xs">
         <div className="mx-auto flex w-full max-w-6xl flex-col px-4 pt-4 pb-0 sm:px-8">
-          {/* Breadcrumb Skeleton */}
-          <div className="flex items-center gap-2 mb-3">
-            <SkeletonBlock className="h-3.5 w-16" />
-            <SkeletonBlock className="h-3.5 w-3" />
-            <SkeletonBlock className="h-3.5 w-24" />
-            <SkeletonBlock className="h-3.5 w-3" />
-            <SkeletonBlock className="h-3.5 w-20" />
-          </div>
-
           {/* Title & Actions Skeleton */}
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center pb-2">
             <div className="flex items-center gap-3">

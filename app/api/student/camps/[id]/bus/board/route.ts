@@ -28,6 +28,17 @@ export async function POST(request: Request, context: any) {
             camp_camp_id: campId,
             student_students_id: studentId,
             enrolled_at: { not: null },
+            student: { deletedAt: null },
+          },
+          bus: {
+            classroom: {
+              classroom_students: {
+                some: {
+                  student_students_id: studentId,
+                  student: { deletedAt: null },
+                },
+              },
+            },
           },
         },
         select: {

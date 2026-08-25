@@ -6,6 +6,7 @@ import {
   getCampLocationViewer,
 } from "@/lib/camp-location-auth";
 import { prisma } from "@/lib/db";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 import { getBangkokDateKey } from "@/lib/bangkok-date";
 
 const coordinateSchema = z.object({
@@ -148,7 +149,10 @@ export async function GET(
 
   if (viewer.kind === "teacher") {
     const enrollments = await prisma.student_enrollment.findMany({
-      where: { camp_camp_id: campId, enrolled_at: { not: null } },
+      where: {
+        ...activeCampEnrollmentWhere(campId),
+        enrolled_at: { not: null },
+      },
       orderBy: { student_students_id: "asc" },
       select: {
         location_sharing_enabled: true,

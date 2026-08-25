@@ -242,7 +242,6 @@ export async function GET(request) {
     }
 
     const isAdmin = teacher.role === "ADMIN";
-    const isCampLeader = teacher.role === "CAMP_LEADER";
 
     let whereCondition = {
       deletedAt: null,
@@ -252,6 +251,20 @@ export async function GET(request) {
     const orConditions = [
       // ผู้สร้างค่าย (ทุก role)
       { created_by_teacher_id: teacher.teachers_id },
+      // ครูที่เข้าร่วมค่ายหรือถูกจัดเป็นครูบนรถ
+      {
+        teacher_enrollment: {
+          some: { teacher_teachers_id: teacher.teachers_id },
+        },
+      },
+      {
+        camp_bus_teacher: {
+          some: {
+            teacher_teachers_id: teacher.teachers_id,
+            removed_at: null,
+          },
+        },
+      },
       // ครูประจำชั้นคนที่ 1 ของห้องเรียนที่เชื่อมกับค่ายนี้ (ทุก role)
       {
         camp_classroom: {
@@ -276,15 +289,6 @@ export async function GET(request) {
       },
     ];
 
-    // เพิ่ม teacher_enrollment เฉพาะ TEACHER role (ไม่ใช่ CAMP_LEADER) หรือ ADMIN
-    if (!isCampLeader || isAdmin) {
-      orConditions.splice(1, 0, {
-        teacher_enrollment: {
-          some: { teacher_teachers_id: teacher.teachers_id },
-        },
-      });
-    }
-
     if (!isAdmin) {
       whereCondition.OR = orConditions;
     }
@@ -304,11 +308,28 @@ export async function GET(request) {
             teacher_enrollment: true,
           },
         },
+        student_enrollment: {
+          where: {
+            enrolled_at: { not: null },
+            student: { deletedAt: null },
+          },
+          select: { student_students_id: true },
+        },
         camp_classroom: {
           include: {
             classroom: {
               include: {
-                _count: { select: { classroom_students: true } },
+                _count: {
+                  select: {
+                    classroom_students: {
+                      where: { student: { deletedAt: null } },
+                    },
+                  },
+                },
+                classroom_students: {
+                  where: { student: { deletedAt: null } },
+                  select: { student_students_id: true },
+                },
                 academic_years: true,
                 classroom_types: true,
                 teacher: {
@@ -332,6 +353,22 @@ export async function GET(request) {
 
     const campsWithMeta = camps.map((camp) => {
       const updated = { ...camp };
+
+      const eligibleStudentIds = new Set(
+        camp.camp_classroom.flatMap((item) =>
+          item.classroom.classroom_students.map(
+            (student) => student.student_students_id,
+          ),
+        ),
+      );
+
+      updated._count = {
+        ...camp._count,
+        student_enrollment: camp.student_enrollment.filter((enrollment) =>
+          eligibleStudentIds.has(enrollment.student_students_id),
+        ).length,
+      };
+      delete updated.student_enrollment;
 
       updated.isOwner =
         camp.created_by_teacher_id === teacher.teachers_id ||

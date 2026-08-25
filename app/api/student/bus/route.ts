@@ -49,6 +49,19 @@ export async function GET(request: Request) {
         camp: {
           deletedAt: null,
           has_transport: true,
+          camp_classroom: {
+            some: {
+              classroom: {
+                deletedAt: null,
+                classroom_students: {
+                  some: {
+                    student_students_id: Number(student.students_id),
+                    student: { deletedAt: null },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       select: {
@@ -61,6 +74,18 @@ export async function GET(request: Request) {
           },
         },
         camp_bus_student: {
+          where: {
+            bus: {
+              classroom: {
+                classroom_students: {
+                  some: {
+                    student_students_id: Number(student.students_id),
+                    student: { deletedAt: null },
+                  },
+                },
+              },
+            },
+          },
           take: 1,
           select: {
             status: true,

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { requireTeacher } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 // GET /api/surveys/results?campId=<id>
 export async function GET(request) {
@@ -47,12 +48,28 @@ export async function GET(request) {
       where: { camp_camp_id: cId },
       include: {
         _count: {
-          select: { survey_response: true },
+          select: {
+            survey_response: {
+              where: {
+                student_enrollment: {
+                  student: activeCampStudentWhere(cId),
+                },
+              },
+            },
+          },
         },
         survey_question: {
           orderBy: { question_id: "asc" },
           include: {
-            survey_answer: true,
+            survey_answer: {
+              where: {
+                survey_response: {
+                  student_enrollment: {
+                    student: activeCampStudentWhere(cId),
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -159,7 +176,12 @@ export async function GET(request) {
     });
 
     const responses = await prisma.survey_response.findMany({
-      where: { survey_survey_id: survey.survey_id },
+      where: {
+        survey_survey_id: survey.survey_id,
+        student_enrollment: {
+          student: activeCampStudentWhere(cId),
+        },
+      },
       orderBy: { submitted_at: "asc" },
       include: {
         student_enrollment: {

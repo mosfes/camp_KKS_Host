@@ -6,7 +6,6 @@ import {
   Users,
   LayoutDashboard,
   Shirt,
-  Award,
   CalendarDays,
   Bus,
   ChevronDown,
@@ -165,18 +164,6 @@ export default function StudentCampDetailSkeleton() {
                 <div className="h-11 w-full rounded-xl bg-[#5d7c6f]/30 animate-pulse" />
                 {/* Survey Button Skeleton */}
                 <div className="h-11 w-full rounded-xl bg-gray-200 animate-pulse" />
-
-                {/* Certificate Section Skeleton */}
-                <div className="pt-2 border-t border-gray-100 space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Award className="text-gray-400" size={14} />
-                    <span className="text-[11px] font-bold text-gray-400">
-                      เกียรติบัตร
-                    </span>
-                  </div>
-                  <div className="h-10 w-full rounded-xl bg-gray-100 border border-dashed border-gray-200 animate-pulse" />
-                  <div className="h-3 w-44 bg-gray-200 rounded mx-auto animate-pulse" />
-                </div>
               </div>
             </div>
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -19,7 +18,7 @@ export async function POST(request: Request, context: any) {
     return NextResponse.json({ error: "รหัสรถไม่ถูกต้อง" }, { status: 400 });
   }
 
-  const access = await requireSpecificCampBus(campId, busId);
+  const access = await requireSpecificCampBus(campId, busId, "operate");
 
   if (access.error) return access.error;
 
@@ -50,16 +49,20 @@ export async function POST(request: Request, context: any) {
         where: { bus_bus_id: busId, participation_status: "ACTIVE" },
         select: { position_position_id: true },
       });
+      const teacherAssignments = await tx.camp_bus_teacher.findMany({
+        where: { bus_bus_id: busId, removed_at: null },
+        select: { position_position_id: true },
+      });
+      const passengerAssignments = [...assignments, ...teacherAssignments];
 
       if (
-        assignments.length === 0 ||
-        assignments.every(
+        passengerAssignments.length === 0 ||
+        passengerAssignments.every(
           (assignment) => assignment.position_position_id === null,
         )
       ) {
         return {
-          error:
-            "กรุณาจัดที่นั่งให้นักเรียนที่ร่วมเดินทางอย่างน้อย 1 คนก่อนออกรถ",
+          error: "กรุณาจัดที่นั่งให้ผู้โดยสารอย่างน้อย 1 คนก่อนออกรถ",
           status: 400,
         };
       }
@@ -73,25 +76,54 @@ export async function POST(request: Request, context: any) {
     });
 
     if (body.status === "PARKED" && body.clearPassengers) {
-      const passengers = await tx.camp_bus_student.findMany({
-        where: { bus_bus_id: busId, status: "ON_BUS" },
-        select: { assignment_id: true },
-      });
-
-      await tx.camp_bus_student.updateMany({
-        where: { bus_bus_id: busId, status: "ON_BUS" },
-        data: { status: "OFF_BUS" },
-      });
-
-      if (passengers.length > 0) {
-        await tx.camp_bus_event.createMany({
-          data: passengers.map((passenger) => ({
+      const [studentPassengers, teacherPassengers] = await Promise.all([
+        tx.camp_bus_student.findMany({
+          where: { bus_bus_id: busId, status: "ON_BUS" },
+          select: { assignment_id: true },
+        }),
+        tx.camp_bus_teacher.findMany({
+          where: {
             bus_bus_id: busId,
-            student_assignment_id: passenger.assignment_id,
-            teacher_teachers_id: teacherId,
-            event_type: "ALIGHT",
-            created_at: eventAt,
-          })),
+            status: "ON_BUS",
+            removed_at: null,
+          },
+          select: { assignment_id: true },
+        }),
+      ]);
+
+      await Promise.all([
+        tx.camp_bus_student.updateMany({
+          where: { bus_bus_id: busId, status: "ON_BUS" },
+          data: { status: "OFF_BUS" },
+        }),
+        tx.camp_bus_teacher.updateMany({
+          where: {
+            bus_bus_id: busId,
+            status: "ON_BUS",
+            removed_at: null,
+          },
+          data: { status: "OFF_BUS" },
+        }),
+      ]);
+
+      if (studentPassengers.length > 0 || teacherPassengers.length > 0) {
+        await tx.camp_bus_event.createMany({
+          data: [
+            ...studentPassengers.map((passenger) => ({
+              bus_bus_id: busId,
+              student_assignment_id: passenger.assignment_id,
+              teacher_teachers_id: teacherId,
+              event_type: "ALIGHT" as const,
+              created_at: eventAt,
+            })),
+            ...teacherPassengers.map((passenger) => ({
+              bus_bus_id: busId,
+              teacher_assignment_id: passenger.assignment_id,
+              teacher_teachers_id: teacherId,
+              event_type: "ALIGHT" as const,
+              created_at: eventAt,
+            })),
+          ],
         });
       }
     }
@@ -126,8 +158,8 @@ export async function POST(request: Request, context: any) {
     message:
       result.status === "PARKED"
         ? result.clearPassengers
-          ? "รถจอดแล้ว และเปลี่ยนนักเรียนเป็นลงจากรถแล้ว"
-          : "รถจอดแล้ว นักเรียนที่ยังอยู่บนรถต้องกดลงจากรถเอง"
+          ? "รถจอดแล้ว และเคลียร์สถานะนักเรียนกับครูที่อยู่บนรถแล้ว"
+          : "รถจอดแล้ว นักเรียนและครูที่ยังอยู่บนรถต้องกดลงจากรถเอง"
         : "เปลี่ยนรถเป็นกำลังเดินทางแล้ว",
   });
 }

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { requireStudent } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 export async function GET(request: Request, context: any) {
   const { student, error: authError } = await requireStudent();
@@ -57,6 +58,17 @@ export async function GET(request: Request, context: any) {
           camp_camp_id: campId,
           student_students_id: studentId,
           enrolled_at: { not: null },
+          student: activeCampStudentWhere(campId),
+        },
+        bus: {
+          classroom: {
+            classroom_students: {
+              some: {
+                student_students_id: studentId,
+                student: { deletedAt: null },
+              },
+            },
+          },
         },
       },
       select: {
@@ -94,11 +106,24 @@ export async function GET(request: Request, context: any) {
       camp_camp_id: campId,
       student_students_id: studentId,
       enrolled_at: { not: null },
+      student: activeCampStudentWhere(campId),
     },
     select: {
       student_enrollment_id: true,
       camp: { select: { name: true, has_transport: true } },
       camp_bus_student: {
+        where: {
+          bus: {
+            classroom: {
+              classroom_students: {
+                some: {
+                  student_students_id: studentId,
+                  student: { deletedAt: null },
+                },
+              },
+            },
+          },
+        },
         select: {
           assignment_id: true,
           status: true,

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { requireTeacher } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 export async function POST(request) {
   const { teacher, error } = await requireTeacher();
@@ -47,7 +48,15 @@ export async function POST(request) {
       include: {
         survey_question: {
           include: {
-            survey_answer: true,
+            survey_answer: {
+              where: {
+                survey_response: {
+                  student_enrollment: {
+                    student: activeCampStudentWhere(cId),
+                  },
+                },
+              },
+            },
           },
         },
       },

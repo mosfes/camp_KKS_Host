@@ -75,11 +75,6 @@ function StudentPageSkeleton() {
       aria-label="กำลังโหลดข้อมูลนักเรียน"
       className="max-w-7xl mx-auto px-4 py-8"
     >
-      <div className="flex items-center gap-1 mb-6">
-        <SkeletonBlock className="h-3.5 w-3.5 rounded-full" />
-        <SkeletonBlock className="h-3 w-28" />
-      </div>
-
       <div className="flex items-center gap-2 mb-8">
         <SkeletonBlock className="h-5 w-5 rounded-lg" />
         <SkeletonBlock className="h-6 w-48" />

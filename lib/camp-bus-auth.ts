@@ -3,9 +3,16 @@ import { NextResponse } from "next/server";
 import { requireTeacher } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
+export type CampBusPermissionAction =
+  | "view"
+  | "operate"
+  | "configure"
+  | "manage-teachers";
+
 export async function requireCampBusPermission(
   campId: number,
   classroomId?: number,
+  action: CampBusPermissionAction = "configure",
 ) {
   const { teacher, error } = await requireTeacher();
 
@@ -31,6 +38,19 @@ export async function requireCampBusPermission(
           },
         },
       },
+      camp_bus: {
+        select: {
+          bus_id: true,
+          classroom_classroom_id: true,
+          teacher_assignments: {
+            where: {
+              teacher_teachers_id: teacherId,
+              removed_at: null,
+            },
+            select: { assignment_id: true },
+          },
+        },
+      },
     },
   });
 
@@ -46,8 +66,10 @@ export async function requireCampBusPermission(
     role === "ADMIN" ||
     role === "CAMP_LEADER" ||
     camp.created_by_teacher_id === teacherId;
+  const canManageTeachers =
+    role === "ADMIN" || camp.created_by_teacher_id === teacherId;
 
-  const classroomIds = camp.camp_classroom
+  const managedClassroomIds = camp.camp_classroom
     .filter(
       (item) =>
         item.classroom.teachers_teachers_id === teacherId ||
@@ -56,6 +78,19 @@ export async function requireCampBusPermission(
         ),
     )
     .map((item) => item.classroom_classroom_id);
+
+  const configurableClassroomIds = canManageAll
+    ? camp.camp_classroom.map((item) => item.classroom_classroom_id)
+    : managedClassroomIds;
+  const teacherBusIds = camp.camp_bus
+    .filter((bus) => bus.teacher_assignments.length > 0)
+    .map((bus) => bus.bus_id);
+  const teacherBusClassroomIds = camp.camp_bus
+    .filter((bus) => bus.teacher_assignments.length > 0)
+    .map((bus) => bus.classroom_classroom_id);
+  const viewableClassroomIds = Array.from(
+    new Set([...configurableClassroomIds, ...teacherBusClassroomIds]),
+  );
 
   if (classroomId !== undefined) {
     const classroomBelongsToCamp = camp.camp_classroom.some(
@@ -73,12 +108,24 @@ export async function requireCampBusPermission(
       };
     }
 
-    if (!canManageAll && !classroomIds.includes(classroomId)) {
+    const hasPermission =
+      action === "manage-teachers"
+        ? canManageTeachers
+        : action === "configure"
+          ? configurableClassroomIds.includes(classroomId)
+          : viewableClassroomIds.includes(classroomId);
+
+    if (!hasPermission) {
       return {
         teacher: null,
         camp: null,
         error: NextResponse.json(
-          { error: "คุณไม่มีสิทธิ์จัดการรถของห้องเรียนนี้" },
+          {
+            error:
+              action === "view"
+                ? "คุณไม่มีสิทธิ์ดูรถคันนี้"
+                : "คุณไม่มีสิทธิ์จัดการรถคันนี้",
+          },
           { status: 403 },
         ),
       };
@@ -90,13 +137,25 @@ export async function requireCampBusPermission(
     camp,
     error: null,
     canManageAll,
-    classroomIds: canManageAll
-      ? camp.camp_classroom.map((item) => item.classroom_classroom_id)
-      : classroomIds,
+    canManageTeachers,
+    classroomIds:
+      action === "configure"
+        ? configurableClassroomIds
+        : action === "manage-teachers"
+          ? canManageTeachers
+            ? camp.camp_classroom.map((item) => item.classroom_classroom_id)
+            : []
+          : viewableClassroomIds,
+    configurableClassroomIds,
+    teacherBusIds,
   };
 }
 
-export async function requireSpecificCampBus(campId: number, busId: number) {
+export async function requireSpecificCampBus(
+  campId: number,
+  busId: number,
+  action: CampBusPermissionAction = "configure",
+) {
   const bus = await prisma.camp_bus.findFirst({
     where: { bus_id: busId, camp_camp_id: campId },
     select: { bus_id: true, classroom_classroom_id: true },
@@ -113,6 +172,7 @@ export async function requireSpecificCampBus(campId: number, busId: number) {
   const permission = await requireCampBusPermission(
     campId,
     bus.classroom_classroom_id,
+    action,
   );
 
   return { bus, permission, error: permission.error };

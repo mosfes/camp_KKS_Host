@@ -18,15 +18,6 @@ function CertificateSkeleton() {
   return (
     <div className="min-h-screen bg-[#f5f5f2] px-4 pb-24 pt-6 sm:px-8">
       <div className="mx-auto max-w-[1440px] space-y-6">
-        {/* Breadcrumb Skeleton */}
-        <div className="flex items-center gap-2">
-          <SkeletonBlock className="h-4 w-20" />
-          <span className="text-gray-300">/</span>
-          <SkeletonBlock className="h-4 w-32" />
-          <span className="text-gray-300">/</span>
-          <SkeletonBlock className="h-4 w-28" />
-        </div>
-
         {/* Page Header Skeleton */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">

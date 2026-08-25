@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 
 // GET /api/attendance/[campId]/results?roundId=xxx
 export async function GET(request, { params }) {
@@ -17,7 +18,10 @@ export async function GET(request, { params }) {
 
   // ดึงรายชื่อนักเรียนที่ลงทะเบียน
   const enrollments = await prisma.student_enrollment.findMany({
-    where: { camp_camp_id: cid, enrolled_at: { not: null } },
+    where: {
+      ...activeCampEnrollmentWhere(cid),
+      enrolled_at: { not: null },
+    },
     include: { student: true },
   });
 

@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 import { requireStudent } from "@/lib/auth";
 import { recordStudentAttendanceOnce } from "@/lib/attendance-record";
 
@@ -102,6 +103,7 @@ export async function POST(req) {
         student_students_id: studentId,
         camp_camp_id: campId,
         enrolled_at: { not: null },
+        student: activeCampStudentWhere(campId),
       },
     });
 

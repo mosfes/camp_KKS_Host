@@ -1,42 +1,27 @@
-// @ts-nocheck
-
 import { NextResponse } from "next/server";
 
-import { requireStudent } from "@/lib/auth";
+import { requireTeacher } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-export async function POST(request: Request, context: any) {
-  const { student, error: authError } = await requireStudent();
+export async function POST(_request: Request, context: any) {
+  const { teacher, error: authError } = await requireTeacher();
 
   if (authError) return authError;
 
   const { id } = await context.params;
   const campId = Number(id);
-  const studentId = Number(student.students_id);
+  const teacherId = Number(teacher.teachers_id);
 
   if (!Number.isInteger(campId) || campId <= 0) {
     return NextResponse.json({ error: "รหัสค่ายไม่ถูกต้อง" }, { status: 400 });
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    const assignment = await tx.camp_bus_student.findFirst({
+    const assignment = await tx.camp_bus_teacher.findFirst({
       where: {
-        student_enrollment: {
-          camp_camp_id: campId,
-          student_students_id: studentId,
-          enrolled_at: { not: null },
-          student: { deletedAt: null },
-        },
-        bus: {
-          classroom: {
-            classroom_students: {
-              some: {
-                student_students_id: studentId,
-                student: { deletedAt: null },
-              },
-            },
-          },
-        },
+        camp_camp_id: campId,
+        teacher_teachers_id: teacherId,
+        removed_at: null,
       },
       select: {
         assignment_id: true,
@@ -46,7 +31,7 @@ export async function POST(request: Request, context: any) {
     });
 
     if (!assignment) {
-      return { error: "ยังไม่มีรถที่จัดให้คุณในค่ายนี้", status: 404 };
+      return { error: "ยังไม่มีรถที่จัดให้คุณ", status: 404 };
     }
 
     if (assignment.bus.status === "TRAVELING") {
@@ -61,23 +46,38 @@ export async function POST(request: Request, context: any) {
     }
 
     const alightedAt = new Date();
-
-    const updated = await tx.camp_bus_student.updateMany({
+    const updated = await tx.camp_bus_teacher.updateMany({
       where: {
         assignment_id: assignment.assignment_id,
         status: "ON_BUS",
+        removed_at: null,
       },
       data: { status: "OFF_BUS" },
     });
 
     if (updated.count === 0) {
-      return { alreadyAlighted: true };
+      const current = await tx.camp_bus_teacher.findUnique({
+        where: { assignment_id: assignment.assignment_id },
+        select: { status: true, removed_at: true },
+      });
+
+      if (!current || current.removed_at) {
+        return {
+          error: "รายการรถของคุณถูกเปลี่ยน กรุณาโหลดหน้าใหม่",
+          status: 409,
+        };
+      }
+
+      if (current.status === "OFF_BUS") return { alreadyAlighted: true };
+
+      return { error: "สถานะรถถูกเปลี่ยน กรุณาลองใหม่อีกครั้ง", status: 409 };
     }
 
     await tx.camp_bus_event.create({
       data: {
         bus_bus_id: assignment.bus.bus_id,
-        student_assignment_id: assignment.assignment_id,
+        teacher_assignment_id: assignment.assignment_id,
+        teacher_teachers_id: teacherId,
         event_type: "ALIGHT",
         created_at: alightedAt,
       },

@@ -21,24 +21,18 @@ export async function GET() {
   try {
     const classrooms = await prisma.classrooms.findMany({
       where: {
+        deletedAt: null,
         classroom_students: {
-          some: { student_students_id: studentId },
+          some: {
+            student_students_id: studentId,
+            student: { deletedAt: null },
+          },
         },
       },
       select: { classroom_id: true },
     });
 
-    let classroomIds = classrooms.map((classroom) => classroom.classroom_id);
-
-    // Keep the existing demo fallback, but do not load the classroom graph.
-    if (classroomIds.length === 0) {
-      const demoClassrooms = await prisma.classrooms.findMany({
-        where: { grade: "Level_4" },
-        select: { classroom_id: true },
-      });
-
-      classroomIds = demoClassrooms.map((classroom) => classroom.classroom_id);
-    }
+    const classroomIds = classrooms.map((classroom) => classroom.classroom_id);
 
     const camps = await prisma.camp.findMany({
       where: {

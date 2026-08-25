@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { recordStudentAttendanceOnce } from "@/lib/attendance-record";
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 // POST /api/attendance/[campId]/manual-checkin
 export async function POST(req, { params }) {
@@ -35,6 +36,23 @@ export async function POST(req, { params }) {
     }
 
     if (action === "checkin") {
+      const enrollment = await prisma.student_enrollment.findFirst({
+        where: {
+          camp_camp_id: cid,
+          student_students_id: Number(studentId),
+          enrolled_at: { not: null },
+          student: activeCampStudentWhere(cid),
+        },
+        select: { student_enrollment_id: true },
+      });
+
+      if (!enrollment) {
+        return NextResponse.json(
+          { error: "นักเรียนไม่ได้อยู่ในค่ายนี้แล้ว" },
+          { status: 403 },
+        );
+      }
+
       await recordStudentAttendanceOnce({
         sessionId: teacherSession.session_id,
         studentId,

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 import { isBangkokDateBefore } from "@/lib/bangkok-date";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 // GET /api/student/surveys?campId=<id> — ดึงแบบสอบถามเพื่อให้นักเรียนทำ (และเช็คว่าทำไปแล้วหรือยัง)
 export async function GET(request) {
@@ -58,6 +59,7 @@ export async function GET(request) {
         student_students_id: student.students_id,
         camp_camp_id: cId,
         enrolled_at: { not: null },
+        student: activeCampStudentWhere(cId),
       },
     });
 
@@ -160,6 +162,7 @@ export async function POST(request) {
         student_students_id: student.students_id,
         camp_camp_id: cId,
         enrolled_at: { not: null },
+        student: activeCampStudentWhere(cId),
       },
     });
 

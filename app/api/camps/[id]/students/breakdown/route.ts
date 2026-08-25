@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 export async function GET(
   request: Request,
@@ -53,7 +54,9 @@ export async function GET(
     const enrollments = await prisma.student_enrollment.findMany({
       where: {
         camp_camp_id: campId,
-        student: notSignificant,
+        student: {
+          AND: [activeCampStudentWhere(campId), notSignificant],
+        },
       },
       select: {
         student: {

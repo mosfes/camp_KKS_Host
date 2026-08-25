@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import {
+  activeCampEnrollmentWhere,
+  activeCampStudentWhere,
+} from "@/lib/active-camp-student";
 
 export async function GET(
   request: Request,
@@ -70,6 +74,13 @@ export async function GET(
         : remarkCondition;
     }
 
+    studentCondition = {
+      AND: [
+        activeCampStudentWhere(campId),
+        ...(Object.keys(studentCondition).length > 0 ? [studentCondition] : []),
+      ],
+    };
+
     const whereClause = {
       camp_camp_id: campId,
       ...(Object.keys(studentCondition).length > 0
@@ -128,8 +139,10 @@ export async function GET(
 
     if (includeSummary) {
       const significantWhere = (field: string) => ({
-        camp_camp_id: campId,
-        student: notSignificant(field),
+        ...activeCampEnrollmentWhere(campId),
+        student: {
+          AND: [activeCampStudentWhere(campId), notSignificant(field)],
+        },
       });
 
       const [
@@ -141,7 +154,9 @@ export async function GET(
         diseaseSamples,
         remarkSamples,
       ] = await Promise.all([
-        prisma.student_enrollment.count({ where: { camp_camp_id: campId } }),
+        prisma.student_enrollment.count({
+          where: activeCampEnrollmentWhere(campId),
+        }),
         prisma.student_enrollment.count({
           where: significantWhere("food_allergy"),
         }),

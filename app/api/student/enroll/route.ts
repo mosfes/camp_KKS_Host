@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 import { isBangkokDateInRange } from "@/lib/bangkok-date";
 import { positiveIntSchema } from "@/lib/api-validation";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 
 // POST: ลงทะเบียนเข้าร่วมค่าย
 export async function POST(req) {
@@ -27,7 +28,23 @@ export async function POST(req) {
     const campId = campIdResult.data;
 
     const camp = await prisma.camp.findFirst({
-      where: { camp_id: campId, deletedAt: null },
+      where: {
+        camp_id: campId,
+        deletedAt: null,
+        camp_classroom: {
+          some: {
+            classroom: {
+              deletedAt: null,
+              classroom_students: {
+                some: {
+                  student_students_id: studentId,
+                  student: { deletedAt: null },
+                },
+              },
+            },
+          },
+        },
+      },
       select: {
         status: true,
         start_regis_date: true,
@@ -37,7 +54,15 @@ export async function POST(req) {
         camp_classroom: {
           select: {
             classroom: {
-              select: { _count: { select: { classroom_students: true } } },
+              select: {
+                _count: {
+                  select: {
+                    classroom_students: {
+                      where: { student: { deletedAt: null } },
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -107,7 +132,10 @@ export async function POST(req) {
       }
 
       const totalEnrolled = await tx.student_enrollment.count({
-        where: { camp_camp_id: campId, enrolled_at: { not: null } },
+        where: {
+          ...activeCampEnrollmentWhere(campId),
+          enrolled_at: { not: null },
+        },
       });
 
       if (totalCapacity > 0 && totalEnrolled >= totalCapacity) {

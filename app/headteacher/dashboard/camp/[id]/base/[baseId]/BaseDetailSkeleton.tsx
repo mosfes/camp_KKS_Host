@@ -16,17 +16,6 @@ export default function BaseDetailSkeleton() {
       role="status"
     >
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Breadcrumb Navigation Skeleton */}
-        <div className="flex items-center gap-2 mb-6">
-          <SkeletonBlock className="h-4 w-16" />
-          <span className="text-gray-300">/</span>
-          <SkeletonBlock className="h-4 w-28" />
-          <span className="text-gray-300">/</span>
-          <SkeletonBlock className="h-4 w-20" />
-          <span className="text-gray-300">/</span>
-          <SkeletonBlock className="h-4 w-20" />
-        </div>
-
         {/* Base Title & Description Skeleton */}
         <div className="flex justify-between items-start mb-8">
           <div className="space-y-2">

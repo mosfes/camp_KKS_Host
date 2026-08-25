@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 import { isBangkokDateBefore } from "@/lib/bangkok-date";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 async function verifyQRPayload(payload) {
   try {
@@ -37,6 +38,7 @@ async function recordCompletion(studentId, missionId, campId) {
       student_students_id: studentId,
       camp_camp_id: campId,
       enrolled_at: { not: null },
+      student: activeCampStudentWhere(campId),
     },
   });
 

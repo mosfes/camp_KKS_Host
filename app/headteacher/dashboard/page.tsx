@@ -24,6 +24,10 @@ import {
   Search,
   Sparkles,
   Flag,
+  Bus,
+  CheckCircle2,
+  LogOut,
+  RefreshCw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -196,6 +200,74 @@ const fetcher = async (url: string) => {
   return data;
 };
 
+interface TeacherBusPosition {
+  label: string;
+  seatIndex: number;
+  floorNumber: number;
+}
+
+interface TeacherBusShortcut {
+  assignmentId: number;
+  campId: number;
+  campName: string;
+  configured: true;
+  bus: {
+    busId: number;
+    name: string;
+    registrationPlate: string | null;
+    status: "PARKED" | "TRAVELING";
+    floorCount: number;
+  };
+  teacher: {
+    status: "ON_BUS" | "OFF_BUS";
+    isOnBus: boolean;
+    lastBoardedAt: string | null;
+    position: TeacherBusPosition | null;
+  };
+}
+
+interface TeacherBusResponse {
+  assignments: TeacherBusShortcut[];
+}
+
+const formatTeacherBusCheckedAt = (value?: string | null) => {
+  if (!value) return "";
+
+  return new Date(value).toLocaleTimeString("th-TH", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: BANGKOK_TIME_ZONE,
+  });
+};
+
+const formatTeacherBusSeat = (assignment: TeacherBusShortcut) => {
+  const position = assignment.teacher.position;
+
+  if (!position) return "ยังไม่ได้จัดที่นั่ง";
+
+  const floorLabel =
+    assignment.bus.floorCount > 1
+      ? `${
+          position.floorNumber === 1
+            ? "ชั้นล่าง"
+            : position.floorNumber === 2
+              ? "ชั้นบน"
+              : `ชั้น ${position.floorNumber}`
+        } · `
+      : "";
+  const seatLetter = position.label.trim().charAt(0).toUpperCase();
+  const seatSide =
+    seatLetter === "A" || seatLetter === "D"
+      ? "ติดหน้าต่าง"
+      : seatLetter === "B" || seatLetter === "C"
+        ? "ทางเดิน"
+        : position.seatIndex === 0 || position.seatIndex === 3
+          ? "ติดหน้าต่าง"
+          : "ทางเดิน";
+
+  return `${floorLabel}${position.label} · ${seatSide}`;
+};
+
 function DashboardContent() {
   const { showSuccess, showError, showConfirm, setIsLoading } =
     useStatusModal();
@@ -225,6 +297,11 @@ function DashboardContent() {
     "/api/teacher/homeroom",
     fetcher,
   );
+  const { data: teacherBusData, mutate: mutateTeacherBus } =
+    useSWR<TeacherBusResponse>("/api/teacher/bus", fetcher, {
+      refreshInterval: 15_000,
+      revalidateOnFocus: true,
+    });
 
   const academicYears = useMemo(() => {
     if (Array.isArray(dbAcademicYears)) return dbAcademicYears;
@@ -245,6 +322,107 @@ function DashboardContent() {
   const [selectedTemplateData, setSelectedTemplateData] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<number | null>(null);
+  const [changingBusCampId, setChangingBusCampId] = useState<number | null>(
+    null,
+  );
+  const [refreshingBus, setRefreshingBus] = useState(false);
+  const [busRefreshCooldown, setBusRefreshCooldown] = useState(0);
+
+  const busAssignments = teacherBusData?.assignments ?? [];
+
+  useEffect(() => {
+    if (busRefreshCooldown <= 0) return;
+
+    const timer = window.setInterval(() => {
+      setBusRefreshCooldown((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [busRefreshCooldown]);
+
+  const handleManualRefreshBus = async () => {
+    if (refreshingBus || busRefreshCooldown > 0) return;
+
+    setRefreshingBus(true);
+
+    try {
+      const response = await fetch("/api/teacher/bus?manual=1", {
+        cache: "no-store",
+      });
+      const result = await readResponseBody(response);
+
+      if (!response.ok) {
+        throw new Error(result?.error || "โหลดสถานะรถไม่สำเร็จ");
+      }
+
+      await mutateTeacherBus(result, false);
+      showSuccess("สำเร็จ", "อัปเดตสถานะรถแล้ว");
+    } catch (error) {
+      showError(
+        "อัปเดตไม่สำเร็จ",
+        error instanceof Error ? error.message : "ไม่สามารถอัปเดตสถานะรถได้",
+      );
+    } finally {
+      setRefreshingBus(false);
+      setBusRefreshCooldown(5);
+    }
+  };
+
+  const changeTeacherBusStatus = async (
+    assignment: TeacherBusShortcut,
+    action: "board" | "alight",
+  ) => {
+    if (changingBusCampId !== null) return;
+
+    if (assignment.bus.status === "TRAVELING") {
+      showError("รถกำลังเดินทาง", "กรุณารอรถจอดก่อนเปลี่ยนสถานะขึ้นหรือลงรถ");
+
+      return;
+    }
+
+    setChangingBusCampId(assignment.campId);
+
+    try {
+      const response = await fetch(
+        `/api/teacher/camps/${assignment.campId}/bus/${action}`,
+        { method: "POST" },
+      );
+      const result = await readResponseBody(response);
+
+      if (!response.ok) {
+        throw new Error(result?.error || "บันทึกสถานะรถไม่สำเร็จ");
+      }
+
+      await mutateTeacherBus();
+      showSuccess(
+        "สำเร็จ",
+        result?.message ||
+          (action === "board"
+            ? "เช็คชื่อขึ้นรถสำเร็จ"
+            : "บันทึกว่าลงจากรถแล้ว"),
+      );
+    } catch (error) {
+      await mutateTeacherBus();
+      showError(
+        "บันทึกไม่สำเร็จ",
+        error instanceof Error ? error.message : "ไม่สามารถบันทึกสถานะรถได้",
+      );
+    } finally {
+      setChangingBusCampId(null);
+    }
+  };
+
+  const requestTeacherBusStatusChange = (assignment: TeacherBusShortcut) => {
+    const action = assignment.teacher.isOnBus ? "alight" : "board";
+    const actionLabel = action === "board" ? "ขึ้นรถ" : "ลงจากรถ";
+
+    showConfirm(
+      `ยืนยัน${actionLabel}`,
+      `คุณต้องการยืนยัน${actionLabel} ${assignment.bus.name} ใช่หรือไม่?`,
+      () => changeTeacherBusStatus(assignment, action),
+      `ยืนยัน${actionLabel}`,
+    );
+  };
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -774,6 +952,187 @@ function DashboardContent() {
             <Flag size={160} />
           </div>
         </div>
+
+        {/* Teacher transportation shortcuts */}
+        {busAssignments.length > 0 && (
+          <section
+            aria-labelledby="teacher-transport-heading"
+            className="mb-8 space-y-3"
+          >
+            <div className="flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e8f0ee] text-[#3d6357]">
+                  <Bus size={18} />
+                </div>
+                <div>
+                  <h2
+                    className="text-base font-semibold text-gray-900"
+                    id="teacher-transport-heading"
+                  >
+                    การเดินทางของฉัน
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    ตรวจสอบสถานะรถและที่นั่ง พร้อมยืนยันขึ้นรถ/ลงจากรถ
+                  </p>
+                </div>
+              </div>
+              <button
+                aria-label={
+                  busRefreshCooldown > 0
+                    ? `กรุณารอ ${busRefreshCooldown} วินาที`
+                    : "รีเฟรชสถานะรถ"
+                }
+                className={`flex h-9 items-center justify-center rounded-xl text-[#3d6357] transition hover:bg-[#e8f0ee] disabled:cursor-not-allowed disabled:opacity-60 ${
+                  busRefreshCooldown > 0 ? "gap-1.5 px-2.5" : "w-9 shrink-0"
+                }`}
+                disabled={refreshingBus || busRefreshCooldown > 0}
+                title={
+                  busRefreshCooldown > 0
+                    ? `กรุณารอ ${busRefreshCooldown} วินาทีก่อนรีเฟรชใหม่`
+                    : "รีเฟรชสถานะรถ"
+                }
+                type="button"
+                onClick={() => void handleManualRefreshBus()}
+              >
+                <RefreshCw
+                  className={refreshingBus ? "animate-spin" : undefined}
+                  size={16}
+                />
+                {busRefreshCooldown > 0 && (
+                  <span className="text-xs font-semibold tabular-nums">
+                    {busRefreshCooldown}s
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <div
+              className={`grid gap-4 ${
+                busAssignments.length === 1
+                  ? "grid-cols-1"
+                  : "grid-cols-1 md:grid-cols-2"
+              }`}
+            >
+              {busAssignments.map((assignment) => {
+                const isOnBus = assignment.teacher.isOnBus;
+                const isTraveling = assignment.bus.status === "TRAVELING";
+                const position = assignment.teacher.position;
+                const isChanging = changingBusCampId === assignment.campId;
+                const checkedAt = formatTeacherBusCheckedAt(
+                  assignment.teacher.lastBoardedAt,
+                );
+
+                return (
+                  <div
+                    key={assignment.assignmentId}
+                    className="w-full rounded-2xl border border-gray-200/80 bg-white p-5 text-left shadow-xs transition-all hover:border-[#5d7c6f]/40 hover:shadow-md"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-[#5d7c6f]">
+                          {assignment.campName}
+                        </p>
+                        <h3 className="mt-0.5 truncate text-base font-bold text-gray-900 sm:text-lg">
+                          {assignment.bus.name}
+                        </h3>
+                        {assignment.bus.registrationPlate && (
+                          <p className="mt-0.5 text-xs text-gray-500">
+                            ทะเบียน {assignment.bus.registrationPlate}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            isTraveling
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {isTraveling ? "กำลังเดินทาง" : "รถจอด"}
+                        </span>
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                            isOnBus
+                              ? "border-emerald-200/60 bg-emerald-50 text-emerald-700"
+                              : "border-gray-200 bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {isOnBus
+                            ? `อยู่บนรถแล้ว${checkedAt ? ` · ${checkedAt} น.` : ""}`
+                            : position
+                              ? "พร้อมเช็กชื่อ"
+                              : "รอจัดที่นั่ง"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3.5 pt-3.5 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e8f0ee] text-[#3d6357]">
+                          <Bus size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-gray-400">
+                            ที่นั่งของคุณ
+                          </p>
+                          <p className="truncate text-xs font-bold text-gray-800 sm:text-sm">
+                            {formatTeacherBusSeat(assignment)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        <Button
+                          className="font-semibold text-[#3d6357]"
+                          size="sm"
+                          variant="flat"
+                          onPress={() =>
+                            router.push(
+                              `/headteacher/dashboard/camp/${assignment.campId}/bus-checkin`,
+                            )
+                          }
+                        >
+                          ดูรายละเอียดรถ
+                        </Button>
+                        <Button
+                          className={
+                            isOnBus
+                              ? "bg-amber-100 font-bold text-amber-900"
+                              : "bg-[#5d7c6f] font-bold text-white"
+                          }
+                          isDisabled={
+                            isTraveling ||
+                            changingBusCampId !== null ||
+                            (!isOnBus && !position)
+                          }
+                          isLoading={isChanging}
+                          size="sm"
+                          startContent={
+                            isChanging ? null : isOnBus ? (
+                              <LogOut size={15} />
+                            ) : (
+                              <CheckCircle2 size={15} />
+                            )
+                          }
+                          onPress={() =>
+                            requestTeacherBusStatusChange(assignment)
+                          }
+                        >
+                          {isTraveling
+                            ? "รถกำลังเดินทาง"
+                            : isOnBus
+                              ? "ลงจากรถ"
+                              : "ยืนยันขึ้นรถ"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Homeroom Tab */}
         {selectedTab === "homeroom" && (

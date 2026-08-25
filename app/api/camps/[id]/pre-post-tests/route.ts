@@ -2,15 +2,17 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 
 export async function GET(request, { params }) {
   try {
     const { id: campId } = await params;
+    const parsedCampId = parseInt(campId);
 
     // Fetch all stations in the camp with PRE_TEST and POST_TEST missions
     const stations = await prisma.station.findMany({
       where: {
-        camp_camp_id: parseInt(campId),
+        camp_camp_id: parsedCampId,
         deletedAt: null,
       },
       include: {
@@ -47,7 +49,7 @@ export async function GET(request, { params }) {
     // of repeating the same query inside the station loop below.
     const enrollments = await prisma.student_enrollment.findMany({
       where: {
-        camp_camp_id: parseInt(campId),
+        ...activeCampEnrollmentWhere(parsedCampId),
         enrolled_at: { not: null },
       },
       select: {

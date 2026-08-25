@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 
 export async function GET(request, context) {
   const { teacher, error: authError } = await requireTeacher();
@@ -80,6 +81,7 @@ export async function GET(request, context) {
         classroom: {
           include: {
             classroom_students: {
+              where: { student: { deletedAt: null } },
               include: {
                 student: {
                   select: {
@@ -121,7 +123,7 @@ export async function GET(request, context) {
     // too, because bulk certificate generation can issue certificates to them.
     const enrollments = await prisma.student_enrollment.findMany({
       where: {
-        camp_camp_id: campId,
+        ...activeCampEnrollmentWhere(campId),
       },
       include: {
         student: {

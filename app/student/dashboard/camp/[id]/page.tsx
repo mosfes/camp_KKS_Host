@@ -53,6 +53,155 @@ const QrScanner = dynamic(() => import("@/components/QrScanner"), {
 
 const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL"];
 
+type CertificateRequirements = {
+  missionCompletionPercent?: number;
+  totalMissions?: number;
+  completedMissions?: number;
+  requiredMissions?: number;
+  missionRequirementMet?: boolean;
+  requiresSurvey?: boolean;
+  hasSurvey?: boolean;
+  surveyCompleted?: boolean;
+  surveyRequirementMet?: boolean;
+  hasIssuedCertificate?: boolean;
+};
+
+function CertificateActionSection({
+  hasCertificate,
+  requirements,
+  surveyCompleted,
+  compact = false,
+  onOpen,
+}: {
+  hasCertificate: boolean;
+  requirements?: CertificateRequirements;
+  surveyCompleted: boolean;
+  compact?: boolean;
+  onOpen: () => void;
+}) {
+  if (!hasCertificate) return null;
+
+  const totalMissions = requirements?.totalMissions ?? 0;
+  const requiredMissions = requirements?.requiredMissions ?? 0;
+  const completedMissions = requirements?.completedMissions ?? 0;
+  const missionRequirementMet = requirements?.missionRequirementMet ?? false;
+  const requiresSurvey = requirements?.requiresSurvey ?? false;
+  const hasSurvey = requirements?.hasSurvey ?? false;
+  const surveyIsCompleted = Boolean(
+    surveyCompleted || requirements?.surveyCompleted,
+  );
+  const surveyRequirementMet =
+    !requiresSurvey ||
+    surveyIsCompleted ||
+    (requirements?.surveyRequirementMet ?? false);
+  const hasIssuedCertificate = requirements?.hasIssuedCertificate ?? false;
+  const canDownload =
+    hasIssuedCertificate || (missionRequirementMet && surveyRequirementMet);
+  const hasMissionRequirement = totalMissions > 0 && requiredMissions > 0;
+  const hasAdditionalRequirements = hasMissionRequirement || requiresSurvey;
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-gray-100 pt-2.5">
+      <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-gray-400">
+        <Award size={compact ? 14 : 13} />
+        <span>เกียรติบัตร</span>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+        <p className="mb-2 text-[11px] font-bold text-slate-600">
+          เงื่อนไขการรับเกียรติบัตร
+        </p>
+        <div className="space-y-2">
+          {hasMissionRequirement && (
+            <div className="flex items-start gap-2">
+              <CheckCircle2
+                className={
+                  missionRequirementMet
+                    ? "mt-0.5 shrink-0 text-emerald-600"
+                    : "mt-0.5 shrink-0 text-gray-300"
+                }
+                size={15}
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold leading-snug text-slate-700">
+                  ทำภารกิจอย่างน้อย {requiredMissions} จาก {totalMissions}
+                  ภารกิจ
+                  {requirements?.missionCompletionPercent != null &&
+                    ` (${requirements.missionCompletionPercent}%)`}
+                </p>
+                <p className="mt-0.5 text-[10px] text-slate-500">
+                  ตอนนี้ทำสำเร็จแล้ว {completedMissions} ภารกิจ
+                </p>
+              </div>
+            </div>
+          )}
+
+          {requiresSurvey && (
+            <div className="flex items-start gap-2">
+              <CheckCircle2
+                className={
+                  surveyRequirementMet
+                    ? "mt-0.5 shrink-0 text-emerald-600"
+                    : "mt-0.5 shrink-0 text-gray-300"
+                }
+                size={15}
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold leading-snug text-slate-700">
+                  ทำแบบประเมินของค่ายให้เสร็จ
+                </p>
+                {!hasSurvey && !surveyIsCompleted && (
+                  <p className="mt-0.5 text-[10px] text-amber-600">
+                    รอครูเปิดแบบประเมินของค่ายนี้
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!hasAdditionalRequirements && (
+            <div className="flex items-start gap-2">
+              <CheckCircle2
+                className="mt-0.5 shrink-0 text-emerald-600"
+                size={15}
+              />
+              <p className="text-xs font-semibold leading-snug text-slate-700">
+                ลงทะเบียนเข้าร่วมค่ายแล้วรับเกียรติบัตรได้
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Button
+        fullWidth
+        className={`${compact ? "text-xs" : "text-sm"} h-10 rounded-xl font-bold ${
+          canDownload
+            ? "bg-slate-700 text-white shadow-sm shadow-slate-700/20 hover:bg-slate-800"
+            : "border border-dashed border-gray-200 bg-gray-50 text-gray-400"
+        }`}
+        isDisabled={!canDownload}
+        startContent={
+          canDownload ? (
+            <Download size={compact ? 16 : 18} />
+          ) : (
+            <Award className="opacity-40" size={compact ? 16 : 18} />
+          )
+        }
+        onPress={onOpen}
+      >
+        ดาวน์โหลดเกียรติบัตร
+      </Button>
+
+      {!canDownload && (
+        <p className="flex items-center justify-center gap-1 text-center text-[11px] font-medium text-gray-400">
+          <Lock size={11} /> ทำเงื่อนไขด้านบนให้ครบก่อนดาวน์โหลด
+        </p>
+      )}
+    </div>
+  );
+}
+
 function formatDate(dateString: string, endDate?: string) {
   if (!dateString) return "";
 
@@ -1018,68 +1167,16 @@ export default function StudentCampDetailPage() {
                     </Button>
                   )}
 
-                  {/* Certificate Section */}
-                  {(() => {
-                    const hasCertTemplate = !!camp?.img_certificate_url;
-                    const requirements = camp?.certificateRequirements;
-                    const hasIssuedCertificate =
-                      requirements?.hasIssuedCertificate ?? false;
-                    const missionRequirementMet =
-                      requirements?.missionRequirementMet ?? false;
-                    const surveyRequirementMet =
-                      !requirements?.requiresSurvey || surveyCompleted;
-                    const canDownloadCert =
-                      hasCertTemplate &&
-                      (hasIssuedCertificate ||
-                        (missionRequirementMet && surveyRequirementMet));
-
-                    const certLockReason = !hasCertTemplate
-                      ? "ยังไม่มีเทมเพลตเกียรติบัตร"
-                      : !missionRequirementMet && !hasIssuedCertificate
-                        ? `ต้องทำภารกิจอย่างน้อย ${requirements?.requiredMissions ?? 0} ใน ${requirements?.totalMissions ?? 0}`
-                        : !surveyRequirementMet && !hasIssuedCertificate
-                          ? "ต้องทำแบบประเมินก่อน"
-                          : null;
-
-                    return (
-                      <div className="pt-2 border-t border-gray-100">
-                        <p className="text-[11px] font-bold text-gray-400 mb-2 flex items-center gap-1.5">
-                          <Award size={14} /> เกียรติบัตร
-                        </p>
-                        {!canDownloadCert ? (
-                          <div>
-                            <Button
-                              fullWidth
-                              isDisabled
-                              className="font-bold text-xs h-10 rounded-xl bg-gray-50 text-gray-400 border border-dashed border-gray-200"
-                              startContent={
-                                <Award className="opacity-40" size={16} />
-                              }
-                            >
-                              ดาวน์โหลดเกียรติบัตร
-                            </Button>
-                            {certLockReason && (
-                              <p className="text-[11px] text-gray-400 text-center mt-1.5 flex items-center justify-center gap-1">
-                                <Lock size={11} /> {certLockReason}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <Button
-                            fullWidth
-                            className="font-bold text-xs h-10 rounded-xl bg-slate-800 text-white shadow-sm hover:bg-slate-900 transition-all"
-                            startContent={<Download size={16} />}
-                            onPress={() => {
-                              setCertImageLoading(true);
-                              setIsCertPreviewModalOpen(true);
-                            }}
-                          >
-                            ดาวน์โหลดเกียรติบัตร
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  <CertificateActionSection
+                    compact
+                    hasCertificate={!!camp.img_certificate_url}
+                    requirements={camp.certificateRequirements}
+                    surveyCompleted={surveyCompleted}
+                    onOpen={() => {
+                      setCertImageLoading(true);
+                      setIsCertPreviewModalOpen(true);
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -1220,24 +1317,6 @@ export default function StudentCampDetailPage() {
                   {(() => {
                     const hasCertTemplate = !!camp?.img_certificate_url;
                     const requirements = camp?.certificateRequirements;
-                    const hasIssuedCertificate =
-                      requirements?.hasIssuedCertificate ?? false;
-                    const missionRequirementMet =
-                      requirements?.missionRequirementMet ?? false;
-                    const surveyRequirementMet =
-                      !requirements?.requiresSurvey || surveyCompleted;
-                    const canDownloadCert =
-                      hasCertTemplate &&
-                      (hasIssuedCertificate ||
-                        (missionRequirementMet && surveyRequirementMet));
-
-                    const certLockReason = !hasCertTemplate
-                      ? "ยังไม่มีเทมเพลตเกียรติบัตร"
-                      : !missionRequirementMet && !hasIssuedCertificate
-                        ? `ต้องทำภารกิจอย่างน้อย ${requirements?.requiredMissions ?? 0} ใน ${requirements?.totalMissions ?? 0} (ตอนนี้ ${requirements?.completedMissions ?? 0})`
-                        : !surveyRequirementMet && !hasIssuedCertificate
-                          ? "ต้องทำแบบประเมินก่อน"
-                          : null;
 
                     return (
                       <>
@@ -1281,47 +1360,15 @@ export default function StudentCampDetailPage() {
                                     : "ทำแบบประเมิน"}
                                 </Button>
                               )}
-                              <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2.5">
-                                <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-gray-400">
-                                  <Award size={13} />
-                                  <span>เกียรติบัตร</span>
-                                </div>
-                                {!canDownloadCert ? (
-                                  <div className="flex flex-col gap-1.5">
-                                    <Button
-                                      fullWidth
-                                      isDisabled
-                                      className="font-bold text-sm h-10 rounded-xl bg-gray-50 text-gray-400 border border-gray-200 border-dashed"
-                                      startContent={
-                                        <Award
-                                          className="opacity-40"
-                                          size={18}
-                                        />
-                                      }
-                                    >
-                                      ดาวน์โหลดเกียรติบัตร
-                                    </Button>
-                                    {certLockReason && (
-                                      <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 font-medium">
-                                        <Lock size={11} />
-                                        <span>{certLockReason}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <Button
-                                    fullWidth
-                                    className="font-bold text-sm h-10 rounded-xl bg-slate-700 text-white shadow-sm shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
-                                    startContent={<Download size={18} />}
-                                    onPress={() => {
-                                      setCertImageLoading(true);
-                                      setIsCertPreviewModalOpen(true);
-                                    }}
-                                  >
-                                    ดาวน์โหลดเกียรติบัตร
-                                  </Button>
-                                )}
-                              </div>
+                              <CertificateActionSection
+                                hasCertificate={hasCertTemplate}
+                                requirements={requirements}
+                                surveyCompleted={surveyCompleted}
+                                onOpen={() => {
+                                  setCertImageLoading(true);
+                                  setIsCertPreviewModalOpen(true);
+                                }}
+                              />
                             </>
                           ) : (
                             <>
@@ -1398,47 +1445,15 @@ export default function StudentCampDetailPage() {
                                 )}
                               </div>
 
-                              <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-2.5">
-                                <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-gray-400">
-                                  <Award size={13} />
-                                  <span>เกียรติบัตร</span>
-                                </div>
-                                {!canDownloadCert ? (
-                                  <div className="flex flex-col gap-1.5">
-                                    <Button
-                                      fullWidth
-                                      isDisabled
-                                      className="font-bold text-sm h-10 rounded-xl bg-gray-50 text-gray-400 border border-dashed border-gray-200"
-                                      startContent={
-                                        <Award
-                                          className="opacity-40"
-                                          size={18}
-                                        />
-                                      }
-                                    >
-                                      ดาวน์โหลดเกียรติบัตร
-                                    </Button>
-                                    {certLockReason && (
-                                      <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 font-medium">
-                                        <Lock size={11} />
-                                        <span>{certLockReason}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <Button
-                                    fullWidth
-                                    className="font-bold text-sm h-10 rounded-xl bg-slate-700 text-white shadow-sm shadow-slate-700/20 hover:bg-slate-800 active:scale-[0.98] transition-all"
-                                    startContent={<Download size={18} />}
-                                    onPress={() => {
-                                      setCertImageLoading(true);
-                                      setIsCertPreviewModalOpen(true);
-                                    }}
-                                  >
-                                    ดาวน์โหลดเกียรติบัตร
-                                  </Button>
-                                )}
-                              </div>
+                              <CertificateActionSection
+                                hasCertificate={hasCertTemplate}
+                                requirements={requirements}
+                                surveyCompleted={surveyCompleted}
+                                onOpen={() => {
+                                  setCertImageLoading(true);
+                                  setIsCertPreviewModalOpen(true);
+                                }}
+                              />
                             </>
                           )}
                         </div>
@@ -1546,15 +1561,23 @@ export default function StudentCampDetailPage() {
                                   {slot.endTime?.slice(0, 5)}
                                 </span>
                                 {isCurrent && (
-                                  <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white">
+                                  <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white md:hidden">
                                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
                                     กำลังดำเนินการ
                                   </span>
                                 )}
                               </div>
-                              <p className="min-w-0 flex-1 text-sm leading-relaxed text-gray-700">
-                                {slot.activity}
-                              </p>
+                              <div className="min-w-0 flex-1 md:flex md:items-center md:gap-2">
+                                <p className="text-sm leading-relaxed text-gray-700">
+                                  {slot.activity}
+                                </p>
+                                {isCurrent && (
+                                  <span className="hidden items-center gap-1 whitespace-nowrap rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white md:inline-flex">
+                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                                    กำลังดำเนินการ
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           );
                         })}

@@ -1,10 +1,9 @@
-// @ts-nocheck
-
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { requireCampBusPermission } from "@/lib/camp-bus-auth";
 import { formatStudentName } from "@/lib/student-display-name";
+import { activeCampBusStudentWhere } from "@/lib/active-camp-student";
 
 export async function GET(_request: Request, context: any) {
   const { id, busId: rawBusId } = await context.params;
@@ -15,7 +14,7 @@ export async function GET(_request: Request, context: any) {
     return NextResponse.json({ error: "รหัสรถไม่ถูกต้อง" }, { status: 400 });
   }
 
-  const permission = await requireCampBusPermission(campId);
+  const permission = await requireCampBusPermission(campId, undefined, "view");
 
   if (permission.error) return permission.error;
 
@@ -33,6 +32,11 @@ export async function GET(_request: Request, context: any) {
         select: { event_id: true },
       },
       assignments: {
+        where: {
+          student_enrollment: {
+            student: activeCampBusStudentWhere(campId, busId),
+          },
+        },
         orderBy: { assignment_id: "asc" },
         select: {
           assignment_id: true,
@@ -48,6 +52,34 @@ export async function GET(_request: Request, context: any) {
                   lastname: true,
                 },
               },
+            },
+          },
+          events: {
+            where: { event_type: { in: ["BOARD", "ALIGHT"] } },
+            orderBy: [{ created_at: "desc" }, { event_id: "desc" }],
+            take: 2,
+            select: {
+              event_id: true,
+              event_type: true,
+              created_at: true,
+              teacher: { select: { firstname: true, lastname: true } },
+            },
+          },
+        },
+      },
+      teacher_assignments: {
+        where: { removed_at: null },
+        orderBy: { assignment_id: "asc" },
+        select: {
+          assignment_id: true,
+          teacher_teachers_id: true,
+          status: true,
+          last_boarded_at: true,
+          teacher: {
+            select: {
+              prefix_name: true,
+              firstname: true,
+              lastname: true,
             },
           },
           events: {
@@ -110,17 +142,77 @@ export async function GET(_request: Request, context: any) {
         : null,
     };
   });
+  const teacherAssignmentStatuses = bus.teacher_assignments.map(
+    (assignment) => {
+      const latestEvent = assignment.events[0] || null;
+      const departedBeforeEvent = latestEvent
+        ? bus.events.filter((event) => event.event_id < latestEvent.event_id)
+            .length
+        : 0;
+      const previousBoardEvent = assignment.events
+        .slice(1)
+        .find((event) => event.event_type === "BOARD");
+      const departedBeforePreviousBoard = previousBoardEvent
+        ? bus.events.filter(
+            (event) => event.event_id < previousBoardEvent.event_id,
+          ).length
+        : 0;
+      const teacherName = [
+        assignment.teacher.prefix_name,
+        assignment.teacher.firstname,
+        assignment.teacher.lastname,
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return {
+        assignmentId: assignment.assignment_id,
+        teacherId: assignment.teacher_teachers_id,
+        status: assignment.status,
+        lastBoardedAt: assignment.last_boarded_at,
+        lastStatusEvent: latestEvent
+          ? {
+              eventType: latestEvent.event_type,
+              happenedAt: latestEvent.created_at,
+              tripNumber:
+                latestEvent.event_type === "BOARD"
+                  ? departedBeforeEvent + 1
+                  : previousBoardEvent
+                    ? departedBeforePreviousBoard + 1
+                    : Math.max(1, departedBeforeEvent),
+              actorType: "TEACHER",
+              actorName: latestEvent.teacher
+                ? `${latestEvent.teacher.firstname} ${latestEvent.teacher.lastname}`.trim()
+                : teacherName,
+            }
+          : null,
+      };
+    },
+  );
 
   return NextResponse.json(
     {
       busId: bus.bus_id,
       status: bus.status,
-      checkedInCount: assignmentStatuses.filter(
+      checkedInCount:
+        assignmentStatuses.filter(
+          (assignment) =>
+            assignment.participationStatus === "ACTIVE" &&
+            assignment.status === "ON_BUS",
+        ).length +
+        teacherAssignmentStatuses.filter(
+          (assignment) => assignment.status === "ON_BUS",
+        ).length,
+      studentCheckedInCount: assignmentStatuses.filter(
         (assignment) =>
           assignment.participationStatus === "ACTIVE" &&
           assignment.status === "ON_BUS",
       ).length,
+      teacherCheckedInCount: teacherAssignmentStatuses.filter(
+        (assignment) => assignment.status === "ON_BUS",
+      ).length,
       assignmentStatuses,
+      teacherAssignmentStatuses,
     },
     { headers: { "Cache-Control": "private, no-store" } },
   );

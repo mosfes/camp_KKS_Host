@@ -8,6 +8,7 @@ import fontkit from "@pdf-lib/fontkit";
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
 import { getCertificateEligibility } from "@/lib/certificate-eligibility";
+import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
 
 let cachedFontBytes: Buffer | null = null;
 
@@ -99,7 +100,9 @@ export async function GET(request: Request, context: any) {
       // สร้าง record แบบยังไม่ลงทะเบียนไว้ เพื่อให้ certificate อ้างอิงได้
       const eligibleStudents = await prisma.classroom_students.findMany({
         where: {
+          student: { deletedAt: null },
           classroom: {
+            deletedAt: null,
             camp_classroom: {
               some: { camp_camp_id: campId },
             },
@@ -122,9 +125,7 @@ export async function GET(request: Request, context: any) {
     }
 
     let enrollments = await prisma.student_enrollment.findMany({
-      where: {
-        camp_camp_id: campId,
-      },
+      where: activeCampEnrollmentWhere(campId),
       include: {
         student: true,
         survey_response: { take: 1 },

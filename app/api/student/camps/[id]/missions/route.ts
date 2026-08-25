@@ -28,24 +28,19 @@ export async function GET(request, context) {
       where: {
         camp_id: campId,
         deletedAt: null,
-        OR: [
-          {
-            camp_classroom: {
-              some: {
-                classroom: {
-                  classroom_students: {
-                    some: { student_students_id: studentId },
-                  },
+        camp_classroom: {
+          some: {
+            classroom: {
+              deletedAt: null,
+              classroom_students: {
+                some: {
+                  student_students_id: studentId,
+                  student: { deletedAt: null },
                 },
               },
             },
           },
-          {
-            student_enrollment: {
-              some: { student_students_id: studentId },
-            },
-          },
-        ],
+        },
       },
       select: {
         camp_id: true,

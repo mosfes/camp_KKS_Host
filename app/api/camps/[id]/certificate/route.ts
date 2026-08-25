@@ -10,6 +10,7 @@ import React from "react";
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 import { getCertificateEligibility } from "@/lib/certificate-eligibility";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 
 // Cache Font ไว้ใน Memory เพื่อไม่ต้องอ่านไฟล์ใหม่ทุกครั้งที่กดโหลด
 let cachedFontBytes: Buffer | null = null;
@@ -123,12 +124,12 @@ export async function GET(request: Request, context: any) {
   }
 
   try {
-    const enrollment = await prisma.student_enrollment.findUnique({
+    const enrollment = await prisma.student_enrollment.findFirst({
       where: {
-        student_students_id_camp_camp_id: {
-          student_students_id: Number(student.students_id),
-          camp_camp_id: campId,
-        },
+        student_students_id: Number(student.students_id),
+        camp_camp_id: campId,
+        student: activeCampStudentWhere(campId),
+        camp: { deletedAt: null },
       },
       include: {
         camp: {

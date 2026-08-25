@@ -6,6 +6,7 @@ import { requireStudent } from "@/lib/auth";
 import { isBangkokDateBefore } from "@/lib/bangkok-date";
 import { isPrismaConnectionBusy } from "@/lib/prisma-transient-error";
 import { getVideoSource, supportedVideoUrlMessage } from "@/lib/video";
+import { activeCampStudentWhere } from "@/lib/active-camp-student";
 import {
   cloudinaryUrlContainsPublicId,
   isCloudinaryPublicId,
@@ -219,6 +220,7 @@ export async function POST(req) {
         student_students_id: studentId,
         camp_camp_id: campId,
         enrolled_at: { not: null },
+        student: activeCampStudentWhere(campId),
       },
       select: { student_enrollment_id: true },
     });

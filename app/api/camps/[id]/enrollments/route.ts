@@ -65,11 +65,15 @@ export async function GET(request, context) {
 
     // ดึงนักเรียนทั้งหมดในห้องที่เชื่อมกับค่ายนี้ (distinct)
     const campClassrooms = await prisma.camp_classroom.findMany({
-      where: { camp_camp_id: campId },
+      where: {
+        camp_camp_id: campId,
+        classroom: { deletedAt: null },
+      },
       include: {
         classroom: {
           include: {
             classroom_students: {
+              where: { student: { deletedAt: null } },
               include: {
                 student: {
                   select: {
@@ -104,7 +108,10 @@ export async function GET(request, context) {
 
     // ดึง enrollment records ของค่ายนี้
     const enrollments = await prisma.student_enrollment.findMany({
-      where: { camp_camp_id: campId },
+      where: {
+        camp_camp_id: campId,
+        student: { deletedAt: null },
+      },
       select: {
         student_students_id: true,
         enrolled_at: true,
