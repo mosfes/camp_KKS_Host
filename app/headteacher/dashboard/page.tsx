@@ -1575,11 +1575,12 @@ function DashboardContent() {
                           )}
                         </div>
 
-                        <CardBody className="p-4 sm:p-6 flex flex-col">
+                        <CardBody className="flex flex-1 flex-col p-4 sm:p-6">
                           {/* Status + Owner row */}
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <div className="mb-2 flex h-7 items-center gap-2 overflow-hidden">
                             <Chip
                               className={`
+                              shrink-0
                               ${STATUS_STYLES[camp.status]?.bg ?? "bg-gray-100"}
                               ${STATUS_STYLES[camp.status]?.text ?? "text-gray-600"}
                             `}
@@ -1590,59 +1591,63 @@ function DashboardContent() {
                             </Chip>
                             {camp.isOwner ? (
                               <span
-                                className="inline-block max-w-[160px] truncate text-xs px-2 py-0.5 rounded-full bg-[#e8f0ee] text-[#3d6357] border border-[#b8d0c8]"
+                                className="inline-block min-w-0 max-w-[160px] truncate rounded-full border border-[#b8d0c8] bg-[#e8f0ee] px-2 py-0.5 text-xs text-[#3d6357]"
                                 title={`เจ้าของค่าย: ${camp.ownerName}`}
                               >
                                 เจ้าของ: {camp.ownerName}
                               </span>
                             ) : camp.ownerName ? (
                               <span
-                                className="inline-block max-w-[160px] truncate text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                                className="inline-block min-w-0 max-w-[160px] truncate rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
                                 title={`ผู้สร้าง: ${camp.ownerName}`}
                               >
                                 เจ้าของ: {camp.ownerName}
                               </span>
                             ) : null}
                           </div>
-                          <div className="mb-3">
-                            <h3 className="text-base sm:text-lg font-medium mb-1 text-[#2d3748] leading-snug line-clamp-2">
+                          <div className="mb-3 space-y-1 overflow-hidden">
+                            <h3 className="line-clamp-2 h-12 text-base font-medium leading-snug text-[#2d3748] sm:text-lg">
                               {camp.title}
                             </h3>
-                            <p className="mb-1 text-[#718096] text-sm line-clamp-2 leading-relaxed">
+                            <p className="line-clamp-2 h-[2.875rem] text-sm leading-relaxed text-[#718096]">
                               {camp.description}
                             </p>
                           </div>
 
-                          {/* Location */}
-                          <div className="flex items-center gap-2 mb-1.5 text-[#718096] text-sm">
-                            <MapPin className="flex-shrink-0" size={16} />
-                            <span className="truncate" title={camp.location}>
-                              {camp.location}
-                            </span>
-                          </div>
-
-                          {/* Grades */}
-                          {camp.gradeDisplay && (
-                            <div className="flex items-start gap-2 mb-2 text-[#718096] text-sm">
-                              <GraduationCap
-                                className="flex-shrink-0 mt-0.5"
-                                size={16}
-                              />
-                              <span
-                                className="line-clamp-1"
-                                title={`ระดับชั้น: ${camp.gradeDisplay}`}
-                              >
-                                ระดับชั้น: {camp.gradeDisplay}
+                          <div className="mb-3 grid grid-rows-3 gap-1.5 text-sm text-[#718096]">
+                            {/* Location */}
+                            <div className="flex min-h-6 items-center gap-2">
+                              <MapPin className="shrink-0" size={16} />
+                              <span className="truncate" title={camp.location}>
+                                {camp.location}
                               </span>
                             </div>
-                          )}
 
-                          {/* Date */}
-                          <div className="flex items-center gap-2 mb-3 text-[#718096] text-sm">
-                            <Calendar className="flex-shrink-0" size={16} />
-                            <span className="truncate">
-                              {camp.startDate} - {camp.endDate}
-                            </span>
+                            {/* Grades */}
+                            {camp.gradeDisplay ? (
+                              <div className="flex min-h-6 items-start gap-2">
+                                <GraduationCap
+                                  className="mt-0.5 shrink-0"
+                                  size={16}
+                                />
+                                <span
+                                  className="line-clamp-1"
+                                  title={`ระดับชั้น: ${camp.gradeDisplay}`}
+                                >
+                                  ระดับชั้น: {camp.gradeDisplay}
+                                </span>
+                              </div>
+                            ) : (
+                              <div aria-hidden="true" className="min-h-6" />
+                            )}
+
+                            {/* Date */}
+                            <div className="flex min-h-6 items-center gap-2">
+                              <Calendar className="shrink-0" size={16} />
+                              <span className="truncate">
+                                {camp.startDate} - {camp.endDate}
+                              </span>
+                            </div>
                           </div>
 
                           {/* Footer */}
