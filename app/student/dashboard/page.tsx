@@ -42,6 +42,7 @@ import {
 } from "@/lib/student-profile-upload";
 import { toThumbnail } from "@/lib/cloudinary-url";
 import { boardStudentBusWithRetry } from "@/lib/student-bus-board";
+import { FoodAllergySelector } from "@/components/profile/FoodAllergySelector";
 
 // Utility to format date (with optional range)
 const formatDate = (start: string, end?: string) => {
@@ -1095,7 +1096,7 @@ function StudentProfileSetupModal({
     if (!form.nickname?.trim())
       errors.nickname = "กรุณากรอกชื่อเล่นก่อนดำเนินการต่อ";
     if (!form.food_allergy?.trim())
-      errors.food_allergy = "กรุณากรอกข้อมูลการแพ้อาหาร/ยา หรือกรอกว่าไม่มี";
+      errors.food_allergy = "กรุณาเลือกข้อมูลการแพ้อาหาร หรือเลือกไม่แพ้อาหาร";
 
     return errors;
   };
@@ -1255,22 +1256,17 @@ function StudentProfileSetupModal({
                   className="block text-sm font-medium text-gray-700 mb-1"
                   htmlFor="student-food-allergy"
                 >
-                  การแพ้อาหาร/ยา <span className="text-red-500">*</span>
+                  การแพ้อาหาร <span className="text-red-500">*</span>
                 </label>
-                <input
-                  className={`w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all
-                    ${fieldError.food_allergy
-                      ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-                      : "border-gray-200 bg-gray-50 focus:border-[#5d7c6f] focus:ring-2 focus:ring-[#5d7c6f]/20"
-                    }`}
+                <FoodAllergySelector
+                  className="mt-2"
+                  error={fieldError.food_allergy}
                   id="student-food-allergy"
-                  placeholder="เช่น ไม่มี, อาหารทะเล, ไข่ไก่"
-                  type="text"
                   value={form.food_allergy || ""}
-                  onChange={(e) =>
+                  onChange={(value) =>
                     setForm((f: any) => ({
                       ...f,
-                      food_allergy: e.target.value,
+                      food_allergy: value,
                     }))
                   }
                 />

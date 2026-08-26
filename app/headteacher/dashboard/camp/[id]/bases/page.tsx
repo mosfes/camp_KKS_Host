@@ -344,6 +344,24 @@ export default function BasesPage() {
     setIsEditOpen(true);
   };
 
+  const openStationMissions = (stationId: number) => {
+    router.push(
+      `/headteacher/dashboard/camp/${campId}/base/${stationId}`,
+    );
+  };
+
+  const handleStationCardKeyDown = (
+    stationId: number,
+    e: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    if (e.target !== e.currentTarget) return;
+
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openStationMissions(stationId);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f5f2] px-4 pb-24 pt-8 sm:px-8">
       {loading ? (
@@ -627,7 +645,14 @@ export default function BasesPage() {
                 return (
                   <div
                     key={station.station_id}
-                    className="group relative flex flex-col justify-between rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#6b857a]/40 hover:shadow-lg"
+                    aria-label={`เปิดฐานกิจกรรม ${station.name}`}
+                    className="group relative flex cursor-pointer flex-col justify-between rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#6b857a]/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6b857a] focus-visible:ring-offset-2"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openStationMissions(station.station_id)}
+                    onKeyDown={(e) =>
+                      handleStationCardKeyDown(station.station_id, e)
+                    }
                   >
                     <div>
                       {/* Card Header: Station Index & Action Buttons */}
@@ -715,11 +740,7 @@ export default function BasesPage() {
                         }
                         radius="md"
                         size="sm"
-                        onPress={() =>
-                          router.push(
-                            `/headteacher/dashboard/camp/${campId}/base/${station.station_id}`,
-                          )
-                        }
+                        onPress={() => openStationMissions(station.station_id)}
                       >
                         จัดการภารกิจ
                       </Button>

@@ -59,10 +59,26 @@ export default function BaseDetailPage() {
     setIsEditMissionModalOpen(true);
   };
 
-  const handleMonitorMission = (mission: any, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const openMissionMonitor = (mission: any) => {
     setMonitorMissionData(mission);
     setIsMonitorModalOpen(true);
+  };
+
+  const handleMonitorMission = (mission: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    openMissionMonitor(mission);
+  };
+
+  const handleMissionCardKeyDown = (
+    mission: any,
+    e: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    if (e.target !== e.currentTarget) return;
+
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openMissionMonitor(mission);
+    }
   };
 
   const handleDeleteMission = (missionId: number, e: React.MouseEvent) => {
@@ -161,7 +177,14 @@ export default function BaseDetailPage() {
                 return (
                   <div
                     key={mission.mission_id}
-                    className="border border-gray-100 rounded-xl p-4 hover:border-gray-200 transition-colors bg-gray-50 mb-2"
+                    aria-label={`เปิดดูภารกิจ ${
+                      mission.title || "ภารกิจไม่มีชื่อ"
+                    }`}
+                    className="mb-2 cursor-pointer rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:border-[#6b857a]/40 hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6b857a] focus-visible:ring-offset-2"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openMissionMonitor(mission)}
+                    onKeyDown={(e) => handleMissionCardKeyDown(mission, e)}
                   >
                     {/* Header row: title + badge + action buttons */}
                     <div className="flex items-start justify-between gap-2 mb-1">
@@ -191,6 +214,7 @@ export default function BaseDetailPage() {
                       <div className="flex gap-1 shrink-0">
                         <Button
                           isIconOnly
+                          aria-label={`ดูภารกิจ ${mission.title || "ภารกิจไม่มีชื่อ"}`}
                           className="text-gray-400 hover:text-green-500"
                           size="sm"
                           variant="light"
@@ -200,6 +224,7 @@ export default function BaseDetailPage() {
                         </Button>
                         <Button
                           isIconOnly
+                          aria-label={`แก้ไขภารกิจ ${mission.title || "ภารกิจไม่มีชื่อ"}`}
                           className="text-gray-400 hover:text-blue-500"
                           size="sm"
                           variant="light"
@@ -209,6 +234,7 @@ export default function BaseDetailPage() {
                         </Button>
                         <Button
                           isIconOnly
+                          aria-label={`ลบภารกิจ ${mission.title || "ภารกิจไม่มีชื่อ"}`}
                           className="text-[#E84A5F] opacity-70 hover:opacity-100 hover:bg-[#E84A5F]/10 hover:text-[#FF847C]"
                           size="sm"
                           variant="light"
