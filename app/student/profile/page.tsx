@@ -35,6 +35,8 @@ import { PhoneInput, formatPhoneNumber } from "@/components/profile/PhoneInput";
 import { CopyableBadge } from "@/components/profile/CopyableBadge";
 import { StudentProfileSkeleton } from "@/components/profile/StudentProfileSkeleton";
 import { ConfirmModal } from "@/components/profile/ConfirmModal";
+import { FoodAllergySelector } from "@/components/profile/FoodAllergySelector";
+import { ChronicDiseaseSelector } from "@/components/profile/ChronicDiseaseSelector";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface StudentProfile {
@@ -120,29 +122,6 @@ const calculateAge = (iso: string | null): number | null => {
     return null;
   }
 };
-
-const COMMON_ALLERGIES = [
-  "ไม่มี",
-  "อาหารทะเล",
-  "กุ้ง",
-  "ถั่วลิสง",
-  "นมวัว",
-  "ไข่ไก่",
-  "แป้งสาลี",
-  "ยาพาราเซตามอล",
-  "ยากลุ่มเพนิซิลลิน",
-];
-
-const COMMON_DISEASES = [
-  "ไม่มี",
-  "โรคหอบหืด",
-  "โรคภูมิแพ้",
-  "โรคเบาหวาน",
-  "โรคหัวใจ",
-  "โรคความดันโลหิตสูง",
-  "โรคลมชัก",
-  "โรคโลหิตจาง (G6PD)",
-];
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function StudentProfilePage() {
@@ -261,10 +240,10 @@ export default function StudentProfilePage() {
 
     if (!form.chronic_disease.trim())
       errors.chronic_disease =
-        "กรุณาระบุข้อมูลโรคประจำตัว (หากไม่มีพิมพ์ว่า 'ไม่มี')";
+        "กรุณาเลือกข้อมูลโรคประจำตัว หรือเลือกไม่มีโรคประจำตัว";
     if (!form.food_allergy.trim())
       errors.food_allergy =
-        "กรุณาระบุข้อมูลการแพ้อาหารหรือยา (หากไม่มีพิมพ์ว่า 'ไม่มี')";
+        "กรุณาเลือกข้อมูลการแพ้อาหาร หรือเลือกไม่แพ้อาหาร";
     if (!form.birthday) errors.birthday = "กรุณาระบุวัน/เดือน/ปีเกิดให้ครบถ้วน";
 
     const sTel = form.student_tel.replace(/\D/g, "");
@@ -649,59 +628,27 @@ export default function StudentProfilePage() {
             icon={<Heart size={18} />}
             iconBgColor="bg-[#5d7c6f]/10"
             iconColor="text-[#5d7c6f]"
-            subtitle="ข้อมูลโรคประจำตัวและการแพ้อาหารหรือยา"
+            subtitle="ข้อมูลโรคประจำตัวและการแพ้อาหาร"
             title="ข้อมูลสุขภาพ"
           >
             {editing ? (
               <div className="space-y-5 pt-1">
                 {/* Chronic Disease Field */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label
-                      className="block text-xs font-semibold text-gray-700"
-                      htmlFor={chronicId}
-                    >
-                      โรคประจำตัว <span className="text-rose-500">*</span>
-                    </label>
-                    <span className="text-[11px] text-gray-400">
-                      หากไม่มีให้เลือก &apos;ไม่มี&apos;
-                    </span>
-                  </div>
-
-                  {/* Quick Select Pill Buttons */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {COMMON_DISEASES.map((dis) => (
-                      <button
-                        key={dis}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                          form.chronic_disease === dis
-                            ? "bg-[#5d7c6f] text-white shadow-xs"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200/60"
-                        }`}
-                        type="button"
-                        onClick={() =>
-                          setForm((f) => ({ ...f, chronic_disease: dis }))
-                        }
-                      >
-                        {dis}
-                      </button>
-                    ))}
-                  </div>
-
-                  <input
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm text-gray-800 outline-none transition-all ${
-                      fieldError.chronic_disease
-                        ? "bg-rose-50/40 border-rose-300 focus:border-rose-500 focus:ring-3 focus:ring-rose-500/15"
-                        : "bg-white border-gray-200 focus:border-[#5d7c6f] focus:ring-3 focus:ring-[#5d7c6f]/15"
-                    }`}
+                  <label
+                    className="block text-xs font-semibold text-gray-700"
+                    htmlFor={chronicId}
+                  >
+                    โรคประจำตัว <span className="text-rose-500">*</span>
+                  </label>
+                  <ChronicDiseaseSelector
+                    error={fieldError.chronic_disease}
                     id={chronicId}
-                    placeholder="เช่น ไม่มี, หอบหืด, ภูมิแพ้อากาศ"
-                    type="text"
                     value={form.chronic_disease}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setForm((f) => ({
                         ...f,
-                        chronic_disease: e.target.value,
+                        chronic_disease: value,
                       }))
                     }
                   />
@@ -712,52 +659,22 @@ export default function StudentProfilePage() {
                   )}
                 </div>
 
-                {/* Food & Drug Allergy Field */}
+                {/* Food Allergy Field */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label
                       className="block text-xs font-semibold text-gray-700"
                       htmlFor={allergyId}
                     >
-                      การแพ้อาหาร / ยา <span className="text-rose-500">*</span>
+                      การแพ้อาหาร <span className="text-rose-500">*</span>
                     </label>
-                    <span className="text-[11px] text-gray-400">
-                      หากไม่มีให้เลือก &apos;ไม่มี&apos;
-                    </span>
                   </div>
-
-                  {/* Quick Select Pill Buttons */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {COMMON_ALLERGIES.map((alg) => (
-                      <button
-                        key={alg}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                          form.food_allergy === alg
-                            ? "bg-[#5d7c6f] text-white shadow-xs"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200/60"
-                        }`}
-                        type="button"
-                        onClick={() =>
-                          setForm((f) => ({ ...f, food_allergy: alg }))
-                        }
-                      >
-                        {alg}
-                      </button>
-                    ))}
-                  </div>
-
-                  <input
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm text-gray-800 outline-none transition-all ${
-                      fieldError.food_allergy
-                        ? "bg-rose-50/40 border-rose-300 focus:border-rose-500 focus:ring-3 focus:ring-rose-500/15"
-                        : "bg-white border-gray-200 focus:border-[#5d7c6f] focus:ring-3 focus:ring-[#5d7c6f]/15"
-                    }`}
+                  <FoodAllergySelector
+                    error={fieldError.food_allergy}
                     id={allergyId}
-                    placeholder="เช่น ไม่มี, กุ้ง, ถั่วลิสง, ยาพาราเซตามอล"
-                    type="text"
                     value={form.food_allergy}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, food_allergy: e.target.value }))
+                    onChange={(value) =>
+                      setForm((f) => ({ ...f, food_allergy: value }))
                     }
                   />
                   {fieldError.food_allergy && (
@@ -776,7 +693,7 @@ export default function StudentProfilePage() {
                 />
                 <InfoItem
                   icon={<AlertCircle size={15} />}
-                  label="การแพ้อาหาร / ยา"
+                  label="การแพ้อาหาร"
                   value={profile.food_allergy || "ไม่มี"}
                 />
               </div>

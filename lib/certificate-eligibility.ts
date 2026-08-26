@@ -11,7 +11,7 @@ export function getRequiredMissionCount(
   const safeTotal = Math.max(0, Math.floor(totalMissions));
   const safePercent = normalizeCertificateMissionPercent(percent);
 
-  return Math.ceil((safeTotal * safePercent) / 100);
+  return Math.floor((safeTotal * safePercent) / 100);
 }
 
 export function getCertificateEligibility({

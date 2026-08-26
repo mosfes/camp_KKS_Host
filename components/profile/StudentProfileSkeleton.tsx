@@ -98,7 +98,7 @@ export function StudentProfileSkeleton() {
             icon={<Heart size={18} />}
             iconBgColor="bg-[#5d7c6f]/10"
             iconColor="text-[#5d7c6f]"
-            subtitle="ข้อมูลโรคประจำตัวและการแพ้อาหารหรือยา"
+            subtitle="ข้อมูลโรคประจำตัวและการแพ้อาหาร"
             title="ข้อมูลสุขภาพ"
           >
             <div className="space-y-3">
@@ -116,7 +116,7 @@ export function StudentProfileSkeleton() {
                 <div className="flex items-center gap-2.5">
                   <Heart className="text-gray-400 shrink-0" size={15} />
                   <span className="text-xs text-gray-500 font-medium">
-                    การแพ้อาหาร / ยา
+                    การแพ้อาหาร
                   </span>
                 </div>
                 <div className="h-4 w-20 bg-gray-200 rounded-md animate-pulse" />

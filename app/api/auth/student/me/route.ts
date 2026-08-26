@@ -29,6 +29,7 @@ export async function GET() {
         lastname: true,
         nickname: true,
         profile_image_url: true,
+        food_allergy: true,
         email: true,
       },
     });
