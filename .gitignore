@@ -52,3 +52,4 @@ certificates
 
 # temporary files
 /tmp/
+/tools/load-test-ui/
