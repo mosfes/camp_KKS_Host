@@ -490,7 +490,7 @@ model camp_bus {
   events              camp_bus_event[]
   layout_template     bus_layout_template? @relation(fields: [layout_template_id], references: [template_id], onDelete: SetNull)
 
-  @@unique([camp_camp_id, classroom_classroom_id])
+  @@index([camp_camp_id, classroom_classroom_id])
   @@index([camp_camp_id])
   @@index([layout_template_id])
 }

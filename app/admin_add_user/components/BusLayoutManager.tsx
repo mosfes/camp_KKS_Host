@@ -110,8 +110,8 @@ function normalizeTemplate(template: any): LayoutTemplate {
       );
       const minimumSeatY = seats.length
         ? Math.min(...seats.map((element: any) => element.y))
-        : 1;
-      const shiftUp = Math.max(0, minimumSeatY - 1);
+        : 0;
+      const shiftUp = Math.max(0, minimumSeatY);
 
       return {
         ...floor,
@@ -225,6 +225,14 @@ export default function BusLayoutManager({
   const currentFloor = draft?.floors.find(
     (floor) => floor.floorNumber === selectedFloorNumber,
   );
+  const savedTemplate = templates.find(
+    (template) => template.templateId === draft?.templateId,
+  );
+  const hasUnsavedChanges = Boolean(
+    draft &&
+      savedTemplate &&
+      JSON.stringify(draft) !== JSON.stringify(savedTemplate),
+  );
   const selectedElements =
     currentFloor?.elements.filter((element) =>
       selectedElementIds.includes(element.elementId),
@@ -287,10 +295,7 @@ export default function BusLayoutManager({
     const seatCount = currentFloor.elements.filter(
       (element) => element.type === "SEAT",
     ).length;
-    const defaultContentY = Math.min(
-      1,
-      Math.max(0, currentFloor.canvasRows - tool.height),
-    );
+    const defaultContentY = 0;
     const element: LayoutElement = {
       elementId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       type,
@@ -401,10 +406,7 @@ export default function BusLayoutManager({
           -drag.bounds.x,
           Math.min(dx, floor.canvasColumns - drag.bounds.x - drag.bounds.width),
         );
-        const minimumY = Math.min(
-          1,
-          Math.max(0, floor.canvasRows - drag.bounds.height),
-        );
+        const minimumY = 0;
         const constrainedDy = Math.max(
           minimumY - drag.bounds.y,
           Math.min(dy, floor.canvasRows - drag.bounds.y - drag.bounds.height),
@@ -972,6 +974,22 @@ export default function BusLayoutManager({
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <span
+                  aria-live="polite"
+                  className={`mr-1 text-[10px] font-semibold ${
+                    saving
+                      ? "text-gray-500"
+                      : hasUnsavedChanges
+                        ? "text-amber-600"
+                        : "text-emerald-700"
+                  }`}
+                >
+                  {saving
+                    ? "กำลังบันทึก..."
+                    : hasUnsavedChanges
+                      ? "● ยังไม่ได้บันทึก"
+                      : "✓ บันทึกล่าสุดแล้ว"}
+                </span>
                 <button
                   className="rounded-lg border border-gray-200 p-2 text-gray-600 disabled:opacity-30"
                   disabled={!undoStack.length}
@@ -1092,170 +1110,168 @@ export default function BusLayoutManager({
               </div>
 
               <div className="overflow-auto rounded-2xl bg-[#eef3f0] p-3 sm:p-6">
-                <div
-                  ref={canvasRef}
-                  className="relative mx-auto min-w-[420px] max-w-[720px] touch-none overflow-hidden rounded-[3rem] border-[5px] border-[#5f806f] bg-[#fbfcfb] shadow-sm"
-                  style={{
-                    aspectRatio: `${currentFloor.canvasColumns} / ${
-                      currentFloor.canvasRows *
-                      BUS_LAYOUT_DISPLAY_VERTICAL_SCALE
-                    }`,
-                    backgroundImage:
-                      "linear-gradient(to right, rgba(93,124,111,.035) 1px, transparent 1px), linear-gradient(to bottom, rgba(93,124,111,.035) 1px, transparent 1px)",
-                    backgroundSize: `${100 / currentFloor.canvasColumns}% ${100 / currentFloor.canvasRows}%`,
-                  }}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    const type = event.dataTransfer.getData(
-                      "application/x-bus-layout-type",
-                    ) as BusLayoutElementType;
-                    const bounds = event.currentTarget.getBoundingClientRect();
-                    const x = Math.floor(
-                      ((event.clientX - bounds.left) / bounds.width) *
-                        currentFloor.canvasColumns,
-                    );
-                    const y = Math.floor(
-                      ((event.clientY - bounds.top) / bounds.height) *
-                        currentFloor.canvasRows,
-                    );
-                    if (TOOLBOX.some((tool) => tool.type === type)) {
-                      createElement(type, x, y);
-                    }
-                  }}
-                  onPointerMove={moveDrag}
-                  onPointerDown={beginMarquee}
-                  onPointerUp={finishPointerInteraction}
-                  onPointerCancel={finishPointerInteraction}
-                >
-                  <div
-                    className="pointer-events-none absolute left-[5%] right-[5%] top-0 z-50 flex items-center justify-center rounded-2xl bg-[#deebe4] px-4 text-[10px] font-bold text-[#365f4f] sm:text-sm"
-                    style={{
-                      height: `${100 / currentFloor.canvasRows}%`,
-                    }}
-                  >
+                <div className="relative mx-auto min-w-[420px] max-w-[720px] overflow-hidden rounded-[3rem] border-[5px] border-[#5f806f] bg-[#fbfcfb] shadow-sm">
+                  <div className="pointer-events-none mx-[5%] mt-[4%] flex min-h-8 items-center justify-center rounded-2xl bg-[#deebe4] px-4 py-1.5 text-[10px] font-bold text-[#365f4f] sm:min-h-10 sm:text-sm">
                     ด้านหน้ารถ / คนขับ
                   </div>
-                  {currentFloor.elements
-                    .slice()
-                    .sort((a, b) => a.zIndex - b.zIndex)
-                    .map((element) => (
-                      <div
-                        key={element.elementId}
-                        aria-label={`${TYPE_LABELS[element.type]} ${element.label}`}
-                        className={`absolute flex select-none overflow-hidden rounded-xl border-2 p-1.5 text-[10px] font-bold shadow-sm ${
-                          element.type === "SEAT"
-                            ? "flex-col items-stretch justify-between text-left"
-                            : "flex-col items-center justify-center gap-1 text-center"
-                        } ${elementColors(
-                          element.type,
-                          selectedElementIds.includes(element.elementId),
-                        )}`}
-                        style={{
-                          left: `${(element.x / currentFloor.canvasColumns) * 100}%`,
-                          top: `${(element.y / currentFloor.canvasRows) * 100}%`,
-                          width: `${(element.width / currentFloor.canvasColumns) * 100}%`,
-                          height: `${(element.height / currentFloor.canvasRows) * 100}%`,
-                          transform: `rotate(${element.rotation}deg)`,
-                          zIndex: element.zIndex + 1,
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            setSelectedElementIds([element.elementId]);
-                          }
-                        }}
-                        onPointerDown={(event) => {
-                          if (
-                            event.shiftKey ||
-                            event.metaKey ||
-                            event.ctrlKey
-                          ) {
-                            event.preventDefault();
+                  <div
+                    ref={canvasRef}
+                    className="relative mt-3.5 touch-none"
+                    style={{
+                      aspectRatio: `${currentFloor.canvasColumns} / ${
+                        currentFloor.canvasRows *
+                        BUS_LAYOUT_DISPLAY_VERTICAL_SCALE
+                      }`,
+                      backgroundImage:
+                        "linear-gradient(to right, rgba(93,124,111,.035) 1px, transparent 1px), linear-gradient(to bottom, rgba(93,124,111,.035) 1px, transparent 1px)",
+                      backgroundSize: `${100 / currentFloor.canvasColumns}% ${100 / currentFloor.canvasRows}%`,
+                    }}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const type = event.dataTransfer.getData(
+                        "application/x-bus-layout-type",
+                      ) as BusLayoutElementType;
+                      const bounds =
+                        event.currentTarget.getBoundingClientRect();
+                      const x = Math.floor(
+                        ((event.clientX - bounds.left) / bounds.width) *
+                          currentFloor.canvasColumns,
+                      );
+                      const y = Math.floor(
+                        ((event.clientY - bounds.top) / bounds.height) *
+                          currentFloor.canvasRows,
+                      );
+                      if (TOOLBOX.some((tool) => tool.type === type)) {
+                        createElement(type, x, y);
+                      }
+                    }}
+                    onPointerCancel={finishPointerInteraction}
+                    onPointerDown={beginMarquee}
+                    onPointerMove={moveDrag}
+                    onPointerUp={finishPointerInteraction}
+                  >
+                    {currentFloor.elements
+                      .slice()
+                      .sort((a, b) => a.zIndex - b.zIndex)
+                      .map((element) => (
+                        <div
+                          key={element.elementId}
+                          aria-label={`${TYPE_LABELS[element.type]} ${element.label}`}
+                          className={`absolute flex select-none overflow-hidden rounded-xl border-2 p-1.5 text-[10px] font-bold shadow-sm ${
+                            element.type === "SEAT"
+                              ? "flex-col items-stretch justify-between text-left"
+                              : "flex-col items-center justify-center gap-1 text-center"
+                          } ${elementColors(
+                            element.type,
+                            selectedElementIds.includes(element.elementId),
+                          )}`}
+                          style={{
+                            left: `${(element.x / currentFloor.canvasColumns) * 100}%`,
+                            top: `${(element.y / currentFloor.canvasRows) * 100}%`,
+                            width: `${(element.width / currentFloor.canvasColumns) * 100}%`,
+                            height: `${(element.height / currentFloor.canvasRows) * 100}%`,
+                            transform: `rotate(${element.rotation}deg)`,
+                            zIndex: element.zIndex + 1,
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          onClick={(event) => {
                             event.stopPropagation();
-                            setSelectedElementIds((current) =>
-                              current.includes(element.elementId)
-                                ? current.filter(
-                                    (elementId) =>
-                                      elementId !== element.elementId,
-                                  )
-                                : [...current, element.elementId],
-                            );
-                            return;
-                          }
-                          beginDrag(event, element, "move");
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              setSelectedElementIds([element.elementId]);
+                            }
+                          }}
+                          onPointerDown={(event) => {
+                            if (
+                              event.shiftKey ||
+                              event.metaKey ||
+                              event.ctrlKey
+                            ) {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setSelectedElementIds((current) =>
+                                current.includes(element.elementId)
+                                  ? current.filter(
+                                      (elementId) =>
+                                        elementId !== element.elementId,
+                                    )
+                                  : [...current, element.elementId],
+                              );
+                              return;
+                            }
+                            beginDrag(event, element, "move");
+                          }}
+                        >
+                          {element.type === "SEAT" ? (
+                            <>
+                              <span className="block w-full truncate text-[9px] font-extrabold sm:text-[11px]">
+                                {element.label || "ที่นั่ง"}
+                              </span>
+                              <span className="block w-full text-center text-[9px] font-semibold text-slate-500 sm:text-[11px]">
+                                ว่าง
+                              </span>
+                              <span aria-hidden className="h-2" />
+                            </>
+                          ) : (
+                            <>
+                              {elementIcon(element.type)}
+                              <span className="w-full truncate">
+                                {element.label || TYPE_LABELS[element.type]}
+                              </span>
+                            </>
+                          )}
+                          {selectedElementIds.length === 1 &&
+                            selectedElementIds[0] === element.elementId && (
+                              <button
+                                aria-label="ปรับขนาดองค์ประกอบ"
+                                className="absolute bottom-0 right-0 h-3 w-3 cursor-nwse-resize rounded-tl bg-[#365f4f]"
+                                type="button"
+                                onPointerDown={(event) =>
+                                  beginDrag(event, element, "resize")
+                                }
+                              />
+                            )}
+                        </div>
+                      ))}
+                    {marquee && (
+                      <div
+                        className="pointer-events-none absolute z-[80] border-2 border-dashed border-[#365f4f] bg-[#8db8a5]/20"
+                        style={{
+                          left: `${(Math.min(marquee.startX, marquee.currentX) / currentFloor.canvasColumns) * 100}%`,
+                          top: `${(Math.min(marquee.startY, marquee.currentY) / currentFloor.canvasRows) * 100}%`,
+                          width: `${(Math.abs(marquee.currentX - marquee.startX) / currentFloor.canvasColumns) * 100}%`,
+                          height: `${(Math.abs(marquee.currentY - marquee.startY) / currentFloor.canvasRows) * 100}%`,
+                        }}
+                      />
+                    )}
+                    {selectedElements.length > 1 && selectionBounds && (
+                      <div
+                        className="pointer-events-none absolute z-[70] border-2 border-dashed border-[#365f4f]"
+                        style={{
+                          left: `${(selectionBounds.x / currentFloor.canvasColumns) * 100}%`,
+                          top: `${(selectionBounds.y / currentFloor.canvasRows) * 100}%`,
+                          width: `${(selectionBounds.width / currentFloor.canvasColumns) * 100}%`,
+                          height: `${(selectionBounds.height / currentFloor.canvasRows) * 100}%`,
                         }}
                       >
-                        {element.type === "SEAT" ? (
-                          <>
-                            <span className="block w-full truncate text-[9px] font-extrabold sm:text-[11px]">
-                              {element.label || "ที่นั่ง"}
-                            </span>
-                            <span className="block w-full text-center text-[9px] font-semibold text-slate-500 sm:text-[11px]">
-                              ว่าง
-                            </span>
-                            <span aria-hidden className="h-2" />
-                          </>
-                        ) : (
-                          <>
-                            {elementIcon(element.type)}
-                            <span className="w-full truncate">
-                              {element.label || TYPE_LABELS[element.type]}
-                            </span>
-                          </>
-                        )}
-                        {selectedElementIds.length === 1 &&
-                          selectedElementIds[0] === element.elementId && (
-                            <button
-                              aria-label="ปรับขนาดองค์ประกอบ"
-                              className="absolute bottom-0 right-0 h-3 w-3 cursor-nwse-resize rounded-tl bg-[#365f4f]"
-                              type="button"
-                              onPointerDown={(event) =>
-                                beginDrag(event, element, "resize")
-                              }
-                            />
-                          )}
+                        <span className="absolute -top-6 left-0 rounded-md bg-[#365f4f] px-2 py-0.5 text-[10px] font-semibold text-white">
+                          เลือก {selectedElements.length} ชิ้น
+                        </span>
+                        <button
+                          aria-label="ปรับขนาดองค์ประกอบที่เลือกทั้งหมด"
+                          className="pointer-events-auto absolute -bottom-1.5 -right-1.5 h-4 w-4 cursor-nwse-resize rounded-sm border-2 border-white bg-[#365f4f] shadow"
+                          type="button"
+                          onPointerDown={(event) =>
+                            beginDrag(event, selectedElements[0], "resize")
+                          }
+                        />
                       </div>
-                    ))}
-                  {marquee && (
-                    <div
-                      className="pointer-events-none absolute z-[80] border-2 border-dashed border-[#365f4f] bg-[#8db8a5]/20"
-                      style={{
-                        left: `${(Math.min(marquee.startX, marquee.currentX) / currentFloor.canvasColumns) * 100}%`,
-                        top: `${(Math.min(marquee.startY, marquee.currentY) / currentFloor.canvasRows) * 100}%`,
-                        width: `${(Math.abs(marquee.currentX - marquee.startX) / currentFloor.canvasColumns) * 100}%`,
-                        height: `${(Math.abs(marquee.currentY - marquee.startY) / currentFloor.canvasRows) * 100}%`,
-                      }}
-                    />
-                  )}
-                  {selectedElements.length > 1 && selectionBounds && (
-                    <div
-                      className="pointer-events-none absolute z-[70] border-2 border-dashed border-[#365f4f]"
-                      style={{
-                        left: `${(selectionBounds.x / currentFloor.canvasColumns) * 100}%`,
-                        top: `${(selectionBounds.y / currentFloor.canvasRows) * 100}%`,
-                        width: `${(selectionBounds.width / currentFloor.canvasColumns) * 100}%`,
-                        height: `${(selectionBounds.height / currentFloor.canvasRows) * 100}%`,
-                      }}
-                    >
-                      <span className="absolute -top-6 left-0 rounded-md bg-[#365f4f] px-2 py-0.5 text-[10px] font-semibold text-white">
-                        เลือก {selectedElements.length} ชิ้น
-                      </span>
-                      <button
-                        aria-label="ปรับขนาดองค์ประกอบที่เลือกทั้งหมด"
-                        className="pointer-events-auto absolute -bottom-1.5 -right-1.5 h-4 w-4 cursor-nwse-resize rounded-sm border-2 border-white bg-[#365f4f] shadow"
-                        type="button"
-                        onPointerDown={(event) =>
-                          beginDrag(event, selectedElements[0], "resize")
-                        }
-                      />
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

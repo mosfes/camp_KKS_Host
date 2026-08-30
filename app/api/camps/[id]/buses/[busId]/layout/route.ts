@@ -6,10 +6,16 @@ import { requireSpecificCampBus } from "@/lib/camp-bus-auth";
 
 const layoutSchema = z.object({
   assignments: z.array(
-    z.object({
-      assignmentId: z.number().int().positive(),
-      positionId: z.number().int().positive().nullable(),
-    }),
+    z.union([
+      z.object({
+        assignmentId: z.number().int().positive(),
+        positionId: z.number().int().positive().nullable(),
+      }),
+      z.object({
+        studentEnrollmentId: z.number().int().positive(),
+        positionId: z.number().int().positive(),
+      }),
+    ]),
   ),
   teacherAssignments: z
     .array(
@@ -98,9 +104,76 @@ export async function PUT(request: Request, context: any) {
     ),
   );
   const selectedPositionIds = new Set<number>();
+  const newStudentItems = body.assignments.filter(
+    (item): item is { studentEnrollmentId: number; positionId: number } =>
+      "studentEnrollmentId" in item,
+  );
+  const newStudentEnrollmentIds = newStudentItems.map(
+    (item) => item.studentEnrollmentId,
+  );
+
+  if (
+    new Set(newStudentEnrollmentIds).size !== newStudentEnrollmentIds.length
+  ) {
+    return NextResponse.json(
+      { error: "พบรายชื่อนักเรียนซ้ำในผังรถ" },
+      { status: 400 },
+    );
+  }
+
+  if (newStudentEnrollmentIds.length > 0) {
+    const [eligibleEnrollments, existingAssignments] = await Promise.all([
+      prisma.student_enrollment.findMany({
+        where: {
+          student_enrollment_id: { in: newStudentEnrollmentIds },
+          camp_camp_id: campId,
+          student: {
+            deletedAt: null,
+            classroom_students: {
+              some: {
+                classroom_classroom_id: {
+                  in: access.permission?.classroomIds || [],
+                },
+              },
+            },
+          },
+        },
+        select: { student_enrollment_id: true },
+      }),
+      prisma.camp_bus_student.findMany({
+        where: { student_enrollment_id: { in: newStudentEnrollmentIds } },
+        select: { student_enrollment_id: true },
+      }),
+    ]);
+
+    if (eligibleEnrollments.length !== newStudentEnrollmentIds.length) {
+      return NextResponse.json(
+        { error: "มีนักเรียนบางคนไม่ได้อยู่ในห้องที่คุณดูแล" },
+        { status: 403 },
+      );
+    }
+    if (existingAssignments.length > 0) {
+      return NextResponse.json(
+        { error: "มีนักเรียนบางคนถูกจัดเข้ารถคันอื่นแล้ว กรุณาโหลดข้อมูลใหม่" },
+        { status: 409 },
+      );
+    }
+  }
+
+  if (
+    bus.assignments.length +
+      (body.teacherAssignments?.length ?? bus.teacher_assignments.length) +
+      newStudentItems.length >
+    positionIds.size
+  ) {
+    return NextResponse.json(
+      { error: "จำนวนนักเรียนที่เพิ่มเกินความจุรถ" },
+      { status: 409 },
+    );
+  }
 
   for (const item of body.assignments) {
-    if (!assignmentIds.has(item.assignmentId)) {
+    if ("assignmentId" in item && !assignmentIds.has(item.assignmentId)) {
       return NextResponse.json(
         { error: "พบรายชื่อนักเรียนที่ไม่อยู่ในรถคันนี้" },
         { status: 400 },
@@ -328,6 +401,18 @@ export async function PUT(request: Request, context: any) {
         }
 
         for (const item of body.assignments) {
+          if ("studentEnrollmentId" in item) {
+            await tx.camp_bus_student.create({
+              data: {
+                bus_bus_id: busId,
+                student_enrollment_id: item.studentEnrollmentId,
+                position_position_id: item.positionId,
+              },
+            });
+
+            continue;
+          }
+
           const isNewlySeated =
             item.positionId !== null &&
             previousPositionByAssignmentId.get(item.assignmentId) === null;
@@ -351,6 +436,13 @@ export async function PUT(request: Request, context: any) {
     if (error?.message === "TEACHER_ASSIGNED_TO_ANOTHER_BUS") {
       return NextResponse.json(
         { error: "มีครูบางคนถูกจัดอยู่ในรถคันอื่นของค่ายแล้ว" },
+        { status: 409 },
+      );
+    }
+
+    if (error?.code === "P2002") {
+      return NextResponse.json(
+        { error: "มีนักเรียนบางคนถูกจัดเข้ารถคันอื่นแล้ว กรุณาโหลดข้อมูลใหม่" },
         { status: 409 },
       );
     }

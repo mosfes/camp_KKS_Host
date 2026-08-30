@@ -21,6 +21,10 @@ const createBusSchema = z.object({
   layoutTemplateId: z
     .union([z.enum([PHEUNG_THIN_BUS_TEMPLATE_ID]), z.number().int().positive()])
     .optional(),
+  studentEnrollmentIds: z
+    .array(z.number().int().positive())
+    .max(500)
+    .optional(),
 });
 
 async function getDatabaseLayoutTemplate(id: number) {
@@ -240,6 +244,10 @@ function formatBus(bus: any, permission: any) {
     lastParkedAt: lastParkedEvent?.created_at || null,
     lastDepartedAt: lastDepartedEvent?.created_at || null,
     classroomId: bus.classroom_classroom_id,
+    capacity: bus.floors.reduce(
+      (sum: number, floor: any) => sum + floor.positions.length,
+      0,
+    ),
     classroom: {
       classroomId: bus.classroom.classroom_id,
       grade: bus.classroom.grade,
@@ -388,6 +396,7 @@ async function getBusData(
     where: {
       camp_camp_id: campId,
       student_students_id: { in: classroomStudentIds },
+      student: { deletedAt: null },
     },
     select: {
       student_enrollment_id: true,
@@ -404,92 +413,19 @@ async function getBusData(
         },
       },
     },
+    orderBy: { student_enrollment_id: "asc" },
   });
-
-  const existingBuses = await prisma.camp_bus.findMany({
+  const assignedEnrollments = await prisma.camp_bus_student.findMany({
     where: {
-      camp_camp_id: campId,
-      classroom_classroom_id: { in: classroomIds },
-    },
-    select: {
-      bus_id: true,
-      classroom_classroom_id: true,
-      assignments: {
-        select: {
-          assignment_id: true,
-          student_enrollment_id: true,
-          student_enrollment: {
-            select: { student_students_id: true },
-          },
-        },
+      student_enrollment_id: {
+        in: enrollments.map((enrollment) => enrollment.student_enrollment_id),
       },
     },
+    select: { student_enrollment_id: true },
   });
-
-  const staleAssignmentIds = existingBuses.flatMap((bus) => {
-    const classroom = classroomRows.find(
-      (row) => row.classroom_classroom_id === bus.classroom_classroom_id,
-    );
-    const studentIds = new Set(
-      classroom?.classroom.classroom_students.map(
-        (item) => item.student_students_id,
-      ) || [],
-    );
-
-    return bus.assignments
-      .filter(
-        (assignment) =>
-          !studentIds.has(assignment.student_enrollment.student_students_id),
-      )
-      .map((assignment) => assignment.assignment_id);
-  });
-
-  if (staleAssignmentIds.length > 0) {
-    await prisma.camp_bus_student.deleteMany({
-      where: { assignment_id: { in: staleAssignmentIds } },
-    });
-  }
-  const staleAssignmentIdSet = new Set(staleAssignmentIds);
-
-  // Backfill assignments for buses created before unregistered students became
-  // selectable. The unique constraint keeps this idempotent on every refresh.
-  const assignmentCreates = existingBuses.flatMap((bus) => {
-    const classroom = classroomRows.find(
-      (row) => row.classroom_classroom_id === bus.classroom_classroom_id,
-    );
-    const studentIds = new Set(
-      classroom?.classroom.classroom_students.map(
-        (item) => item.student_students_id,
-      ),
-    );
-    const assignedEnrollmentIds = new Set(
-      bus.assignments
-        .filter(
-          (assignment) => !staleAssignmentIdSet.has(assignment.assignment_id),
-        )
-        .map((assignment) => assignment.student_enrollment_id),
-    );
-
-    const data = enrollments
-      .filter(
-        (enrollment) =>
-          studentIds.has(enrollment.student_students_id) &&
-          !assignedEnrollmentIds.has(enrollment.student_enrollment_id),
-      )
-      .map((enrollment) => ({
-        bus_bus_id: bus.bus_id,
-        student_enrollment_id: enrollment.student_enrollment_id,
-      }));
-
-    return data.length > 0
-      ? [prisma.camp_bus_student.createMany({ data, skipDuplicates: true })]
-      : [];
-  });
-
-  if (assignmentCreates.length > 0) {
-    await prisma.$transaction(assignmentCreates);
-  }
-
+  const assignedEnrollmentIdSet = new Set(
+    assignedEnrollments.map((assignment) => assignment.student_enrollment_id),
+  );
   const buses = await prisma.camp_bus.findMany({
     where: {
       camp_camp_id: campId,
@@ -610,9 +546,19 @@ async function getBusData(
     const studentIds = row.classroom.classroom_students.map(
       (item) => item.student_students_id,
     );
-    const bus = buses.find(
+    const studentIdSet = new Set(studentIds);
+    const classroomBuses = buses.filter(
       (item) => item.classroom_classroom_id === row.classroom_classroom_id,
     );
+    const assignedStudentCount = new Set(
+      buses.flatMap((bus) =>
+        bus.assignments
+          .map(
+            (assignment) => assignment.student_enrollment.student_students_id,
+          )
+          .filter((studentId) => studentIdSet.has(studentId)),
+      ),
+    ).size;
 
     return {
       classroomId: row.classroom_classroom_id,
@@ -620,7 +566,13 @@ async function getBusData(
       roomName: row.classroom.classroom_types?.name || "ห้องเรียน",
       teacherName: getTeacherName(row.classroom),
       studentCount: studentIds.length,
-      busId: bus?.bus_id || null,
+      busId: classroomBuses[0]?.bus_id || null,
+      busCount: classroomBuses.length,
+      assignedStudentCount,
+      unassignedStudentCount: Math.max(
+        0,
+        studentIds.length - assignedStudentCount,
+      ),
     };
   });
 
@@ -661,9 +613,56 @@ async function getBusData(
     }))
     .sort((a, b) => a.teacherName.localeCompare(b.teacherName, "th"));
 
+  const assignableStudentIds = new Set(
+    classroomRows
+      .filter((row) =>
+        permission.configurableClassroomIds.includes(
+          row.classroom_classroom_id,
+        ),
+      )
+      .flatMap((row) =>
+        row.classroom.classroom_students.map(
+          (item) => item.student_students_id,
+        ),
+      ),
+  );
+  const unassignedStudents = enrollments
+    .filter(
+      (enrollment) =>
+        assignableStudentIds.has(enrollment.student_students_id) &&
+        !assignedEnrollmentIdSet.has(enrollment.student_enrollment_id),
+    )
+    .map((enrollment) => {
+      const classroom = classroomRows.find((row) =>
+        row.classroom.classroom_students.some(
+          (item) => item.student_students_id === enrollment.student_students_id,
+        ),
+      );
+
+      return {
+        studentEnrollmentId: enrollment.student_enrollment_id,
+        studentId: enrollment.student.students_id,
+        studentName: formatStudentName(enrollment.student),
+        firstName: enrollment.student.firstname,
+        prefixName: enrollment.student.prefix_name,
+        nickname: enrollment.student.nickname,
+        profileImageUrl: enrollment.student.profile_image_url,
+        isRegistered: Boolean(enrollment.enrolled_at),
+        classroom: classroom
+          ? {
+              classroomId: classroom.classroom_classroom_id,
+              grade: classroom.classroom.grade,
+              roomName:
+                classroom.classroom.classroom_types?.name || "ห้องเรียน",
+            }
+          : null,
+      };
+    });
+
   return {
     classrooms,
     buses: buses.map((bus) => formatBus(bus, permission)),
+    unassignedStudents,
     eligibleTeachers,
     permissions: {
       canManageTeachers: permission.canManageTeachers,
@@ -775,146 +774,189 @@ export async function POST(request: Request, context: any) {
     layoutTemplate?.capacity ||
     rowCounts.reduce((sum, rows) => sum + rows * 4, 0);
 
-  if (capacity < classroomStudentIds.length) {
-    return NextResponse.json(
-      {
-        error: `จำนวนที่นั่งไม่พอ นักเรียน ${classroomStudentIds.length} คน แต่มีที่นั่ง ${capacity} ที่`,
-      },
-      { status: 400 },
-    );
-  }
+  const bus = await prisma
+    .$transaction(async (tx) => {
+      await tx.student_enrollment.createMany({
+        data: classroomStudentIds.map((studentId) => ({
+          student_students_id: studentId,
+          camp_camp_id: campId,
+        })),
+        skipDuplicates: true,
+      });
 
-  const existing = await prisma.camp_bus.findUnique({
-    where: {
-      camp_camp_id_classroom_classroom_id: {
-        camp_camp_id: campId,
-        classroom_classroom_id: body.classroomId,
-      },
-    },
-    select: { bus_id: true },
-  });
-
-  if (existing) {
-    return NextResponse.json(
-      { error: "ห้องเรียนนี้มีรถแล้ว" },
-      { status: 409 },
-    );
-  }
-
-  const bus = await prisma.$transaction(async (tx) => {
-    await tx.student_enrollment.createMany({
-      data: classroomStudentIds.map((studentId) => ({
-        student_students_id: studentId,
-        camp_camp_id: campId,
-      })),
-      skipDuplicates: true,
-    });
-
-    const enrollments = await tx.student_enrollment.findMany({
-      where: {
-        camp_camp_id: campId,
-        student_students_id: { in: classroomStudentIds },
-      },
-      select: { student_enrollment_id: true },
-    });
-    const createdBus = await tx.camp_bus.create({
-      data: {
-        camp_camp_id: campId,
-        classroom_classroom_id: body.classroomId,
-        name: body.name,
-        registration_plate: body.registrationPlate,
-        floor_count: floorCount,
-        layout_template_id:
-          typeof body.layoutTemplateId === "number"
-            ? body.layoutTemplateId
-            : null,
-      },
-    });
-
-    for (let floorIndex = 0; floorIndex < floorCount; floorIndex += 1) {
-      const floorNumber = floorIndex + 1;
-      const templateFloor = layoutTemplate?.floors.find(
-        (item) => item.floorNumber === floorNumber,
+      const enrollments = await tx.student_enrollment.findMany({
+        where: {
+          camp_camp_id: campId,
+          student_students_id: { in: classroomStudentIds },
+        },
+        select: { student_enrollment_id: true },
+        orderBy: { student_enrollment_id: "asc" },
+      });
+      const classroomEnrollmentIdSet = new Set(
+        enrollments.map((enrollment) => enrollment.student_enrollment_id),
       );
-      const floor = await tx.camp_bus_floor.create({
+      const assignedEnrollments = await tx.camp_bus_student.findMany({
+        where: {
+          student_enrollment_id: { in: Array.from(classroomEnrollmentIdSet) },
+        },
+        select: { student_enrollment_id: true },
+      });
+      const assignedEnrollmentIdSet = new Set(
+        assignedEnrollments.map(
+          (assignment) => assignment.student_enrollment_id,
+        ),
+      );
+      const requestedEnrollmentIds = body.studentEnrollmentIds;
+
+      if (
+        requestedEnrollmentIds &&
+        (new Set(requestedEnrollmentIds).size !==
+          requestedEnrollmentIds.length ||
+          requestedEnrollmentIds.some(
+            (enrollmentId) =>
+              !classroomEnrollmentIdSet.has(enrollmentId) ||
+              assignedEnrollmentIdSet.has(enrollmentId),
+          ))
+      ) {
+        throw new Error("INVALID_STUDENT_SELECTION");
+      }
+
+      const selectedEnrollmentIds = requestedEnrollmentIds
+        ? requestedEnrollmentIds
+        : enrollments
+            .filter(
+              (enrollment) =>
+                !assignedEnrollmentIdSet.has(enrollment.student_enrollment_id),
+            )
+            .slice(0, capacity)
+            .map((enrollment) => enrollment.student_enrollment_id);
+
+      if (selectedEnrollmentIds.length > capacity) {
+        throw new Error("BUS_CAPACITY_EXCEEDED");
+      }
+      const createdBus = await tx.camp_bus.create({
         data: {
-          bus_bus_id: createdBus.bus_id,
-          floor_number: floorNumber,
-          row_count: rowCounts[floorIndex],
-          canvas_columns: (templateFloor as any)?.canvasColumns || 5,
-          canvas_rows:
-            (templateFloor as any)?.canvasRows || rowCounts[floorIndex],
+          camp_camp_id: campId,
+          classroom_classroom_id: body.classroomId,
+          name: body.name,
+          registration_plate: body.registrationPlate,
+          floor_count: floorCount,
+          layout_template_id:
+            typeof body.layoutTemplateId === "number"
+              ? body.layoutTemplateId
+              : null,
         },
       });
 
-      const positions = [];
-
-      if (templateFloor) {
-        positions.push(
-          ...templateFloor.positions.map((position) => ({
-            floor_floor_id: floor.floor_id,
-            row_number: position.rowNumber,
-            seat_index: position.seatIndex,
-            label: position.label,
-            x:
-              (position as any).x ??
-              [0, 1, 3, 4][position.seatIndex] ??
-              position.seatIndex,
-            y: (position as any).y ?? position.rowNumber - 1,
-            width: (position as any).width || 1,
-            height: (position as any).height || 1,
-            rotation: (position as any).rotation || 0,
-          })),
+      for (let floorIndex = 0; floorIndex < floorCount; floorIndex += 1) {
+        const floorNumber = floorIndex + 1;
+        const templateFloor = layoutTemplate?.floors.find(
+          (item) => item.floorNumber === floorNumber,
         );
-      } else {
-        for (let row = 1; row <= rowCounts[floorIndex]; row += 1) {
-          for (let seatIndex = 0; seatIndex < 4; seatIndex += 1) {
-            const label = positionLabel(row, seatIndex);
+        const floor = await tx.camp_bus_floor.create({
+          data: {
+            bus_bus_id: createdBus.bus_id,
+            floor_number: floorNumber,
+            row_count: rowCounts[floorIndex],
+            canvas_columns: (templateFloor as any)?.canvasColumns || 5,
+            canvas_rows:
+              (templateFloor as any)?.canvasRows || rowCounts[floorIndex],
+          },
+        });
 
-            positions.push({
+        const positions = [];
+
+        if (templateFloor) {
+          positions.push(
+            ...templateFloor.positions.map((position) => ({
               floor_floor_id: floor.floor_id,
-              row_number: row,
-              seat_index: seatIndex,
-              label,
-              x: [0, 1, 3, 4][seatIndex],
-              y: row - 1,
-              width: 1,
-              height: 1,
-              rotation: 0,
-            });
+              row_number: position.rowNumber,
+              seat_index: position.seatIndex,
+              label: position.label,
+              x:
+                (position as any).x ??
+                [0, 1, 3, 4][position.seatIndex] ??
+                position.seatIndex,
+              y: (position as any).y ?? position.rowNumber - 1,
+              width: (position as any).width || 1,
+              height: (position as any).height || 1,
+              rotation: (position as any).rotation || 0,
+            })),
+          );
+        } else {
+          for (let row = 1; row <= rowCounts[floorIndex]; row += 1) {
+            for (let seatIndex = 0; seatIndex < 4; seatIndex += 1) {
+              const label = positionLabel(row, seatIndex);
+
+              positions.push({
+                floor_floor_id: floor.floor_id,
+                row_number: row,
+                seat_index: seatIndex,
+                label,
+                x: [0, 1, 3, 4][seatIndex],
+                y: row - 1,
+                width: 1,
+                height: 1,
+                rotation: 0,
+              });
+            }
           }
+        }
+
+        await tx.camp_bus_position.createMany({ data: positions });
+
+        if ((templateFloor as any)?.elements?.length) {
+          await tx.camp_bus_layout_element.createMany({
+            data: (templateFloor as any).elements.map((element: any) => ({
+              floor_floor_id: floor.floor_id,
+              type: element.type,
+              x: element.x,
+              y: element.y,
+              width: element.width,
+              height: element.height,
+              rotation: element.rotation,
+              label: element.label,
+              z_index: element.zIndex,
+              metadata: element.metadata || undefined,
+            })),
+          });
         }
       }
 
-      await tx.camp_bus_position.createMany({ data: positions });
+      await tx.camp_bus_student.createMany({
+        data: selectedEnrollmentIds.map((studentEnrollmentId) => ({
+          bus_bus_id: createdBus.bus_id,
+          student_enrollment_id: studentEnrollmentId,
+        })),
+      });
 
-      if ((templateFloor as any)?.elements?.length) {
-        await tx.camp_bus_layout_element.createMany({
-          data: (templateFloor as any).elements.map((element: any) => ({
-            floor_floor_id: floor.floor_id,
-            type: element.type,
-            x: element.x,
-            y: element.y,
-            width: element.width,
-            height: element.height,
-            rotation: element.rotation,
-            label: element.label,
-            z_index: element.zIndex,
-            metadata: element.metadata || undefined,
-          })),
-        });
+      return createdBus;
+    })
+    .catch((error: any) => {
+      if (
+        error?.message === "INVALID_STUDENT_SELECTION" ||
+        error?.code === "P2002"
+      ) {
+        return null;
       }
-    }
-
-    await tx.camp_bus_student.createMany({
-      data: enrollments.map((enrollment) => ({
-        bus_bus_id: createdBus.bus_id,
-        student_enrollment_id: enrollment.student_enrollment_id,
-      })),
+      if (error?.message === "BUS_CAPACITY_EXCEEDED") {
+        return undefined;
+      }
+      throw error;
     });
 
-    return createdBus;
-  });
+  if (bus === null) {
+    return NextResponse.json(
+      { error: "มีนักเรียนบางคนอยู่ในรถคันอื่นแล้ว กรุณาโหลดข้อมูลใหม่" },
+      { status: 409 },
+    );
+  }
+  if (bus === undefined) {
+    return NextResponse.json(
+      { error: `เลือกนักเรียนเกินความจุรถ ${capacity} ที่` },
+      { status: 400 },
+    );
+  }
 
   return NextResponse.json(
     { busId: bus.bus_id, message: "สร้างรถและผังตำแหน่งเรียบร้อยแล้ว" },

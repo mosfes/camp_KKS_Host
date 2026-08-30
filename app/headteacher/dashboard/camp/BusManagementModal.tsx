@@ -13,6 +13,7 @@ import {
 import { Button } from "@heroui/button";
 import {
   ArrowLeft,
+  ArrowRightLeft,
   AlertTriangle,
   Bus,
   Check,
@@ -51,6 +52,9 @@ type Classroom = {
   teacherName: string;
   studentCount: number;
   busId: number | null;
+  busCount: number;
+  assignedStudentCount: number;
+  unassignedStudentCount: number;
 };
 
 type BusStatusEvent = {
@@ -78,6 +82,11 @@ type Assignment = {
   lastBoardedAt: string | null;
   lastStatusEvent: BusStatusEvent | null;
   isRegistered: boolean;
+  isPendingBusAssignment?: boolean;
+  sourceClassroom?: {
+    grade: string;
+    roomName: string;
+  } | null;
 };
 
 type TeacherAssignment = {
@@ -103,6 +112,22 @@ type EligibleTeacher = {
   teacherName: string;
   email: string;
   assignedBus: { busId: number; busName: string } | null;
+};
+
+type UnassignedCampStudent = {
+  studentEnrollmentId: number;
+  studentId: number;
+  studentName: string;
+  firstName: string;
+  prefixName: string | null;
+  nickname: string | null;
+  profileImageUrl: string | null;
+  isRegistered: boolean;
+  classroom: {
+    classroomId: number;
+    grade: string;
+    roomName: string;
+  } | null;
 };
 
 type Position = {
@@ -323,7 +348,13 @@ function BusSeatCard({
   );
 }
 
-type SavingAction = "create" | "save" | "update" | "delete" | "status";
+type SavingAction =
+  | "create"
+  | "save"
+  | "update"
+  | "delete"
+  | "status"
+  | "transfer";
 
 type TripHistoryEntry = {
   tripNumber: number;
@@ -344,6 +375,7 @@ type Bus = {
   lastParkedAt: string | null;
   lastDepartedAt: string | null;
   classroomId: number;
+  capacity: number;
   classroom: {
     classroomId: number;
     grade: string;
@@ -737,6 +769,9 @@ export default function BusManagementModal({
   const [eligibleTeachers, setEligibleTeachers] = useState<EligibleTeacher[]>(
     [],
   );
+  const [unassignedCampStudents, setUnassignedCampStudents] = useState<
+    UnassignedCampStudent[]
+  >([]);
   const [busPermissions, setBusPermissions] = useState({
     canManageTeachers: false,
     canConfigureAny: false,
@@ -773,6 +808,10 @@ export default function BusManagementModal({
   const [showCreate, setShowCreate] = useState(false);
   const [showEditBus, setShowEditBus] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferTargetBusId, setTransferTargetBusId] = useState("");
+  const [transferStudentEnrollmentIds, setTransferStudentEnrollmentIds] =
+    useState<number[]>([]);
   const [showUnassignedConfirm, setShowUnassignedConfirm] = useState(false);
   const [pendingBusStatus, setPendingBusStatus] = useState<
     "PARKED" | "TRAVELING" | null
@@ -862,16 +901,42 @@ export default function BusManagementModal({
     (floor) => floor.floorNumber === selectedFloor,
   );
 
-  const assignmentById = useMemo(() => {
-    if (!selectedBus) return new Map<number, Assignment>();
-
-    return new Map(
-      selectedBus.assignments.map((assignment) => [
-        assignment.assignmentId,
-        assignment,
-      ]),
-    );
-  }, [selectedBus]);
+  const selectableAssignments = useMemo<Assignment[]>(
+    () => [
+      ...(selectedBus?.assignments || []),
+      ...unassignedCampStudents.map((student) => ({
+        assignmentId: -student.studentEnrollmentId,
+        studentEnrollmentId: student.studentEnrollmentId,
+        studentId: student.studentId,
+        studentName: student.studentName,
+        firstName: student.firstName,
+        prefixName: student.prefixName,
+        nickname: student.nickname,
+        profileImageUrl: student.profileImageUrl,
+        positionId: null,
+        positionLabel: null,
+        floorNumber: null,
+        status: "OFF_BUS" as const,
+        participationStatus: "ACTIVE" as const,
+        lastBoardedAt: null,
+        lastStatusEvent: null,
+        isRegistered: student.isRegistered,
+        isPendingBusAssignment: true,
+        sourceClassroom: student.classroom,
+      })),
+    ],
+    [selectedBus, unassignedCampStudents],
+  );
+  const assignmentById = useMemo(
+    () =>
+      new Map(
+        selectableAssignments.map((assignment) => [
+          assignment.assignmentId,
+          assignment,
+        ]),
+      ),
+    [selectableAssignments],
+  );
 
   const assignedStudentCount = Object.values(draftAssignments).filter(
     (positionId) => positionId !== null,
@@ -885,6 +950,41 @@ export default function BusManagementModal({
   const unassignedStudents = selectedBus?.assignments.filter(
     (assignment) => draftAssignments[assignment.assignmentId] === null,
   );
+  const selectedClassroom = classrooms.find(
+    (classroom) => classroom.classroomId === selectedBus?.classroomId,
+  );
+  const classroomAssignedStudentCount = selectedBus
+    ? selectedClassroom?.assignedStudentCount || 0
+    : 0;
+  const classroomRemainingStudentCount = Math.max(
+    0,
+    (selectedClassroom?.studentCount || 0) - classroomAssignedStudentCount,
+  );
+  const transferTargetBuses = selectedBus
+    ? buses.filter(
+        (bus) =>
+          bus.busId !== selectedBus.busId && bus.permissions.canConfigure,
+      )
+    : [];
+  const transferTargetBus = transferTargetBuses.find(
+    (bus) => bus.busId === Number(transferTargetBusId),
+  );
+  const transferTargetAvailableCapacity = transferTargetBus
+    ? Math.max(
+        0,
+        transferTargetBus.capacity -
+          transferTargetBus.assignments.length -
+          transferTargetBus.teacherAssignments.length,
+      )
+    : 0;
+  const selectedBusAvailableCapacity = selectedBus
+    ? Math.max(
+        0,
+        selectedBus.capacity -
+          selectedBus.assignments.length -
+          selectedBus.teacherAssignments.length,
+      )
+    : 0;
 
   const fetchBuses = async (preferredBusId?: number | null) => {
     try {
@@ -901,6 +1001,7 @@ export default function BusManagementModal({
       setClassrooms(data.classrooms || []);
       setBuses(busList);
       setEligibleTeachers(data.eligibleTeachers || []);
+      setUnassignedCampStudents(data.unassignedStudents || []);
       setBusPermissions({
         canManageTeachers: Boolean(data.permissions?.canManageTeachers),
         canConfigureAny: Boolean(data.permissions?.canConfigureAny),
@@ -937,6 +1038,7 @@ export default function BusManagementModal({
     })
       .then(async (response) => {
         const data = await response.json();
+
         if (!response.ok) throw new Error(data.error);
         setPublishedLayoutTemplates(data.templates || []);
       })
@@ -1304,10 +1406,74 @@ export default function BusManagementModal({
     }
   };
 
+  const openTransferStudents = () => {
+    if (!selectedBus) return;
+
+    setTransferTargetBusId(String(transferTargetBuses[0]?.busId || ""));
+    setTransferStudentEnrollmentIds([]);
+    setShowTransfer(true);
+  };
+
+  const handleTransferStudents = async () => {
+    if (
+      !selectedBus ||
+      !transferTargetBusId ||
+      transferStudentEnrollmentIds.length === 0
+    ) {
+      showError("ข้อมูลไม่ครบ", "กรุณาเลือกรถปลายทางและนักเรียนอย่างน้อย 1 คน");
+
+      return;
+    }
+
+    try {
+      setSavingAction("transfer");
+      const response = await fetch(
+        `/api/camps/${campId}/buses/${selectedBus.busId}/transfer`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            targetBusId: Number(transferTargetBusId),
+            studentEnrollmentIds: transferStudentEnrollmentIds,
+          }),
+        },
+      );
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "ย้ายนักเรียนไม่สำเร็จ");
+
+      setShowTransfer(false);
+      setTransferStudentEnrollmentIds([]);
+      showSuccess("ย้ายนักเรียนแล้ว", data.message);
+      await fetchBuses(Number(transferTargetBusId));
+    } catch (error: any) {
+      showError(
+        "ย้ายนักเรียนไม่สำเร็จ",
+        error.message || "กรุณาลองใหม่อีกครั้ง",
+      );
+    } finally {
+      setSavingAction(null);
+    }
+  };
+
   const setStudentAtPosition = (
     positionId: number,
     assignmentId: number | null,
   ) => {
+    if (
+      assignmentId !== null &&
+      assignmentId < 0 &&
+      draftAssignments[assignmentId] == null &&
+      Object.entries(draftAssignments).filter(
+        ([id, currentPositionId]) =>
+          Number(id) < 0 && currentPositionId !== null,
+      ).length >= selectedBusAvailableCapacity
+    ) {
+      showError("รถเต็มแล้ว", "ไม่สามารถเพิ่มนักเรียนเกินความจุของรถคันนี้ได้");
+
+      return;
+    }
+
     const occupyingTeacherId = Object.entries(draftTeacherAssignments).find(
       ([, teacherPositionId]) => teacherPositionId === positionId,
     )?.[0];
@@ -1396,10 +1562,21 @@ export default function BusManagementModal({
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            assignments: selectedBus.assignments.map((assignment) => ({
-              assignmentId: assignment.assignmentId,
-              positionId: draftAssignments[assignment.assignmentId] ?? null,
-            })),
+            assignments: [
+              ...selectedBus.assignments.map((assignment) => ({
+                assignmentId: assignment.assignmentId,
+                positionId: draftAssignments[assignment.assignmentId] ?? null,
+              })),
+              ...Object.entries(draftAssignments)
+                .filter(
+                  ([assignmentId, positionId]) =>
+                    Number(assignmentId) < 0 && positionId !== null,
+                )
+                .map(([assignmentId, positionId]) => ({
+                  studentEnrollmentId: -Number(assignmentId),
+                  positionId: Number(positionId),
+                })),
+            ],
             ...(selectedBus.permissions.canManageTeachers
               ? {
                   teacherAssignments: Object.entries(draftTeacherAssignments)
@@ -1643,9 +1820,7 @@ export default function BusManagementModal({
     }
   };
 
-  const availableClassrooms = classrooms.filter(
-    (classroom) => !classroom.busId,
-  );
+  const availableClassrooms = classrooms;
   const activePositionAssignmentId = selectedPositionId
     ? Object.entries(draftAssignments).find(
         ([, positionId]) => positionId === selectedPositionId,
@@ -1735,8 +1910,11 @@ export default function BusManagementModal({
       ),
     [draftTeacherAssignments],
   );
+  const pendingBusAssignmentCount = Array.from(seatedAssignmentIds).filter(
+    (assignmentId) => assignmentId < 0,
+  ).length;
   const studentCounts = useMemo(() => {
-    const assignments = selectedBus?.assignments || [];
+    const assignments = selectableAssignments;
 
     return {
       all: assignments.length,
@@ -1745,11 +1923,11 @@ export default function BusManagementModal({
       unregistered: assignments.filter((assignment) => !assignment.isRegistered)
         .length,
     };
-  }, [selectedBus]);
+  }, [selectableAssignments]);
   const filteredAssignments = useMemo(() => {
     const query = studentSearch.trim().toLocaleLowerCase();
 
-    return (selectedBus?.assignments || []).filter((assignment) => {
+    return selectableAssignments.filter((assignment) => {
       const matchesStatus =
         Boolean(query) ||
         studentStatusFilter === "all" ||
@@ -1767,7 +1945,12 @@ export default function BusManagementModal({
         matchesStatus && matchesSearch && (!isAlreadySeated || Boolean(query))
       );
     });
-  }, [seatedAssignmentIds, selectedBus, studentSearch, studentStatusFilter]);
+  }, [
+    seatedAssignmentIds,
+    selectableAssignments,
+    studentSearch,
+    studentStatusFilter,
+  ]);
   const filteredTeachers = useMemo(() => {
     const query = teacherSearch.trim().toLocaleLowerCase();
 
@@ -1970,6 +2153,13 @@ export default function BusManagementModal({
                         }}
                       >
                         <span>{bus.name}</span>
+                        <span
+                          className={`ml-2 text-[11px] ${
+                            isSelected ? "text-white/80" : "text-gray-400"
+                          }`}
+                        >
+                          {bus.assignments.length}/{bus.capacity}
+                        </span>
                       </button>
                     );
                   })}
@@ -1989,8 +2179,7 @@ export default function BusManagementModal({
                   </div>
                   {availableClassrooms.length === 0 ? (
                     <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
-                      ทุกห้องเรียนที่คุณดูแลมีรถแล้ว
-                      หรือยังไม่มีห้องเรียนที่ลงทะเบียนในค่ายนี้
+                      ยังไม่มีห้องเรียนที่ลงทะเบียนในค่ายนี้
                     </p>
                   ) : (
                     <div className="grid gap-4 md:grid-cols-2">
@@ -2028,7 +2217,10 @@ export default function BusManagementModal({
                               textValue={`${gradeLabel(classroom.grade)} ห้อง ${classroom.roomName}`}
                             >
                               {gradeLabel(classroom.grade)} ห้อง{" "}
-                              {classroom.roomName} · {classroom.studentCount} คน
+                              {classroom.roomName} · จัดแล้ว{" "}
+                              {classroom.assignedStudentCount}/
+                              {classroom.studentCount} คน · เหลือ{" "}
+                              {classroom.unassignedStudentCount} คน
                             </SelectItem>
                           ))}
                         </Select>
@@ -2047,6 +2239,21 @@ export default function BusManagementModal({
                           }
                         />
                       </label>
+                      {createForm.classroomId && (
+                        <div className="rounded-xl bg-[#edf5f0] px-4 py-3 text-sm text-[#365f4f] md:col-span-2">
+                          {(() => {
+                            const classroom = classrooms.find(
+                              (item) =>
+                                item.classroomId ===
+                                Number(createForm.classroomId),
+                            );
+
+                            return classroom
+                              ? `ห้องนี้มีรถ ${classroom.busCount} คัน · จัดแล้ว ${classroom.assignedStudentCount}/${classroom.studentCount} คน · เหลือ ${classroom.unassignedStudentCount} คน ระบบจะนำนักเรียนที่เหลือลงรถคันใหม่นี้ตามความจุ`
+                              : null;
+                          })()}
+                        </div>
+                      )}
                       <div className="md:col-span-2">
                         <p className="text-sm font-semibold text-gray-700">
                           เทมเพลตผังรถ
@@ -2299,6 +2506,20 @@ export default function BusManagementModal({
 
                       {selectedBus.permissions.canConfigure && (
                         <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
+                          {transferTargetBuses.length > 0 && (
+                            <Button
+                              className="bg-amber-50 font-medium text-amber-800 hover:bg-amber-100"
+                              isDisabled={
+                                savingAction !== null ||
+                                selectedBus.assignments.length === 0
+                              }
+                              size="sm"
+                              startContent={<ArrowRightLeft size={15} />}
+                              onPress={openTransferStudents}
+                            >
+                              ย้ายนักเรียน
+                            </Button>
+                          )}
                           <Button
                             className="bg-[#e2eee7] font-medium text-[#365f4f]"
                             isDisabled={savingAction !== null}
@@ -2358,6 +2579,24 @@ export default function BusManagementModal({
                         </p>
                       </div>
                     </div>
+                    {selectedClassroom && (
+                      <div className="mt-3 rounded-xl border border-[#dce8e0] bg-[#f7faf8] px-3.5 py-2.5 text-sm text-[#365f4f]">
+                        จัดนักเรียนห้องนี้แล้ว{" "}
+                        <span className="font-bold">
+                          {classroomAssignedStudentCount}/
+                          {selectedClassroom.studentCount} คน
+                        </span>
+                        {" · "}เหลือ{" "}
+                        <span className="font-bold">
+                          {classroomRemainingStudentCount} คน
+                        </span>
+                        {selectedClassroom.busCount > 1 && (
+                          <span className="text-gray-500">
+                            {" · "}กระจายในรถ {selectedClassroom.busCount} คัน
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {currentTeacherAssignment && (
@@ -2594,11 +2833,11 @@ export default function BusManagementModal({
 
                                   return (
                                     <BusSeatCard
+                                      fillContainer
                                       disabled={
                                         savingAction !== null ||
                                         !selectedBus.permissions.canConfigure
                                       }
-                                      fillContainer
                                       isOnBus={Boolean(isOnBus)}
                                       label={position.label}
                                       occupant={seatOccupant(
@@ -3030,6 +3269,200 @@ export default function BusManagementModal({
 
         <Modal
           classNames={{
+            base: "rounded-3xl",
+            header: "border-b border-gray-100 px-5 py-4",
+            body: "bg-[#f7faf8] p-5",
+            footer: "border-t border-gray-100 px-5 py-4",
+          }}
+          isOpen={showTransfer}
+          placement="center"
+          scrollBehavior="inside"
+          size="lg"
+          onOpenChange={setShowTransfer}
+        >
+          <ModalContent>
+            <ModalHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-800">
+                  <ArrowRightLeft size={20} />
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-gray-900">
+                    ย้ายนักเรียนไปยังรถคันอื่น
+                  </p>
+                  <p className="mt-1 text-xs font-normal text-gray-500">
+                    ใช้แบ่งนักเรียนระหว่างรถ หรือย้ายออกจากรถที่เสียกลางทาง
+                  </p>
+                </div>
+              </div>
+            </ModalHeader>
+            <ModalBody>
+              <div className="space-y-4">
+                <Select
+                  aria-label="รถปลายทาง"
+                  label="รถปลายทาง"
+                  placeholder="เลือกรถปลายทาง"
+                  selectedKeys={
+                    transferTargetBusId
+                      ? new Set([transferTargetBusId])
+                      : new Set()
+                  }
+                  onSelectionChange={(keys) => {
+                    const value = String(Array.from(keys)[0] || "");
+                    const target = transferTargetBuses.find(
+                      (bus) => bus.busId === Number(value),
+                    );
+                    const available = target
+                      ? Math.max(
+                          0,
+                          target.capacity -
+                            target.assignments.length -
+                            target.teacherAssignments.length,
+                        )
+                      : 0;
+
+                    setTransferTargetBusId(value);
+                    setTransferStudentEnrollmentIds((current) =>
+                      current.slice(0, available),
+                    );
+                  }}
+                >
+                  {transferTargetBuses.map((bus) => {
+                    const available = Math.max(
+                      0,
+                      bus.capacity -
+                        bus.assignments.length -
+                        bus.teacherAssignments.length,
+                    );
+
+                    return (
+                      <SelectItem
+                        key={bus.busId}
+                        textValue={`${bus.name} เหลือ ${available} ที่`}
+                      >
+                        {bus.name} · เหลือ {available} ที่
+                      </SelectItem>
+                    );
+                  })}
+                </Select>
+
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+                  <span>
+                    เลือกแล้ว {transferStudentEnrollmentIds.length} คน ·
+                    รถปลายทางรับได้อีก {transferTargetAvailableCapacity} คน
+                  </span>
+                  <Button
+                    className="shrink-0 bg-white font-semibold text-amber-800"
+                    isDisabled={transferTargetAvailableCapacity === 0}
+                    size="sm"
+                    onPress={() =>
+                      setTransferStudentEnrollmentIds(
+                        (selectedBus?.assignments || [])
+                          .slice(0, transferTargetAvailableCapacity)
+                          .map((assignment) => assignment.studentEnrollmentId),
+                      )
+                    }
+                  >
+                    เลือกสูงสุด
+                  </Button>
+                </div>
+
+                <div className="max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3">
+                  {(selectedBus?.assignments || []).map((assignment) => {
+                    const isSelected = transferStudentEnrollmentIds.includes(
+                      assignment.studentEnrollmentId,
+                    );
+                    const selectionFull =
+                      !isSelected &&
+                      transferStudentEnrollmentIds.length >=
+                        transferTargetAvailableCapacity;
+
+                    return (
+                      <label
+                        key={assignment.assignmentId}
+                        className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${
+                          isSelected
+                            ? "border-amber-300 bg-amber-50"
+                            : "border-gray-100 bg-gray-50"
+                        } ${selectionFull ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                      >
+                        <input
+                          checked={isSelected}
+                          className="h-4 w-4 accent-amber-700"
+                          disabled={selectionFull}
+                          type="checkbox"
+                          onChange={(event) =>
+                            setTransferStudentEnrollmentIds((current) =>
+                              event.target.checked
+                                ? [...current, assignment.studentEnrollmentId]
+                                : current.filter(
+                                    (id) =>
+                                      id !== assignment.studentEnrollmentId,
+                                  ),
+                            )
+                          }
+                        />
+                        <Avatar
+                          className="h-8 w-8 shrink-0 bg-[#e2eee7] text-[#365f4f]"
+                          fallback={
+                            <StudentAvatarFallback
+                              prefixName={assignment.prefixName}
+                              size="sm"
+                            />
+                          }
+                          src={assignment.profileImageUrl || undefined}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-gray-800">
+                            {assignment.studentName}
+                          </span>
+                          <span className="block text-[11px] text-gray-500">
+                            {assignment.positionLabel
+                              ? `ที่นั่ง ${assignment.positionLabel}`
+                              : "ยังไม่ได้จัดที่นั่ง"}
+                            {assignment.status === "ON_BUS"
+                              ? " · อยู่บนรถตอนนี้"
+                              : ""}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <p className="rounded-xl bg-blue-50 px-3 py-2.5 text-xs leading-relaxed text-blue-800">
+                  ระบบจะรักษาสถานะและประวัติขึ้น–ลงรถเดิมไว้
+                  แต่จะล้างที่นั่งเดิมเพื่อให้จัดที่นั่งบนรถปลายทางใหม่
+                </p>
+              </div>
+            </ModalBody>
+            <ModalFooter className="flex justify-end gap-2">
+              <Button
+                isDisabled={savingAction !== null}
+                variant="light"
+                onPress={() => setShowTransfer(false)}
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                className="bg-amber-700 font-semibold text-white"
+                isDisabled={
+                  !transferTargetBusId ||
+                  transferStudentEnrollmentIds.length === 0 ||
+                  transferStudentEnrollmentIds.length >
+                    transferTargetAvailableCapacity
+                }
+                isLoading={savingAction === "transfer"}
+                onPress={() => void handleTransferStudents()}
+              >
+                ย้ายนักเรียน {transferStudentEnrollmentIds.length} คน
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        <Modal
+          classNames={{
             wrapper: "z-[1100]",
             base: "z-[1100] max-h-[88vh] overflow-hidden rounded-3xl",
             backdrop: "z-[1090]",
@@ -3262,10 +3695,10 @@ export default function BusManagementModal({
                             return (
                               <BusSeatCard
                                 compact
+                                fillContainer
                                 disabled={
                                   !selectedBus?.permissions.canConfigure
                                 }
-                                fillContainer
                                 isOnBus={Boolean(isOnBus)}
                                 label={position.label}
                                 occupant={seatOccupant(
@@ -3424,7 +3857,7 @@ export default function BusManagementModal({
                           เลือกนักเรียนสำหรับที่นั่งนี้
                         </p>
                         <p className="mt-1 text-[11px] font-normal text-gray-500">
-                          ค้นหาและเลือกชื่อเพื่อจัดหรือเปลี่ยนที่นั่ง
+                          เลือกได้ทั้งนักเรียนบนรถคันนี้และผู้ที่ยังไม่มีรถ
                         </p>
                       </div>
                       {activeAssignment && (
@@ -3515,21 +3948,27 @@ export default function BusManagementModal({
                         const isAlreadySeated = seatedAssignmentIds.has(
                           assignment.assignmentId,
                         );
+                        const isPendingCapacityFull =
+                          Boolean(assignment.isPendingBusAssignment) &&
+                          !isAlreadySeated &&
+                          pendingBusAssignmentCount >=
+                            selectedBusAvailableCapacity;
 
                         return (
                           <button
                             key={assignment.assignmentId}
                             className={
-                              isAlreadySeated
+                              isAlreadySeated || isPendingCapacityFull
                                 ? "flex min-h-12 w-full cursor-not-allowed items-center gap-2 rounded-lg bg-gray-100 px-3 py-1.5 text-left text-gray-400"
                                 : "flex min-h-12 w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-gray-700 transition hover:bg-white"
                             }
-                            disabled={isAlreadySeated}
+                            disabled={isAlreadySeated || isPendingCapacityFull}
                             type="button"
                             onClick={() => {
                               if (
                                 selectedPositionId !== null &&
-                                !isAlreadySeated
+                                !isAlreadySeated &&
+                                !isPendingCapacityFull
                               ) {
                                 setStudentAtPosition(
                                   selectedPositionId,
@@ -3552,11 +3991,20 @@ export default function BusManagementModal({
                                 {assignment.nickname
                                   ? ` · ชื่อเล่น: ${assignment.nickname}`
                                   : ""}
+                                {assignment.isPendingBusAssignment &&
+                                assignment.sourceClassroom
+                                  ? ` · ${gradeLabel(assignment.sourceClassroom.grade)} ห้อง ${assignment.sourceClassroom.roomName} · ยังไม่มีรถ`
+                                  : ""}
                               </span>
                             </span>
                             {isAlreadySeated && (
                               <span className="shrink-0 text-[10px] font-semibold text-gray-500">
                                 มีที่นั่งแล้ว
+                              </span>
+                            )}
+                            {isPendingCapacityFull && (
+                              <span className="shrink-0 text-[10px] font-semibold text-gray-500">
+                                รถเต็ม
                               </span>
                             )}
                           </button>
