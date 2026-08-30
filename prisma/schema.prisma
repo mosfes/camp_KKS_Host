@@ -38,6 +38,7 @@ model teachers {
   project_document_template project_document_template[]
   camp_bus_events           camp_bus_event[]
   camp_bus_teacher          camp_bus_teacher[]
+  bus_layout_template       bus_layout_template[]
 
   @@index([deletedAt])
 }
@@ -401,6 +402,73 @@ enum camp_bus_event_type {
   DEPART
 }
 
+enum bus_layout_template_status {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum bus_layout_element_type {
+  SEAT
+  DRIVER
+  DOOR
+  STAIRS
+  TOILET
+  TABLE
+  EMPTY
+  LABEL
+}
+
+model bus_layout_template {
+  template_id           Int                        @id @default(autoincrement())
+  name                  String                     @db.VarChar(120)
+  description           String                     @default("") @db.VarChar(500)
+  status                bus_layout_template_status @default(DRAFT)
+  created_by_teacher_id Int?
+  created_at            DateTime                   @default(now())
+  updated_at            DateTime                   @updatedAt
+
+  created_by teachers?                   @relation(fields: [created_by_teacher_id], references: [teachers_id], onDelete: SetNull)
+  floors     bus_layout_template_floor[]
+  buses      camp_bus[]
+
+  @@index([status, updated_at])
+  @@index([created_by_teacher_id])
+}
+
+model bus_layout_template_floor {
+  floor_id       Int    @id @default(autoincrement())
+  template_id    Int
+  floor_number   Int
+  floor_name     String @default("") @db.VarChar(80)
+  canvas_columns Int    @default(12)
+  canvas_rows    Int    @default(24)
+
+  template bus_layout_template           @relation(fields: [template_id], references: [template_id], onDelete: Cascade)
+  elements bus_layout_template_element[]
+
+  @@unique([template_id, floor_number])
+}
+
+model bus_layout_template_element {
+  element_id    Int                     @id @default(autoincrement())
+  floor_id      Int
+  type          bus_layout_element_type
+  x             Int
+  y             Int
+  width         Int                     @default(1)
+  height        Int                     @default(1)
+  rotation      Int                     @default(0)
+  label         String                  @default("") @db.VarChar(50)
+  is_assignable Boolean                 @default(false)
+  z_index       Int                     @default(0)
+  metadata      Json?
+
+  floor bus_layout_template_floor @relation(fields: [floor_id], references: [floor_id], onDelete: Cascade)
+
+  @@index([floor_id, type])
+}
+
 model camp_bus {
   bus_id                 Int             @id @default(autoincrement())
   camp_camp_id           Int
@@ -412,26 +480,32 @@ model camp_bus {
   layout_locked          Boolean         @default(false) // legacy: no longer used by the application
   created_at             DateTime        @default(now())
   updated_at             DateTime        @updatedAt
+  layout_template_id     Int?
 
-  camp                camp               @relation(fields: [camp_camp_id], references: [camp_id], onDelete: Cascade)
-  classroom           classrooms         @relation(fields: [classroom_classroom_id], references: [classroom_id])
+  camp                camp                 @relation(fields: [camp_camp_id], references: [camp_id], onDelete: Cascade)
+  classroom           classrooms           @relation(fields: [classroom_classroom_id], references: [classroom_id])
   floors              camp_bus_floor[]
   assignments         camp_bus_student[]
   teacher_assignments camp_bus_teacher[]
   events              camp_bus_event[]
+  layout_template     bus_layout_template? @relation(fields: [layout_template_id], references: [template_id], onDelete: SetNull)
 
   @@unique([camp_camp_id, classroom_classroom_id])
   @@index([camp_camp_id])
+  @@index([layout_template_id])
 }
 
 model camp_bus_floor {
-  floor_id     Int @id @default(autoincrement())
-  bus_bus_id   Int
-  floor_number Int
-  row_count    Int
+  floor_id       Int  @id @default(autoincrement())
+  bus_bus_id     Int
+  floor_number   Int
+  row_count      Int
+  canvas_columns Int?
+  canvas_rows    Int?
 
-  bus       camp_bus            @relation(fields: [bus_bus_id], references: [bus_id], onDelete: Cascade)
+  bus       camp_bus                  @relation(fields: [bus_bus_id], references: [bus_id], onDelete: Cascade)
   positions camp_bus_position[]
+  elements  camp_bus_layout_element[]
 
   @@unique([bus_bus_id, floor_number])
 }
@@ -442,6 +516,11 @@ model camp_bus_position {
   row_number     Int
   seat_index     Int
   label          String @db.VarChar(20)
+  x              Int?
+  y              Int?
+  width          Int    @default(1)
+  height         Int    @default(1)
+  rotation       Int    @default(0)
 
   floor              camp_bus_floor    @relation(fields: [floor_floor_id], references: [floor_id], onDelete: Cascade)
   assignment         camp_bus_student?
@@ -449,6 +528,24 @@ model camp_bus_position {
 
   @@unique([floor_floor_id, row_number, seat_index])
   @@unique([floor_floor_id, label])
+}
+
+model camp_bus_layout_element {
+  element_id     Int                     @id @default(autoincrement())
+  floor_floor_id Int
+  type           bus_layout_element_type
+  x              Int
+  y              Int
+  width          Int                     @default(1)
+  height         Int                     @default(1)
+  rotation       Int                     @default(0)
+  label          String                  @default("") @db.VarChar(50)
+  z_index        Int                     @default(0)
+  metadata       Json?
+
+  floor camp_bus_floor @relation(fields: [floor_floor_id], references: [floor_id], onDelete: Cascade)
+
+  @@index([floor_floor_id, type])
 }
 
 model camp_bus_student {
@@ -774,11 +871,11 @@ model vulgar_words {
 }
 
 model survey {
-  survey_id            Int      @id @default(autoincrement())
-  title                String   @db.VarChar(255)
-  description          String?  @db.Text
-  created_at           DateTime @default(now())
-  is_required_for_cert Boolean  @default(true)
+  survey_id              Int      @id @default(autoincrement())
+  title                  String   @db.VarChar(255)
+  description            String?  @db.Text
+  created_at             DateTime @default(now())
+  is_required_for_cert   Boolean  @default(true)
   is_accepting_responses Boolean  @default(true)
 
   camp_camp_id Int  @unique

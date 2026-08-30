@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { HeadteacherNavbar } from "@/components/Headteacher";
 import { StatusModalProvider } from "@/components/StatusModalProvider";
 import {
@@ -16,6 +16,7 @@ import {
   PieChart,
   X,
   Files,
+  BusFront,
 } from "lucide-react";
 
 const menuItems = [
@@ -25,14 +26,18 @@ const menuItems = [
   { id: "classroom", label: "ห้องเรียน", icon: BookOpen },
   { id: "student", label: "นักเรียน", icon: GraduationCap },
   { id: "camp", label: "ค่าย", icon: Tent },
+  { id: "buslayout", label: "ผังรถ", icon: BusFront },
   { id: "vulgarwords", label: "คลังคำหยาบ", icon: ShieldAlert },
 ];
 
 /* ── Sidebar (Desktop only) ─────────────────────────────────── */
 function AdminSidebar({ collapsed, setCollapsed }) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
-  const activeTab = searchParams.get("tab") || "overview";
+  const activeTab = pathname.startsWith("/admin_add_user/bus-layout")
+    ? "buslayout"
+    : searchParams.get("tab") || "overview";
 
   return (
     <aside
@@ -107,8 +112,11 @@ function AdminSidebar({ collapsed, setCollapsed }) {
 /* ── Mobile Sidebar Drawer ───────────────────────────────── */
 function MobileSidebar({ isOpen, setIsOpen }) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
-  const activeTab = searchParams.get("tab") || "overview";
+  const activeTab = pathname.startsWith("/admin_add_user/bus-layout")
+    ? "buslayout"
+    : searchParams.get("tab") || "overview";
 
   return (
     <div

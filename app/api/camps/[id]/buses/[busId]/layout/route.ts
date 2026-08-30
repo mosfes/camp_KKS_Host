@@ -38,7 +38,12 @@ export async function PUT(request: Request, context: any) {
     where: { bus_id: busId },
     select: {
       status: true,
-      assignments: { select: { assignment_id: true } },
+      assignments: {
+        select: {
+          assignment_id: true,
+          position_position_id: true,
+        },
+      },
       teacher_assignments: {
         where: { removed_at: null },
         select: {
@@ -80,6 +85,12 @@ export async function PUT(request: Request, context: any) {
 
   const assignmentIds = new Set(
     bus.assignments.map((assignment) => assignment.assignment_id),
+  );
+  const previousPositionByAssignmentId = new Map(
+    bus.assignments.map((assignment) => [
+      assignment.assignment_id,
+      assignment.position_position_id,
+    ]),
   );
   const positionIds = new Set(
     bus.floors.flatMap((floor) =>
@@ -236,24 +247,9 @@ export async function PUT(request: Request, context: any) {
     );
   }
 
-  let initialBoardingApplied = false;
-
   try {
     await prisma.$transaction(
       async (tx) => {
-        const existingAssignments = await tx.camp_bus_student.findMany({
-          where: { bus_bus_id: busId },
-          select: {
-            assignment_id: true,
-            status: true,
-            participation_status: true,
-          },
-        });
-        const firstDeparture = await tx.camp_bus_event.findFirst({
-          where: { bus_bus_id: busId, event_type: "DEPART" },
-          select: { event_id: true },
-        });
-
         // Clear the current positions first. This makes seat swaps safe because
         // position_position_id is unique and updating one student at a time can
         // otherwise fail when two students exchange seats.
@@ -332,70 +328,17 @@ export async function PUT(request: Request, context: any) {
         }
 
         for (const item of body.assignments) {
+          const isNewlySeated =
+            item.positionId !== null &&
+            previousPositionByAssignmentId.get(item.assignmentId) === null;
+
           await tx.camp_bus_student.update({
             where: { assignment_id: item.assignmentId },
-            data: { position_position_id: item.positionId },
+            data: {
+              position_position_id: item.positionId,
+              ...(isNewlySeated ? { status: "OFF_BUS" as const } : {}),
+            },
           });
-        }
-
-        // During the initial setup, choosing a seat is the teacher's boarding
-        // confirmation. Once the bus has departed for the first time, students
-        // must confirm boarding themselves for each subsequent trip.
-        if (!firstDeparture) {
-          initialBoardingApplied = true;
-          const seatedAssignmentIds = new Set(
-            body.assignments
-              .filter((item) => item.positionId !== null)
-              .map((item) => item.assignmentId),
-          );
-          const newlyBoarded = existingAssignments.filter(
-            (assignment) =>
-              assignment.participation_status === "ACTIVE" &&
-              seatedAssignmentIds.has(assignment.assignment_id) &&
-              assignment.status !== "ON_BUS",
-          );
-          const removedFromBus = existingAssignments.filter(
-            (assignment) => !seatedAssignmentIds.has(assignment.assignment_id),
-          );
-          const boardedAt = new Date();
-          const teacherId =
-            Number(access.permission?.teacher?.teachers_id) || null;
-
-          if (newlyBoarded.length > 0) {
-            await tx.camp_bus_student.updateMany({
-              where: {
-                assignment_id: {
-                  in: newlyBoarded.map(
-                    (assignment) => assignment.assignment_id,
-                  ),
-                },
-              },
-              data: { status: "ON_BUS", last_boarded_at: boardedAt },
-            });
-
-            await tx.camp_bus_event.createMany({
-              data: newlyBoarded.map((assignment) => ({
-                bus_bus_id: busId,
-                student_assignment_id: assignment.assignment_id,
-                teacher_teachers_id: teacherId,
-                event_type: "BOARD",
-                created_at: boardedAt,
-              })),
-            });
-          }
-
-          if (removedFromBus.length > 0) {
-            await tx.camp_bus_student.updateMany({
-              where: {
-                assignment_id: {
-                  in: removedFromBus.map(
-                    (assignment) => assignment.assignment_id,
-                  ),
-                },
-              },
-              data: { status: "OFF_BUS" },
-            });
-          }
         }
       },
       { maxWait: 10000, timeout: 30000 },
@@ -420,9 +363,6 @@ export async function PUT(request: Request, context: any) {
 
   return NextResponse.json({
     success: true,
-    initialBoardingApplied,
-    message: initialBoardingApplied
-      ? "บันทึกผังแล้ว และเช็คชื่อขึ้นรถให้นักเรียนที่จัดที่นั่งแล้ว"
-      : "บันทึกผังรถแล้ว",
+    message: "บันทึกผังรถแล้ว นักเรียนที่จัดที่นั่งยังต้องยืนยันขึ้นรถเอง",
   });
 }

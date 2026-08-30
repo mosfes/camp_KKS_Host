@@ -7,6 +7,7 @@ import TeacherManager from "./components/TeacherManager";
 import CampManager from "./components/CampManager";
 import VulgarWordsManager from "./components/VulgarWordsManager";
 import DocumentDataManager from "./components/DocumentDataManager";
+import BusLayoutManager from "./components/BusLayoutManager";
 
 export default function App() {
   let tabs = [
@@ -34,6 +35,11 @@ export default function App() {
       id: "Camp",
       label: "ค่าย",
       content: <CampManager />,
+    },
+    {
+      id: "BusLayout",
+      label: "ผังรถ",
+      content: <BusLayoutManager />,
     },
     {
       id: "VulgarWords",

@@ -112,6 +112,38 @@ type Position = {
   label: string;
   assignmentId: number | null;
   teacherAssignmentId: number | null;
+  x: number | null;
+  y: number | null;
+  width: number;
+  height: number;
+  rotation: number;
+};
+
+type LayoutDecoration = {
+  elementId: number;
+  type: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  label: string;
+  zIndex: number;
+};
+
+type PublishedLayoutTemplate = {
+  templateId: number;
+  name: string;
+  description: string;
+  status: "DRAFT" | "PUBLISHED";
+  capacity: number;
+  floorCount: number;
+  floors: Array<{
+    floorNumber: number;
+    canvasColumns: number;
+    canvasRows: number;
+    elements: Array<{ type: string; isAssignable: boolean }>;
+  }>;
 };
 
 type RowCountValue = number | "";
@@ -157,6 +189,140 @@ function StudentAvatarFallback({
   );
 }
 
+type BusSeatOccupant = {
+  firstName: string;
+  secondaryName: string;
+  prefixName: string | null;
+  profileImageUrl?: string | null;
+  accessibleName: string;
+};
+
+function seatOccupant(
+  assignment: Assignment | null | undefined,
+  teacher: EligibleTeacher | TeacherAssignment | null | undefined,
+): BusSeatOccupant | null {
+  if (assignment) {
+    return {
+      firstName: assignment.firstName,
+      secondaryName: assignment.nickname || "นักเรียน",
+      prefixName: assignment.prefixName,
+      profileImageUrl: assignment.profileImageUrl,
+      accessibleName: assignment.studentName,
+    };
+  }
+
+  if (teacher) {
+    return {
+      firstName: teacher.firstName,
+      secondaryName: "ครู",
+      prefixName: teacher.prefixName,
+      accessibleName: teacher.teacherName,
+    };
+  }
+
+  return null;
+}
+
+function BusSeatCard({
+  label,
+  occupant,
+  isOnBus = false,
+  selected = false,
+  disabled = false,
+  compact = false,
+  fillContainer = false,
+  className = "",
+  onSelect,
+}: {
+  label: string;
+  occupant: BusSeatOccupant | null;
+  isOnBus?: boolean;
+  selected?: boolean;
+  disabled?: boolean;
+  compact?: boolean;
+  fillContainer?: boolean;
+  className?: string;
+  onSelect: () => void;
+}) {
+  const seatStateClass = occupant
+    ? isOnBus
+      ? "border-green-400 bg-green-200 text-green-900"
+      : "border-yellow-300 bg-yellow-100 text-yellow-800"
+    : "border-[#5f806f] bg-white text-gray-600 hover:border-[#365f4f]";
+
+  return (
+    <button
+      aria-pressed={selected}
+      className={`flex w-full min-w-0 flex-col overflow-hidden border text-left transition ${
+        fillContainer ? "h-full" : "aspect-[3/2]"
+      } ${compact ? "rounded-lg p-1" : "rounded-xl p-1.5"} ${seatStateClass} ${
+        selected ? "ring-2 ring-[#365f4f] ring-offset-1" : ""
+      } ${className}`}
+      disabled={disabled}
+      title={occupant?.accessibleName || `${label} ว่าง`}
+      type="button"
+      onClick={onSelect}
+    >
+      <span
+        className={`flex w-full shrink-0 items-center justify-between gap-1 ${compact ? "h-3" : "h-4"}`}
+      >
+        <span
+          className={`truncate font-bold text-gray-700 ${compact ? "text-[8px]" : "text-[9px]"}`}
+        >
+          {label}
+        </span>
+        {occupant && (
+          <span
+            className={`shrink-0 rounded-full font-semibold leading-none ${
+              compact ? "px-0.5 py-px text-[6px]" : "px-1 py-0.5 text-[7px]"
+            } ${
+              isOnBus
+                ? "bg-green-200 text-green-800"
+                : "bg-yellow-200 text-yellow-800"
+            }`}
+          >
+            {compact ? (isOnBus ? "บน" : "ลง") : isOnBus ? "บนรถ" : "ลงรถ"}
+          </span>
+        )}
+      </span>
+      {occupant ? (
+        <span
+          className={`mt-1 flex min-h-0 flex-1 items-center ${compact ? "gap-1" : "gap-1.5"}`}
+        >
+          <Avatar
+            className={`shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-[#3d6357] ${compact ? "h-4 w-4" : "h-5 w-5"}`}
+            fallback={
+              <StudentAvatarFallback
+                prefixName={occupant.prefixName}
+                size={compact ? "xs" : "sm"}
+              />
+            }
+            src={occupant.profileImageUrl || undefined}
+          />
+          <span className="min-w-0 flex-1">
+            <span
+              className={`block truncate font-bold leading-tight text-gray-800 ${compact ? "text-[8px]" : "text-[10px]"}`}
+            >
+              {occupant.firstName}
+            </span>
+            <span
+              className={`block truncate font-semibold leading-tight text-[#46695c] ${compact ? "text-[7px]" : "text-[9px]"}`}
+            >
+              {occupant.secondaryName}
+            </span>
+          </span>
+        </span>
+      ) : (
+        <span
+          className={`flex min-h-0 flex-1 items-center justify-center font-medium ${compact ? "text-[8px]" : "text-[10px]"}`}
+        >
+          ว่าง
+        </span>
+      )}
+    </button>
+  );
+}
+
 type SavingAction = "create" | "save" | "update" | "delete" | "status";
 
 type TripHistoryEntry = {
@@ -172,7 +338,8 @@ type Bus = {
   name: string;
   registrationPlate: string;
   floorCount: number;
-  layoutTemplateId: string | null;
+  layoutTemplateId: string | number | null;
+  layoutTemplateName: string | null;
   status: "PARKED" | "TRAVELING";
   lastParkedAt: string | null;
   lastDepartedAt: string | null;
@@ -187,6 +354,9 @@ type Bus = {
     floorId: number;
     floorNumber: number;
     rowCount: number;
+    canvasColumns: number | null;
+    canvasRows: number | null;
+    elements: LayoutDecoration[];
     positions: Position[];
   }[];
   assignments: Assignment[];
@@ -327,6 +497,115 @@ function seatGridColumnClass(seatIndex: number) {
   ];
 }
 
+function FreeformFloorCanvas({
+  floor,
+  renderPosition,
+  compact = false,
+}: {
+  floor: Bus["floors"][number];
+  renderPosition: (position: Position) => ReactNode;
+  compact?: boolean;
+}) {
+  if (!floor.canvasColumns || !floor.canvasRows) return null;
+  const layoutItems = [
+    ...floor.elements,
+    ...floor.positions.filter(
+      (position): position is Position & { x: number; y: number } =>
+        position.x !== null && position.y !== null,
+    ),
+  ];
+  const occupiedLeft = layoutItems.length
+    ? Math.min(...layoutItems.map((item) => item.x))
+    : 0;
+  const occupiedRight = layoutItems.length
+    ? Math.max(...layoutItems.map((item) => item.x + item.width))
+    : floor.canvasColumns;
+  const occupiedTop = layoutItems.length
+    ? Math.min(...layoutItems.map((item) => item.y))
+    : 0;
+  const occupiedBottom = layoutItems.length
+    ? Math.max(...layoutItems.map((item) => item.y + item.height))
+    : floor.canvasRows;
+  // Keep a small, even gutter around the actual layout instead of rendering
+  // every unused editor grid column. This matches the legacy bus inset while
+  // preserving the relative coordinates from the drag-and-drop editor.
+  const horizontalPadding = 1 / 3;
+  const verticalPadding = 0.4;
+  const displayLeft = Math.max(0, occupiedLeft - horizontalPadding);
+  const displayRight = Math.min(
+    floor.canvasColumns,
+    occupiedRight + horizontalPadding,
+  );
+  const displayTop = Math.max(0, occupiedTop);
+  const displayBottom = Math.min(
+    floor.canvasRows,
+    occupiedBottom + verticalPadding,
+  );
+  const displayCanvasColumns = Math.max(1, displayRight - displayLeft);
+  const displayCanvasRows = Math.max(1, displayBottom - displayTop);
+  // At the display width used below, this makes a 2x2 custom seat the same
+  // visual ratio as the legacy 3:2 seat card and leaves an even row gap.
+  const displayVerticalScale = 0.72;
+
+  return (
+    <div
+      className={`relative mx-auto w-full overflow-hidden rounded-[2.5rem] border-4 border-[#5f806f] bg-[#fbfcfb] shadow-sm ${
+        compact ? "min-w-[280px]" : "min-w-[330px]"
+      }`}
+    >
+      <div className="pointer-events-none mx-[5%] mt-[4%] flex min-h-8 items-center justify-center rounded-2xl bg-[#deebe4] px-3 py-1.5 text-center text-[10px] font-bold text-[#365f4f] sm:min-h-10 sm:text-sm">
+        ด้านหน้ารถ / คนขับ
+      </div>
+      <div
+        className={compact ? "relative mt-3" : "relative mt-3.5"}
+        style={{
+          aspectRatio: `${displayCanvasColumns} / ${
+            displayCanvasRows * displayVerticalScale
+          }`,
+        }}
+      >
+        {floor.elements.map((element) => (
+          <div
+            key={`element-${element.elementId}`}
+            className="absolute flex items-center justify-center overflow-hidden rounded-md border border-gray-200 bg-gray-100/90 px-1 text-center text-[8px] font-semibold text-gray-600"
+            style={{
+              left: `${((element.x - displayLeft) / displayCanvasColumns) * 100}%`,
+              top: `${((element.y - displayTop) / displayCanvasRows) * 100}%`,
+              width: `${(element.width / displayCanvasColumns) * 100}%`,
+              height: `${(element.height / displayCanvasRows) * 100}%`,
+              transform: `rotate(${element.rotation}deg)`,
+              zIndex: element.zIndex,
+            }}
+            title={element.label}
+          >
+            {element.label}
+          </div>
+        ))}
+        {floor.positions.map((position) => {
+          if (position.x === null || position.y === null) return null;
+
+          return (
+            <div
+              key={`position-${position.positionId}`}
+              className={`absolute ${compact ? "p-0.5" : "p-1 sm:p-1.5"}`}
+              style={{
+                left: `${((position.x - displayLeft) / displayCanvasColumns) * 100}%`,
+                top: `${((position.y - displayTop) / displayCanvasRows) * 100}%`,
+                width: `${(position.width / displayCanvasColumns) * 100}%`,
+                height: `${(position.height / displayCanvasRows) * 100}%`,
+                transform: `rotate(${position.rotation}deg)`,
+                zIndex: 20,
+              }}
+            >
+              {renderPosition(position)}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function BusManagementSkeleton() {
   return (
     <div aria-label="กำลังโหลดข้อมูลรถ" className="animate-pulse space-y-4">
@@ -452,6 +731,9 @@ export default function BusManagementModal({
   const { showError, showSuccess } = useStatusModal();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [buses, setBuses] = useState<Bus[]>([]);
+  const [publishedLayoutTemplates, setPublishedLayoutTemplates] = useState<
+    PublishedLayoutTemplate[]
+  >([]);
   const [eligibleTeachers, setEligibleTeachers] = useState<EligibleTeacher[]>(
     [],
   );
@@ -556,8 +838,25 @@ export default function BusManagementModal({
   );
   const hasMultipleFloors = selectedBus ? selectedBus.floorCount > 1 : false;
   const selectedLayoutTemplate = getBusLayoutTemplate(
-    selectedBus?.layoutTemplateId,
+    typeof selectedBus?.layoutTemplateId === "string"
+      ? selectedBus.layoutTemplateId
+      : null,
   );
+  const isFreeformBusLayout = typeof selectedBus?.layoutTemplateId === "number";
+
+  const selectedCreateLayoutTemplate = useMemo(() => {
+    if (!createForm.layoutTemplateId.startsWith("db:")) {
+      return getBusLayoutTemplate(createForm.layoutTemplateId);
+    }
+
+    const templateId = Number(createForm.layoutTemplateId.slice(3));
+
+    return (
+      publishedLayoutTemplates.find(
+        (template) => template.templateId === templateId,
+      ) || null
+    );
+  }, [createForm.layoutTemplateId, publishedLayoutTemplates]);
 
   const currentFloor = selectedBus?.floors.find(
     (floor) => floor.floorNumber === selectedFloor,
@@ -633,6 +932,15 @@ export default function BusManagementModal({
   useEffect(() => {
     if (!isOpen || !campId) return;
     void fetchBuses();
+    void fetch("/api/bus-layout-templates?includeDraft=true", {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+        setPublishedLayoutTemplates(data.templates || []);
+      })
+      .catch(() => setPublishedLayoutTemplates([]));
   }, [isOpen, campId]);
 
   useEffect(() => {
@@ -850,11 +1158,13 @@ export default function BusManagementModal({
   }, [selectedBusLayoutVersion]);
 
   const handleCreate = async () => {
-    const layoutTemplate = getBusLayoutTemplate(createForm.layoutTemplateId);
+    const layoutTemplate = selectedCreateLayoutTemplate;
     const floorCount =
       layoutTemplate?.floors.length || Number(createForm.floorCount);
     const rowCountValues = layoutTemplate
-      ? layoutTemplate.floors.map((floor) => floor.rowCount)
+      ? layoutTemplate.floors.map((floor: any) =>
+          "rowCount" in floor ? floor.rowCount : floor.canvasRows,
+        )
       : createForm.rowCounts.slice(0, floorCount);
 
     if (
@@ -883,7 +1193,9 @@ export default function BusManagementModal({
           registrationPlate: "",
           floorCount,
           rowCounts,
-          layoutTemplateId: layoutTemplate?.id,
+          layoutTemplateId: createForm.layoutTemplateId.startsWith("db:")
+            ? Number(createForm.layoutTemplateId.slice(3))
+            : (layoutTemplate as any)?.id,
         }),
       });
       const data = await response.json();
@@ -1102,7 +1414,7 @@ export default function BusManagementModal({
         },
       );
       const responseText = await response.text();
-      let data: { error?: string; initialBoardingApplied?: boolean } = {};
+      let data: { error?: string; message?: string } = {};
 
       try {
         data = responseText ? JSON.parse(responseText) : {};
@@ -1115,9 +1427,7 @@ export default function BusManagementModal({
       if (showMessage) {
         showSuccess(
           "บันทึกแล้ว",
-          data.initialBoardingApplied
-            ? "บันทึกผังและเช็คชื่อขึ้นรถให้นักเรียนที่จัดที่นั่งแล้ว"
-            : "อัปเดตผังที่นั่งเรียบร้อยแล้ว",
+          data.message || "อัปเดตผังที่นั่งแล้ว นักเรียนยังต้องยืนยันขึ้นรถเอง",
         );
       }
       await fetchBuses(selectedBus.busId);
@@ -1792,6 +2102,68 @@ export default function BusManagementModal({
                               </span>
                             </button>
                           ))}
+                          {publishedLayoutTemplates.length > 0 && (
+                            <div className="md:col-span-2 mt-1 flex items-center gap-2 border-t border-gray-100 pt-3">
+                              <span className="text-xs font-semibold text-[#557267]">
+                                ผังที่สร้างจากหน้าแอดมิน
+                              </span>
+                              <span className="text-[11px] font-normal text-gray-400">
+                                เลือกใช้ได้เมื่อเผยแพร่แล้ว
+                              </span>
+                            </div>
+                          )}
+                          {publishedLayoutTemplates.map((template) => {
+                            const templateKey = `db:${template.templateId}`;
+                            const isDraft = template.status === "DRAFT";
+
+                            return (
+                              <button
+                                key={templateKey}
+                                className={`rounded-2xl border p-4 text-left transition ${
+                                  isDraft
+                                    ? "cursor-not-allowed border-amber-200 bg-amber-50/60 opacity-80"
+                                    : createForm.layoutTemplateId ===
+                                        templateKey
+                                      ? "border-[#6b857a] bg-[#edf5f0] ring-2 ring-[#6b857a]/15"
+                                      : "border-gray-200 bg-white hover:border-[#9ab4a7]"
+                                }`}
+                                disabled={isDraft}
+                                type="button"
+                                onClick={() =>
+                                  setCreateForm((form) => ({
+                                    ...form,
+                                    name: form.name || template.name,
+                                    layoutTemplateId: templateKey,
+                                    floorCount: String(template.floorCount),
+                                    rowCounts: template.floors.map(
+                                      (floor) => floor.canvasRows,
+                                    ),
+                                  }))
+                                }
+                              >
+                                <span className="flex items-center justify-between gap-2 text-sm font-bold text-gray-900">
+                                  <span>{template.name}</span>
+                                  <span
+                                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${
+                                      isDraft
+                                        ? "bg-amber-100 text-amber-700"
+                                        : "bg-[#dfeae3] text-[#365f4f]"
+                                    }`}
+                                  >
+                                    {isDraft
+                                      ? "ฉบับร่าง"
+                                      : `${template.capacity} ที่`}
+                                  </span>
+                                </span>
+                                <span className="mt-1 block text-xs font-normal text-gray-500">
+                                  {isDraft
+                                    ? "ต้องเผยแพร่จากหน้าแอดมินก่อนเลือกใช้"
+                                    : template.description ||
+                                      `ผังลากวาง ${template.floorCount} ชั้น`}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                       {createForm.layoutTemplateId === "custom" ? (
@@ -2119,8 +2491,9 @@ export default function BusManagementModal({
                             : "ดูตำแหน่งและสถานะผู้โดยสารของรถคันนี้"}
                         </p>
                         <p className="mt-1 text-[11px] text-gray-400">
-                          {selectedLayoutTemplate
-                            ? `ใช้เทมเพลต ${selectedLayoutTemplate.name} · หมายเลขที่นั่งตามผังจริง`
+                          {selectedLayoutTemplate ||
+                          selectedBus.layoutTemplateName
+                            ? `ใช้เทมเพลต ${selectedLayoutTemplate?.name || selectedBus.layoutTemplateName} · หมายเลขที่นั่งตามผังจริง`
                             : "บันทึกผังครั้งแรก = อยู่บนรถแล้ว · A/D ติดหน้าต่าง · B/C ติดทางเดิน"}
                         </p>
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
@@ -2163,153 +2536,173 @@ export default function BusManagementModal({
 
                     {currentFloor && (
                       <div className="mt-5 overflow-x-auto">
-                        <div className="mx-auto min-w-[330px] max-w-xl rounded-[2rem] border-4 border-[#6b857a]/20 bg-[#f7faf8] p-4 sm:p-6">
-                          <div className="mb-5 rounded-xl bg-[#dfeae3] py-2 text-center text-xs font-medium text-[#365f4f]">
-                            ด้านหน้ารถ / คนขับ
-                          </div>
-                          <div className="space-y-2">
-                            {Array.from(
-                              { length: currentFloor.rowCount },
-                              (_, rowIndex) => {
-                                const rowPositions =
-                                  currentFloor.positions.filter(
-                                    (position) =>
-                                      position.rowNumber === rowIndex + 1,
+                        <div
+                          className={`mx-auto min-w-[330px] max-w-xl ${
+                            isFreeformBusLayout
+                              ? ""
+                              : "rounded-[2.5rem] border-4 border-[#5f806f] bg-[#fbfcfb] p-4 sm:p-6"
+                          }`}
+                        >
+                          {!isFreeformBusLayout && (
+                            <div className="mb-5 rounded-2xl bg-[#deebe4] px-3 py-2 text-center text-xs font-bold text-[#365f4f] sm:text-sm">
+                              ด้านหน้ารถ / คนขับ
+                            </div>
+                          )}
+                          <div
+                            className={
+                              isFreeformBusLayout
+                                ? ""
+                                : "space-y-2 sm:space-y-3"
+                            }
+                          >
+                            {isFreeformBusLayout &&
+                            currentFloor.canvasColumns &&
+                            currentFloor.canvasRows ? (
+                              <FreeformFloorCanvas
+                                floor={currentFloor}
+                                renderPosition={(position) => {
+                                  const assignmentId = Object.entries(
+                                    draftAssignments,
+                                  ).find(
+                                    ([, positionId]) =>
+                                      positionId === position.positionId,
+                                  )?.[0];
+                                  const assignment = assignmentId
+                                    ? assignmentById.get(Number(assignmentId))
+                                    : null;
+                                  const teacherId = Object.entries(
+                                    draftTeacherAssignments,
+                                  ).find(
+                                    ([, positionId]) =>
+                                      positionId === position.positionId,
+                                  )?.[0];
+                                  const teacherAssignment = teacherId
+                                    ? selectedBus.teacherAssignments.find(
+                                        (item) =>
+                                          item.teacherId === Number(teacherId),
+                                      ) || null
+                                    : null;
+                                  const teacherPassenger = teacherId
+                                    ? eligibleTeachers.find(
+                                        (item) =>
+                                          item.teacherId === Number(teacherId),
+                                      ) || teacherAssignment
+                                    : null;
+                                  const isOnBus = assignment
+                                    ? assignment.status === "ON_BUS"
+                                    : teacherAssignment?.status === "ON_BUS";
+
+                                  return (
+                                    <BusSeatCard
+                                      disabled={
+                                        savingAction !== null ||
+                                        !selectedBus.permissions.canConfigure
+                                      }
+                                      fillContainer
+                                      isOnBus={Boolean(isOnBus)}
+                                      label={position.label}
+                                      occupant={seatOccupant(
+                                        assignment,
+                                        teacherPassenger,
+                                      )}
+                                      selected={
+                                        selectedPositionId ===
+                                        position.positionId
+                                      }
+                                      onSelect={() =>
+                                        setSelectedPositionId(
+                                          position.positionId,
+                                        )
+                                      }
+                                    />
                                   );
+                                }}
+                              />
+                            ) : (
+                              Array.from(
+                                { length: currentFloor.rowCount },
+                                (_, rowIndex) => {
+                                  const rowPositions =
+                                    currentFloor.positions.filter(
+                                      (position) =>
+                                        position.rowNumber === rowIndex + 1,
+                                    );
 
-                                return (
-                                  <div
-                                    key={rowIndex}
-                                    className="grid grid-cols-[1fr_1fr_0.35fr_1fr_1fr] gap-1.5"
-                                  >
-                                    {rowPositions.map((position) => {
-                                      const assignmentId = Object.entries(
-                                        draftAssignments,
-                                      ).find(
-                                        ([, positionId]) =>
-                                          positionId === position.positionId,
-                                      )?.[0];
-                                      const assignment = assignmentId
-                                        ? assignmentById.get(
-                                            Number(assignmentId),
-                                          )
-                                        : null;
-                                      const teacherId = Object.entries(
-                                        draftTeacherAssignments,
-                                      ).find(
-                                        ([, positionId]) =>
-                                          positionId === position.positionId,
-                                      )?.[0];
-                                      const teacherAssignment = teacherId
-                                        ? selectedBus.teacherAssignments.find(
-                                            (item) =>
-                                              item.teacherId ===
-                                              Number(teacherId),
-                                          ) || null
-                                        : null;
-                                      const teacherPassenger = teacherId
-                                        ? eligibleTeachers.find(
-                                            (item) =>
-                                              item.teacherId ===
-                                              Number(teacherId),
-                                          ) || teacherAssignment
-                                        : null;
-                                      const hasOccupant = Boolean(
-                                        assignment || teacherPassenger,
-                                      );
-                                      const isOnBus = assignment
-                                        ? assignment.status === "ON_BUS"
-                                        : teacherAssignment?.status ===
-                                          "ON_BUS";
-                                      const seatStateClass = hasOccupant
-                                        ? isOnBus
-                                          ? "border-green-400 bg-green-200 text-green-900"
-                                          : "border-yellow-300 bg-yellow-100 text-yellow-800"
-                                        : "border-gray-200 bg-white text-gray-600 hover:border-[#6b857a]";
-
-                                      return (
-                                        <button
-                                          key={position.positionId}
-                                          className={`flex h-[76px] min-w-0 flex-col overflow-hidden rounded-xl border p-1.5 text-left transition ${seatStateClass} ${selectedPositionId === position.positionId ? "border-[#365f4f] ring-2 ring-[#6b857a]/30" : ""} ${seatGridColumnClass(position.seatIndex)}`}
-                                          disabled={
-                                            savingAction !== null ||
-                                            !selectedBus.permissions
-                                              .canConfigure
-                                          }
-                                          title={
-                                            assignment
-                                              ? `${assignment.studentId} · ${assignment.studentName}${assignment.nickname ? ` · ชื่อเล่น ${assignment.nickname}` : ""}`
-                                              : teacherPassenger
-                                                ? `ครู · ${teacherPassenger.teacherName}`
-                                                : `${position.label} ว่าง`
-                                          }
-                                          onClick={() =>
-                                            setSelectedPositionId(
-                                              position.positionId,
+                                  return (
+                                    <div
+                                      key={rowIndex}
+                                      className="grid grid-cols-[1fr_1fr_0.35fr_1fr_1fr] gap-2 sm:gap-3"
+                                    >
+                                      {rowPositions.map((position) => {
+                                        const assignmentId = Object.entries(
+                                          draftAssignments,
+                                        ).find(
+                                          ([, positionId]) =>
+                                            positionId === position.positionId,
+                                        )?.[0];
+                                        const assignment = assignmentId
+                                          ? assignmentById.get(
+                                              Number(assignmentId),
                                             )
-                                          }
-                                        >
-                                          <span className="flex h-4 shrink-0 items-center justify-between gap-1">
-                                            <span className="truncate text-[9px] font-semibold text-gray-700">
-                                              {position.label}
-                                            </span>
-                                            {hasOccupant && (
-                                              <span
-                                                className={`shrink-0 rounded-full px-1 py-0.5 text-[7px] font-semibold leading-none ${isOnBus ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"}`}
-                                              >
-                                                {isOnBus ? "บนรถ" : "ลงรถ"}
-                                              </span>
+                                          : null;
+                                        const teacherId = Object.entries(
+                                          draftTeacherAssignments,
+                                        ).find(
+                                          ([, positionId]) =>
+                                            positionId === position.positionId,
+                                        )?.[0];
+                                        const teacherAssignment = teacherId
+                                          ? selectedBus.teacherAssignments.find(
+                                              (item) =>
+                                                item.teacherId ===
+                                                Number(teacherId),
+                                            ) || null
+                                          : null;
+                                        const teacherPassenger = teacherId
+                                          ? eligibleTeachers.find(
+                                              (item) =>
+                                                item.teacherId ===
+                                                Number(teacherId),
+                                            ) || teacherAssignment
+                                          : null;
+                                        const isOnBus = assignment
+                                          ? assignment.status === "ON_BUS"
+                                          : teacherAssignment?.status ===
+                                            "ON_BUS";
+
+                                        return (
+                                          <BusSeatCard
+                                            key={position.positionId}
+                                            className={seatGridColumnClass(
+                                              position.seatIndex,
                                             )}
-                                          </span>
-                                          {hasOccupant ? (
-                                            <span className="mt-1 flex min-h-0 flex-1 items-center gap-1.5">
-                                              <Avatar
-                                                className="h-5 w-5 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-[#3d6357]"
-                                                fallback={
-                                                  <StudentAvatarFallback
-                                                    prefixName={
-                                                      assignment?.prefixName ||
-                                                      teacherPassenger?.prefixName ||
-                                                      null
-                                                    }
-                                                    size="sm"
-                                                  />
-                                                }
-                                                src={
-                                                  assignment?.profileImageUrl ||
-                                                  undefined
-                                                }
-                                              />
-                                              <span className="min-w-0 flex-1">
-                                                <span className="block h-3 truncate text-[10px] font-bold leading-3 text-gray-800">
-                                                  {assignment?.firstName ||
-                                                    teacherPassenger?.firstName}
-                                                </span>
-                                                <span
-                                                  aria-hidden={
-                                                    !assignment?.nickname &&
-                                                    !teacherPassenger
-                                                  }
-                                                  className={`block h-3 truncate text-[9px] font-semibold leading-3 ${assignment?.nickname || teacherPassenger ? "text-[#46695c]" : "invisible"}`}
-                                                >
-                                                  {assignment?.nickname ||
-                                                    (teacherPassenger
-                                                      ? "ครู"
-                                                      : "ชื่อเล่น")}
-                                                </span>
-                                              </span>
-                                            </span>
-                                          ) : (
-                                            <span className="flex min-h-0 flex-1 items-center justify-center text-[10px] font-medium text-gray-600">
-                                              ว่าง
-                                            </span>
-                                          )}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                );
-                              },
+                                            disabled={
+                                              savingAction !== null ||
+                                              !selectedBus.permissions
+                                                .canConfigure
+                                            }
+                                            isOnBus={Boolean(isOnBus)}
+                                            label={position.label}
+                                            occupant={seatOccupant(
+                                              assignment,
+                                              teacherPassenger,
+                                            )}
+                                            selected={
+                                              selectedPositionId ===
+                                              position.positionId
+                                            }
+                                            onSelect={() =>
+                                              setSelectedPositionId(
+                                                position.positionId,
+                                              )
+                                            }
+                                          />
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                },
+                              )
                             )}
                           </div>
                         </div>
@@ -2338,9 +2731,7 @@ export default function BusManagementModal({
                             startContent={<Save size={15} />}
                             onPress={requestSaveLayout}
                           >
-                            {selectedBus.lastDepartedAt === null
-                              ? "บันทึกผังและเช็คชื่อเที่ยวแรก"
-                              : "บันทึกผัง"}
+                            บันทึกผัง
                           </Button>
                         </div>
                       </div>
@@ -2818,141 +3209,156 @@ export default function BusManagementModal({
 
                 <div className="max-h-64 overflow-y-auto rounded-xl bg-[#f7faf8] p-2">
                   {currentFloor ? (
-                    <div className="space-y-1.5">
-                      {Array.from(
-                        { length: currentFloor.rowCount },
-                        (_, rowIndex) => {
-                          const rowPositions = currentFloor.positions.filter(
-                            (position) => position.rowNumber === rowIndex + 1,
-                          );
+                    <div
+                      className={`space-y-1.5 ${
+                        isFreeformBusLayout
+                          ? ""
+                          : "rounded-2xl border-2 border-[#5f806f] bg-[#fbfcfb] p-2"
+                      }`}
+                    >
+                      {!isFreeformBusLayout && (
+                        <div className="rounded-xl bg-[#deebe4] px-2 py-1.5 text-center text-[9px] font-bold text-[#365f4f]">
+                          ด้านหน้ารถ / คนขับ
+                        </div>
+                      )}
+                      {isFreeformBusLayout &&
+                      currentFloor.canvasColumns &&
+                      currentFloor.canvasRows ? (
+                        <FreeformFloorCanvas
+                          compact
+                          floor={currentFloor}
+                          renderPosition={(position) => {
+                            const assignmentId = Object.entries(
+                              draftAssignments,
+                            ).find(
+                              ([, positionId]) =>
+                                positionId === position.positionId,
+                            )?.[0];
+                            const assignment = assignmentId
+                              ? assignmentById.get(Number(assignmentId))
+                              : null;
+                            const teacherId = Object.entries(
+                              draftTeacherAssignments,
+                            ).find(
+                              ([, positionId]) =>
+                                positionId === position.positionId,
+                            )?.[0];
+                            const teacherAssignment = teacherId
+                              ? selectedBus?.teacherAssignments.find(
+                                  (item) =>
+                                    item.teacherId === Number(teacherId),
+                                ) || null
+                              : null;
+                            const teacherPassenger = teacherId
+                              ? eligibleTeachers.find(
+                                  (item) =>
+                                    item.teacherId === Number(teacherId),
+                                ) || teacherAssignment
+                              : null;
+                            const isOnBus = assignment
+                              ? assignment.status === "ON_BUS"
+                              : teacherAssignment?.status === "ON_BUS";
 
-                          return (
-                            <div
-                              key={rowIndex}
-                              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_0.35fr_minmax(0,1fr)_minmax(0,1fr)] gap-1"
-                            >
-                              {rowPositions.map((position) => {
-                                const assignmentId = Object.entries(
-                                  draftAssignments,
-                                ).find(
-                                  ([, positionId]) =>
-                                    positionId === position.positionId,
-                                )?.[0];
-                                const assignment = assignmentId
-                                  ? assignmentById.get(Number(assignmentId))
-                                  : null;
-                                const teacherId = Object.entries(
-                                  draftTeacherAssignments,
-                                ).find(
-                                  ([, positionId]) =>
-                                    positionId === position.positionId,
-                                )?.[0];
-                                const teacherAssignment = teacherId
-                                  ? selectedBus?.teacherAssignments.find(
-                                      (item) =>
-                                        item.teacherId === Number(teacherId),
-                                    ) || null
-                                  : null;
-                                const teacherPassenger = teacherId
-                                  ? eligibleTeachers.find(
-                                      (item) =>
-                                        item.teacherId === Number(teacherId),
-                                    ) || teacherAssignment
-                                  : null;
-                                const isCurrent =
-                                  selectedPositionId === position.positionId;
-                                const hasOccupant = Boolean(
-                                  assignment || teacherPassenger,
-                                );
-                                const isOnBus = assignment
-                                  ? assignment.status === "ON_BUS"
-                                  : teacherAssignment?.status === "ON_BUS";
-                                const seatStateClass = hasOccupant
-                                  ? isOnBus
-                                    ? "border-green-200 bg-green-50 text-green-800"
-                                    : "border-yellow-300 bg-yellow-50 text-yellow-800"
-                                  : "border-gray-200 bg-white text-gray-600";
+                            return (
+                              <BusSeatCard
+                                compact
+                                disabled={
+                                  !selectedBus?.permissions.canConfigure
+                                }
+                                fillContainer
+                                isOnBus={Boolean(isOnBus)}
+                                label={position.label}
+                                occupant={seatOccupant(
+                                  assignment,
+                                  teacherPassenger,
+                                )}
+                                selected={
+                                  selectedPositionId === position.positionId
+                                }
+                                onSelect={() =>
+                                  setSelectedPositionId(position.positionId)
+                                }
+                              />
+                            );
+                          }}
+                        />
+                      ) : (
+                        Array.from(
+                          { length: currentFloor.rowCount },
+                          (_, rowIndex) => {
+                            const rowPositions = currentFloor.positions.filter(
+                              (position) => position.rowNumber === rowIndex + 1,
+                            );
 
-                                return (
-                                  <button
-                                    key={position.positionId}
-                                    className={[
-                                      "flex h-14 min-w-0 flex-col overflow-hidden rounded-lg border p-1 text-left transition",
-                                      seatStateClass,
-                                      isCurrent
-                                        ? "border-[#365f4f] ring-2 ring-[#6b857a]/30 shadow-sm"
-                                        : "",
-                                      seatGridColumnClass(position.seatIndex),
-                                    ].join(" ")}
-                                    disabled={
-                                      !selectedBus?.permissions.canConfigure
-                                    }
-                                    type="button"
-                                    onClick={() =>
-                                      setSelectedPositionId(position.positionId)
-                                    }
-                                  >
-                                    <span className="flex h-3 shrink-0 items-center justify-between gap-0.5">
-                                      <span className="truncate text-[8px] font-semibold text-gray-700">
-                                        {position.label}
-                                      </span>
-                                      {hasOccupant && (
-                                        <span
-                                          className={`shrink-0 rounded-full px-0.5 py-px text-[6px] font-semibold leading-none ${isOnBus ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"}`}
-                                        >
-                                          {isOnBus ? "บน" : "ลง"}
-                                        </span>
+                            return (
+                              <div
+                                key={rowIndex}
+                                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_0.35fr_minmax(0,1fr)_minmax(0,1fr)] gap-1"
+                              >
+                                {rowPositions.map((position) => {
+                                  const assignmentId = Object.entries(
+                                    draftAssignments,
+                                  ).find(
+                                    ([, positionId]) =>
+                                      positionId === position.positionId,
+                                  )?.[0];
+                                  const assignment = assignmentId
+                                    ? assignmentById.get(Number(assignmentId))
+                                    : null;
+                                  const teacherId = Object.entries(
+                                    draftTeacherAssignments,
+                                  ).find(
+                                    ([, positionId]) =>
+                                      positionId === position.positionId,
+                                  )?.[0];
+                                  const teacherAssignment = teacherId
+                                    ? selectedBus?.teacherAssignments.find(
+                                        (item) =>
+                                          item.teacherId === Number(teacherId),
+                                      ) || null
+                                    : null;
+                                  const teacherPassenger = teacherId
+                                    ? eligibleTeachers.find(
+                                        (item) =>
+                                          item.teacherId === Number(teacherId),
+                                      ) || teacherAssignment
+                                    : null;
+                                  const isOnBus = assignment
+                                    ? assignment.status === "ON_BUS"
+                                    : teacherAssignment?.status === "ON_BUS";
+
+                                  return (
+                                    <BusSeatCard
+                                      key={position.positionId}
+                                      compact
+                                      className={seatGridColumnClass(
+                                        position.seatIndex,
                                       )}
-                                    </span>
-                                    {hasOccupant ? (
-                                      <span className="mt-0.5 flex min-h-0 flex-1 items-center gap-1">
-                                        <Avatar
-                                          className="h-4 w-4 shrink-0 border border-[#cbd9d3] bg-[#e8f0ee] text-[#3d6357]"
-                                          fallback={
-                                            <StudentAvatarFallback
-                                              prefixName={
-                                                assignment?.prefixName ||
-                                                teacherPassenger?.prefixName ||
-                                                null
-                                              }
-                                              size="xs"
-                                            />
-                                          }
-                                          src={
-                                            assignment?.profileImageUrl ||
-                                            undefined
-                                          }
-                                        />
-                                        <span className="min-w-0 flex-1">
-                                          <span className="block h-2.5 truncate text-[8px] font-bold leading-[10px] text-gray-800">
-                                            {assignment?.firstName ||
-                                              teacherPassenger?.firstName}
-                                          </span>
-                                          <span
-                                            aria-hidden={
-                                              !assignment?.nickname &&
-                                              !teacherPassenger
-                                            }
-                                            className={`block h-2.5 truncate text-[7px] font-semibold leading-[10px] ${assignment?.nickname || teacherPassenger ? "text-[#46695c]" : "invisible"}`}
-                                          >
-                                            {assignment?.nickname ||
-                                              (teacherPassenger
-                                                ? "ครู"
-                                                : "ชื่อเล่น")}
-                                          </span>
-                                        </span>
-                                      </span>
-                                    ) : (
-                                      <span className="flex min-h-0 flex-1 items-center justify-center text-[8px] font-medium text-gray-500">
-                                        ว่าง
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          );
-                        },
+                                      disabled={
+                                        !selectedBus?.permissions.canConfigure
+                                      }
+                                      isOnBus={Boolean(isOnBus)}
+                                      label={position.label}
+                                      occupant={seatOccupant(
+                                        assignment,
+                                        teacherPassenger,
+                                      )}
+                                      selected={
+                                        selectedPositionId ===
+                                        position.positionId
+                                      }
+                                      onSelect={() =>
+                                        setSelectedPositionId(
+                                          position.positionId,
+                                        )
+                                      }
+                                    />
+                                  );
+                                })}
+                              </div>
+                            );
+                          },
+                        )
                       )}
                     </div>
                   ) : (

@@ -11,6 +11,7 @@ import OverviewManager, {
   OverviewSkeleton,
 } from "./components/OverviewManager";
 import DocumentDataManager from "./components/DocumentDataManager";
+import BusLayoutManager from "./components/BusLayoutManager";
 
 const sectionMap = {
   overview: {
@@ -39,6 +40,11 @@ const sectionMap = {
     Component: StudentManager,
   },
   camp: { label: "ค่าย", desc: "จัดการค่ายและกิจกรรม", Component: CampManager },
+  buslayout: {
+    label: "ผังรถ",
+    desc: "สร้างและเผยแพร่เทมเพลตผังรถให้หัวหน้าค่ายเลือกใช้",
+    Component: BusLayoutManager,
+  },
   vulgarwords: {
     label: "คลังคำหยาบ",
     desc: "จัดการคำหยาบในระบบ",
@@ -71,9 +77,7 @@ function AdminContent() {
 
 export default function AdminPage() {
   return (
-    <Suspense
-      fallback={<OverviewSkeleton />}
-    >
+    <Suspense fallback={<OverviewSkeleton />}>
       <AdminContent />
     </Suspense>
   );

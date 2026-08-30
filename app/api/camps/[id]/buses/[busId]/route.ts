@@ -98,6 +98,22 @@ export async function PUT(request: Request, context: any) {
     );
   }
 
+  // Freeform layouts are snapshots. Editing the bus name or plate must not
+  // rebuild their coordinates into the legacy 2-aisle-2 structure.
+  if (bus.layout_template_id && body.layoutTemplateId === undefined) {
+    await prisma.camp_bus.update({
+      where: { bus_id: busId },
+      data: {
+        name: body.name,
+        registration_plate: body.registrationPlate,
+      },
+    });
+
+    return NextResponse.json({
+      message: "อัปเดตข้อมูลรถแล้ว โดยคงผังลากวางเดิมไว้",
+    });
+  }
+
   const capacity =
     layoutTemplate?.capacity ||
     rowCounts.reduce((sum, rows) => sum + rows * 4, 0);
@@ -192,13 +208,19 @@ export async function PUT(request: Request, context: any) {
         const floor = existingFloor
           ? await tx.camp_bus_floor.update({
               where: { floor_id: existingFloor.floor_id },
-              data: { row_count: rowCount },
+              data: {
+                row_count: rowCount,
+                canvas_columns: 5,
+                canvas_rows: rowCount,
+              },
             })
           : await tx.camp_bus_floor.create({
               data: {
                 bus_bus_id: busId,
                 floor_number: floorNumber,
                 row_count: rowCount,
+                canvas_columns: 5,
+                canvas_rows: rowCount,
               },
             });
 
@@ -262,6 +284,13 @@ export async function PUT(request: Request, context: any) {
               row_number: targetPosition.rowNumber,
               seat_index: targetPosition.seatIndex,
               label: targetPosition.label,
+              x:
+                [0, 1, 3, 4][targetPosition.seatIndex] ??
+                targetPosition.seatIndex,
+              y: targetPosition.rowNumber - 1,
+              width: 1,
+              height: 1,
+              rotation: 0,
             });
           }
         }
