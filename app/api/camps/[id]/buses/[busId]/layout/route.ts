@@ -160,18 +160,6 @@ export async function PUT(request: Request, context: any) {
     }
   }
 
-  if (
-    bus.assignments.length +
-      (body.teacherAssignments?.length ?? bus.teacher_assignments.length) +
-      newStudentItems.length >
-    positionIds.size
-  ) {
-    return NextResponse.json(
-      { error: "จำนวนนักเรียนที่เพิ่มเกินความจุรถ" },
-      { status: 409 },
-    );
-  }
-
   for (const item of body.assignments) {
     if ("assignmentId" in item && !assignmentIds.has(item.assignmentId)) {
       return NextResponse.json(

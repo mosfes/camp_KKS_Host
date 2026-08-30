@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
 import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
+import { canViewCampTracking } from "@/lib/camp-tracking-auth";
 
 export async function GET(request, context) {
   const { teacher, error: authError } = await requireTeacher();
@@ -14,47 +15,7 @@ export async function GET(request, context) {
     const params = await context.params;
     const campId = Number(params.id);
 
-    // A teacher can reach a camp through ownership, direct enrollment, or a
-    // classroom assigned to the camp. Keep this in sync with the location
-    // tracking authorization so homeroom/co-teachers can see their students.
-    const checkAccess = await prisma.camp.findFirst({
-      where: {
-        camp_id: campId,
-        deletedAt: null,
-        ...(teacher.role !== "ADMIN"
-          ? {
-              OR: [
-                { created_by_teacher_id: teacher.teachers_id },
-                {
-                  teacher_enrollment: {
-                    some: { teacher_teachers_id: teacher.teachers_id },
-                  },
-                },
-                {
-                  camp_classroom: {
-                    some: {
-                      classroom: {
-                        OR: [
-                          { teachers_teachers_id: teacher.teachers_id },
-                          {
-                            classroom_teacher: {
-                              some: {
-                                teacher_teachers_id: teacher.teachers_id,
-                              },
-                            },
-                          },
-                        ],
-                      },
-                    },
-                  },
-                },
-              ],
-            }
-          : {}),
-      },
-    });
-
-    if (!checkAccess) {
+    if (!(await canViewCampTracking(campId, teacher))) {
       return NextResponse.json(
         { error: "ไม่มีสิทธิ์เข้าถึงค่ายนี้" },
         { status: 403 },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, type ReactNode } from "react";
+import Link from "next/link";
 import {
   Modal,
   ModalContent,
@@ -20,7 +21,7 @@ import {
   Award,
   CheckCircle2,
   ChevronDown,
-  ChevronUp,
+  ChevronRight,
 } from "lucide-react";
 
 import CampBreadcrumb from "./CampBreadcrumb";
@@ -52,7 +53,11 @@ interface TrackingData {
   students: StudentProgress[];
 }
 
-type CertificateFilter = "all" | "issued" | "pending";
+type ProgressFilter =
+  | "all"
+  | "mission_incomplete"
+  | "mission_complete_certificate_pending"
+  | "issued";
 type TrackingView = "location" | "progress" | "both";
 
 interface TrackingModalProps {
@@ -63,6 +68,25 @@ interface TrackingModalProps {
   locationTrackingEnabled?: boolean;
   pageMode?: boolean;
   view?: TrackingView;
+}
+
+function hasCompletedAllMissions(student: StudentProgress) {
+  return student.completedMissions >= student.totalMissions;
+}
+
+function matchesProgressFilter(
+  student: StudentProgress,
+  filter: ProgressFilter,
+) {
+  if (filter === "all") return true;
+  if (filter === "issued") return student.hasCertificate;
+  if (student.hasCertificate) return false;
+
+  const missionsCompleted = hasCompletedAllMissions(student);
+
+  return filter === "mission_incomplete"
+    ? !missionsCompleted
+    : missionsCompleted;
 }
 
 function TrackingShell({
@@ -163,9 +187,8 @@ export default function TrackingModal({
   const [data, setData] = useState<TrackingData | null>(null);
   const [loadError, setLoadError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [certificateFilter, setCertificateFilter] =
-    useState<CertificateFilter>("all");
-  const [isCertificateStatusOpen, setIsCertificateStatusOpen] = useState(false);
+  const [progressFilter, setProgressFilter] = useState<ProgressFilter>("all");
+  const [isProgressStatusOpen, setIsProgressStatusOpen] = useState(false);
   const [page, setPage] = useState(1);
   const defaultSection =
     view === "location"
@@ -186,8 +209,8 @@ export default function TrackingModal({
         fetchTrackingData();
       }
       setSearchQuery("");
-      setCertificateFilter("all");
-      setIsCertificateStatusOpen(false);
+      setProgressFilter("all");
+      setIsProgressStatusOpen(false);
       setPage(1);
       setActiveSection(defaultSection);
     }
@@ -195,7 +218,7 @@ export default function TrackingModal({
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, certificateFilter]);
+  }, [searchQuery, progressFilter]);
 
   const fetchTrackingData = async () => {
     try {
@@ -222,23 +245,41 @@ export default function TrackingModal({
     }
   };
 
-  const filteredStudents = data?.students.filter((student) => {
+  const progressCounts = useMemo(() => {
+    const counts = {
+      all: data?.students.length ?? 0,
+      missionIncomplete: 0,
+      missionCompleteCertificatePending: 0,
+      issued: 0,
+    };
+
+    data?.students.forEach((student) => {
+      if (student.hasCertificate) {
+        counts.issued += 1;
+      } else if (hasCompletedAllMissions(student)) {
+        counts.missionCompleteCertificatePending += 1;
+      } else {
+        counts.missionIncomplete += 1;
+      }
+    });
+
+    return counts;
+  }, [data]);
+
+  const filteredStudents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    const matchesCertificate =
-      certificateFilter === "all" ||
-      (certificateFilter === "issued" && student.hasCertificate) ||
-      (certificateFilter === "pending" && !student.hasCertificate);
+    return data?.students.filter((student) => {
+      if (!matchesProgressFilter(student, progressFilter)) return false;
+      if (!query) return true;
 
-    if (!matchesCertificate) return false;
-    if (!query) return true;
+      const matchName = student.name.toLowerCase().includes(query);
+      const matchNickname = student.nickname?.toLowerCase().includes(query);
+      const matchId = String(student.studentId).includes(query);
 
-    const matchName = student.name.toLowerCase().includes(query);
-    const matchNickname = student.nickname?.toLowerCase().includes(query);
-    const matchId = String(student.studentId).includes(query);
-
-    return matchName || matchNickname || matchId;
-  });
+      return matchName || matchNickname || matchId;
+    });
+  }, [data, progressFilter, searchQuery]);
 
   const pages = Math.ceil((filteredStudents?.length || 0) / ITEMS_PER_PAGE);
 
@@ -342,112 +383,131 @@ export default function TrackingModal({
               {data && (
                 <section className="mt-3 rounded-xl border border-gray-200 bg-white p-2.5 sm:p-3">
                   <button
-                    aria-expanded={isCertificateStatusOpen}
-                    className="flex w-full items-center justify-between gap-2 text-left"
+                    aria-controls="progress-status-filters"
+                    aria-expanded={isProgressStatusOpen}
+                    className={`flex w-full items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40 ${
+                      isProgressStatusOpen ? "mb-2" : ""
+                    }`}
                     type="button"
                     onClick={() =>
-                      setIsCertificateStatusOpen((current) => !current)
+                      setIsProgressStatusOpen((current) => !current)
                     }
                   >
                     <span className="flex min-w-0 items-start gap-2">
-                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#5d7c6f] shadow-sm">
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#eef4f1] text-[#5d7c6f]">
                         <Award size={16} />
                       </span>
                       <span>
                         <span className="block text-xs font-bold text-gray-900">
-                          สถานะการรับเกียรติบัตร
+                          สถานะความก้าวหน้าและเกียรติบัตร
                         </span>
                         <span className="mt-0.5 block text-[11px] leading-relaxed text-gray-500">
-                          “ได้รับแล้ว” หมายถึง
-                          ระบบเคยออกเกียรติบัตรให้นักเรียนแล้ว
+                          กดเพื่อดูและกรองนักเรียนแต่ละกลุ่ม
                         </span>
                       </span>
                     </span>
-                    <span className="shrink-0 text-[#5d7c6f]">
-                      {isCertificateStatusOpen ? (
-                        <ChevronUp size={16} />
-                      ) : (
-                        <ChevronDown size={16} />
-                      )}
-                    </span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={`shrink-0 text-[#5d7c6f] transition-transform ${
+                        isProgressStatusOpen ? "rotate-180" : ""
+                      }`}
+                      size={17}
+                    />
                   </button>
 
-                  <div
-                    className={
-                      isCertificateStatusOpen ? "mt-2 block" : "hidden"
-                    }
-                  >
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      {[
-                        {
-                          key: "all" as const,
-                          label: "นักเรียนทั้งหมด",
-                          helper: "ทุกสถานะ",
-                          value: data.summary.totalStudents,
-                          activeClass: "border-[#5d7c6f] bg-[#eef4f1]",
-                          iconClass: "bg-[#e2ece7] text-[#5d7c6f]",
-                        },
-                        {
-                          key: "issued" as const,
-                          label: "ได้รับเกียรติบัตรแล้ว",
-                          helper: "มีประวัติออกเกียรติบัตร",
-                          value: data.summary.issuedCertificates,
-                          activeClass: "border-emerald-500 bg-emerald-50",
-                          iconClass: "bg-emerald-100 text-emerald-700",
-                        },
-                        {
-                          key: "pending" as const,
-                          label: "ยังไม่ได้รับเกียรติบัตร",
-                          helper: "ยังไม่มีประวัติออกเกียรติบัตร",
-                          value: data.summary.pendingCertificates,
-                          activeClass: "border-amber-500 bg-amber-50",
-                          iconClass: "bg-amber-100 text-amber-700",
-                        },
-                      ].map((item) => (
-                        <button
-                          key={item.key}
-                          aria-pressed={certificateFilter === item.key}
-                          className={`relative flex items-center gap-2 rounded-lg border px-2.5 py-2.5 text-left transition ${
-                            certificateFilter === item.key
-                              ? `${item.activeClass} shadow-sm`
-                              : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                          }`}
-                          type="button"
-                          onClick={() => setCertificateFilter(item.key)}
-                        >
-                          <span
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${item.iconClass}`}
+                  {isProgressStatusOpen && (
+                    <div id="progress-status-filters">
+                      <div
+                        aria-label="กรองนักเรียนตามความก้าวหน้าและเกียรติบัตร"
+                        className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4"
+                        role="tablist"
+                      >
+                        {[
+                          {
+                            key: "all" as const,
+                            label: "นักเรียนทั้งหมด",
+                            helper: "ทุกสถานะ",
+                            value: progressCounts.all,
+                            activeClass: "border-[#5d7c6f] bg-[#eef4f1]",
+                            iconClass: "bg-[#e2ece7] text-[#5d7c6f]",
+                          },
+                          {
+                            key: "mission_incomplete" as const,
+                            label: "ภารกิจยังไม่ครบ",
+                            helper: "และยังไม่ได้เกียรติบัตร",
+                            value: progressCounts.missionIncomplete,
+                            activeClass: "border-amber-500 bg-amber-50",
+                            iconClass: "bg-amber-100 text-amber-700",
+                          },
+                          {
+                            key: "mission_complete_certificate_pending" as const,
+                            label: "ภารกิจครบแล้ว",
+                            helper: "แต่ยังไม่ได้เกียรติบัตร",
+                            value:
+                              progressCounts.missionCompleteCertificatePending,
+                            activeClass: "border-blue-500 bg-blue-50",
+                            iconClass: "bg-blue-100 text-blue-700",
+                          },
+                          {
+                            key: "issued" as const,
+                            label: "ได้รับเกียรติบัตรแล้ว",
+                            helper: "มีประวัติออกเกียรติบัตร",
+                            value: progressCounts.issued,
+                            activeClass: "border-emerald-500 bg-emerald-50",
+                            iconClass: "bg-emerald-100 text-emerald-700",
+                          },
+                        ].map((item) => (
+                          <button
+                            key={item.key}
+                            aria-controls="tracking-student-list"
+                            aria-selected={progressFilter === item.key}
+                            className={`relative flex items-center gap-2 rounded-lg border px-2.5 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5d7c6f]/40 ${
+                              progressFilter === item.key
+                                ? `${item.activeClass} shadow-sm`
+                                : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                            }`}
+                            id={`tracking-tab-${item.key}`}
+                            role="tab"
+                            type="button"
+                            onClick={() => setProgressFilter(item.key)}
                           >
-                            {item.key === "all" ? (
-                              <Users size={16} />
-                            ) : item.key === "issued" ? (
-                              <CheckCircle2 size={16} />
-                            ) : (
-                              <Clock size={16} />
-                            )}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-xs font-semibold leading-tight text-gray-800">
-                              {item.label}
+                            <span
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${item.iconClass}`}
+                            >
+                              {item.key === "all" ? (
+                                <Users size={16} />
+                              ) : item.key === "issued" ? (
+                                <CheckCircle2 size={16} />
+                              ) : item.key ===
+                                "mission_complete_certificate_pending" ? (
+                                <Award size={16} />
+                              ) : (
+                                <Clock size={16} />
+                              )}
                             </span>
-                            <span className="mt-0.5 block text-[10px] leading-tight text-gray-500">
-                              {item.helper}
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-xs font-semibold leading-tight text-gray-800">
+                                {item.label}
+                              </span>
+                              <span className="mt-0.5 block text-[10px] leading-tight text-gray-500">
+                                {item.helper}
+                              </span>
                             </span>
-                          </span>
-                          <span className="text-lg font-bold text-gray-900">
-                            {item.value}
-                            <span className="ml-1 text-[11px] font-normal text-gray-500">
-                              คน
+                            <span className="text-lg font-bold text-gray-900">
+                              {item.value}
+                              <span className="ml-1 text-[11px] font-normal text-gray-500">
+                                คน
+                              </span>
                             </span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                          </button>
+                        ))}
+                      </div>
 
-                    <p className="mt-1.5 text-center text-[10px] text-gray-400">
-                      กดสถานะด้านบนเพื่อกรองรายชื่อนักเรียน
-                    </p>
-                  </div>
+                      <p className="mt-1.5 text-center text-[10px] text-gray-400">
+                        “ภารกิจครบแล้ว” หมายถึงทำครบทุกภารกิจที่เปิดใช้งานในค่าย
+                      </p>
+                    </div>
+                  )}
                 </section>
               )}
             </>
@@ -473,18 +533,33 @@ export default function TrackingModal({
               {loadError || "ไม่สามารถโหลดข้อมูลได้"}
             </p>
           ) : filteredStudents?.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
+            <div
+              aria-labelledby={`tracking-tab-${progressFilter}`}
+              className="text-center py-10 text-gray-400"
+              id="tracking-student-list"
+              role="tabpanel"
+            >
               <Search className="mx-auto mb-2 opacity-30" size={32} />
               <p className="text-sm">
-                {certificateFilter === "issued"
-                  ? "ยังไม่มีนักเรียนที่ได้รับเกียรติบัตร"
-                  : certificateFilter === "pending"
-                    ? "นักเรียนทุกคนได้รับเกียรติบัตรแล้ว"
-                    : "ไม่พบรายชื่อในระบบ"}
+                {searchQuery.trim()
+                  ? "ไม่พบนักเรียนที่ตรงกับคำค้นหาในสถานะนี้"
+                  : progressFilter === "issued"
+                    ? "ยังไม่มีนักเรียนที่ได้รับเกียรติบัตร"
+                    : progressFilter === "mission_incomplete"
+                      ? "ไม่มีนักเรียนที่ภารกิจยังไม่ครบและยังไม่ได้รับเกียรติบัตร"
+                      : progressFilter ===
+                          "mission_complete_certificate_pending"
+                        ? "ไม่มีนักเรียนที่ทำภารกิจครบแต่ยังไม่ได้รับเกียรติบัตร"
+                        : "ไม่พบรายชื่อในระบบ"}
               </p>
             </div>
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <div
+              aria-labelledby={`tracking-tab-${progressFilter}`}
+              className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"
+              id="tracking-student-list"
+              role="tabpanel"
+            >
               <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(240px,1fr)_auto] gap-4 border-b border-gray-100 bg-gray-50/70 px-4 py-3 text-xs font-semibold text-gray-500 sm:grid">
                 <span>นักเรียน</span>
                 <span>ความก้าวหน้าภารกิจ</span>
@@ -493,9 +568,11 @@ export default function TrackingModal({
 
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain divide-y divide-gray-100 [touch-action:pan-y]">
                 {paginatedStudents?.map((student, i) => (
-                  <div
+                  <Link
                     key={student.studentId}
-                    className="grid gap-3 px-4 py-2.5 sm:grid-cols-[minmax(0,1.2fr)_minmax(240px,1fr)_auto] sm:items-center"
+                    aria-label={`ดูรายละเอียดภารกิจของ ${student.name}`}
+                    className="grid cursor-pointer gap-3 px-4 py-2.5 transition hover:bg-[#f7faf8] focus-visible:bg-[#f7faf8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#5d7c6f]/40 sm:grid-cols-[minmax(0,1.2fr)_minmax(240px,1fr)_auto] sm:items-center"
+                    href={`/headteacher/dashboard/camp/${campId}/tracking/${student.studentId}`}
                   >
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span className="w-5 shrink-0 text-center text-xs font-semibold text-gray-400">
@@ -542,7 +619,7 @@ export default function TrackingModal({
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-start sm:justify-end">
+                    <div className="flex items-center justify-between gap-2 sm:justify-end">
                       {student.hasCertificate ? (
                         <div className="text-left sm:text-right">
                           <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
@@ -568,14 +645,24 @@ export default function TrackingModal({
                             </p>
                           )}
                         </div>
+                      ) : hasCompletedAllMissions(student) ? (
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                          <Award size={14} />
+                          <span>ภารกิจครบ แต่ยังไม่ได้เกียรติบัตร</span>
+                        </div>
                       ) : (
                         <div className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-500">
                           <Clock size={14} />
-                          <span>ยังไม่ได้รับเกียรติบัตร</span>
+                          <span>ภารกิจยังไม่ครบ และยังไม่ได้เกียรติบัตร</span>
                         </div>
                       )}
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="shrink-0 text-gray-300"
+                        size={18}
+                      />
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
 
