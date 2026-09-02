@@ -696,75 +696,28 @@ export default function SurveyPage() {
     }
   };
 
-  // Export to CSV
-  const handleExportCSV = () => {
+  // Export the evaluation summary and the existing response table to Excel.
+  const handleExportExcel = async () => {
     if (!resultsData || !resultsData.individualResponses?.length) {
       toast.error("ไม่มีข้อมูลคำตอบสำหรับส่งออก");
 
       return;
     }
 
-    const realQuestions = resultsData.questions.filter(
-      (q) => q.type !== "header",
-    );
+    try {
+      const { exportSurveyResultsToExcel } = await import(
+        "@/lib/export-survey-results-excel"
+      );
 
-    const headers = [
-      "ลำดับ",
-      "วันเวลาที่ส่ง",
-      ...realQuestions.map(
-        (q, idx) => `ข้อ ${idx + 1}: ${q.text.replace(/"/g, '""')}`,
-      ),
-    ];
-
-    const rows = resultsData.individualResponses.map((r, i) => {
-      const formattedDate = new Date(r.submittedAt).toLocaleString("th-TH", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+      exportSurveyResultsToExcel({
+        title: resultsData.title,
+        questions: resultsData.questions,
+        individualResponses: resultsData.individualResponses,
       });
-
-      const questionAnswers = realQuestions.map((q) => {
-        const ans = r.answers[q.id];
-
-        if (!ans) return "-";
-        if (q.type === "scale")
-          return ans.scale_value != null ? ans.scale_value : "-";
-        if (q.type === "checkbox") {
-          try {
-            const arr = JSON.parse(ans.text_answer || "[]");
-
-            return Array.isArray(arr) ? arr.join(", ") : ans.text_answer || "-";
-          } catch {
-            return ans.text_answer || "-";
-          }
-        }
-
-        return ans.text_answer || "-";
-      });
-
-      return [
-        i + 1,
-        `"${formattedDate}"`,
-        ...questionAnswers.map((a) => `"${String(a).replace(/"/g, '""')}"`),
-      ].join(",");
-    });
-
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `ผลแบบสอบถาม_${resultsData.title || "camp"}_${new Date().toISOString().slice(0, 10)}.csv`,
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("ส่งออกไฟล์ CSV เรียบร้อยแล้ว");
+      toast.success("ส่งออกไฟล์ Excel เรียบร้อยแล้ว");
+    } catch {
+      toast.error("ไม่สามารถส่งออกไฟล์ Excel ได้");
+    }
   };
 
   // Toggle Accepting Responses
@@ -1351,17 +1304,17 @@ export default function SurveyPage() {
                 </button>
               </div>
 
-              {/* Right Controls: Export CSV + Accepting Responses Switch */}
+              {/* Right Controls: Export Excel + Accepting Responses Switch */}
               <div className="flex items-center gap-3 self-end md:self-auto">
-                {/* Export CSV Button (Google Sheets Style) */}
+                {/* Export Excel Button */}
                 <Button
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
                   isDisabled={!resultsData || resultsData.totalResponses === 0}
                   size="sm"
                   startContent={<FileSpreadsheet size={16} />}
-                  onPress={handleExportCSV}
+                  onPress={handleExportExcel}
                 >
-                  ส่งออกชีต (CSV)
+                  ส่งออก Excel
                 </Button>
 
                 {/* Accepting Responses Switch */}
