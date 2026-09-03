@@ -54,6 +54,10 @@ export async function GET(request, context) {
         name: true,
         description: true,
         location: true,
+        destination_name: true,
+        destination_address: true,
+        destination_latitude: true,
+        destination_longitude: true,
         start_date: true,
         end_date: true,
         start_shirt_date: true,
@@ -209,6 +213,16 @@ export async function GET(request, context) {
         title: camp.name,
         description: camp.description,
         location: camp.location,
+        destination:
+          camp.destination_latitude != null &&
+          camp.destination_longitude != null
+            ? {
+                name: camp.destination_name || camp.location,
+                address: camp.destination_address,
+                latitude: camp.destination_latitude,
+                longitude: camp.destination_longitude,
+              }
+            : null,
         startDate: getBangkokDateKey(camp.start_date),
         endDate: getBangkokDateKey(camp.end_date),
         status: enrollment?.enrolled_at ? "Registered" : "Available",

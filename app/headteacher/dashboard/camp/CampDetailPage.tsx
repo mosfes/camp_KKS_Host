@@ -47,6 +47,7 @@ import BusManagementModal from "./BusManagementModal";
 import PrePostTestModal from "./PrePostTestModal";
 
 import { useStatusModal } from "@/components/StatusModalProvider";
+import CampDestinationCard from "@/components/camp-location/CampDestinationCard";
 import {
   BANGKOK_TIME_ZONE,
   formatCampScheduleDate,
@@ -112,6 +113,10 @@ interface CampDetail {
   isBusTeacher?: boolean;
   created_by_teacher_id?: number;
   location_sharing_enabled?: boolean;
+  destination_name?: string | null;
+  destination_address?: string | null;
+  destination_latitude?: number | null;
+  destination_longitude?: number | null;
   total_eligible_students?: number;
   enrolled_student_count?: number;
   total_mission_count?: number;
@@ -776,6 +781,17 @@ export default function CampDetailPage() {
       {/* Main Content */}
       <div className="max-w-[1240px] mx-auto px-3 py-5">
         {/* ... existing detailed content ... */}
+        <CampDestinationCard
+          className="mb-6"
+          destination={{
+            name: camp.destination_name,
+            address: camp.destination_address,
+            latitude: camp.destination_latitude,
+            longitude: camp.destination_longitude,
+          }}
+          fallbackName={camp.location}
+        />
+
         {/* Stats Summary */}
         <div
           className={`grid ${camp?.has_shirt ? "grid-cols-3" : "grid-cols-2"} gap-3 mb-6`}

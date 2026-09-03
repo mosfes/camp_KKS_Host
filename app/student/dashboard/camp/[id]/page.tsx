@@ -36,6 +36,8 @@ import TakeSurveyModal from "../TakeSurveyModal";
 
 import StudentCampDetailSkeleton from "./components/StudentCampDetailSkeleton";
 
+import CampDestinationCard from "@/components/camp-location/CampDestinationCard";
+import CampLocationTracker from "@/components/camp-location/CampLocationTracker";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import {
   BANGKOK_TIME_ZONE,
@@ -777,6 +779,12 @@ export default function StudentCampDetailPage() {
                 </div>
               </div>
 
+              <CampDestinationCard
+                className="mt-4"
+                destination={camp.destination}
+                fallbackName={camp.location}
+              />
+
               {/* Registration Count & Progress */}
               <div className="mt-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
                 <div className="flex items-center justify-between gap-4 mb-2.5">
@@ -856,6 +864,8 @@ export default function StudentCampDetailPage() {
                 )}
               </div>
             </div>
+
+            <CampLocationTracker campId={Number(id)} viewer="student" />
 
             {/* Mission Progress Section (Only if registered) */}
             {camp.isRegistered && (

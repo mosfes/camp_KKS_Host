@@ -33,6 +33,7 @@ import {
   reverseGeocodeThaiAdministrativeArea,
   searchGooglePlaces,
 } from "@/lib/google-maps-client";
+import CampDestinationCard from "@/components/camp-location/CampDestinationCard";
 
 const CampLocationMap = dynamic(() => import("./CampLocationMap"), {
   ssr: false,
@@ -1492,22 +1493,7 @@ export default function CampLocationTracker({
           </div>
         )}
 
-        {mapDestination && (
-          <div className="flex items-start gap-3 rounded-xl bg-rose-50 p-3">
-            <MapPin className="mt-0.5 shrink-0 text-rose-600" size={18} />
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-rose-600">จุดหมาย</p>
-              <p className="truncate text-sm font-bold text-slate-800">
-                {mapDestination.name}
-              </p>
-              {mapDestination.address && (
-                <p className="text-xs text-slate-500">
-                  {mapDestination.address}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+        <CampDestinationCard destination={mapDestination} />
 
         {viewer === "teacher" ? (
           <div className="overflow-hidden rounded-xl border border-slate-200">

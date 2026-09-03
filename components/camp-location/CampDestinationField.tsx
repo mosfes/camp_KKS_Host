@@ -63,6 +63,7 @@ export default function CampDestinationField({
   const [places, setPlaces] = useState<PlaceResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [message, setMessage] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   async function handleSearch(event: FormEvent) {
     event.preventDefault();
@@ -106,31 +107,57 @@ export default function CampDestinationField({
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-800">
-            ติดตามตำแหน่งนักเรียน
+            ปักหมุดสถานที่จัดค่าย
           </p>
           <p className="mt-0.5 text-xs text-slate-500">
-            เปิดใช้งานเพื่อกำหนดหมุดจุดหมายและให้นักเรียนแชร์ GPS ระหว่างเดินทาง
+            หมุดนี้จะแสดงให้นักเรียน ครู และผู้ปกครองเปิดดูได้
           </p>
         </div>
-        <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
-          <input
-            checked={enabled}
-            className="peer sr-only"
-            type="checkbox"
-            onChange={(event) => onEnabledChange(event.target.checked)}
-          />
-          <span className="relative h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-[#5d7c6f] after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5" />
-          {enabled ? "เปิดใช้งาน" : "ไม่ใช้งาน"}
+        <button
+          className="h-9 shrink-0 rounded-lg border border-[#5d7c6f] bg-white px-3 text-xs font-semibold text-[#5d7c6f] transition hover:bg-[#5d7c6f] hover:text-white"
+          type="button"
+          onClick={() => setPickerOpen((current) => !current)}
+        >
+          {pickerOpen
+            ? "ซ่อนแผนที่"
+            : destination
+              ? "แก้ไขหมุด"
+              : "ปักหมุดสถานที่"}
+        </button>
+      </div>
+
+      <div className="border-t border-slate-200 px-4 py-3">
+        <label className="flex cursor-pointer items-start justify-between gap-3 text-sm">
+          <span>
+            <span className="block font-semibold text-slate-800">
+              ติดตามนักเรียนด้วย GPS
+            </span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              เปิดเมื่อให้นักเรียนแชร์ตำแหน่งระหว่างเดินทางเท่านั้น
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-2 font-medium text-slate-700">
+            <input
+              checked={enabled}
+              className="peer sr-only"
+              type="checkbox"
+              onChange={(event) => {
+                const nextEnabled = event.target.checked;
+
+                if (nextEnabled && !destination) setPickerOpen(true);
+                onEnabledChange(nextEnabled);
+              }}
+            />
+            <span className="relative h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-[#5d7c6f] after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5" />
+            {enabled ? "เปิด GPS" : "ปิด GPS"}
+          </span>
         </label>
       </div>
 
       <div className="border-t border-slate-200 px-4 py-3">
-        <label
-          className={`flex items-start gap-3 text-sm ${
-            enabled ? "cursor-not-allowed" : "cursor-pointer"
-          }`}
-        >
+        <div className="flex items-start gap-3 text-sm">
           <input
+            aria-label="ค่ายมีการเดินทาง"
             checked={hasTransport || enabled}
             className="mt-0.5 h-4 w-4 accent-[#5d7c6f]"
             disabled={enabled}
@@ -146,10 +173,47 @@ export default function CampDestinationField({
               {enabled && " (เปิดอัตโนมัติเมื่อใช้ติดตามตำแหน่ง)"}
             </span>
           </span>
-        </label>
+        </div>
       </div>
 
-      {enabled && (
+      {!pickerOpen && (
+        <div className="border-t border-slate-200 p-4">
+          <div
+            className={`rounded-lg border p-3 ${
+              destination
+                ? "border-emerald-200 bg-emerald-50"
+                : "border-amber-200 bg-amber-50"
+            }`}
+          >
+            {destination ? (
+              <div className="flex items-start gap-2">
+                <MapPin
+                  className="mt-0.5 shrink-0 text-emerald-700"
+                  size={17}
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800">
+                    {destination.name}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {destination.address ||
+                      `${destination.latitude.toFixed(6)}, ${destination.longitude.toFixed(6)}`}
+                  </p>
+                  <p className="mt-1 text-[11px] font-medium text-emerald-700">
+                    บันทึกค่ายแล้วทุกบทบาทจะเปิดดูหมุดนี้ได้
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs font-medium text-amber-800">
+                ยังไม่ได้ปักหมุด กด “ปักหมุดสถานที่” เพื่อเลือกตำแหน่ง
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {pickerOpen && (
         <div className="space-y-3 border-t border-slate-200 p-4">
           <form className="flex gap-2" onSubmit={handleSearch}>
             <div className="relative flex-1">
