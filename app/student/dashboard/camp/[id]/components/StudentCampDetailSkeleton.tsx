@@ -223,12 +223,6 @@ export default function StudentCampDetailSkeleton() {
               <div className="h-12 rounded-xl bg-[#5d7c6f]/30 animate-pulse" />
               <div className="h-12 rounded-xl bg-[#FFECC9]/80 animate-pulse" />
             </div>
-            {/* Certificate placeholder */}
-            <div className="pt-2 border-t border-gray-100 space-y-1.5">
-              <div className="h-3 w-16 bg-gray-200 rounded animate-pulse" />
-              <div className="h-10 w-full rounded-xl bg-gray-100 border border-dashed border-gray-200 animate-pulse" />
-              <div className="h-2.5 w-48 bg-gray-200 rounded mx-auto animate-pulse" />
-            </div>
           </div>
         </div>
       </div>

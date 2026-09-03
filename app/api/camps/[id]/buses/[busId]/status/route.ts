@@ -3,11 +3,15 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { requireSpecificCampBus } from "@/lib/camp-bus-auth";
+import { busEventLocationSchema } from "@/lib/bus-event-location";
 
-const statusSchema = z.object({
-  status: z.enum(["PARKED", "TRAVELING"]),
-  clearPassengers: z.boolean().optional().default(true),
-});
+const statusSchema = z
+  .object({
+    status: z.enum(["PARKED", "TRAVELING"]),
+    clearPassengers: z.boolean().optional().default(true),
+    location: busEventLocationSchema,
+  })
+  .strict();
 
 export async function POST(request: Request, context: any) {
   const { id, busId: rawBusId } = await context.params;
@@ -29,7 +33,10 @@ export async function POST(request: Request, context: any) {
   try {
     body = statusSchema.parse(await request.json());
   } catch {
-    return NextResponse.json({ error: "สถานะรถไม่ถูกต้อง" }, { status: 400 });
+    return NextResponse.json(
+      { error: "สถานะรถหรือพิกัดไม่ถูกต้อง กรุณาเปิด GPS แล้วลองใหม่" },
+      { status: 400 },
+    );
   }
 
   const result = await prisma.$transaction(async (tx) => {
@@ -133,6 +140,9 @@ export async function POST(request: Request, context: any) {
         bus_bus_id: busId,
         teacher_teachers_id: teacherId,
         event_type: body.status === "PARKED" ? "PARK" : "DEPART",
+        latitude: body.location.latitude,
+        longitude: body.location.longitude,
+        accuracy_meters: body.location.accuracy,
         created_at: eventAt,
       },
     });

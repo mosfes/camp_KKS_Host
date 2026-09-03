@@ -3,6 +3,32 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSpecificCampBus } from "@/lib/camp-bus-auth";
 
+type EventLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+};
+
+function formatEventLocation(event: {
+  latitude: number | null;
+  longitude: number | null;
+  accuracy_meters: number | null;
+}): EventLocation | null {
+  if (
+    typeof event.latitude !== "number" ||
+    typeof event.longitude !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    latitude: event.latitude,
+    longitude: event.longitude,
+    accuracy:
+      typeof event.accuracy_meters === "number" ? event.accuracy_meters : null,
+  };
+}
+
 export async function GET(_request: Request, context: any) {
   const { id, busId: rawBusId } = await context.params;
   const campId = Number(id);
@@ -31,6 +57,9 @@ export async function GET(_request: Request, context: any) {
           event_id: true,
           event_type: true,
           created_at: true,
+          latitude: true,
+          longitude: true,
+          accuracy_meters: true,
           teacher: {
             select: { firstname: true, lastname: true },
           },
@@ -50,6 +79,8 @@ export async function GET(_request: Request, context: any) {
     parkedAt: string | null;
     departedBy: string | null;
     parkedBy: string | null;
+    departedLocation: EventLocation | null;
+    parkedLocation: EventLocation | null;
   }[] = [];
 
   let tripNumber = 0;
@@ -65,6 +96,8 @@ export async function GET(_request: Request, context: any) {
           ? `${event.teacher.firstname} ${event.teacher.lastname}`.trim()
           : null,
         parkedBy: null,
+        departedLocation: formatEventLocation(event),
+        parkedLocation: null,
       });
     } else if (event.event_type === "PARK" && trips.length > 0) {
       const last = trips[trips.length - 1];
@@ -74,6 +107,7 @@ export async function GET(_request: Request, context: any) {
         last.parkedBy = event.teacher
           ? `${event.teacher.firstname} ${event.teacher.lastname}`.trim()
           : null;
+        last.parkedLocation = formatEventLocation(event);
       }
     }
   }

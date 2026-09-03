@@ -44,6 +44,7 @@ import {
   BUS_LAYOUT_TEMPLATES,
   getBusLayoutTemplate,
 } from "@/lib/camp-bus-layout-templates";
+import { getCurrentDeviceLocation } from "@/lib/device-location";
 
 type Classroom = {
   classroomId: number;
@@ -362,6 +363,14 @@ type TripHistoryEntry = {
   parkedAt: string | null;
   departedBy: string | null;
   parkedBy: string | null;
+  departedLocation: BusEventLocation | null;
+  parkedLocation: BusEventLocation | null;
+};
+
+type BusEventLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
 };
 
 type Bus = {
@@ -499,6 +508,30 @@ function statusEventLabel(event: BusStatusEvent | null) {
       : "นักเรียนกดเอง";
 
   return `รอบที่ ${event.tripNumber} · ${actor} · ${formatEventAt(event.happenedAt)}`;
+}
+
+function BusEventLocationLink({
+  location,
+}: {
+  location: BusEventLocation | null;
+}) {
+  const coordinates = location
+    ? `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
+    : "";
+
+  if (!location) return null;
+
+  return (
+    <a
+      className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-[#365f4f] underline decoration-[#365f4f]/30 underline-offset-2 hover:text-[#244638]"
+      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coordinates)}`}
+      rel="noreferrer"
+      target="_blank"
+    >
+      <MapPin aria-hidden="true" size={11} />
+      <span>{coordinates}</span>
+    </a>
+  );
 }
 
 function floorLabel(floorNumber: number, floorCount: number) {
@@ -805,6 +838,8 @@ export default function BusManagementModal({
   } | null>(null);
   const [changingTeacherSelfStatus, setChangingTeacherSelfStatus] =
     useState(false);
+  const [changingTeacherAssignmentId, setChangingTeacherAssignmentId] =
+    useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showEditBus, setShowEditBus] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1665,6 +1700,7 @@ export default function BusManagementModal({
 
     try {
       setSavingAction("status");
+      const location = await getCurrentDeviceLocation();
       const response = await fetch(
         `/api/camps/${campId}/buses/${selectedBus.busId}/status`,
         {
@@ -1673,6 +1709,7 @@ export default function BusManagementModal({
           body: JSON.stringify({
             status: pendingBusStatus,
             clearPassengers,
+            location,
           }),
         },
       );
@@ -1710,7 +1747,10 @@ export default function BusManagementModal({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ assignmentId: assignment.assignmentId }),
+          body: JSON.stringify({
+            assignmentId: assignment.assignmentId,
+            passengerType: "STUDENT",
+          }),
         },
       );
       const data = await response.json();
@@ -1786,6 +1826,54 @@ export default function BusManagementModal({
   const currentTeacherAssignment = selectedBus?.teacherAssignments.find(
     (assignment) => assignment.isCurrentTeacher,
   );
+
+  const changeTeacherPassengerBusStatus = async (
+    assignment: TeacherAssignment,
+  ) => {
+    if (
+      !selectedBus ||
+      changingTeacherAssignmentId !== null ||
+      changingTeacherSelfStatus
+    ) {
+      return;
+    }
+
+    const action = assignment.status === "ON_BUS" ? "alight" : "board";
+
+    try {
+      setChangingTeacherAssignmentId(assignment.assignmentId);
+      const response = await fetch(
+        `/api/camps/${campId}/buses/${selectedBus.busId}/${action}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assignmentId: assignment.assignmentId,
+            passengerType: "TEACHER",
+          }),
+        },
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "เปลี่ยนสถานะครูไม่สำเร็จ");
+      }
+
+      showSuccess(
+        action === "board" ? "บันทึกการขึ้นรถแล้ว" : "บันทึกการลงรถแล้ว",
+        `${assignment.teacherName} · บันทึกว่าครูเป็นผู้กดในรอบนี้แล้ว`,
+      );
+      await fetchBuses(selectedBus.busId);
+      setSelectedPositionId(null);
+    } catch (error: any) {
+      showError(
+        "เปลี่ยนสถานะครูไม่สำเร็จ",
+        error.message || "กรุณาลองใหม่อีกครั้ง",
+      );
+    } finally {
+      setChangingTeacherAssignmentId(null);
+    }
+  };
 
   const changeOwnTeacherBusStatus = async () => {
     if (!currentTeacherAssignment || changingTeacherSelfStatus) return;
@@ -3597,11 +3685,43 @@ export default function BusManagementModal({
                     </span>
                   </div>
                   {activeTeacherAssignment && (
-                    <p className="mt-1 text-[10px] leading-relaxed text-gray-500">
-                      {statusEventLabel(
-                        activeTeacherAssignment.lastStatusEvent,
-                      )}
-                    </p>
+                    <>
+                      <p className="mt-1 text-[10px] leading-relaxed text-gray-500">
+                        {statusEventLabel(
+                          activeTeacherAssignment.lastStatusEvent,
+                        )}
+                      </p>
+                      <Button
+                        aria-label={`${activeTeacherAssignment.teacherName}: กดเปลี่ยนเป็น${activeTeacherAssignment.status === "ON_BUS" ? "ไม่อยู่บนรถ" : "อยู่บนรถ"}`}
+                        className={
+                          activeTeacherAssignment.status === "ON_BUS"
+                            ? "mt-3 w-full bg-gray-100 font-semibold text-gray-700"
+                            : "mt-3 w-full bg-[#365f4f] font-semibold text-white"
+                        }
+                        isDisabled={
+                          selectedBus?.status === "TRAVELING" ||
+                          !selectedBus?.permissions.canOperate ||
+                          changingTeacherAssignmentId !== null ||
+                          changingTeacherSelfStatus
+                        }
+                        isLoading={
+                          changingTeacherAssignmentId ===
+                          activeTeacherAssignment.assignmentId
+                        }
+                        size="sm"
+                        onPress={() =>
+                          void changeTeacherPassengerBusStatus(
+                            activeTeacherAssignment,
+                          )
+                        }
+                      >
+                        {selectedBus?.status === "TRAVELING"
+                          ? "เปลี่ยนสถานะได้เมื่อรถจอด"
+                          : activeTeacherAssignment.status === "ON_BUS"
+                            ? "กดยืนยันว่าลงจากรถ"
+                            : "กดยืนยันว่าขึ้นรถ"}
+                      </Button>
+                    </>
                   )}
                 </div>
               )}
@@ -4837,6 +4957,9 @@ export default function BusManagementModal({
                                 ครู {trip.departedBy}
                               </p>
                             )}
+                            <BusEventLocationLink
+                              location={trip.departedLocation}
+                            />
                           </div>
                         </div>
                         {/* Parked */}
@@ -4873,6 +4996,9 @@ export default function BusManagementModal({
                                     ครู {trip.parkedBy}
                                   </p>
                                 )}
+                                <BusEventLocationLink
+                                  location={trip.parkedLocation}
+                                />
                               </>
                             ) : (
                               <p className="mt-0.5 text-[11px] text-gray-400">

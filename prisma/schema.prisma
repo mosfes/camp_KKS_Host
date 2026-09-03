@@ -599,6 +599,9 @@ model camp_bus_event {
   teacher_assignment_id Int?
   teacher_teachers_id   Int?
   event_type            camp_bus_event_type
+  latitude              Float?
+  longitude             Float?
+  accuracy_meters       Float?
   created_at            DateTime            @default(now())
 
   bus                camp_bus          @relation(fields: [bus_bus_id], references: [bus_id], onDelete: Cascade)
