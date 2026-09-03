@@ -32,6 +32,10 @@ interface CampDetail {
   cert_number_prefix?: string | null;
   cert_number_is_thai?: boolean;
   cert_year?: string | null;
+  cert_show_qr?: boolean;
+  cert_qr_x?: number | null;
+  cert_qr_y?: number | null;
+  cert_qr_size?: number | null;
   cert_mission_completion_percent?: number;
   cert_require_survey?: boolean;
   certificate_total_missions?: number;
@@ -98,6 +102,12 @@ export default function EditCertificateModal({
   const [certNumberIsThai, setCertNumberIsThai] = useState<boolean>(false);
   const [certYear, setCertYear] = useState<string | null>(null);
 
+  // คิวอาร์โค้ดตรวจสอบเกียรติบัตร
+  const [certShowQr, setCertShowQr] = useState<boolean>(false);
+  const [certQrX, setCertQrX] = useState<number>(90);
+  const [certQrY, setCertQrY] = useState<number>(88);
+  const [certQrSize, setCertQrSize] = useState<number>(140);
+
   // เงื่อนไขการรับเกียรติบัตร
   const [certMissionCompletionPercent, setCertMissionCompletionPercent] =
     useState<number>(100);
@@ -139,6 +149,10 @@ export default function EditCertificateModal({
         certNumberPrefix !== normalizedInitialPrefix ||
         certNumberIsThai !== (campData.cert_number_is_thai ?? false) ||
         certYear !== (campData.cert_year ?? null) ||
+        certShowQr !== (campData.cert_show_qr ?? false) ||
+        certQrX !== (campData.cert_qr_x ?? 90) ||
+        certQrY !== (campData.cert_qr_y ?? 88) ||
+        certQrSize !== (campData.cert_qr_size ?? 140) ||
         certMissionCompletionPercent !==
           (campData.cert_mission_completion_percent ?? 100) ||
         certRequireSurvey !== (campData.cert_require_survey ?? false)),
@@ -173,6 +187,16 @@ export default function EditCertificateModal({
       );
       setCertNumberIsThai(campData.cert_number_is_thai ?? false);
       setCertYear(campData.cert_year ?? null);
+      setCertShowQr(
+        Boolean(
+          campData.cert_show_qr &&
+            campData.cert_show_number &&
+            campData.cert_number_start != null,
+        ),
+      );
+      setCertQrX(campData.cert_qr_x ?? 90);
+      setCertQrY(campData.cert_qr_y ?? 88);
+      setCertQrSize(campData.cert_qr_size ?? 140);
       setCertMissionCompletionPercent(
         campData.cert_mission_completion_percent ?? 100,
       );
@@ -443,6 +467,10 @@ export default function EditCertificateModal({
           cert_number_prefix: certNumberPrefix,
           cert_number_is_thai: certNumberIsThai,
           cert_year: certYear,
+          cert_show_qr: certShowNumber && certNumberStart != null && certShowQr,
+          cert_qr_x: certQrX,
+          cert_qr_y: certQrY,
+          cert_qr_size: certQrSize,
           cert_mission_completion_percent: certMissionCompletionPercent,
           cert_require_survey: certRequireSurvey,
         }),
@@ -550,8 +578,12 @@ export default function EditCertificateModal({
               certNumberStart={certNumberStart}
               certNumberX={certNumberX}
               certNumberY={certNumberY}
+              certQrSize={certQrSize}
+              certQrX={certQrX}
+              certQrY={certQrY}
               certRequireSurvey={certRequireSurvey}
               certShowNumber={certShowNumber}
+              certShowQr={certShowQr}
               certYear={certYear}
               certificateImageMetadata={certImageMetadata}
               enrolledCount={enrolledCount}
@@ -572,8 +604,12 @@ export default function EditCertificateModal({
               setCertNumberStart={setCertNumberStart}
               setCertNumberX={setCertNumberX}
               setCertNumberY={setCertNumberY}
+              setCertQrSize={setCertQrSize}
+              setCertQrX={setCertQrX}
+              setCertQrY={setCertQrY}
               setCertRequireSurvey={setCertRequireSurvey}
               setCertShowNumber={setCertShowNumber}
+              setCertShowQr={setCertShowQr}
               setCertYear={setCertYear}
               totalMissions={campData?.certificate_total_missions ?? 0}
             />

@@ -5,12 +5,14 @@ import { NextResponse } from "next/server";
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { ImageResponse } from "next/og";
+import * as QRCode from "qrcode";
 import React from "react";
 
 import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth";
 import { getCertificateEligibility } from "@/lib/certificate-eligibility";
 import { activeCampStudentWhere } from "@/lib/active-camp-student";
+import { buildCertificateVerificationUrl } from "@/lib/certificate-verification";
 
 // Cache Font ไว้ใน Memory เพื่อไม่ต้องอ่านไฟล์ใหม่ทุกครั้งที่กดโหลด
 let cachedFontBytes: Buffer | null = null;
@@ -373,6 +375,22 @@ export async function GET(request: Request, context: any) {
     const numYPercent = camp.cert_number_y ?? 10;
     const numColorHex = camp.cert_number_color || "#000000";
 
+    // คิวอาร์โค้ดแต่ละใบชี้ไปยังหน้าตรวจสอบสาธารณะที่เซ็นลายเซ็นไว้
+    // QR verification is only meaningful after the certificate has a number.
+    // Never emit a QR for an unnumbered certificate, even if old settings are
+    // inconsistent in the database.
+    const showQr = camp.cert_show_qr && assignedCertNo != null;
+    const qrSize = camp.cert_qr_size || 140;
+    const qrXPercent = camp.cert_qr_x ?? 90;
+    const qrYPercent = camp.cert_qr_y ?? 88;
+
+    const verificationUrl = showQr
+      ? buildCertificateVerificationUrl(
+          new URL(request.url).origin,
+          enrollment.student_enrollment_id,
+        )
+      : null;
+
     if (format === "png") {
       // First, get the image dimensions by parsing the image via pdf-lib
       const tempPdfDoc = await PDFDocument.create();
@@ -401,6 +419,13 @@ export async function GET(request: Request, context: any) {
 
       // Convert image buffer to base64 for reliable rendering in ImageResponse
       const base64Image = `data:${contentType || "image/jpeg"};base64,${Buffer.from(imageBuffer).toString("base64")}`;
+      const qrDataUrl = verificationUrl
+        ? await QRCode.toDataURL(verificationUrl, {
+            errorCorrectionLevel: "M",
+            margin: 1,
+            width: Math.round(qrSize),
+          })
+        : null;
 
       const imageResponse = new ImageResponse(
         React.createElement(
@@ -468,6 +493,23 @@ export async function GET(request: Request, context: any) {
                 ),
               ]
             : []),
+          ...(qrDataUrl
+            ? [
+                React.createElement("img", {
+                  src: qrDataUrl,
+                  alt: "",
+                  style: {
+                    position: "absolute",
+                    left: `${qrXPercent}%`,
+                    top: `${qrYPercent}%`,
+                    transform: "translate(-50%, -50%)",
+                    width: qrSize,
+                    height: qrSize,
+                    objectFit: "contain",
+                  },
+                }),
+              ]
+            : []),
         ),
         {
           width: width,
@@ -510,7 +552,7 @@ export async function GET(request: Request, context: any) {
         resHeaders.delete("Pragma");
         resHeaders.delete("Expires");
       } else {
-        resHeaders.set("Cache-Control", "private, max-age=31536000, immutable");
+        resHeaders.set("Cache-Control", "private, no-cache");
         resHeaders.delete("Pragma");
         resHeaders.delete("Expires");
       }
@@ -610,6 +652,22 @@ export async function GET(request: Request, context: any) {
         size: numFontSize,
         font: customFont,
         color: rgb(numColorRgb.r, numColorRgb.g, numColorRgb.b),
+      });
+    }
+
+    if (verificationUrl) {
+      const qrBuffer = await QRCode.toBuffer(verificationUrl, {
+        errorCorrectionLevel: "M",
+        margin: 1,
+        width: Math.round(qrSize),
+      });
+      const embeddedQr = await pdfDoc.embedPng(qrBuffer);
+
+      page.drawImage(embeddedQr, {
+        x: (qrXPercent / 100) * width - qrSize / 2,
+        y: (1 - qrYPercent / 100) * height - qrSize / 2,
+        width: qrSize,
+        height: qrSize,
       });
     }
 

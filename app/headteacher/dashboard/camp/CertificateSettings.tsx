@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import QRCode from "react-qr-code";
 import {
   FileImage,
   ImageOff,
@@ -14,6 +15,7 @@ import {
   Move,
   RotateCcw,
   Upload,
+  QrCode,
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@heroui/popover";
 import { Input } from "@heroui/input";
@@ -189,6 +191,15 @@ interface Props {
   setCertNumberIsThai: (val: boolean) => void;
   certYear: string | null;
   setCertYear: (val: string | null) => void;
+  // คิวอาร์โค้ดตรวจสอบเกียรติบัตร
+  certShowQr: boolean;
+  setCertShowQr: (val: boolean) => void;
+  certQrX: number;
+  setCertQrX: (val: number) => void;
+  certQrY: number;
+  setCertQrY: (val: number) => void;
+  certQrSize: number;
+  setCertQrSize: (val: number) => void;
   certMissionCompletionPercent: number;
   setCertMissionCompletionPercent: (val: number) => void;
   certRequireSurvey: boolean;
@@ -233,6 +244,14 @@ export default function CertificateSettings({
   setCertNumberIsThai,
   certYear,
   setCertYear,
+  certShowQr,
+  setCertShowQr,
+  certQrX,
+  setCertQrX,
+  certQrY,
+  setCertQrY,
+  certQrSize,
+  setCertQrSize,
   certMissionCompletionPercent,
   setCertMissionCompletionPercent,
   certRequireSurvey,
@@ -245,7 +264,9 @@ export default function CertificateSettings({
   const { showWarning, showConfirm, close } = useStatusModal();
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-  const [isDragging, setIsDragging] = useState<"name" | "number" | null>(null);
+  const [isDragging, setIsDragging] = useState<"name" | "number" | "qr" | null>(
+    null,
+  );
   const [isDragOver, setIsDragOver] = useState(false);
   const [imageNaturalWidth, setImageNaturalWidth] = useState<number>(1000);
   const [imageNaturalHeight, setImageNaturalHeight] = useState<number>(0);
@@ -419,7 +440,7 @@ export default function CertificateSettings({
   };
 
   const handleMouseDown =
-    (type: "name" | "number") => (e: React.MouseEvent) => {
+    (type: "name" | "number" | "qr") => (e: React.MouseEvent) => {
       e.preventDefault();
       setIsDragging(type);
     };
@@ -437,9 +458,12 @@ export default function CertificateSettings({
     if (isDragging === "name") {
       setCertNameX(newX);
       setCertNameY(newY);
-    } else {
+    } else if (isDragging === "number") {
       setCertNumberX(newX);
       setCertNumberY(newY);
+    } else {
+      setCertQrX(newX);
+      setCertQrY(newY);
     }
   };
 
@@ -455,14 +479,17 @@ export default function CertificateSettings({
     if (isDragging === "name") {
       setCertNameX(newX);
       setCertNameY(newY);
-    } else {
+    } else if (isDragging === "number") {
       setCertNumberX(newX);
       setCertNumberY(newY);
+    } else {
+      setCertQrX(newX);
+      setCertQrY(newY);
     }
   };
 
   const handlePositionKeyDown =
-    (type: "name" | "number") => (e: React.KeyboardEvent) => {
+    (type: "name" | "number" | "qr") => (e: React.KeyboardEvent) => {
       const step = e.shiftKey ? 5 : 1;
       const keyDelta = {
         ArrowLeft: [-step, 0],
@@ -478,9 +505,12 @@ export default function CertificateSettings({
       if (type === "name") {
         setCertNameX(Math.max(0, Math.min(100, certNameX + deltaX)));
         setCertNameY(Math.max(0, Math.min(100, certNameY + deltaY)));
-      } else {
+      } else if (type === "number") {
         setCertNumberX(Math.max(0, Math.min(100, certNumberX + deltaX)));
         setCertNumberY(Math.max(0, Math.min(100, certNumberY + deltaY)));
+      } else {
+        setCertQrX(Math.max(0, Math.min(100, certQrX + deltaX)));
+        setCertQrY(Math.max(0, Math.min(100, certQrY + deltaY)));
       }
     };
 
@@ -946,7 +976,12 @@ export default function CertificateSettings({
                     className="relative inline-flex h-10 w-14 shrink-0 items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6b857a] focus-visible:ring-offset-1"
                     role="switch"
                     type="button"
-                    onClick={() => setCertShowNumber(!certShowNumber)}
+                    onClick={() => {
+                      const nextValue = !certShowNumber;
+
+                      setCertShowNumber(nextValue);
+                      if (!nextValue) setCertShowQr(false);
+                    }}
                   >
                     <span
                       className={`relative block h-6 w-11 rounded-full transition-colors ${
@@ -1180,6 +1215,127 @@ export default function CertificateSettings({
                   </div>
                 )}
               </div>
+
+              <div className="rounded-xl border border-[#e2e9e5] bg-[#fbfcfb] p-3.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-2">
+                    <QrCode className="mt-0.5 text-[#6b857a]" size={16} />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">
+                        คิวอาร์โค้ดตรวจสอบ
+                      </p>
+                      <p className="text-[11px] text-gray-400">
+                        {!certShowNumber
+                          ? "ต้องเปิดเลขที่เกียรติบัตรก่อน"
+                          : certShowQr
+                            ? `ตำแหน่ง ${Math.round(certQrX)}, ${Math.round(certQrY)}`
+                            : "ไม่แสดงคิวอาร์โค้ดบนเกียรติบัตร"}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    aria-checked={certShowQr}
+                    aria-label="แสดงคิวอาร์โค้ดตรวจสอบบนเกียรติบัตร"
+                    className="relative inline-flex h-10 w-14 shrink-0 items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6b857a] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!certShowNumber || certNumberStart == null}
+                    role="switch"
+                    type="button"
+                    onClick={() => setCertShowQr(!certShowQr)}
+                  >
+                    <span
+                      className={`relative block h-6 w-11 rounded-full transition-colors ${
+                        certShowQr ? "bg-[#1a3a32]" : "bg-gray-300"
+                      }`}
+                    >
+                      <span
+                        className={`absolute left-0 top-1 inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                          certShowQr ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </span>
+                  </button>
+                </div>
+
+                {certShowQr && (
+                  <div className="mt-4 space-y-3 border-t border-gray-200 pt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs leading-relaxed text-gray-500">
+                        เมื่อสแกน ระบบจะเปิดหน้าตรวจสอบเกียรติบัตรของผู้รับ
+                      </p>
+                      <button
+                        className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-[#1a3a32]"
+                        type="button"
+                        onClick={() => {
+                          setCertQrX(90);
+                          setCertQrY(88);
+                          setCertQrSize(140);
+                        }}
+                      >
+                        <RotateCcw size={13} />
+                        คืนค่าเริ่มต้น
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-3">
+                      <div>
+                        <label
+                          className="mb-1 block text-xs font-medium text-gray-500"
+                          htmlFor="certificate-qr-size"
+                        >
+                          ขนาดคิวอาร์โค้ด
+                        </label>
+                        <input
+                          aria-label="ขนาดคิวอาร์โค้ดตรวจสอบ"
+                          className="w-full accent-[#6b857a]"
+                          id="certificate-qr-size"
+                          max="600"
+                          min="48"
+                          type="range"
+                          value={certQrSize}
+                          onChange={(event) =>
+                            setCertQrSize(Number(event.target.value))
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="mb-1 block text-xs font-medium text-gray-500"
+                          htmlFor="certificate-qr-size-number"
+                        >
+                          พิกเซล
+                        </label>
+                        <input
+                          aria-label="ขนาดคิวอาร์โค้ดตรวจสอบเป็นพิกเซล"
+                          className="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-right text-sm"
+                          id="certificate-qr-size-number"
+                          max="600"
+                          min="48"
+                          type="number"
+                          value={certQrSize}
+                          onChange={(event) =>
+                            setCertQrSize(Number(event.target.value))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        className={controlButtonClass}
+                        type="button"
+                        onClick={() => setCertQrX(50)}
+                      >
+                        กึ่งกลางแนวนอน
+                      </button>
+                      <button
+                        className={controlButtonClass}
+                        type="button"
+                        onClick={() => setCertQrY(50)}
+                      >
+                        กึ่งกลางแนวตั้ง
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
         )}
@@ -1272,10 +1428,37 @@ export default function CertificateSettings({
                     {displayExampleText}
                   </button>
                 )}
+                {certShowQr && (
+                  <button
+                    aria-label="ตำแหน่งตัวอย่างคิวอาร์โค้ดตรวจสอบ ใช้ปุ่มลูกศรเพื่อขยับ"
+                    className={`absolute z-10 cursor-move rounded bg-white p-[2px] shadow-sm transition-shadow ${
+                      isDragging === "qr" ? "ring-2 ring-[#1a3a32]/50" : ""
+                    }`}
+                    style={{
+                      left: `${certQrX}%`,
+                      top: `${certQrY}%`,
+                      transform: "translate(-50%, -50%)",
+                      width: `${(certQrSize / imageNaturalWidth) * 100}cqi`,
+                      height: `${(certQrSize / imageNaturalWidth) * 100}cqi`,
+                    }}
+                    type="button"
+                    onKeyDown={handlePositionKeyDown("qr")}
+                    onMouseDown={handleMouseDown("qr")}
+                    onTouchStart={() => setIsDragging("qr")}
+                  >
+                    <QRCode
+                      aria-hidden="true"
+                      className="block h-full w-full"
+                      level="M"
+                      value="https://example.com/certificate/verify/example"
+                    />
+                  </button>
+                )}
               </div>
               <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs font-medium text-gray-500">
                 <Sparkles className="text-[#6b857a]" size={14} />
-                คลิกค้างที่ชื่อหรือเลขที่แล้วลากไปยังตำแหน่งที่ต้องการ
+                คลิกค้างที่ชื่อ เลขที่ หรือคิวอาร์โค้ด
+                แล้วลากไปยังตำแหน่งที่ต้องการ
               </p>
             </div>
           </div>

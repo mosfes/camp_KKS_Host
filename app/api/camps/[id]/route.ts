@@ -43,6 +43,10 @@ const campSchema = z
     cert_number_prefix: z.string().optional().nullable(),
     cert_number_is_thai: z.boolean().optional(),
     cert_year: z.string().optional().nullable(),
+    cert_show_qr: z.boolean().optional(),
+    cert_qr_x: z.number().min(0).max(100).optional().nullable(),
+    cert_qr_y: z.number().min(0).max(100).optional().nullable(),
+    cert_qr_size: z.number().min(48).max(600).optional().nullable(),
     cert_mission_completion_percent: z
       .number()
       .int()
@@ -172,6 +176,10 @@ export async function GET(request, context) {
           cert_number_prefix: true,
           cert_number_is_thai: true,
           cert_year: true,
+          cert_show_qr: true,
+          cert_qr_x: true,
+          cert_qr_y: true,
+          cert_qr_size: true,
           cert_mission_completion_percent: true,
           cert_require_survey: true,
           survey: { select: { survey_id: true } },
@@ -240,6 +248,10 @@ export async function GET(request, context) {
         cert_number_prefix: camp.cert_number_prefix,
         cert_number_is_thai: camp.cert_number_is_thai,
         cert_year: camp.cert_year,
+        cert_show_qr: camp.cert_show_qr,
+        cert_qr_x: camp.cert_qr_x,
+        cert_qr_y: camp.cert_qr_y,
+        cert_qr_size: camp.cert_qr_size,
         cert_mission_completion_percent: camp.cert_mission_completion_percent,
         cert_require_survey: camp.cert_require_survey,
         certificate_total_missions: camp.station.reduce(
@@ -609,6 +621,24 @@ export async function PUT(request, context) {
         }),
         ...(body.cert_year !== undefined && {
           cert_year: body.cert_year,
+        }),
+        ...(body.cert_show_qr !== undefined && {
+          // A verification QR must never be enabled without an assigned
+          // certificate number. The settings UI sends these fields together.
+          cert_show_qr: Boolean(
+            body.cert_show_qr &&
+              body.cert_show_number === true &&
+              body.cert_number_start != null,
+          ),
+        }),
+        ...(body.cert_qr_x !== undefined && {
+          cert_qr_x: body.cert_qr_x,
+        }),
+        ...(body.cert_qr_y !== undefined && {
+          cert_qr_y: body.cert_qr_y,
+        }),
+        ...(body.cert_qr_size !== undefined && {
+          cert_qr_size: body.cert_qr_size,
         }),
         ...(body.cert_mission_completion_percent !== undefined && {
           cert_mission_completion_percent: body.cert_mission_completion_percent,

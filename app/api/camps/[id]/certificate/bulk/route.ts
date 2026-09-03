@@ -4,11 +4,13 @@ import path from "path";
 import { NextResponse } from "next/server";
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
+import * as QRCode from "qrcode";
 
 import { prisma } from "@/lib/db";
 import { requireTeacher } from "@/lib/auth";
 import { getCertificateEligibility } from "@/lib/certificate-eligibility";
 import { activeCampEnrollmentWhere } from "@/lib/active-camp-student";
+import { buildCertificateVerificationUrl } from "@/lib/certificate-verification";
 
 let cachedFontBytes: Buffer | null = null;
 
@@ -345,6 +347,11 @@ export async function GET(request: Request, context: any) {
     const numYPercent = camp.cert_number_y ?? 10;
     const numColorRgb = hexToRgb(camp.cert_number_color || "#000000");
     const showNumber = camp.cert_show_number;
+    const showQr = camp.cert_show_qr && showNumber;
+    const qrSize = camp.cert_qr_size || 140;
+    const qrXPercent = camp.cert_qr_x ?? 90;
+    const qrYPercent = camp.cert_qr_y ?? 88;
+    const requestOrigin = new URL(request.url).origin;
 
     for (const enrollment of enrollments) {
       const page = pdfDoc.addPage([width, height]);
@@ -397,6 +404,28 @@ export async function GET(request: Request, context: any) {
             color: rgb(numColorRgb.r, numColorRgb.g, numColorRgb.b),
           });
         }
+      }
+
+      const assignedCertNo = enrollment.certificate[0]?.certificate_no;
+
+      if (showQr && assignedCertNo != null) {
+        const verificationUrl = buildCertificateVerificationUrl(
+          requestOrigin,
+          enrollment.student_enrollment_id,
+        );
+        const qrBuffer = await QRCode.toBuffer(verificationUrl, {
+          errorCorrectionLevel: "M",
+          margin: 1,
+          width: Math.round(qrSize),
+        });
+        const embeddedQr = await pdfDoc.embedPng(qrBuffer);
+
+        page.drawImage(embeddedQr, {
+          x: (qrXPercent / 100) * width - qrSize / 2,
+          y: (1 - qrYPercent / 100) * height - qrSize / 2,
+          width: qrSize,
+          height: qrSize,
+        });
       }
     }
 

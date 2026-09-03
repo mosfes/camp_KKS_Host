@@ -181,6 +181,12 @@ model camp {
   cert_number_is_thai Boolean @default(false)
   cert_year           String? @db.VarChar(20)
 
+  // คิวอาร์โค้ดสำหรับตรวจสอบเกียรติบัตร
+  cert_show_qr Boolean @default(false)
+  cert_qr_x    Float?
+  cert_qr_y    Float?
+  cert_qr_size Float?
+
   // เงื่อนไขการรับเกียรติบัตร
   cert_mission_completion_percent Int     @default(100)
   cert_require_survey             Boolean @default(false)
@@ -711,6 +717,8 @@ model certificate {
   file_url              String             @db.VarChar(500)
   certificate_no        Int?
   certificate_no_star   Int?
+  revoked_at            DateTime?
+  revocation_reason     String?            @db.VarChar(500)
   student_enrollment_id Int                @unique
   student_enrollment    student_enrollment @relation(fields: [student_enrollment_id], references: [student_enrollment_id])
 }
