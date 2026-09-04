@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 const isAdminRoute = createRouteMatcher(["/admin_add_user(.*)"]);
 const isTeacherRoute = createRouteMatcher(["/headteacher(.*)"]);
 const isStudentRoute = createRouteMatcher(["/student(.*)"]);
+const isParentRoute = createRouteMatcher(["/parent(.*)"]);
 
 const isProtectedApiRoute = createRouteMatcher([
   "/api/teachers(.*)",
@@ -16,6 +17,7 @@ const isProtectedApiRoute = createRouteMatcher([
   "/api/project-document-templates(.*)",
   "/api/document-reference-options(.*)",
   "/api/camps(.*)",
+  "/api/parent(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -29,6 +31,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   let role: string | undefined = undefined;
+  let parentMustChangePassword = false;
 
   const teacherCookie = req.cookies.get("teacher_session")?.value;
   const studentCookie = req.cookies.get("student_session")?.value;
@@ -59,8 +62,9 @@ export default clerkMiddleware(async (auth, req) => {
       const { jwtVerify } = await import("jose");
       const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
-      await jwtVerify(parentCookie, secret);
+      const { payload } = await jwtVerify(parentCookie, secret);
       role = "parent";
+      parentMustChangePassword = payload.mustChangePassword === true;
     } catch (e) {
       console.error("Failed to verify parent_session cookie", e);
     }
@@ -80,6 +84,19 @@ export default clerkMiddleware(async (auth, req) => {
     r === "head_teacher" ||
     r === "headteacher";
 
+  if (isParentRoute(req) && role !== "parent") {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  if (
+    isParentRoute(req) &&
+    role === "parent" &&
+    parentMustChangePassword &&
+    !/^\/parent\/change-password\/?$/.test(req.nextUrl.pathname)
+  ) {
+    return NextResponse.redirect(new URL("/parent/change-password", req.url));
+  }
+
   // API Route Protection
   if (isProtectedApiRoute(req)) {
     const isCampLocationRoute = req.nextUrl.pathname.match(
@@ -91,6 +108,22 @@ export default clerkMiddleware(async (auth, req) => {
     if (isCampLocationRoute) {
       if (!isTeacherRole(role) && role !== "student" && role !== "parent") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (role === "parent" && parentMustChangePassword) {
+        return NextResponse.json(
+          { error: "กรุณาเปลี่ยนรหัสผ่านก่อนใช้งานระบบ" },
+          { status: 428 },
+        );
+      }
+    } else if (req.nextUrl.pathname.startsWith("/api/parent")) {
+      if (role !== "parent") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (parentMustChangePassword) {
+        return NextResponse.json(
+          { error: "กรุณาเปลี่ยนรหัสผ่านก่อนใช้งานระบบ" },
+          { status: 428 },
+        );
       }
     }
     // Special case for upload and certificate: allow both teachers and students

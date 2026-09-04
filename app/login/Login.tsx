@@ -39,7 +39,11 @@ export default function ParentLoginPage() {
 
         return;
       }
-      router.push("/parent/dashboard");
+      router.replace(
+        data.mustChangePassword
+          ? "/parent/change-password"
+          : "/parent/dashboard",
+      );
     } catch {
       setError("เกิดข้อผิดพลาด กรุณาลองใหม่");
     } finally {
@@ -80,7 +84,10 @@ export default function ParentLoginPage() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5 ml-0.5">
+              <label
+                className="block text-xs font-semibold text-gray-500 mb-1.5 ml-0.5"
+                htmlFor="parent-username"
+              >
                 ชื่อผู้ใช้ (รหัสนักเรียน)
               </label>
               <Input
@@ -89,6 +96,7 @@ export default function ParentLoginPage() {
                   input:
                     "text-sm text-gray-700 placeholder:text-gray-400 font-medium",
                 }}
+                id="parent-username"
                 placeholder="รหัสนักเรียน"
                 type="text"
                 value={username}
@@ -101,7 +109,10 @@ export default function ParentLoginPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5 ml-0.5">
+              <label
+                className="block text-xs font-semibold text-gray-500 mb-1.5 ml-0.5"
+                htmlFor="parent-password"
+              >
                 รหัสผ่าน
               </label>
               <Input
@@ -110,6 +121,7 @@ export default function ParentLoginPage() {
                   input:
                     "text-sm text-gray-700 placeholder:text-gray-400 font-medium",
                 }}
+                id="parent-password"
                 placeholder="รหัสผ่าน"
                 type="password"
                 value={password}

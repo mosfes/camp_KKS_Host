@@ -263,6 +263,7 @@ export default function StudentCampDetailPage() {
   // Certificate Preview Modal State
   const [isCertPreviewModalOpen, setIsCertPreviewModalOpen] = useState(false);
   const [certImageLoading, setCertImageLoading] = useState(true);
+  const [certPreviewRevision, setCertPreviewRevision] = useState(0);
   const [downloadingFormat, setDownloadingFormat] = useState<
     "pdf" | "png" | null
   >(null);
@@ -535,7 +536,8 @@ export default function StudentCampDetailPage() {
 
     try {
       const response = await fetch(
-        `/api/camps/${id}/certificate?format=${format}&download=true`,
+        `/api/camps/${id}/certificate?format=${format}&download=true&revision=${Date.now()}`,
+        { cache: "no-store" },
       );
 
       if (!response.ok) {
@@ -569,6 +571,12 @@ export default function StudentCampDetailPage() {
       toast.error("เกิดข้อผิดพลาดในการดาวน์โหลด");
       setDownloadingFormat(null);
     }
+  };
+
+  const openCertPreview = () => {
+    setCertImageLoading(true);
+    setCertPreviewRevision(Date.now());
+    setIsCertPreviewModalOpen(true);
   };
 
   const handleRegister = async () => {
@@ -1182,10 +1190,7 @@ export default function StudentCampDetailPage() {
                     hasCertificate={!!camp.img_certificate_url}
                     requirements={camp.certificateRequirements}
                     surveyCompleted={surveyCompleted}
-                    onOpen={() => {
-                      setCertImageLoading(true);
-                      setIsCertPreviewModalOpen(true);
-                    }}
+                    onOpen={openCertPreview}
                   />
                 </div>
               )}
@@ -1374,10 +1379,7 @@ export default function StudentCampDetailPage() {
                                 hasCertificate={hasCertTemplate}
                                 requirements={requirements}
                                 surveyCompleted={surveyCompleted}
-                                onOpen={() => {
-                                  setCertImageLoading(true);
-                                  setIsCertPreviewModalOpen(true);
-                                }}
+                                onOpen={openCertPreview}
                               />
                             </>
                           ) : (
@@ -1459,10 +1461,7 @@ export default function StudentCampDetailPage() {
                                 hasCertificate={hasCertTemplate}
                                 requirements={requirements}
                                 surveyCompleted={surveyCompleted}
-                                onOpen={() => {
-                                  setCertImageLoading(true);
-                                  setIsCertPreviewModalOpen(true);
-                                }}
+                                onOpen={openCertPreview}
                               />
                             </>
                           )}
@@ -1870,12 +1869,7 @@ export default function StudentCampDetailPage() {
                 <img
                   alt="Certificate Preview"
                   className={`w-full h-auto object-contain rounded-xl shadow-md transition-opacity duration-300 ${certImageLoading ? "opacity-0" : "opacity-100"}`}
-                  src={`/api/camps/${id}/certificate?format=png&t=${Buffer.from(
-                    camp?.img_certificate_url ?? "",
-                  )
-                    .toString("base64")
-                    .replace(/[^a-zA-Z0-9]/g, "")
-                    .slice(0, 10)}`}
+                  src={`/api/camps/${id}/certificate?format=png&revision=${certPreviewRevision}`}
                   onLoad={() => setCertImageLoading(false)}
                 />
                 {certImageLoading && (

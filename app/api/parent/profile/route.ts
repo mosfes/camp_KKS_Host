@@ -1,8 +1,7 @@
 export const runtime = "nodejs";
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-
 import { prisma } from "@/lib/db";
+import { requireParentSession } from "@/lib/parent-auth";
 
 /**
  * GET /api/parent/profile
@@ -10,20 +9,9 @@ import { prisma } from "@/lib/db";
  */
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("parent_session");
-
-    if (!sessionCookie) {
-      return NextResponse.json({ error: "ไม่ได้เข้าสู่ระบบ" }, { status: 401 });
-    }
-
-    const { jwtVerify } = await import("jose");
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload: sessionData } = await jwtVerify(
-      sessionCookie.value,
-      secret,
-    );
-    const studentId = sessionData.students_id as number;
+    const auth = await requireParentSession();
+    if (auth.error) return auth.error;
+    const { studentId } = auth.session;
 
     const parent = await prisma.parents.findFirst({
       where: { username_student_id: studentId },
@@ -48,22 +36,11 @@ export async function GET() {
  * บันทึกข้อมูลผู้ปกครอง (สร้างใหม่ หรืออัปเดต)
  * Body: { firstname, lastname, tel }
  */
-export async function POST(req: Request) {
+async function saveProfile(req: Request) {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("parent_session");
-
-    if (!sessionCookie) {
-      return NextResponse.json({ error: "ไม่ได้เข้าสู่ระบบ" }, { status: 401 });
-    }
-
-    const { jwtVerify } = await import("jose");
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const { payload: sessionData } = await jwtVerify(
-      sessionCookie.value,
-      secret,
-    );
-    const studentId = sessionData.students_id as number;
+    const auth = await requireParentSession();
+    if (auth.error) return auth.error;
+    const { studentId } = auth.session;
 
     const body = await req.json();
     const { firstname, lastname, tel } = body;
@@ -102,12 +79,13 @@ export async function POST(req: Request) {
         },
       });
     } else {
+      const bcrypt = await import("bcryptjs");
       parent = await prisma.parents.create({
         data: {
           firstname: firstname.trim(),
           lastname: lastname.trim(),
           tel: telDigits,
-          password: `kks${studentId}`, // default password
+          password: await bcrypt.hash(`kks${studentId}`, 10),
           username_student_id: studentId,
         },
       });
@@ -127,4 +105,12 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ _error: "เกิดข้อผิดพลาด" }, { status: 500 });
   }
+}
+
+export async function POST(req: Request) {
+  return saveProfile(req);
+}
+
+export async function PUT(req: Request) {
+  return saveProfile(req);
 }

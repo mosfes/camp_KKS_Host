@@ -29,11 +29,13 @@ export async function POST(req: Request) {
     }
 
     // ตรวจสอบรหัสผ่าน: ค้นหา parent จาก DB และใช้ bcrypt
-    const parent = await prisma.parents.findFirst({
+    let parent = await prisma.parents.findFirst({
       where: { username_student_id: studentId },
     });
 
     let isValid = false;
+    const defaultPassword = `kks${studentId}`;
+    const mustChangePassword = password === defaultPassword;
     const bcrypt = await import("bcryptjs");
 
     if (parent) {
@@ -51,10 +53,10 @@ export async function POST(req: Request) {
       }
     } else {
       // Lazy migration: ถอนรหัสเดิม "kks" + รหัสนักเรียน ถ้าล็อกอินด้วยรหัสนี้ ให้สร้าง parent record (จำลองข้อมูล)
-      if (password === `kks${studentId}`) {
+      if (password === defaultPassword) {
         isValid = true;
         // สร้างข้อมูล placeholder ใน parents ให้เข้ารหัส
-        await prisma.parents.create({
+        parent = await prisma.parents.create({
           data: {
             firstname: "รอระบุ",
             lastname: "รอระบุ",
@@ -69,6 +71,13 @@ export async function POST(req: Request) {
     if (!isValid) {
       return NextResponse.json(
         { error: "รหัสนักเรียนหรือรหัสผ่านไม่ถูกต้อง" },
+        { status: 401 },
+      );
+    }
+
+    if (!parent) {
+      return NextResponse.json(
+        { error: "ไม่พบข้อมูลผู้ปกครอง" },
         { status: 401 },
       );
     }
@@ -151,15 +160,18 @@ export async function POST(req: Request) {
 
     // เตรียม session data
     const sessionData = {
+      parents_id: parent.parents_id,
       students_id: student.students_id,
       prefix_name: student.prefix_name,
       firstname: student.firstname,
       lastname: student.lastname,
+      mustChangePassword,
     };
 
     const response = NextResponse.json({
       success: true,
       student: sessionData,
+      mustChangePassword,
     });
 
     const { SignJWT } = await import("jose");

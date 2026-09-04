@@ -42,7 +42,7 @@ async function fetchTemplate(
 
   if (cached) return cached;
 
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: "no-store" });
 
   if (!res.ok) throw new Error(`Failed to fetch template: ${res.status}`);
 
@@ -347,12 +347,6 @@ export async function GET(request: Request, context: any) {
       camp.img_certificate_url,
     );
 
-    // คำนวณ hash สั้นจาก URL สำหรับใช้เป็น browser cache-buster
-    const templateHash = Buffer.from(camp.img_certificate_url)
-      .toString("base64")
-      .replace(/[^a-zA-Z0-9]/g, "")
-      .slice(0, 10);
-
     const prefix = enrollment.student.prefix_name?.trim() || "";
     const fullName = `${prefix}${enrollment.student.firstname.trim()} ${enrollment.student.lastname.trim()}`;
     const fontSize = camp.cert_font_size || 48;
@@ -545,18 +539,14 @@ export async function GET(request: Request, context: any) {
         "Content-Disposition",
         `${disposition}; filename="certificate_${student.students_id}_${campId}.png"`,
       );
-      // preview: cache ได้ตลอด (browser ใช้ซ้ำได้) เพราะ frontend จะเปลี่ยน ?t= เมื่อ template เปลี่ยน
-      // download: ไม่ cache เพราะต้องการให้ได้ไฟล์ล่าสุดเสมอ
-      if (isDownload) {
-        resHeaders.set("Cache-Control", "no-store");
-        resHeaders.delete("Pragma");
-        resHeaders.delete("Expires");
-      } else {
-        resHeaders.set("Cache-Control", "private, no-cache");
-        resHeaders.delete("Pragma");
-        resHeaders.delete("Expires");
-      }
-      resHeaders.set("X-Template-Hash", templateHash);
+      // เกียรติบัตรมีข้อมูลที่แก้ไขได้หลายส่วน จึงห้าม browser/proxy
+      // เก็บผลลัพธ์ที่สร้างเสร็จแล้วไว้ใช้ซ้ำทั้งหน้า preview และ download
+      resHeaders.set(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      );
+      resHeaders.set("Pragma", "no-cache");
+      resHeaders.set("Expires", "0");
       if (assignedCertNo != null) {
         resHeaders.set("X-Certificate-No", String(assignedCertNo));
       }
@@ -691,6 +681,9 @@ export async function GET(request: Request, context: any) {
     const pdfHeaders: Record<string, string> = {
       "Content-Type": "application/pdf",
       "Content-Disposition": `${disposition}; filename="certificate_${student.students_id}_${campId}.pdf"`,
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
     };
 
     if (assignedCertNo != null) {
